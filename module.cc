@@ -1,6 +1,9 @@
 #include "ncrack.h"
 #include "nsock.h"
 #include "utils.h"
+#include "global_structures.h"
+#include <string.h>
+
 
 #define BUFSIZE 256
 void call_module(m_data *);

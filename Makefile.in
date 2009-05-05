@@ -1,30 +1,34 @@
 export NBASEDIR=@NBASEDIR@
 export NSOCKDIR=@NSOCKDIR@
 
+DEFS = @DEFS@
+DEFS += -D_FORTIFY_SOURCE=2
+CXXFLAGS = @CXXFLAGS@ $(DBGFLAGS) $(CCOPT) $(DEFS)
 CPPFLAGS = @CPPFLAGS@
-LDFLAGS = @LDFLAGS@ 
+export CFLAGS = $(CXXFLAGS)
+STATIC =
+LDFLAGS = @LDFLAGS@ $(DBGFLAGS) $(STATIC)
+
+
 LIBS = @LIBNSOCK_LIBS@ @LIBNBASE_LIBS@ @LIBPCAP_LIBS@ @LIBSSL_LIBS@
 
 TARGET = ncrack
 
-export SRCS = ncrack.cc module.cc utils.cc
+export SRCS = ncrack.cc module.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc
 
-OBJS = ncrack.o module.o utils.o
+OBJS = ncrack.o module.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o
 
-#.c :
-#	$(CC) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+.cc.o :
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 all: @NBASE_BUILD@ @NSOCK_BUILD@ 
 	$(MAKE) $(TARGET)
 
 $(TARGET): $(NSOCKDIR)/src/libnsock.a $(NBASEDIR)/libnbase.a $(OBJS)
-	@echo Compiling ncrack... 
+	@echo Compiling Ncrack... 
 	rm -f $@
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
-ncrack.o :
-module.o :
-utils.o :
 
 
 nbase_build: $(NBASEDIR)/Makefile

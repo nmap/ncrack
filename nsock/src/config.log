@@ -14,7 +14,7 @@ hostname = bahamut
 uname -m = x86_64
 uname -r = 2.6.29-ARCH
 uname -s = Linux
-uname -v = #1 SMP PREEMPT Fri Apr 17 14:14:28 CEST 2009
+uname -v = #1 SMP PREEMPT Wed Apr 29 15:36:46 CEST 2009
 
 /usr/bin/uname -p = unknown
 /bin/uname -X     = unknown

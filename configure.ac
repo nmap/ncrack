@@ -5,7 +5,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(ncrack.cc)
 
 
-CPPFLAGS="-Wall -g"
+
 LIBPCAP_LIBS="-lpcap"
 LIBSSL_LIBS="-lssl"
 
@@ -31,6 +31,12 @@ if test "$user_localdirs" = 1; then
      CXXFLAGS="$CFLAGS -I/usr/local/include"
    fi
 fi
+
+
+
+dnl use ncrack_config.h instead of -D macros
+AC_CONFIG_HEADER(ncrack_config.h)
+
 
 
 dnl Host specific hacks
@@ -97,6 +103,102 @@ have_function=yes, have_function=no)
       AC_DEFINE(__func__, __FILE__)
    fi
 fi
+
+
+AC_CHECK_HEADERS(pwd.h termios.h sys/sockio.h)
+
+dnl If any socket libraries needed
+AC_SEARCH_LIBS(setsockopt, socket)
+AC_SEARCH_LIBS(gethostbyname, nsl)
+
+
+
+dnl This test is from the configure.in of Unix Network Programming second
+dnl edition example code by W. Richard Stevens
+dnl ##################################################################
+dnl Check if sockaddr{} has sa_len member.
+dnl
+AC_CACHE_CHECK(if sockaddr{} has sa_len member, ac_cv_sockaddr_has_sa_len,
+        AC_TRY_COMPILE([
+               #include <sys/types.h>
+               #include <sys/socket.h>],
+                [unsigned int i = sizeof(((struct sockaddr *)0)->sa_len)],
+        ac_cv_sockaddr_has_sa_len=yes,
+        ac_cv_sockaddr_has_sa_len=no))
+if test $ac_cv_sockaddr_has_sa_len = yes ; then
+        AC_DEFINE(HAVE_SOCKADDR_SA_LEN)
+fi
+
+#dnl check endedness
+AC_C_BIGENDIAN
+
+AC_MSG_CHECKING([if struct in_addr is a wacky huge structure (some Sun boxes)])
+
+AC_TRY_COMPILE([#include <netinet/in.h>], struct in_addr i; i._S_un._S_addr;, \
+             AC_DEFINE(IN_ADDR_DEEPSTRUCT) \
+             AC_MSG_RESULT(yes) , \
+             AC_TRY_COMPILE([#include <sys/types.h>
+#include <netinet/in.h>], struct in_addr i; i.S_un.S_addr;, \
+                             AC_DEFINE(IN_ADDR_DEEPSTRUCT) \
+                             AC_MSG_RESULT(yes) , \
+                             AC_MSG_RESULT(no);))
+
+AC_CACHE_CHECK(if struct icmp exists, ac_cv_struct_icmp_exists,
+        AC_TRY_COMPILE([
+               #include <sys/types.h>
+               #include <sys/param.h>
+               #include <netinet/in_systm.h>
+               #include <netinet/in.h>               
+               #define __USE_BSD
+               #define __FAVOR_BSD
+               #define _BSD_SOURCE
+               #include <netinet/ip.h>
+               #include <netinet/ip_icmp.h>],
+                [unsigned int i = sizeof(struct icmp)],
+        ac_cv_struct_icmp_exists=yes,
+        ac_cv_struct_icmp_exists=no))
+if test $ac_cv_struct_icmp_exists = yes ; then
+        AC_DEFINE(HAVE_STRUCT_ICMP)
+fi
+
+AC_CACHE_CHECK(if struct ip exists, ac_cv_struct_ip_exists,
+        AC_TRY_COMPILE([
+               #include <sys/types.h>
+               #include <sys/param.h>
+               #include <netinet/in_systm.h>
+               #include <netinet/in.h>               
+               #define __USE_BSD
+               #define __FAVOR_BSD
+               #define _BSD_SOURCE
+               #include <netinet/ip.h>],
+                [unsigned int i = sizeof(struct ip)],
+        ac_cv_struct_ip_exists=yes,
+        ac_cv_struct_ip_exists=no))
+if test $ac_cv_struct_ip_exists = yes ; then
+        AC_DEFINE(HAVE_STRUCT_IP)
+fi
+
+AC_CACHE_CHECK(if struct ip has ip_sum member, ac_cv_ip_has_ip_sum,
+        AC_TRY_COMPILE([
+               #include <sys/types.h>
+               #include <sys/param.h>
+               #include <netinet/in_systm.h>
+               #include <netinet/in.h>
+               #define __USE_BSD
+               #define __FAVOR_BSD
+               #define _BSD_SOURCE
+               #include <netinet/ip.h>
+               #include <netinet/ip_icmp.h>],
+                [unsigned int i = sizeof(((struct ip *)0)->ip_sum)],
+        ac_cv_ip_has_ip_sum=yes,
+        ac_cv_ip_has_ip_sum=no))
+if test $ac_cv_ip_has_ip_sum = yes ; then
+        AC_DEFINE(HAVE_IP_IP_SUM)
+fi
+
+dnl Checks for library functions.
+AC_CHECK_FUNCS(strerror)
+RECVFROM_ARG6_TYPE
 
 
 

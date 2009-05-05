@@ -1,30 +1,34 @@
 export NBASEDIR=nbase
 export NSOCKDIR=nsock
 
-CPPFLAGS = -Wall -g -Inbase -Insock/include
-LDFLAGS =  -Lnbase -Lnsock/src 
+DEFS = -DHAVE_CONFIG_H
+DEFS += -D_FORTIFY_SOURCE=2
+CXXFLAGS = -g -O2 -Wall  -fno-strict-aliasing $(DBGFLAGS) $(CCOPT) $(DEFS)
+CPPFLAGS =  -Inbase -Insock/include
+export CFLAGS = $(CXXFLAGS)
+STATIC =
+LDFLAGS =  -Lnbase -Lnsock/src $(DBGFLAGS) $(STATIC)
+
+
 LIBS = -lnsock -lnbase -lpcap -lssl
 
 TARGET = ncrack
 
-export SRCS = ncrack.cc module.cc utils.cc
+export SRCS = ncrack.cc module.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc
 
-OBJS = ncrack.o module.o utils.o
+OBJS = ncrack.o module.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o
 
-#.c :
-#	$(CC) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+.cc.o :
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 all: nbase_build nsock_build 
 	$(MAKE) $(TARGET)
 
 $(TARGET): $(NSOCKDIR)/src/libnsock.a $(NBASEDIR)/libnbase.a $(OBJS)
-	@echo Compiling ncrack... 
+	@echo Compiling Ncrack... 
 	rm -f $@
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
-ncrack.o :
-module.o :
-utils.o :
 
 
 nbase_build: $(NBASEDIR)/Makefile

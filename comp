@@ -1,5 +1,5 @@
 #!/bin/bash
-autoconf configure.ac > configure
+autoconf 
 ./configure
 make
 

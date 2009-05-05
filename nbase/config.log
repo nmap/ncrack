@@ -14,7 +14,7 @@ hostname = bahamut
 uname -m = x86_64
 uname -r = 2.6.29-ARCH
 uname -s = Linux
-uname -v = #1 SMP PREEMPT Fri Apr 17 14:14:28 CEST 2009
+uname -v = #1 SMP PREEMPT Wed Apr 29 15:36:46 CEST 2009
 
 /usr/bin/uname -p = unknown
 /bin/uname -X     = unknown
@@ -804,8 +804,8 @@ configure:5046: $? = 0
 configure:5064: result: yes
 configure:4984: checking for asnprintf
 configure:5040: gcc -o conftest -g -O2 -Wall    conftest.c  >&5
-/tmp/cc8DtOxr.o: In function `main':
-/home/ithilgore/ncrack/ncrack/nbase/conftest.c:82: undefined reference to `asnprintf'
+/tmp/ccCi20qk.o: In function `main':
+/home/ithilgore/ncrack/ncrack-working/ncrack/nbase/conftest.c:82: undefined reference to `asnprintf'
 collect2: ld returned 1 exit status
 configure:5046: $? = 1
 configure: failed program was:
@@ -901,8 +901,8 @@ configure:5046: $? = 0
 configure:5064: result: yes
 configure:4984: checking for vasnprintf
 configure:5040: gcc -o conftest -g -O2 -Wall    conftest.c  >&5
-/tmp/cc0fmSqG.o: In function `main':
-/home/ithilgore/ncrack/ncrack/nbase/conftest.c:83: undefined reference to `vasnprintf'
+/tmp/cc8yPJtz.o: In function `main':
+/home/ithilgore/ncrack/ncrack-working/ncrack/nbase/conftest.c:83: undefined reference to `vasnprintf'
 collect2: ld returned 1 exit status
 configure:5046: $? = 1
 configure: failed program was:
