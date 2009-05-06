@@ -11,6 +11,7 @@ class NcrackOps {
 		int debugging;
 		int verbose;
 		int numhosts_scanned;
+		int max_group_size;
 
 	private:
 		int addressfamily; /*  Address family:  AF_INET or AF_INET6 */  

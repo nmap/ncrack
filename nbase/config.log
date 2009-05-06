@@ -804,7 +804,7 @@ configure:5046: $? = 0
 configure:5064: result: yes
 configure:4984: checking for asnprintf
 configure:5040: gcc -o conftest -g -O2 -Wall    conftest.c  >&5
-/tmp/ccCi20qk.o: In function `main':
+/tmp/cc0X0iKQ.o: In function `main':
 /home/ithilgore/ncrack/ncrack-working/ncrack/nbase/conftest.c:82: undefined reference to `asnprintf'
 collect2: ld returned 1 exit status
 configure:5046: $? = 1
@@ -901,7 +901,7 @@ configure:5046: $? = 0
 configure:5064: result: yes
 configure:4984: checking for vasnprintf
 configure:5040: gcc -o conftest -g -O2 -Wall    conftest.c  >&5
-/tmp/cc8yPJtz.o: In function `main':
+/tmp/ccEIzM86.o: In function `main':
 /home/ithilgore/ncrack/ncrack-working/ncrack/nbase/conftest.c:83: undefined reference to `vasnprintf'
 collect2: ld returned 1 exit status
 configure:5046: $? = 1

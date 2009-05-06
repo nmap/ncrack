@@ -96,13 +96,13 @@
 
 /* #undef PCAP_TIMEOUT_IGNORED */
 
-#define HAVE_STRUCT_IP 1
+/* #undef HAVE_STRUCT_IP */
 
 /* #undef HAVE_NANOSLEEP */
 
-#define HAVE_STRUCT_ICMP 1
+/* #undef HAVE_STRUCT_ICMP */
 
-#define HAVE_IP_IP_SUM 1
+/* #undef HAVE_IP_IP_SUM */
 
 /* #undef inline */
 

@@ -5,6 +5,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(ncrack.cc)
 
 
+CXXFLAGS="-O0"
 
 LIBPCAP_LIBS="-lpcap"
 LIBSSL_LIBS="-lssl"
@@ -63,14 +64,14 @@ else
     our_gcc="$ac_cv_prog_CC"
   fi
 
-  nmap_gcc_major_version=0
+  ncrack_gcc_major_version=0
   case `$our_gcc --version | sed -e 's,\..*,.,' -e q` in
     *4.)
-      nmap_gcc_major_version=4
+      ncrack_gcc_major_version=4
       ;;
   esac
 
-  if test 4 -ge $nmap_gcc_major_version; then
+  if test 4 -ge $ncrack_gcc_major_version; then
     AC_MSG_RESULT([yes])
     CXXFLAGS="$CXXFLAGS -fno-strict-aliasing"
   else
@@ -143,64 +144,10 @@ AC_TRY_COMPILE([#include <netinet/in.h>], struct in_addr i; i._S_un._S_addr;, \
                              AC_MSG_RESULT(yes) , \
                              AC_MSG_RESULT(no);))
 
-AC_CACHE_CHECK(if struct icmp exists, ac_cv_struct_icmp_exists,
-        AC_TRY_COMPILE([
-               #include <sys/types.h>
-               #include <sys/param.h>
-               #include <netinet/in_systm.h>
-               #include <netinet/in.h>               
-               #define __USE_BSD
-               #define __FAVOR_BSD
-               #define _BSD_SOURCE
-               #include <netinet/ip.h>
-               #include <netinet/ip_icmp.h>],
-                [unsigned int i = sizeof(struct icmp)],
-        ac_cv_struct_icmp_exists=yes,
-        ac_cv_struct_icmp_exists=no))
-if test $ac_cv_struct_icmp_exists = yes ; then
-        AC_DEFINE(HAVE_STRUCT_ICMP)
-fi
-
-AC_CACHE_CHECK(if struct ip exists, ac_cv_struct_ip_exists,
-        AC_TRY_COMPILE([
-               #include <sys/types.h>
-               #include <sys/param.h>
-               #include <netinet/in_systm.h>
-               #include <netinet/in.h>               
-               #define __USE_BSD
-               #define __FAVOR_BSD
-               #define _BSD_SOURCE
-               #include <netinet/ip.h>],
-                [unsigned int i = sizeof(struct ip)],
-        ac_cv_struct_ip_exists=yes,
-        ac_cv_struct_ip_exists=no))
-if test $ac_cv_struct_ip_exists = yes ; then
-        AC_DEFINE(HAVE_STRUCT_IP)
-fi
-
-AC_CACHE_CHECK(if struct ip has ip_sum member, ac_cv_ip_has_ip_sum,
-        AC_TRY_COMPILE([
-               #include <sys/types.h>
-               #include <sys/param.h>
-               #include <netinet/in_systm.h>
-               #include <netinet/in.h>
-               #define __USE_BSD
-               #define __FAVOR_BSD
-               #define _BSD_SOURCE
-               #include <netinet/ip.h>
-               #include <netinet/ip_icmp.h>],
-                [unsigned int i = sizeof(((struct ip *)0)->ip_sum)],
-        ac_cv_ip_has_ip_sum=yes,
-        ac_cv_ip_has_ip_sum=no))
-if test $ac_cv_ip_has_ip_sum = yes ; then
-        AC_DEFINE(HAVE_IP_IP_SUM)
-fi
 
 dnl Checks for library functions.
 AC_CHECK_FUNCS(strerror)
 RECVFROM_ARG6_TYPE
-
-
 
 
 

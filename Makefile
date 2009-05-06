@@ -3,7 +3,7 @@ export NSOCKDIR=nsock
 
 DEFS = -DHAVE_CONFIG_H
 DEFS += -D_FORTIFY_SOURCE=2
-CXXFLAGS = -g -O2 -Wall  -fno-strict-aliasing $(DBGFLAGS) $(CCOPT) $(DEFS)
+CXXFLAGS = -O0 -Wall  -fno-strict-aliasing $(DBGFLAGS) $(DEFS) 
 CPPFLAGS =  -Inbase -Insock/include
 export CFLAGS = $(CXXFLAGS)
 STATIC =

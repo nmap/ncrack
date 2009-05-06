@@ -162,17 +162,13 @@ class TargetGroup {
 
 class HostGroupState {
  public:
-  HostGroupState(int lookahead, int randomize, char *target_expressions[],
-		 int num_expressions);
+  HostGroupState(int lookahead, char *target_expressions[], int num_expressions);
   ~HostGroupState();
   Target **hostbatch;
   int max_batch_sz; /* The size of the hostbatch[] array */
   int current_batch_sz; /* The number of VALID members of hostbatch[] */
   int next_batch_no; /* The index of the next hostbatch[] member to be given 
 			back to the user */
-  int randomize; /* Whether each batch should be "shuffled" prior to the ping 
-		    scan (they will also be out of order when given back one
-		    at a time to the client program */
   char **target_expressions; /* An array of target expression strings, passed
 				to us by the client (client is also in charge
 				of deleting it AFTER it is done with the 

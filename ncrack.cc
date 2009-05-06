@@ -6,6 +6,7 @@
 #include "nsock.h"
 #include "global_structures.h"
 
+#include <vector>
 
 extern NcrackOps o;
 using namespace std;
@@ -19,7 +20,7 @@ void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 void ncrack_module_end(nsock_pool nsp, nsock_iod nsi, void *mydata);
 
 static void printusage(void);
-
+static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
 
 
 static void
@@ -27,7 +28,7 @@ printusage(void)
 {
 	printf("%s %s ( %s )\n"
 			"Usage: ncrack [service name/port] [Options] {target specification}\n"
-		  "TARGET SPECIFICATION:\n"
+			"TARGET SPECIFICATION:\n"
 			"  Can pass hostnames, IP addresses, networks, etc.\n"
 			"  Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254\n"
 			"  -iL <inputfilename>: Input from list of hosts/networks\n"
@@ -53,11 +54,11 @@ printusage(void)
 void
 ncrack_module_end(nsock_pool nsp, nsock_iod nsi, void *mydata)
 {
-		m_data *mdata = (m_data *) mydata;
-		
-		if (mdata->attempts < mdata->max_attempts) {
-			call_module(mdata);
-		}
+	m_data *mdata = (m_data *) mydata;
+
+	if (mdata->attempts < mdata->max_attempts) {
+		call_module(mdata);
+	}
 
 }
 
@@ -123,13 +124,44 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 }
 
 
+
+
+static char *
+grab_next_host_spec(FILE *inputfd, int argc, char **argv) {
+	static char host_spec[1024];
+	unsigned int host_spec_index;
+	int ch;
+
+	if (!inputfd) {
+		return( (optind < argc)?  argv[optind++] : NULL);
+	} else { 
+		host_spec_index = 0;
+		while((ch = getc(inputfd)) != EOF) {
+			if (ch == ' ' || ch == '\r' || ch == '\n' || ch == '\t' || ch == '\0') {
+				if (host_spec_index == 0)
+					continue;
+				host_spec[host_spec_index] = '\0';
+				return host_spec;
+			} else if (host_spec_index < sizeof(host_spec) / sizeof(char) -1) {
+				host_spec[host_spec_index++] = (char) ch;
+			} else fatal("One of the host_specifications from your input file"
+					"is too long (> %d chars)", (int) sizeof(host_spec));
+		}
+		host_spec[host_spec_index] = '\0';
+	}
+	if (!*host_spec) 
+		return NULL;
+	return host_spec;
+}
+
+
 int main(int argc, char **argv)
 {
-	socklen_t addrlen;
 	struct in_addr target;
 	uint16_t port;
 	struct sockaddr_in taddr;
 	struct timeval now;
+	FILE *inputfd = NULL;
 
 	/* exclude-specific variables */
 	FILE *excludefd = NULL;
@@ -163,6 +195,7 @@ int main(int argc, char **argv)
 		{"min-parallelism", required_argument, 0, 0},
 		{"excludefile", required_argument, 0, 0},
 		{"exclude", required_argument, 0, 0},
+		{"iL", required_argument, 0, 'i'}, 
 		{"max_hostgroup", required_argument, 0, 0},
 		{"max-hostgroup", required_argument, 0, 0},
 		{"min_hostgroup", required_argument, 0, 0},
@@ -176,11 +209,12 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 
-
+	if (argc < 2)
+		printusage();
 
 	/* Argument parsing */
 	optind = 1; 
-	while((arg = getopt_long_only(argc, argv, "p:hvV", long_options, &option_index)) != EOF) {
+	while((arg = getopt_long_only(argc, argv, "hd::i:p:vV", long_options, &option_index)) != EOF) {
 		switch(arg) {
 			case 0:
 				if (strcmp(long_options[option_index].name, "excludefile") == 0) {
@@ -195,38 +229,56 @@ int main(int argc, char **argv)
 					exclude_spec = strdup(optarg);
 				}
 				break;
+			case 'd': 
+				if (optarg)
+					o.debugging = o.verbose = atoi(optarg);
+				else 
+					o.debugging++; o.verbose++;
+				break;
+			case 'h':   /* help */
+				printusage();
+				break;
+			case 'i': 
+				if (inputfd)
+					fatal("Only one input filename allowed");
+				if (!strcmp(optarg, "-"))
+					inputfd = stdin;
+				else {    
+					inputfd = fopen(optarg, "r");
+					if (!inputfd) 
+						fatal("Failed to open input file %s for reading", optarg);
+				}
+				break; 
 			case 'p':   /* service port */
 				port = atoi(optarg);
 				break;
 			case 'V':
 				printf("\n%s version %s ( %s )\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
 				break;
-			case 'h':   /* help */
-				printusage();
+			case 'v':
+				o.verbose++;
 				break;
 			case '?':   /* error */
-				(void) fprintf(stderr, "option inconsistency: -%c\n", optopt);
+				fprintf(stderr, "option inconsistency: -%c\n", optopt);
 				printusage();
-
 		}
 	}
 
 
- o.setaf(AF_INET);
+	o.setaf(AF_INET);
 
-
-
-
-	//if (argc - optind <= 0 || argc - optind > 2)
-	//   printusage();
-
-
+	char **host_exp_group;
+	HostGroupState *hstate;
+	Target *currenths;
+	int num_host_exp_groups;
+	char *host_spec = NULL;
+	vector <Target *> Targets;
 
 	/* lets load our exclude list */
 	if ((NULL != excludefd) || (NULL != exclude_spec)) {
 		exclude_group = load_exclude(excludefd, exclude_spec);
 
-		//if (o.debugging > 3)
+		if (o.debugging > 3)
 			dumpExclude(exclude_group);
 
 		if ((FILE *)NULL != excludefd)
@@ -235,6 +287,62 @@ int main(int argc, char **argv)
 			free(exclude_spec);
 	}
 
+
+
+	host_exp_group = (char **) safe_malloc(o.max_group_size * sizeof(char *));
+	num_host_exp_groups = 0;
+
+	o.max_group_size = 4096;
+	unsigned int ideal_scan_group_size = o.max_group_size;
+
+	hstate = new HostGroupState(o.max_group_size, host_exp_group, num_host_exp_groups);
+
+
+	do {
+		while(Targets.size() < ideal_scan_group_size) {
+			currenths = nexthost(hstate, exclude_group);
+			if (!currenths) {
+				/* Try to refill with any remaining expressions */
+				/* First free the old ones */
+				for(int i = 0; i < num_host_exp_groups; i++)
+					free(host_exp_group[i]);
+
+				num_host_exp_groups = 0;
+				/* Now grab any new expressions */
+				while(num_host_exp_groups < o.max_group_size && 
+						(host_spec = grab_next_host_spec(inputfd, argc, argv))) {
+					// For purposes of random scan - TODO: see this
+					host_exp_group[num_host_exp_groups++] = strdup(host_spec);
+				}
+
+				if (num_host_exp_groups == 0)
+					break;
+				delete hstate;
+				hstate = new HostGroupState(o.max_group_size, host_exp_group, num_host_exp_groups);
+
+				/* Try one last time -- with new expressions */
+				currenths = nexthost(hstate, exclude_group);
+				if (!currenths)
+					break;
+			}
+			Targets.push_back(currenths);
+		}
+
+		if (Targets.size() == 0)
+			break; 
+
+		for (unsigned int i = 0; i < Targets.size(); i++) {
+			printf("%s\n", Targets[i]->NameIP());
+		}
+
+		/* Free all of the Targets */
+		while(!Targets.empty()) {
+			currenths = Targets.back();
+			delete currenths;
+			Targets.pop_back();
+		}
+
+	} while (1);
 
 
 
@@ -247,37 +355,37 @@ int main(int argc, char **argv)
 
 
 
-		if (!inet_pton(AF_INET, argv[optind], &target))
-			fatal("inet_pton\n");
-		// BEGIN MAIN
+	if (!inet_pton(AF_INET, argv[optind], &target))
+		fatal("inet_pton\n");
+	// BEGIN MAIN
 
 
-		/* create nsock p00l */
-		if (!(nsp = nsp_new(NULL))) 
-			fatal("Can't create nsock pool.\n");
+	/* create nsock p00l */
+	if (!(nsp = nsp_new(NULL))) 
+		fatal("Can't create nsock pool.\n");
 
-		gettimeofday(&now, NULL);
-		nsp_settrace(nsp, tracelevel, &now);
+	gettimeofday(&now, NULL);
+	nsp_settrace(nsp, tracelevel, &now);
 
-		if ((tcp_nsi = nsi_new(nsp, NULL)) == NULL)
-			fatal("Failed to create new nsock_iod.  QUITTING.\n");
+	if ((tcp_nsi = nsi_new(nsp, NULL)) == NULL)
+		fatal("Failed to create new nsock_iod.  QUITTING.\n");
 
-		taddr.sin_family = AF_INET;
-		taddr.sin_addr = target;
-		taddr.sin_port = port;
+	taddr.sin_family = AF_INET;
+	taddr.sin_addr = target;
+	taddr.sin_port = port;
 
-		memset(&mdata, 0, sizeof(mdata));
-		mdata.nsp = nsp;
-		mdata.nsi = tcp_nsi;
-		mdata.max_attempts = 4;
+	memset(&mdata, 0, sizeof(mdata));
+	mdata.nsp = nsp;
+	mdata.nsi = tcp_nsi;
+	mdata.max_attempts = 4;
 
-		ev = nsock_connect_tcp(nsp, tcp_nsi, ncrack_connect_handler, 10000, &mdata,
-				(struct sockaddr *) &taddr, sizeof taddr, port);
+	ev = nsock_connect_tcp(nsp, tcp_nsi, ncrack_connect_handler, 10000, &mdata,
+			(struct sockaddr *) &taddr, sizeof taddr, port);
 
-		/* nsock loop */
-		loopret = nsock_loop(nsp, -1);
+	/* nsock loop */
+	loopret = nsock_loop(nsp, -1);
 
-		printf("nsock_loop returned %d\n", loopret);
+	printf("nsock_loop returned %d\n", loopret);
 
-		return 0;
-	}
+	return 0;
+}

@@ -92,8 +92,11 @@
 
 /* $Id: TargetGroup.cc 12955 2009-04-15 00:37:03Z fyodor $ */
 
+#include "NcrackOps.h"
 #include "TargetGroup.h"
 #include "utils.h"
+
+extern NcrackOps o;
 
 
 TargetGroup::TargetGroup() {
@@ -407,9 +410,9 @@ startover: /* to handle nmap --resume where I have already
 #if HAVE_SOCKADDR_SA_LEN
 		sin->sin_len = *sslen;
 #endif
-		// if (o.debugging > 2) {
-		  printf("doing %d.%d.%d.%d = %d.%d.%d.%d\n", current[0], current[1], current[2], current[3], addresses[0][current[0]],addresses[1][current[1]],addresses[2][current[2]],addresses[3][current[3]]);
-		// }
+		if (o.debugging > 2) {
+			printf("doing %d.%d.%d.%d = %d.%d.%d.%d\n", current[0], current[1], current[2], current[3], addresses[0][current[0]],addresses[1][current[1]],addresses[2][current[2]],addresses[3][current[3]]);
+		}
 		/* Set the IP to the current value of everything */
 		sin->sin_addr.s_addr = htonl(addresses[0][current[0]] << 24 | 
 				addresses[1][current[1]] << 16 |
@@ -455,6 +458,7 @@ startover: /* to handle nmap --resume where I have already
 	}
 	ipsleft--;
 
+	/* NCRACK-TODO: use this for restore procedure */
 	/* If we are resuming from a previous scan, we have already finished
 		 scans up to o.resume_ip.  */
 	//if (sin->sin_family == AF_INET && o.resume_ip.s_addr) {
@@ -502,14 +506,12 @@ int TargetGroup::return_last_host() {
 	 The target_expressions array MUST REMAIN VALID IN MEMORY as long as
 	 this class instance is used -- the array is NOT copied.
 	 */
-HostGroupState::HostGroupState(int lookahead, int rnd, 
-		char *expr[], int numexpr) {
+HostGroupState::HostGroupState(int lookahead, char *expr[], int numexpr) {
 	assert(lookahead > 0);
 	hostbatch = (Target **) safe_zalloc(sizeof(Target *) * lookahead);
 	max_batch_sz = lookahead;
 	current_batch_sz = 0;
 	next_batch_no = 0;
-	randomize = rnd;
 	target_expressions = expr;
 	num_expressions = numexpr;
 	next_expression = 0;

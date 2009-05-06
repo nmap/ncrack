@@ -1808,6 +1808,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+CXXFLAGS="-O0"
 
 LIBPCAP_LIBS="-lpcap"
 LIBSSL_LIBS="-lssl"
@@ -4131,14 +4132,14 @@ else
     our_gcc="$ac_cv_prog_CC"
   fi
 
-  nmap_gcc_major_version=0
+  ncrack_gcc_major_version=0
   case `$our_gcc --version | sed -e 's,\..*,.,' -e q` in
     *4.)
-      nmap_gcc_major_version=4
+      ncrack_gcc_major_version=4
       ;;
   esac
 
-  if test 4 -ge $nmap_gcc_major_version; then
+  if test 4 -ge $ncrack_gcc_major_version; then
     { $as_echo "$as_me:$LINENO: result: yes" >&5
 $as_echo "yes" >&6; }
     CXXFLAGS="$CXXFLAGS -fno-strict-aliasing"
@@ -5785,202 +5786,6 @@ fi
 
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
-{ $as_echo "$as_me:$LINENO: checking if struct icmp exists" >&5
-$as_echo_n "checking if struct icmp exists... " >&6; }
-if test "${ac_cv_struct_icmp_exists+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-               #include <sys/types.h>
-               #include <sys/param.h>
-               #include <netinet/in_systm.h>
-               #include <netinet/in.h>
-               #define __USE_BSD
-               #define __FAVOR_BSD
-               #define _BSD_SOURCE
-               #include <netinet/ip.h>
-               #include <netinet/ip_icmp.h>
-int
-main ()
-{
-unsigned int i = sizeof(struct icmp)
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_cv_struct_icmp_exists=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_struct_icmp_exists=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_struct_icmp_exists" >&5
-$as_echo "$ac_cv_struct_icmp_exists" >&6; }
-if test $ac_cv_struct_icmp_exists = yes ; then
-        cat >>confdefs.h <<\_ACEOF
-#define HAVE_STRUCT_ICMP 1
-_ACEOF
-
-fi
-
-{ $as_echo "$as_me:$LINENO: checking if struct ip exists" >&5
-$as_echo_n "checking if struct ip exists... " >&6; }
-if test "${ac_cv_struct_ip_exists+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-               #include <sys/types.h>
-               #include <sys/param.h>
-               #include <netinet/in_systm.h>
-               #include <netinet/in.h>
-               #define __USE_BSD
-               #define __FAVOR_BSD
-               #define _BSD_SOURCE
-               #include <netinet/ip.h>
-int
-main ()
-{
-unsigned int i = sizeof(struct ip)
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_cv_struct_ip_exists=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_struct_ip_exists=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_struct_ip_exists" >&5
-$as_echo "$ac_cv_struct_ip_exists" >&6; }
-if test $ac_cv_struct_ip_exists = yes ; then
-        cat >>confdefs.h <<\_ACEOF
-#define HAVE_STRUCT_IP 1
-_ACEOF
-
-fi
-
-{ $as_echo "$as_me:$LINENO: checking if struct ip has ip_sum member" >&5
-$as_echo_n "checking if struct ip has ip_sum member... " >&6; }
-if test "${ac_cv_ip_has_ip_sum+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-               #include <sys/types.h>
-               #include <sys/param.h>
-               #include <netinet/in_systm.h>
-               #include <netinet/in.h>
-               #define __USE_BSD
-               #define __FAVOR_BSD
-               #define _BSD_SOURCE
-               #include <netinet/ip.h>
-               #include <netinet/ip_icmp.h>
-int
-main ()
-{
-unsigned int i = sizeof(((struct ip *)0)->ip_sum)
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_cv_ip_has_ip_sum=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_ip_has_ip_sum=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_ip_has_ip_sum" >&5
-$as_echo "$ac_cv_ip_has_ip_sum" >&6; }
-if test $ac_cv_ip_has_ip_sum = yes ; then
-        cat >>confdefs.h <<\_ACEOF
-#define HAVE_IP_IP_SUM 1
-_ACEOF
-
-fi
 
 
 for ac_func in strerror
@@ -6084,8 +5889,6 @@ fi
 done
 
 RECVFROM_ARG6_TYPE
-
-
 
 
 

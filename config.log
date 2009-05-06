@@ -46,134 +46,134 @@ PATH: /usr/local/bin
 ## Core tests. ##
 ## ----------- ##
 
-configure:1886: checking build system type
-configure:1904: result: x86_64-unknown-linux-gnu
-configure:1926: checking host system type
-configure:1941: result: x86_64-unknown-linux-gnu
-configure:2011: checking for gcc
-configure:2027: found /usr/bin/gcc
-configure:2038: result: gcc
-configure:2270: checking for C compiler version
-configure:2278: gcc --version >&5
+configure:1887: checking build system type
+configure:1905: result: x86_64-unknown-linux-gnu
+configure:1927: checking host system type
+configure:1942: result: x86_64-unknown-linux-gnu
+configure:2012: checking for gcc
+configure:2028: found /usr/bin/gcc
+configure:2039: result: gcc
+configure:2271: checking for C compiler version
+configure:2279: gcc --version >&5
 gcc (GCC) 4.3.3
 Copyright (C) 2008 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-configure:2282: $? = 0
-configure:2289: gcc -v >&5
+configure:2283: $? = 0
+configure:2290: gcc -v >&5
 Using built-in specs.
 Target: x86_64-unknown-linux-gnu
 Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++,treelang --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
 Thread model: posix
 gcc version 4.3.3 (GCC) 
-configure:2293: $? = 0
-configure:2300: gcc -V >&5
+configure:2294: $? = 0
+configure:2301: gcc -V >&5
 gcc: '-V' option must have argument
-configure:2304: $? = 1
-configure:2327: checking for C compiler default output file name
-configure:2349: gcc    conftest.c  >&5
-configure:2353: $? = 0
-configure:2391: result: a.out
-configure:2410: checking whether the C compiler works
-configure:2420: ./a.out
-configure:2424: $? = 0
-configure:2443: result: yes
-configure:2450: checking whether we are cross compiling
-configure:2452: result: no
-configure:2455: checking for suffix of executables
-configure:2462: gcc -o conftest    conftest.c  >&5
-configure:2466: $? = 0
-configure:2492: result: 
-configure:2498: checking for suffix of object files
-configure:2524: gcc -c   conftest.c >&5
-configure:2528: $? = 0
-configure:2553: result: o
-configure:2557: checking whether we are using the GNU C compiler
-configure:2586: gcc -c   conftest.c >&5
-configure:2593: $? = 0
-configure:2610: result: yes
-configure:2619: checking whether gcc accepts -g
-configure:2649: gcc -c -g  conftest.c >&5
-configure:2656: $? = 0
-configure:2757: result: yes
-configure:2774: checking for gcc option to accept ISO C89
-configure:2848: gcc  -c -g -O2  conftest.c >&5
-configure:2855: $? = 0
-configure:2878: result: none needed
-configure:2897: checking for inline
-configure:2923: gcc -c -g -O2  conftest.c >&5
-configure:2930: $? = 0
-configure:2948: result: inline
-configure:3016: checking for gcc
-configure:3043: result: gcc
-configure:3275: checking for C compiler version
-configure:3283: gcc --version >&5
+configure:2305: $? = 1
+configure:2328: checking for C compiler default output file name
+configure:2350: gcc    conftest.c  >&5
+configure:2354: $? = 0
+configure:2392: result: a.out
+configure:2411: checking whether the C compiler works
+configure:2421: ./a.out
+configure:2425: $? = 0
+configure:2444: result: yes
+configure:2451: checking whether we are cross compiling
+configure:2453: result: no
+configure:2456: checking for suffix of executables
+configure:2463: gcc -o conftest    conftest.c  >&5
+configure:2467: $? = 0
+configure:2493: result: 
+configure:2499: checking for suffix of object files
+configure:2525: gcc -c   conftest.c >&5
+configure:2529: $? = 0
+configure:2554: result: o
+configure:2558: checking whether we are using the GNU C compiler
+configure:2587: gcc -c   conftest.c >&5
+configure:2594: $? = 0
+configure:2611: result: yes
+configure:2620: checking whether gcc accepts -g
+configure:2650: gcc -c -g  conftest.c >&5
+configure:2657: $? = 0
+configure:2758: result: yes
+configure:2775: checking for gcc option to accept ISO C89
+configure:2849: gcc  -c -g -O2  conftest.c >&5
+configure:2856: $? = 0
+configure:2879: result: none needed
+configure:2898: checking for inline
+configure:2924: gcc -c -g -O2  conftest.c >&5
+configure:2931: $? = 0
+configure:2949: result: inline
+configure:3017: checking for gcc
+configure:3044: result: gcc
+configure:3276: checking for C compiler version
+configure:3284: gcc --version >&5
 gcc (GCC) 4.3.3
 Copyright (C) 2008 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-configure:3287: $? = 0
-configure:3294: gcc -v >&5
+configure:3288: $? = 0
+configure:3295: gcc -v >&5
 Using built-in specs.
 Target: x86_64-unknown-linux-gnu
 Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++,treelang --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
 Thread model: posix
 gcc version 4.3.3 (GCC) 
-configure:3298: $? = 0
-configure:3305: gcc -V >&5
+configure:3299: $? = 0
+configure:3306: gcc -V >&5
 gcc: '-V' option must have argument
-configure:3309: $? = 1
-configure:3312: checking whether we are using the GNU C compiler
-configure:3365: result: yes
-configure:3374: checking whether gcc accepts -g
-configure:3512: result: yes
-configure:3529: checking for gcc option to accept ISO C89
-configure:3633: result: none needed
-configure:3709: checking for g++
-configure:3725: found /usr/bin/g++
-configure:3736: result: g++
-configure:3763: checking for C++ compiler version
-configure:3771: g++ --version >&5
+configure:3310: $? = 1
+configure:3313: checking whether we are using the GNU C compiler
+configure:3366: result: yes
+configure:3375: checking whether gcc accepts -g
+configure:3513: result: yes
+configure:3530: checking for gcc option to accept ISO C89
+configure:3634: result: none needed
+configure:3710: checking for g++
+configure:3726: found /usr/bin/g++
+configure:3737: result: g++
+configure:3764: checking for C++ compiler version
+configure:3772: g++ --version >&5
 g++ (GCC) 4.3.3
 Copyright (C) 2008 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-configure:3775: $? = 0
-configure:3782: g++ -v >&5
+configure:3776: $? = 0
+configure:3783: g++ -v >&5
 Using built-in specs.
 Target: x86_64-unknown-linux-gnu
 Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++,treelang --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
 Thread model: posix
 gcc version 4.3.3 (GCC) 
-configure:3786: $? = 0
-configure:3793: g++ -V >&5
+configure:3787: $? = 0
+configure:3794: g++ -V >&5
 g++: '-V' option must have argument
-configure:3797: $? = 1
-configure:3800: checking whether we are using the GNU C++ compiler
-configure:3829: g++ -c   conftest.cpp >&5
-configure:3836: $? = 0
-configure:3853: result: yes
-configure:3862: checking whether g++ accepts -g
-configure:3892: g++ -c -g  conftest.cpp >&5
-configure:3899: $? = 0
-configure:4000: result: yes
-configure:4037: checking for a BSD-compatible install
-configure:4105: result: /bin/install -c
-configure:4121: checking whether the compiler is gcc 4 or greater
-configure:4142: result: yes
-configure:4154: checking for __func__
-configure:4179: gcc -c -g -O2  conftest.c >&5
-configure:4186: $? = 0
-configure:4201: result: yes
-configure:4275: checking how to run the C preprocessor
-configure:4315: gcc -E  conftest.c
-configure:4322: $? = 0
-configure:4353: gcc -E  conftest.c
+configure:3798: $? = 1
+configure:3801: checking whether we are using the GNU C++ compiler
+configure:3830: g++ -c -O0  conftest.cpp >&5
+configure:3837: $? = 0
+configure:3854: result: yes
+configure:3863: checking whether g++ accepts -g
+configure:3893: g++ -c -g  conftest.cpp >&5
+configure:3900: $? = 0
+configure:4001: result: yes
+configure:4038: checking for a BSD-compatible install
+configure:4106: result: /bin/install -c
+configure:4122: checking whether the compiler is gcc 4 or greater
+configure:4143: result: yes
+configure:4155: checking for __func__
+configure:4180: gcc -c -g -O2  conftest.c >&5
+configure:4187: $? = 0
+configure:4202: result: yes
+configure:4276: checking how to run the C preprocessor
+configure:4316: gcc -E  conftest.c
+configure:4323: $? = 0
+configure:4354: gcc -E  conftest.c
 conftest.c:8:28: error: ac_nonexistent.h: No such file or directory
-configure:4360: $? = 1
+configure:4361: $? = 1
 configure: failed program was:
 | /* confdefs.h.  */
 | #define PACKAGE_NAME ""
@@ -183,12 +183,12 @@ configure: failed program was:
 | #define PACKAGE_BUGREPORT ""
 | /* end confdefs.h.  */
 | #include <ac_nonexistent.h>
-configure:4393: result: gcc -E
-configure:4422: gcc -E  conftest.c
-configure:4429: $? = 0
-configure:4460: gcc -E  conftest.c
+configure:4394: result: gcc -E
+configure:4423: gcc -E  conftest.c
+configure:4430: $? = 0
+configure:4461: gcc -E  conftest.c
 conftest.c:8:28: error: ac_nonexistent.h: No such file or directory
-configure:4467: $? = 1
+configure:4468: $? = 1
 configure: failed program was:
 | /* confdefs.h.  */
 | #define PACKAGE_NAME ""
@@ -198,78 +198,78 @@ configure: failed program was:
 | #define PACKAGE_BUGREPORT ""
 | /* end confdefs.h.  */
 | #include <ac_nonexistent.h>
-configure:4507: checking for grep that handles long lines and -e
-configure:4567: result: /bin/grep
-configure:4572: checking for egrep
-configure:4636: result: /bin/grep -E
-configure:4641: checking for ANSI C header files
-configure:4671: gcc -c -g -O2  conftest.c >&5
-configure:4678: $? = 0
-configure:4777: gcc -o conftest -g -O2   conftest.c  >&5
-configure:4781: $? = 0
-configure:4787: ./conftest
-configure:4791: $? = 0
-configure:4809: result: yes
-configure:4833: checking for sys/types.h
-configure:4854: gcc -c -g -O2  conftest.c >&5
-configure:4861: $? = 0
-configure:4878: result: yes
-configure:4833: checking for sys/stat.h
-configure:4854: gcc -c -g -O2  conftest.c >&5
-configure:4861: $? = 0
-configure:4878: result: yes
-configure:4833: checking for stdlib.h
-configure:4854: gcc -c -g -O2  conftest.c >&5
-configure:4861: $? = 0
-configure:4878: result: yes
-configure:4833: checking for string.h
-configure:4854: gcc -c -g -O2  conftest.c >&5
-configure:4861: $? = 0
-configure:4878: result: yes
-configure:4833: checking for memory.h
-configure:4854: gcc -c -g -O2  conftest.c >&5
-configure:4861: $? = 0
-configure:4878: result: yes
-configure:4833: checking for strings.h
-configure:4854: gcc -c -g -O2  conftest.c >&5
-configure:4861: $? = 0
-configure:4878: result: yes
-configure:4833: checking for inttypes.h
-configure:4854: gcc -c -g -O2  conftest.c >&5
-configure:4861: $? = 0
-configure:4878: result: yes
-configure:4833: checking for stdint.h
-configure:4854: gcc -c -g -O2  conftest.c >&5
-configure:4861: $? = 0
-configure:4878: result: yes
-configure:4833: checking for unistd.h
-configure:4854: gcc -c -g -O2  conftest.c >&5
-configure:4861: $? = 0
-configure:4878: result: yes
-configure:4910: checking pwd.h usability
-configure:4927: gcc -c -g -O2  conftest.c >&5
-configure:4934: $? = 0
-configure:4948: result: yes
-configure:4952: checking pwd.h presence
-configure:4967: gcc -E  conftest.c
-configure:4974: $? = 0
-configure:4988: result: yes
-configure:5016: checking for pwd.h
-configure:5025: result: yes
-configure:4910: checking termios.h usability
-configure:4927: gcc -c -g -O2  conftest.c >&5
-configure:4934: $? = 0
-configure:4948: result: yes
-configure:4952: checking termios.h presence
-configure:4967: gcc -E  conftest.c
-configure:4974: $? = 0
-configure:4988: result: yes
-configure:5016: checking for termios.h
-configure:5025: result: yes
-configure:4910: checking sys/sockio.h usability
-configure:4927: gcc -c -g -O2  conftest.c >&5
+configure:4508: checking for grep that handles long lines and -e
+configure:4568: result: /bin/grep
+configure:4573: checking for egrep
+configure:4637: result: /bin/grep -E
+configure:4642: checking for ANSI C header files
+configure:4672: gcc -c -g -O2  conftest.c >&5
+configure:4679: $? = 0
+configure:4778: gcc -o conftest -g -O2   conftest.c  >&5
+configure:4782: $? = 0
+configure:4788: ./conftest
+configure:4792: $? = 0
+configure:4810: result: yes
+configure:4834: checking for sys/types.h
+configure:4855: gcc -c -g -O2  conftest.c >&5
+configure:4862: $? = 0
+configure:4879: result: yes
+configure:4834: checking for sys/stat.h
+configure:4855: gcc -c -g -O2  conftest.c >&5
+configure:4862: $? = 0
+configure:4879: result: yes
+configure:4834: checking for stdlib.h
+configure:4855: gcc -c -g -O2  conftest.c >&5
+configure:4862: $? = 0
+configure:4879: result: yes
+configure:4834: checking for string.h
+configure:4855: gcc -c -g -O2  conftest.c >&5
+configure:4862: $? = 0
+configure:4879: result: yes
+configure:4834: checking for memory.h
+configure:4855: gcc -c -g -O2  conftest.c >&5
+configure:4862: $? = 0
+configure:4879: result: yes
+configure:4834: checking for strings.h
+configure:4855: gcc -c -g -O2  conftest.c >&5
+configure:4862: $? = 0
+configure:4879: result: yes
+configure:4834: checking for inttypes.h
+configure:4855: gcc -c -g -O2  conftest.c >&5
+configure:4862: $? = 0
+configure:4879: result: yes
+configure:4834: checking for stdint.h
+configure:4855: gcc -c -g -O2  conftest.c >&5
+configure:4862: $? = 0
+configure:4879: result: yes
+configure:4834: checking for unistd.h
+configure:4855: gcc -c -g -O2  conftest.c >&5
+configure:4862: $? = 0
+configure:4879: result: yes
+configure:4911: checking pwd.h usability
+configure:4928: gcc -c -g -O2  conftest.c >&5
+configure:4935: $? = 0
+configure:4949: result: yes
+configure:4953: checking pwd.h presence
+configure:4968: gcc -E  conftest.c
+configure:4975: $? = 0
+configure:4989: result: yes
+configure:5017: checking for pwd.h
+configure:5026: result: yes
+configure:4911: checking termios.h usability
+configure:4928: gcc -c -g -O2  conftest.c >&5
+configure:4935: $? = 0
+configure:4949: result: yes
+configure:4953: checking termios.h presence
+configure:4968: gcc -E  conftest.c
+configure:4975: $? = 0
+configure:4989: result: yes
+configure:5017: checking for termios.h
+configure:5026: result: yes
+configure:4911: checking sys/sockio.h usability
+configure:4928: gcc -c -g -O2  conftest.c >&5
 conftest.c:53:24: error: sys/sockio.h: No such file or directory
-configure:4934: $? = 1
+configure:4935: $? = 1
 configure: failed program was:
 | /* confdefs.h.  */
 | #define PACKAGE_NAME ""
@@ -324,11 +324,11 @@ configure: failed program was:
 | # include <unistd.h>
 | #endif
 | #include <sys/sockio.h>
-configure:4948: result: no
-configure:4952: checking sys/sockio.h presence
-configure:4967: gcc -E  conftest.c
+configure:4949: result: no
+configure:4953: checking sys/sockio.h presence
+configure:4968: gcc -E  conftest.c
 conftest.c:20:24: error: sys/sockio.h: No such file or directory
-configure:4974: $? = 1
+configure:4975: $? = 1
 configure: failed program was:
 | /* confdefs.h.  */
 | #define PACKAGE_NAME ""
@@ -350,22 +350,22 @@ configure: failed program was:
 | #define HAVE_TERMIOS_H 1
 | /* end confdefs.h.  */
 | #include <sys/sockio.h>
-configure:4988: result: no
-configure:5016: checking for sys/sockio.h
-configure:5025: result: no
-configure:5041: checking for library containing setsockopt
-configure:5082: gcc -o conftest -g -O2   conftest.c  >&5
-configure:5089: $? = 0
-configure:5120: result: none required
-configure:5128: checking for library containing gethostbyname
-configure:5169: gcc -o conftest -g -O2   conftest.c  >&5
-configure:5176: $? = 0
-configure:5207: result: none required
-configure:5218: checking if sockaddr{} has sa_len member
-configure:5246: gcc -c -g -O2  conftest.c >&5
+configure:4989: result: no
+configure:5017: checking for sys/sockio.h
+configure:5026: result: no
+configure:5042: checking for library containing setsockopt
+configure:5083: gcc -o conftest -g -O2   conftest.c  >&5
+configure:5090: $? = 0
+configure:5121: result: none required
+configure:5129: checking for library containing gethostbyname
+configure:5170: gcc -o conftest -g -O2   conftest.c  >&5
+configure:5177: $? = 0
+configure:5208: result: none required
+configure:5219: checking if sockaddr{} has sa_len member
+configure:5247: gcc -c -g -O2  conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:26: error: 'struct sockaddr' has no member named 'sa_len'
-configure:5253: $? = 1
+configure:5254: $? = 1
 configure: failed program was:
 | /* confdefs.h.  */
 | #define PACKAGE_NAME ""
@@ -396,11 +396,11 @@ configure: failed program was:
 |   ;
 |   return 0;
 | }
-configure:5268: result: no
-configure:5279: checking whether byte ordering is bigendian
-configure:5304: gcc -c -g -O2  conftest.c >&5
+configure:5269: result: no
+configure:5280: checking whether byte ordering is bigendian
+configure:5305: gcc -c -g -O2  conftest.c >&5
 conftest.c:21: error: expected '=', ',', ';', 'asm' or '__attribute__' before 'a'
-configure:5311: $? = 1
+configure:5312: $? = 1
 configure: failed program was:
 | /* confdefs.h.  */
 | #define PACKAGE_NAME ""
@@ -426,15 +426,15 @@ configure: failed program was:
 | 	     #endif
 | 	     typedef int dummy;
 | 
-configure:5361: gcc -c -g -O2  conftest.c >&5
-configure:5368: $? = 0
-configure:5400: gcc -c -g -O2  conftest.c >&5
+configure:5362: gcc -c -g -O2  conftest.c >&5
+configure:5369: $? = 0
+configure:5401: gcc -c -g -O2  conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:27: error: 'not' undeclared (first use in this function)
 conftest.c:27: error: (Each undeclared identifier is reported only once
 conftest.c:27: error: for each function it appears in.)
 conftest.c:27: error: expected ';' before 'big'
-configure:5407: $? = 1
+configure:5408: $? = 1
 configure: failed program was:
 | /* confdefs.h.  */
 | #define PACKAGE_NAME ""
@@ -468,12 +468,12 @@ configure: failed program was:
 |   ;
 |   return 0;
 | }
-configure:5659: result: no
-configure:5685: checking if struct in_addr is a wacky huge structure (some Sun boxes)
-configure:5709: gcc -c -g -O2  conftest.c >&5
+configure:5660: result: no
+configure:5686: checking if struct in_addr is a wacky huge structure (some Sun boxes)
+configure:5710: gcc -c -g -O2  conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:24: error: 'struct in_addr' has no member named '_S_un'
-configure:5716: $? = 1
+configure:5717: $? = 1
 configure: failed program was:
 | /* confdefs.h.  */
 | #define PACKAGE_NAME ""
@@ -502,10 +502,10 @@ configure: failed program was:
 |   ;
 |   return 0;
 | }
-configure:5755: gcc -c -g -O2  conftest.c >&5
+configure:5756: gcc -c -g -O2  conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:25: error: 'struct in_addr' has no member named 'S_un'
-configure:5762: $? = 1
+configure:5763: $? = 1
 configure: failed program was:
 | /* confdefs.h.  */
 | #define PACKAGE_NAME ""
@@ -535,42 +535,12 @@ configure: failed program was:
 |   ;
 |   return 0;
 | }
-configure:5779: result: no
-configure:5788: checking if struct icmp exists
-configure:5823: gcc -c -g -O2  conftest.c >&5
-conftest.c:25:1: warning: "__USE_BSD" redefined
-In file included from /usr/include/sys/types.h:27,
-                 from conftest.c:21:
-/usr/include/features.h:265:1: warning: this is the location of the previous definition
-conftest.c:27:1: warning: "_BSD_SOURCE" redefined
-/usr/include/features.h:176:1: warning: this is the location of the previous definition
-configure:5830: $? = 0
-configure:5845: result: yes
-configure:5854: checking if struct ip exists
-configure:5888: gcc -c -g -O2  conftest.c >&5
-conftest.c:26:1: warning: "__USE_BSD" redefined
-In file included from /usr/include/sys/types.h:27,
-                 from conftest.c:22:
-/usr/include/features.h:265:1: warning: this is the location of the previous definition
-conftest.c:28:1: warning: "_BSD_SOURCE" redefined
-/usr/include/features.h:176:1: warning: this is the location of the previous definition
-configure:5895: $? = 0
-configure:5910: result: yes
-configure:5919: checking if struct ip has ip_sum member
-configure:5954: gcc -c -g -O2  conftest.c >&5
-conftest.c:27:1: warning: "__USE_BSD" redefined
-In file included from /usr/include/sys/types.h:27,
-                 from conftest.c:23:
-/usr/include/features.h:265:1: warning: this is the location of the previous definition
-conftest.c:29:1: warning: "_BSD_SOURCE" redefined
-/usr/include/features.h:176:1: warning: this is the location of the previous definition
-configure:5961: $? = 0
-configure:5976: result: yes
-configure:5989: checking for strerror
-configure:6045: gcc -o conftest -g -O2   conftest.c  >&5
-configure:6052: $? = 0
-configure:6074: result: yes
-configure:6266: creating ./config.status
+configure:5780: result: no
+configure:5794: checking for strerror
+configure:5850: gcc -o conftest -g -O2   conftest.c  >&5
+configure:5857: $? = 0
+configure:5879: result: yes
+configure:6069: creating ./config.status
 
 ## ---------------------- ##
 ## Running config.status. ##
@@ -587,13 +557,13 @@ generated by GNU Autoconf 2.63.  Invocation command line was
 
 on bahamut
 
-config.status:751: creating Makefile
-config.status:751: creating ncrack_config.h
-config.status:967: ncrack_config.h is unchanged
-configure:7474: === configuring in nbase (/home/ithilgore/ncrack/ncrack-working/ncrack/nbase)
-configure:7577: running /bin/sh ./configure --disable-option-checking '--prefix=/usr/local'  --cache-file=/dev/null --srcdir=.
-configure:7474: === configuring in nsock/src (/home/ithilgore/ncrack/ncrack-working/ncrack/nsock/src)
-configure:7577: running /bin/sh ./configure --disable-option-checking '--prefix=/usr/local'  --cache-file=/dev/null --srcdir=.
+config.status:748: creating Makefile
+config.status:748: creating ncrack_config.h
+config.status:964: ncrack_config.h is unchanged
+configure:7277: === configuring in nbase (/home/ithilgore/ncrack/ncrack-working/ncrack/nbase)
+configure:7380: running /bin/sh ./configure --disable-option-checking '--prefix=/usr/local'  --cache-file=/dev/null --srcdir=.
+configure:7277: === configuring in nsock/src (/home/ithilgore/ncrack/ncrack-working/ncrack/nsock/src)
+configure:7380: running /bin/sh ./configure --disable-option-checking '--prefix=/usr/local'  --cache-file=/dev/null --srcdir=.
 
 ## ---------------- ##
 ## Cache variables. ##
@@ -643,7 +613,6 @@ ac_cv_header_sys_types_h=yes
 ac_cv_header_termios_h=yes
 ac_cv_header_unistd_h=yes
 ac_cv_host=x86_64-unknown-linux-gnu
-ac_cv_ip_has_ip_sum=yes
 ac_cv_objext=o
 ac_cv_path_EGREP='/bin/grep -E'
 ac_cv_path_GREP=/bin/grep
@@ -657,8 +626,6 @@ ac_cv_prog_cxx_g=yes
 ac_cv_search_gethostbyname='none required'
 ac_cv_search_setsockopt='none required'
 ac_cv_sockaddr_has_sa_len=no
-ac_cv_struct_icmp_exists=yes
-ac_cv_struct_ip_exists=yes
 
 ## ----------------- ##
 ## Output variables. ##
@@ -669,7 +636,7 @@ CFLAGS='-g -O2'
 CPP='gcc -E'
 CPPFLAGS=' -Inbase -Insock/include'
 CXX='g++'
-CXXFLAGS='-g -O2 -Wall  -fno-strict-aliasing'
+CXXFLAGS='-O0 -Wall  -fno-strict-aliasing'
 DEFS='-DHAVE_CONFIG_H'
 ECHO_C=''
 ECHO_N='-n'
@@ -758,47 +725,6 @@ target_alias=''
 #define HAVE_UNISTD_H 1
 #define HAVE_PWD_H 1
 #define HAVE_TERMIOS_H 1
-#define HAVE_STRUCT_ICMP 1
-#define HAVE_STRUCT_IP 1
-#define HAVE_IP_IP_SUM 1
 #define HAVE_STRERROR 1
 
 configure: exit 0
-
-## ---------------------- ##
-## Running config.status. ##
-## ---------------------- ##
-
-This file was extended by config.status, which was
-generated by GNU Autoconf 2.63.  Invocation command line was
-
-  CONFIG_FILES    = 
-  CONFIG_HEADERS  = 
-  CONFIG_LINKS    = 
-  CONFIG_COMMANDS = 
-  $ ./config.status 
-
-on bahamut
-
-config.status:751: creating Makefile
-config.status:751: creating ncrack_config.h
-config.status:967: ncrack_config.h is unchanged
-
-## ---------------------- ##
-## Running config.status. ##
-## ---------------------- ##
-
-This file was extended by config.status, which was
-generated by GNU Autoconf 2.63.  Invocation command line was
-
-  CONFIG_FILES    = 
-  CONFIG_HEADERS  = 
-  CONFIG_LINKS    = 
-  CONFIG_COMMANDS = 
-  $ ./config.status 
-
-on bahamut
-
-config.status:751: creating Makefile
-config.status:751: creating ncrack_config.h
-config.status:967: ncrack_config.h is unchanged

@@ -362,15 +362,12 @@ int dumpExclude(TargetGroup *exclude_group) {
 }
 
 
-Target *nexthost(HostGroupState *hs, TargetGroup *exclude_group,
-		struct scan_lists *ports, int pingtype) {
+Target *
+nexthost(HostGroupState *hs, TargetGroup *exclude_group)
+{
 	int hidx = 0;
-	int i;
 	struct sockaddr_storage ss;
 	size_t sslen;
-	uint32_t ifbuf[200] ;
-	struct timeval now;
-
 
 	if (hs->next_batch_no < hs->current_batch_sz) {
 		/* Woop!  This is easy -- we just pass back the next host struct */
@@ -409,11 +406,8 @@ Target *nexthost(HostGroupState *hs, TargetGroup *exclude_group,
 		} else break;
 	} while(1);
 
-batchfull:
-
 	if (hs->current_batch_sz == 0)
 		return NULL;
-
 
 	return hs->hostbatch[hs->next_batch_no++];
 }
