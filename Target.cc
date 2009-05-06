@@ -108,17 +108,12 @@ void Target::Initialize() {
 	hostname = NULL;
 	targetname = NULL;
 	memset(&targetsock, 0, sizeof(targetsock));
-	memset(&sourcesock, 0, sizeof(sourcesock));
-	memset(&nexthopsock, 0, sizeof(nexthopsock));
-	targetsocklen = sourcesocklen = nexthopsocklen = 0;
-	directly_connected = -1;
+	targetsocklen = 0;
 	targetipstring[0] = '\0';
 	nameIPBuf = NULL;
 	htn.toclock_running = false;
 	htn.host_start = htn.host_end = 0;
 }
-
-
 
 
 void Target::Recycle() {
@@ -161,7 +156,8 @@ void Target::GenerateIPString() {
 				(char *) NULL,
 #endif
 				targetipstring, sizeof(targetipstring)) == NULL) {
-		fatal("Failed to convert target address to presentation format!?!  Error: %s", strerror(socket_errno()));
+		fatal("Failed to convert target address to presentation format!?! "
+				"Error: %s", strerror(socket_errno()));
 	}
 }
 
@@ -203,7 +199,8 @@ void Target::setTargetSockAddr(struct sockaddr_storage *ss, size_t ss_len) {
 struct in_addr Target::v4host() {
 	const struct in_addr *addy = v4hostip();
 	struct in_addr in;
-	if (addy) return *addy;
+	if (addy)
+		return *addy;
 	in.s_addr = 0;
 	return in;
 }
@@ -211,30 +208,11 @@ struct in_addr Target::v4host() {
 // Returns IPv4 host address or NULL if unavailable.
 const struct in_addr *Target::v4hostip() const {
 	struct sockaddr_in *sin = (struct sockaddr_in *) &targetsock;
-	if (sin->sin_family == AF_INET) {
+	if (sin->sin_family == AF_INET)
 		return &(sin->sin_addr);
-	}
 	return NULL;
 }
 
-
-// Returns IPv4 host address or {0} if unavailable.
-struct in_addr Target::v4source() {
-	const struct in_addr *addy = v4sourceip();
-	struct in_addr in;
-	if (addy) return *addy;
-	in.s_addr = 0;
-	return in;
-}
-
-// Returns IPv4 host address or NULL if unavailable.
-const struct in_addr *Target::v4sourceip() {
-	struct sockaddr_in *sin = (struct sockaddr_in *) &sourcesock;
-	if (sin->sin_family == AF_INET) {
-		return &(sin->sin_addr);
-	}
-	return NULL;
-}
 
 
 /* You can set to NULL to erase a name or if it failed to resolve -- or 
@@ -264,9 +242,8 @@ void Target::setTargetName(char *name) {
 		free(targetname);
 		targetname = NULL;
 	}
-	if (name) {
+	if (name)
 		targetname = strdup(name);
-	}
 }
 
 /* Generates a printable string consisting of the host's IP
@@ -277,35 +254,19 @@ void Target::setTargetName(char *name) {
 const char *Target::NameIP(char *buf, size_t buflen) {
 	assert(buf);
 	assert(buflen > 8);
-	if (hostname) {
+	if (hostname)
 		Snprintf(buf, buflen, "%s (%s)", hostname, targetipstring);
-	} else Strncpy(buf, targetipstring, buflen);
+	else 
+		Strncpy(buf, targetipstring, buflen);
 	return buf;
 }
 
 /* This next version returns a static buffer -- so no concurrency */
 const char *Target::NameIP() {
-	if (!nameIPBuf) nameIPBuf = (char *) safe_malloc(MAXHOSTNAMELEN + INET6_ADDRSTRLEN);
+	if (!nameIPBuf) 
+		nameIPBuf = (char *) safe_malloc(MAXHOSTNAMELEN + INET6_ADDRSTRLEN);
 	return NameIP(nameIPBuf, MAXHOSTNAMELEN + INET6_ADDRSTRLEN);
 }
-
-
-/* If the host is directly connected on a network, set and retrieve
-	 that information here.  directlyConnected() will abort if it hasn't
-	 been set yet.  */
-void Target::setDirectlyConnected(bool connected) {
-	directly_connected = connected? 1 : 0;
-}
-
-int Target::directlyConnectedOrUnset(){
-	return directly_connected;
-}
-
-bool Target::directlyConnected() {
-	assert(directly_connected == 0 || directly_connected == 1);
-	return directly_connected;
-}
-
 
 
 /* Starts the timeout clock for the host running (e.g. you are
@@ -319,6 +280,8 @@ void Target::startTimeOutClock(const struct timeval *now) {
 	else gettimeofday(&htn.toclock_start, NULL);
 	if (!htn.host_start) htn.host_start = htn.toclock_start.tv_sec;
 }
+
+
 /* The complement to startTimeOutClock. */
 void Target::stopTimeOutClock(const struct timeval *now) {
 	struct timeval tv;
@@ -329,6 +292,7 @@ void Target::stopTimeOutClock(const struct timeval *now) {
 	htn.msecs_used += TIMEVAL_MSEC_SUBTRACT(tv, htn.toclock_start);
 	htn.host_end = tv.tv_sec;
 }
+
 /* Returns whether the host is timedout.  If the timeoutclock is
 	 running, counts elapsed time for that.  Pass NULL if you don't have the
 	 current time handy.  You might as well also pass NULL if the
@@ -337,14 +301,17 @@ bool Target::timedOut(const struct timeval *now) {
 	unsigned long used = htn.msecs_used;
 	struct timeval tv;
 
-	//if (!o.host_timeout) return false;
+	if (!o.host_timeout)
+		return false;
 	if (htn.toclock_running) {
-		if (now) tv = *now;
-		else gettimeofday(&tv, NULL);
+		if (now)
+			tv = *now;
+		else
+			gettimeofday(&tv, NULL);
 		used += TIMEVAL_MSEC_SUBTRACT(tv, htn.toclock_start);
 	}
 
-	//return (used > o.host_timeout)? true : false;
+	return (used > o.host_timeout)? true : false;
 }
 
 

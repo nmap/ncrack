@@ -21,6 +21,7 @@ void ncrack_module_end(nsock_pool nsp, nsock_iod nsi, void *mydata);
 
 static void printusage(void);
 static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
+static int ncrack(vector <Target *> &Targets);
 
 
 static void
@@ -37,9 +38,10 @@ printusage(void)
 			"TIMING AND PERFORMANCE:\n"
 			"  Options which take <time> are in milliseconds, unless you append 's'\n"
 			"  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).\n"
-			"  --min-hostgroup/max-hostgroup <size>: Parallel host scan group sizes\n"
+			"  --min-hostgroup/max-hostgroup <size>: Parallel host crack group sizes\n"
 			"  --min-parallelism/max-parallelism <time>: Probe parallelization\n"
-			"  --max-retries <tries>: Caps number of port scan probe retransmissions.\n"
+			"  --max-retries <tries>: Caps number of service connection attempts.\n"
+			"  --host-timeout <time>: Give up on target after this long\n"
 			"  --scan-delay/--max-scan-delay <time>: Adjust delay between probes\n"
 			"MISC:\n"
 			"  -V: Print version number\n"
@@ -160,23 +162,14 @@ int main(int argc, char **argv)
 	struct in_addr target;
 	uint16_t port;
 	struct sockaddr_in taddr;
-	struct timeval now;
 	FILE *inputfd = NULL;
+	unsigned long l;
 
 	/* exclude-specific variables */
 	FILE *excludefd = NULL;
 	char *exclude_spec = NULL;
 	TargetGroup *exclude_group = NULL;
 
-	/* nsock variables */
-	nsock_iod tcp_nsi;
-	enum nsock_loopstatus loopret;
-	nsock_pool nsp;
-	nsock_event_id ev;
-	int tracelevel = 0;
-
-	/* module specific data */
-	m_data mdata; 
 
 	/* getopt-specific */
 	int arg;
@@ -195,7 +188,9 @@ int main(int argc, char **argv)
 		{"min-parallelism", required_argument, 0, 0},
 		{"excludefile", required_argument, 0, 0},
 		{"exclude", required_argument, 0, 0},
-		{"iL", required_argument, 0, 'i'}, 
+		{"iL", required_argument, 0, 'i'},
+		{"host_timeout", required_argument, 0, 0},
+		{"host-timeout", required_argument, 0, 0},
 		{"max_hostgroup", required_argument, 0, 0},
 		{"max-hostgroup", required_argument, 0, 0},
 		{"min_hostgroup", required_argument, 0, 0},
@@ -227,6 +222,17 @@ int main(int argc, char **argv)
 					if (excludefd)
 						fatal("--excludefile and --exclude options are mutually exclusive.");
 					exclude_spec = strdup(optarg);
+
+				} else if (optcmp(long_options[option_index].name, "host-timeout") == 0) {
+					l = tval2msecs(optarg);
+					if (l <= 1500)
+							fatal("--host-timeout is specified in milliseconds unless you "
+							"qualify it by appending 's', 'm', or 'h'. The value must be greater "
+							"than 1500 milliseconds");
+					o.host_timeout = l;
+					if (l < 30000) 
+						error("host-timeout is given in milliseconds, so you specified less "
+								"than 30 seconds (%lims). This is allowed but not recommended.", l);
 				}
 				break;
 			case 'd': 
@@ -259,7 +265,6 @@ int main(int argc, char **argv)
 				o.verbose++;
 				break;
 			case '?':   /* error */
-				fprintf(stderr, "option inconsistency: -%c\n", optopt);
 				printusage();
 		}
 	}
@@ -335,6 +340,10 @@ int main(int argc, char **argv)
 			printf("%s\n", Targets[i]->NameIP());
 		}
 
+
+		/* Ncrack 'em all! */
+		ncrack(Targets);
+
 		/* Free all of the Targets */
 		while(!Targets.empty()) {
 			currenths = Targets.back();
@@ -344,21 +353,26 @@ int main(int argc, char **argv)
 
 	} while (1);
 
+	printf("Ncrack finished.\n");
+	exit(EXIT_SUCCESS);
+
+}
 
 
-	exit(-1);
+static int
+ncrack(vector <Target *> &Targets)
+{
+	/* nsock variables */
+	nsock_iod tcp_nsi;
+	enum nsock_loopstatus loopret;
+	nsock_pool nsp;
+	nsock_event_id ev;
+	int tracelevel = 0;
 
+	struct timeval now;
 
-
-
-
-
-
-
-	if (!inet_pton(AF_INET, argv[optind], &target))
-		fatal("inet_pton\n");
-	// BEGIN MAIN
-
+	/* module specific data */
+	m_data mdata; 
 
 	/* create nsock p00l */
 	if (!(nsp = nsp_new(NULL))) 
@@ -370,17 +384,15 @@ int main(int argc, char **argv)
 	if ((tcp_nsi = nsi_new(nsp, NULL)) == NULL)
 		fatal("Failed to create new nsock_iod.  QUITTING.\n");
 
-	taddr.sin_family = AF_INET;
-	taddr.sin_addr = target;
-	taddr.sin_port = port;
+
 
 	memset(&mdata, 0, sizeof(mdata));
 	mdata.nsp = nsp;
 	mdata.nsi = tcp_nsi;
 	mdata.max_attempts = 4;
 
-	ev = nsock_connect_tcp(nsp, tcp_nsi, ncrack_connect_handler, 10000, &mdata,
-			(struct sockaddr *) &taddr, sizeof taddr, port);
+	//ev = nsock_connect_tcp(nsp, tcp_nsi, ncrack_connect_handler, 10000, &mdata,
+	//		(struct sockaddr *) &taddr, sizeof taddr, port);
 
 	/* nsock loop */
 	loopret = nsock_loop(nsp, -1);
@@ -388,4 +400,5 @@ int main(int argc, char **argv)
 	printf("nsock_loop returned %d\n", loopret);
 
 	return 0;
+
 }

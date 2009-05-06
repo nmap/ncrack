@@ -30,6 +30,12 @@
 #define TIMEVAL_AFTER(a, b) (((a).tv_sec > (b).tv_sec) || ((a).tv_sec == (b).tv_sec && (a).tv_usec > (b).tv_usec))
 
 
+/* Compare a canonical option name (e.g. "max-scan-delay") with a
+   user-generated option such as "max_scan_delay" and returns 0 if the
+   two values are considered equivalant (for example, - and _ are
+   considered to be the same), nonzero otherwise. */
+int optcmp(const char *a, const char *b);
+
 
 #ifdef __cplusplus
 extern "C" {

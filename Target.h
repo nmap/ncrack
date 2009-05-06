@@ -128,13 +128,6 @@ class Target {
 		// Returns IPv4 target host address or {0} if unavailable.
 		struct in_addr v4host();
 		const struct in_addr *v4hostip() const;
-		/* The source address used to reach the target */
-		int SourceSockAddr(struct sockaddr_storage *ss, size_t *ss_len);
-		/* Note that it is OK to pass in a sockaddr_in or sockaddr_in6 casted
-			 to sockaddr_storage */
-		void setSourceSockAddr(struct sockaddr_storage *ss, size_t ss_len);
-		struct in_addr v4source();
-		const struct in_addr *v4sourceip();
 		/* The IPv4 or IPv6 literal string for the target host */
 		const char *targetipstr() { return targetipstring; }
 		/* Give the name from the last setHostName() call, which should be
@@ -167,13 +160,6 @@ class Target {
 			 */
 		void setTargetName(char *name);
 
-		/* If the host is directly connected on a network, set and retrieve
-			 that information here.  directlyConnected() will abort if it hasn't
-			 been set yet.  */
-		void setDirectlyConnected(bool connected);
-		bool directlyConnected();
-		int directlyConnectedOrUnset(); /* 1-directly connected, 0-no, -1-we don't know*/
-
 		/* Starts the timeout clock for the host running (e.g. you are
 			 beginning a scan).  If you do not have the current time handy,
 			 you can pass in NULL.  When done, call stopTimeOutClock (it will
@@ -193,16 +179,15 @@ class Target {
 		time_t EndTime() { return htn.host_end; }
 
 		char *hostname; // Null if unable to resolve or unset
-		char * targetname; // The name of the target host given on the commmand line if it is a named host
+		char *targetname; // The name of the target host given on the commmand line if it is a named host
 
 	private:
 		void Initialize();
 		void FreeInternal(); // Free memory allocated inside this object
 		// Creates a "presentation" formatted string out of the IPv4/IPv6 address
 		void GenerateIPString();
-		struct sockaddr_storage targetsock, sourcesock, nexthopsock;
-		size_t targetsocklen, sourcesocklen, nexthopsocklen;
-		int directly_connected; // -1 = unset; 0 = no; 1 = yes
+		struct sockaddr_storage targetsock;
+		size_t targetsocklen;
 		char targetipstring[INET6_ADDRSTRLEN];
 		char *nameIPBuf; /* for the NameIP(void) function to return */
 		struct host_timeout_nfo htn;
