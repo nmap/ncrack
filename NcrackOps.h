@@ -8,6 +8,7 @@ class NcrackOps {
 		void setaf(int af) { addressfamily = af; }
 		int af() { return addressfamily; }
 
+		char *service;
 		int debugging;
 		int verbose;
 		int numhosts_scanned;

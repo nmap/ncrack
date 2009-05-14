@@ -55,8 +55,8 @@ configure:2025: found /usr/bin/gcc
 configure:2036: result: gcc
 configure:2274: checking for C compiler version
 configure:2281: gcc --version >&5
-gcc (GCC) 4.3.3
-Copyright (C) 2008 Free Software Foundation, Inc.
+gcc (GCC) 4.4.0
+Copyright (C) 2009 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
@@ -64,9 +64,9 @@ configure:2284: $? = 0
 configure:2291: gcc -v >&5
 Using built-in specs.
 Target: x86_64-unknown-linux-gnu
-Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++,treelang --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
+Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++ --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
 Thread model: posix
-gcc version 4.3.3 (GCC) 
+gcc version 4.4.0 (GCC) 
 configure:2294: $? = 0
 configure:2301: gcc -V >&5
 gcc: '-V' option must have argument

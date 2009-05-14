@@ -50,17 +50,6 @@ void *realloc();
 #include <sys/param.h> /* Defines MAXHOSTNAMELEN on BSD*/
 #endif
 
-/* Linux uses these defines in netinet/ip.h to use the correct struct ip */
-#ifndef __FAVOR_BSD
-#define __FAVOR_BSD
-#endif
-#ifndef __USE_BSD
-#define __USE_BSD
-#endif
-#ifndef _BSD_SOURCE
-#define _BSD_SOURCE
-#endif
-
 
 
 #include <stdio.h>

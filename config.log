@@ -55,8 +55,8 @@ configure:2028: found /usr/bin/gcc
 configure:2039: result: gcc
 configure:2271: checking for C compiler version
 configure:2279: gcc --version >&5
-gcc (GCC) 4.3.3
-Copyright (C) 2008 Free Software Foundation, Inc.
+gcc (GCC) 4.4.0
+Copyright (C) 2009 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
@@ -64,9 +64,9 @@ configure:2283: $? = 0
 configure:2290: gcc -v >&5
 Using built-in specs.
 Target: x86_64-unknown-linux-gnu
-Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++,treelang --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
+Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++ --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
 Thread model: posix
-gcc version 4.3.3 (GCC) 
+gcc version 4.4.0 (GCC) 
 configure:2294: $? = 0
 configure:2301: gcc -V >&5
 gcc: '-V' option must have argument
@@ -109,8 +109,8 @@ configure:3017: checking for gcc
 configure:3044: result: gcc
 configure:3276: checking for C compiler version
 configure:3284: gcc --version >&5
-gcc (GCC) 4.3.3
-Copyright (C) 2008 Free Software Foundation, Inc.
+gcc (GCC) 4.4.0
+Copyright (C) 2009 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
@@ -118,9 +118,9 @@ configure:3288: $? = 0
 configure:3295: gcc -v >&5
 Using built-in specs.
 Target: x86_64-unknown-linux-gnu
-Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++,treelang --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
+Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++ --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
 Thread model: posix
-gcc version 4.3.3 (GCC) 
+gcc version 4.4.0 (GCC) 
 configure:3299: $? = 0
 configure:3306: gcc -V >&5
 gcc: '-V' option must have argument
@@ -136,8 +136,8 @@ configure:3726: found /usr/bin/g++
 configure:3737: result: g++
 configure:3764: checking for C++ compiler version
 configure:3772: g++ --version >&5
-g++ (GCC) 4.3.3
-Copyright (C) 2008 Free Software Foundation, Inc.
+g++ (GCC) 4.4.0
+Copyright (C) 2009 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
@@ -145,9 +145,9 @@ configure:3776: $? = 0
 configure:3783: g++ -v >&5
 Using built-in specs.
 Target: x86_64-unknown-linux-gnu
-Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++,treelang --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
+Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++ --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
 Thread model: posix
-gcc version 4.3.3 (GCC) 
+gcc version 4.4.0 (GCC) 
 configure:3787: $? = 0
 configure:3794: g++ -V >&5
 g++: '-V' option must have argument

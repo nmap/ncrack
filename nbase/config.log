@@ -51,8 +51,8 @@ configure:1793: found /usr/bin/gcc
 configure:1804: result: gcc
 configure:2042: checking for C compiler version
 configure:2049: gcc --version >&5
-gcc (GCC) 4.3.3
-Copyright (C) 2008 Free Software Foundation, Inc.
+gcc (GCC) 4.4.0
+Copyright (C) 2009 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
@@ -60,9 +60,9 @@ configure:2052: $? = 0
 configure:2059: gcc -v >&5
 Using built-in specs.
 Target: x86_64-unknown-linux-gnu
-Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++,treelang --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
+Configured with: ../configure --prefix=/usr --enable-shared --enable-languages=c,c++,fortran,objc,obj-c++ --enable-threads=posix --mandir=/usr/share/man --infodir=/usr/share/info --enable-__cxa_atexit --disable-multilib --libdir=/usr/lib --libexecdir=/usr/lib --enable-clocale=gnu --disable-libstdcxx-pch --with-tune=generic
 Thread model: posix
-gcc version 4.3.3 (GCC) 
+gcc version 4.4.0 (GCC) 
 configure:2062: $? = 0
 configure:2069: gcc -V >&5
 gcc: '-V' option must have argument
@@ -804,7 +804,7 @@ configure:5046: $? = 0
 configure:5064: result: yes
 configure:4984: checking for asnprintf
 configure:5040: gcc -o conftest -g -O2 -Wall    conftest.c  >&5
-/tmp/cc0X0iKQ.o: In function `main':
+/tmp/ccuHtW0e.o: In function `main':
 /home/ithilgore/ncrack/ncrack-working/ncrack/nbase/conftest.c:82: undefined reference to `asnprintf'
 collect2: ld returned 1 exit status
 configure:5046: $? = 1
@@ -901,7 +901,7 @@ configure:5046: $? = 0
 configure:5064: result: yes
 configure:4984: checking for vasnprintf
 configure:5040: gcc -o conftest -g -O2 -Wall    conftest.c  >&5
-/tmp/ccEIzM86.o: In function `main':
+/tmp/ccinNnAv.o: In function `main':
 /home/ithilgore/ncrack/ncrack-working/ncrack/nbase/conftest.c:83: undefined reference to `vasnprintf'
 collect2: ld returned 1 exit status
 configure:5046: $? = 1

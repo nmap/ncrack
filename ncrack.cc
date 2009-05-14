@@ -5,6 +5,7 @@
 #include "TargetGroup.h"
 #include "nsock.h"
 #include "global_structures.h"
+#include <time.h>
 
 #include <vector>
 
@@ -28,7 +29,10 @@ static void
 printusage(void)
 {
 	printf("%s %s ( %s )\n"
-			"Usage: ncrack [service name/port] [Options] {target specification}\n"
+			"Usage: ncrack [Options] -s <service_name> {target specification}\n"
+			"SERVICE SPECIFICATION:\n"
+			"  -s <service_name>: (required option) protocol name e.g ssh, telnet, ftp etc\n"
+			"  -p <port>: for services that listen on non-default ports\n"
 			"TARGET SPECIFICATION:\n"
 			"  Can pass hostnames, IP addresses, networks, etc.\n"
 			"  Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254\n"
@@ -129,13 +133,14 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
 static char *
-grab_next_host_spec(FILE *inputfd, int argc, char **argv) {
+grab_next_host_spec(FILE *inputfd, int argc, char **argv)
+{
 	static char host_spec[1024];
 	unsigned int host_spec_index;
 	int ch;
 
 	if (!inputfd) {
-		return( (optind < argc)?  argv[optind++] : NULL);
+		return ((optind < argc) ? argv[optind++] : NULL);
 	} else { 
 		host_spec_index = 0;
 		while((ch = getc(inputfd)) != EOF) {
@@ -146,7 +151,7 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv) {
 				return host_spec;
 			} else if (host_spec_index < sizeof(host_spec) / sizeof(char) -1) {
 				host_spec[host_spec_index++] = (char) ch;
-			} else fatal("One of the host_specifications from your input file"
+			} else fatal("One of the host_specifications from your input file "
 					"is too long (> %d chars)", (int) sizeof(host_spec));
 		}
 		host_spec[host_spec_index] = '\0';
@@ -157,6 +162,17 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv) {
 }
 
 
+static void
+ncrack_service(void)
+{
+	//if (strcmp(o.service, "ftp"));
+
+	// use lookup table 
+
+}
+
+
+
 int main(int argc, char **argv)
 {
 	struct in_addr target;
@@ -164,6 +180,10 @@ int main(int argc, char **argv)
 	struct sockaddr_in taddr;
 	FILE *inputfd = NULL;
 	unsigned long l;
+
+	struct tm *tm;
+	time_t now;
+	char tbuf[128];
 
 	/* exclude-specific variables */
 	FILE *excludefd = NULL;
@@ -178,6 +198,7 @@ int main(int argc, char **argv)
 	extern int optind;
 	struct option long_options[] =
 	{
+		{"service", required_argument, 0, 's'},
 		{"version", no_argument, 0, 'V'},
 		{"verbose", no_argument, 0, 'v'},
 		{"debug", optional_argument, 0, 'd'},
@@ -208,22 +229,22 @@ int main(int argc, char **argv)
 		printusage();
 
 	/* Argument parsing */
-	optind = 1; 
-	while((arg = getopt_long_only(argc, argv, "hd::i:p:vV", long_options, &option_index)) != EOF) {
+	optind = 1;
+	while((arg = getopt_long_only(argc, argv, "hd::i:p:s:vV", long_options, &option_index)) != EOF) {
 		switch(arg) {
 			case 0:
-				if (strcmp(long_options[option_index].name, "excludefile") == 0) {
+				if (!strcmp(long_options[option_index].name, "excludefile")) {
 					if (exclude_spec)
 						fatal("--excludefile and --exclude options are mutually exclusive.");
 					excludefd = fopen(optarg, "r");
 					if (!excludefd)
 						fatal("Failed to open exclude file %s for reading", optarg);
-				} else if (strcmp(long_options[option_index].name, "exclude") == 0) {
+				} else if (!strcmp(long_options[option_index].name, "exclude")) {
 					if (excludefd)
 						fatal("--excludefile and --exclude options are mutually exclusive.");
 					exclude_spec = strdup(optarg);
 
-				} else if (optcmp(long_options[option_index].name, "host-timeout") == 0) {
+				} else if (!optcmp(long_options[option_index].name, "host-timeout")) {
 					l = tval2msecs(optarg);
 					if (l <= 1500)
 							fatal("--host-timeout is specified in milliseconds unless you "
@@ -233,6 +254,8 @@ int main(int argc, char **argv)
 					if (l < 30000) 
 						error("host-timeout is given in milliseconds, so you specified less "
 								"than 30 seconds (%lims). This is allowed but not recommended.", l);
+				} else if (!strcmp(long_options[option_index].name, "service")) {
+					o.service = optarg;
 				}
 				break;
 			case 'd': 
@@ -258,6 +281,11 @@ int main(int argc, char **argv)
 			case 'p':   /* service port */
 				port = atoi(optarg);
 				break;
+			case 's':		/* service - required option */
+				if (o.service)
+					fatal("Specify only one service, either with -s or --service.\n");
+				o.service = optarg;
+				break;
 			case 'V':
 				printf("\n%s version %s ( %s )\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
 				break;
@@ -268,6 +296,17 @@ int main(int argc, char **argv)
 				printusage();
 		}
 	}
+
+	if (!o.service)
+		fatal("Specify one service, either with -s or --service.\n");
+
+	ncrack_service();
+
+	now = time(NULL);
+	tm = localtime(&now);
+	if (strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M %Z", tm) <= 0)
+		fatal("Unable to properly format time");
+	printf("\nStarting %s %s ( %s ) at %s\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL, tbuf);
 
 
 	o.setaf(AF_INET);
@@ -292,6 +331,7 @@ int main(int argc, char **argv)
 			free(exclude_spec);
 	}
 
+	printf("service %s\n", o.service);
 
 
 	host_exp_group = (char **) safe_malloc(o.max_group_size * sizeof(char *));
@@ -304,7 +344,7 @@ int main(int argc, char **argv)
 
 
 	do {
-		while(Targets.size() < ideal_scan_group_size) {
+		while (Targets.size() < ideal_scan_group_size) {
 			currenths = nexthost(hstate, exclude_group);
 			if (!currenths) {
 				/* Try to refill with any remaining expressions */
@@ -314,7 +354,7 @@ int main(int argc, char **argv)
 
 				num_host_exp_groups = 0;
 				/* Now grab any new expressions */
-				while(num_host_exp_groups < o.max_group_size && 
+				while (num_host_exp_groups < o.max_group_size && 
 						(host_spec = grab_next_host_spec(inputfd, argc, argv))) {
 					// For purposes of random scan - TODO: see this
 					host_exp_group[num_host_exp_groups++] = strdup(host_spec);
