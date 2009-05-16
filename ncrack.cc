@@ -12,6 +12,10 @@
 extern NcrackOps o;
 using namespace std;
 
+/* global lookup table for available services */
+vector <service_lookup> ServiceLookup; 
+
+
 
 extern void call_module(m_data *);
 
@@ -20,25 +24,29 @@ void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 void ncrack_module_end(nsock_pool nsp, nsock_iod nsi, void *mydata);
 
-static void printusage(void);
+static void print_usage(void);
+static void lookup_init(const char *const filename);
 static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
 static int ncrack(vector <Target *> &Targets);
 
 
 static void
-printusage(void)
+print_usage(void)
 {
 	printf("%s %s ( %s )\n"
-			"Usage: ncrack [Options] -s <service_name> {target specification}\n"
-			"SERVICE SPECIFICATION:\n"
-			"  -s <service_name>: (required option) protocol name e.g ssh, telnet, ftp etc\n"
-			"  -p <port>: for services that listen on non-default ports\n"
+			"Usage: ncrack [Options] {target specification}\n"
 			"TARGET SPECIFICATION:\n"
 			"  Can pass hostnames, IP addresses, networks, etc.\n"
 			"  Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254\n"
 			"  -iL <inputfilename>: Input from list of hosts/networks\n"
 			"  --exclude <host1[,host2][,host3],...>: Exclude hosts/networks\n"
 			"  --excludefile <exclude_file>: Exclude list from file\n"
+			"SERVICE SPECIFICATION:\n"
+			"  Can pass target specific services (after each hostgroup) or global ones\n"
+			"  Services can be passed as names or default ports. For non-default ports\n"
+			"  they must be specified it in form 'service_name:port'\n"
+			"  Ex: scanme.nmap.org[ssh,ftp:310,25] 10.0.0.*://telnet -p ssh:2130\n"
+			"  -p <service-list>: services that will be applied to all hosts (global)\n"
 			"TIMING AND PERFORMANCE:\n"
 			"  Options which take <time> are in milliseconds, unless you append 's'\n"
 			"  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).\n"
@@ -47,11 +55,59 @@ printusage(void)
 			"  --max-retries <tries>: Caps number of service connection attempts.\n"
 			"  --host-timeout <time>: Give up on target after this long\n"
 			"  --scan-delay/--max-scan-delay <time>: Adjust delay between probes\n"
+			"OUTPUT:\n"
+			"  -v: Increase verbosity level (use twice or more for greater effect)\n"
+  		"  -d[level]: Set or increase debugging level (Up to 9 is meaningful)\n"
 			"MISC:\n"
+			"  --list or -sL: only list hosts and services\n"
 			"  -V: Print version number\n"
 			"  -h: Print this help summary page.\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
 	exit(EX_USAGE);
 }
+
+
+static void
+lookup_init(const char *const filename)
+{
+	char line[1024];
+	char servicename[128], proto[16];
+	u16 portno;
+	int lineno = 0;
+	FILE *fp;
+	vector <service_lookup>::iterator vi;
+	service_lookup temp;
+
+	fp = fopen(filename, "r");
+	if (!fp) 
+		fatal("%s: failed to open file %s for reading!\n", __func__, filename);
+
+	while(fgets(line, sizeof(line), fp)) {
+		lineno++;
+		if (*line == '\n' || *line == '#')
+			continue;
+
+		if (sscanf(line, "%127s %hu/%15s", servicename, &portno, proto) != 3)
+			fatal("invalid ncrack-services file: %s\n", filename);
+
+		temp.portno = htons(portno);
+		temp.proto = proto;
+		temp.name = strdup(servicename);
+
+		for (vi = ServiceLookup.begin(); vi != ServiceLookup.end(); vi++) {
+			if ((vi->portno == temp.portno) && !(strcmp(vi->proto, temp.proto))
+					&& !(strcmp(vi->name, temp.name))) {
+				if (o.debugging)
+					error("Port %d proto %s is duplicated in services file %s\n", 
+							ntohs(portno), proto, filename);
+				continue;
+			}
+		}
+		ServiceLookup.push_back(temp);
+	}
+
+	fclose(fp);
+}
+
 
 
 /* 
@@ -152,7 +208,7 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv)
 			} else if (host_spec_index < sizeof(host_spec) / sizeof(char) -1) {
 				host_spec[host_spec_index++] = (char) ch;
 			} else fatal("One of the host_specifications from your input file "
-					"is too long (> %d chars)", (int) sizeof(host_spec));
+					"is too long (> %d chars)\n", (int) sizeof(host_spec));
 		}
 		host_spec[host_spec_index] = '\0';
 	}
@@ -173,14 +229,15 @@ ncrack_service(void)
 
 
 
+
 int main(int argc, char **argv)
 {
-	struct in_addr target;
-	uint16_t port;
-	struct sockaddr_in taddr;
+	vector <Service *> services_cmd;
+
 	FILE *inputfd = NULL;
 	unsigned long l;
 
+	/* time variables */
 	struct tm *tm;
 	time_t now;
 	char tbuf[128];
@@ -198,7 +255,8 @@ int main(int argc, char **argv)
 	extern int optind;
 	struct option long_options[] =
 	{
-		{"service", required_argument, 0, 's'},
+		{"list", no_argument, 0, 0},
+		{"services", required_argument, 0, 'p'},
 		{"version", no_argument, 0, 'V'},
 		{"verbose", no_argument, 0, 'v'},
 		{"debug", optional_argument, 0, 'd'},
@@ -226,7 +284,11 @@ int main(int argc, char **argv)
 	};
 
 	if (argc < 2)
-		printusage();
+		print_usage();
+
+	/* Initialize available services' lookup table */
+	lookup_init("ncrack-services");
+
 
 	/* Argument parsing */
 	optind = 1;
@@ -247,15 +309,17 @@ int main(int argc, char **argv)
 				} else if (!optcmp(long_options[option_index].name, "host-timeout")) {
 					l = tval2msecs(optarg);
 					if (l <= 1500)
-							fatal("--host-timeout is specified in milliseconds unless you "
-							"qualify it by appending 's', 'm', or 'h'. The value must be greater "
-							"than 1500 milliseconds");
+						fatal("--host-timeout is specified in milliseconds unless you "
+								"qualify it by appending 's', 'm', or 'h'. The value must be greater "
+								"than 1500 milliseconds");
 					o.host_timeout = l;
 					if (l < 30000) 
 						error("host-timeout is given in milliseconds, so you specified less "
 								"than 30 seconds (%lims). This is allowed but not recommended.", l);
-				} else if (!strcmp(long_options[option_index].name, "service")) {
-					o.service = optarg;
+				} else if (!strcmp(long_options[option_index].name, "services")) {
+					parse_services_handler(optarg, services_cmd);
+				} else if (!strcmp(long_options[option_index].name, "list")) {
+					o.list_only++;
 				}
 				break;
 			case 'd': 
@@ -265,7 +329,7 @@ int main(int argc, char **argv)
 					o.debugging++; o.verbose++;
 				break;
 			case 'h':   /* help */
-				printusage();
+				print_usage();
 				break;
 			case 'i': 
 				if (inputfd)
@@ -278,36 +342,36 @@ int main(int argc, char **argv)
 						fatal("Failed to open input file %s for reading", optarg);
 				}
 				break; 
-			case 'p':   /* service port */
-				port = atoi(optarg);
+			case 'p':   /* services */
+				parse_services_handler(optarg, services_cmd); 
 				break;
-			case 's':		/* service - required option */
-				if (o.service)
-					fatal("Specify only one service, either with -s or --service.\n");
-				o.service = optarg;
+			case 's':	/* only list hosts */
+				if (*optarg == 'L')
+					o.list_only++;
+				else {
+					error("Illegal argument for option '-s' Did you mean -sL?\n");
+					print_usage();
+				}
 				break;
-			case 'V':
+			case 'V':	
 				printf("\n%s version %s ( %s )\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
 				break;
 			case 'v':
 				o.verbose++;
 				break;
 			case '?':   /* error */
-				printusage();
+				print_usage();
 		}
 	}
 
-	if (!o.service)
-		fatal("Specify one service, either with -s or --service.\n");
 
-	ncrack_service();
+	// ncrack_service();
 
 	now = time(NULL);
 	tm = localtime(&now);
 	if (strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M %Z", tm) <= 0)
 		fatal("Unable to properly format time");
-	printf("\nStarting %s %s ( %s ) at %s\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL, tbuf);
-
+	printf("\nStarting %s %s ( %s ) at %s\n\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL, tbuf);
 
 	o.setaf(AF_INET);
 
@@ -331,9 +395,6 @@ int main(int argc, char **argv)
 			free(exclude_spec);
 	}
 
-	printf("service %s\n", o.service);
-
-
 	host_exp_group = (char **) safe_malloc(o.max_group_size * sizeof(char *));
 	num_host_exp_groups = 0;
 
@@ -345,7 +406,7 @@ int main(int argc, char **argv)
 
 	do {
 		while (Targets.size() < ideal_scan_group_size) {
-			currenths = nexthost(hstate, exclude_group);
+			currenths = nexthost(hstate, exclude_group, services_cmd);
 			if (!currenths) {
 				/* Try to refill with any remaining expressions */
 				/* First free the old ones */
@@ -364,9 +425,8 @@ int main(int argc, char **argv)
 					break;
 				delete hstate;
 				hstate = new HostGroupState(o.max_group_size, host_exp_group, num_host_exp_groups);
-
 				/* Try one last time -- with new expressions */
-				currenths = nexthost(hstate, exclude_group);
+				currenths = nexthost(hstate, exclude_group, services_cmd);
 				if (!currenths)
 					break;
 			}
@@ -376,13 +436,20 @@ int main(int argc, char **argv)
 		if (Targets.size() == 0)
 			break; 
 
-		for (unsigned int i = 0; i < Targets.size(); i++) {
-			printf("%s\n", Targets[i]->NameIP());
+		if (o.list_only) {
+			printf("\n=== Targets ===\n");
+			for (unsigned int i = 0; i < Targets.size(); i++) {
+				printf("Host: %s\n", Targets[i]->NameIP());
+				for (unsigned int j = 0; j < Targets[i]->services.size(); j++) {
+					printf("  %s:%hu\n", 
+							Targets[i]->services[j]->name,
+							ntohs(Targets[i]->services[j]->portno));
+				}
+			}
+		} else {
+			/* Ncrack 'em all! */
+			ncrack(Targets);
 		}
-
-
-		/* Ncrack 'em all! */
-		ncrack(Targets);
 
 		/* Free all of the Targets */
 		while(!Targets.empty()) {

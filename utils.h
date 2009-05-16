@@ -11,6 +11,9 @@
 #include <unistd.h>
 #endif
 
+#include "Service.h"
+#include <vector>
+using namespace std;
 
 /* Timeval subtraction in microseconds */
 #define TIMEVAL_SUBTRACT(a,b) (((a).tv_sec - (b).tv_sec) * 1000000 + (a).tv_usec - (b).tv_usec)
@@ -35,6 +38,12 @@
    two values are considered equivalant (for example, - and _ are
    considered to be the same), nonzero otherwise. */
 int optcmp(const char *a, const char *b);
+
+/* parse service/port information for Ncrack */
+int parse_services_handler(char *const exp, vector <Service *> &services);
+int parse_services_target(char *const exp, vector <Service *> &services);
+void append_services(vector <Service *> &dst, vector <Service *> src);
+
 
 
 #ifdef __cplusplus

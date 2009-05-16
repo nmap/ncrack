@@ -95,11 +95,14 @@
 #define TARGET_H
 
 #include "ncrack.h"
+#include "Service.h"
 
 #ifndef INET6_ADDRSTRLEN
 #define INET6_ADDRSTRLEN 46
 #endif
 
+#include <vector>
+using namespace std;
 
 
 struct host_timeout_nfo {
@@ -155,7 +158,7 @@ class Target {
 			 host. */
 		const char *TargetName() { return targetname; }
 		/* You can set to NULL to erase a name.  The targetname is blown
-			 away when you setTargetSockAddr(), so make sure you do these in proper
+			 away when you setTargetSockAddr(), so make sure you do th	ese in proper
 			 order
 			 */
 		void setTargetName(char *name);
@@ -180,6 +183,8 @@ class Target {
 
 		char *hostname; // Null if unable to resolve or unset
 		char *targetname; // The name of the target host given on the commmand line if it is a named host
+
+		vector <Service *> services; /* services to crack */
 
 	private:
 		void Initialize();

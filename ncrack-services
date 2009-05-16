@@ -1,0 +1,10 @@
+# Ncrack available services 
+# Use this file to add additional supported services in the format specified:
+# <service_name> <port_number>/<protocol>
+# where protocol = either tcp or udp
+
+ftp 21/tcp
+telnet 23/tcp
+ssh 22/tcp
+smtp 25/tcp
+

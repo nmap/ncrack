@@ -98,7 +98,7 @@
 #include "ncrack.h"
 #include "Target.h"
 
-
+#include <vector>
 
 class TargetGroup {
  public:
@@ -132,6 +132,9 @@ class TargetGroup {
   int get_namedhost() {return namedhost;};
   /* Skip an octet in the range array */
   int skip_range(_octet_nums octet);
+
+	vector <Service *>services;
+
  private:
   enum _targets_types targets_type;
   void Initialize();
@@ -178,6 +181,7 @@ class HostGroupState {
   int next_expression;   /* The index of the next expression we have
 			    to handle */
   TargetGroup current_expression; /* For batch chunking -- targets in queue */
+
 };
 
 #endif /* TARGETGROUP_H */

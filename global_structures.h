@@ -1,3 +1,14 @@
+#ifndef GLOBAL_STRUCTURES_H
+#define GLOBAL_STRUCTURES_H
+
+#include "nsock.h"
+
+
+typedef struct service_lookup {
+	char *name;
+	char *proto;
+	u16 portno;
+} sevice_lookup;
 
 
 
@@ -17,3 +28,5 @@ typedef struct m_data {
 } m_data;
 
 
+
+#endif

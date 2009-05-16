@@ -95,6 +95,7 @@
 
 #include "Target.h"
 #include "TargetGroup.h"
+#include "Service.h"
 #include "ncrack.h"
 
 /* This contains pretty much everything we need ... */
@@ -111,13 +112,15 @@
 #endif
 
 
+#include <vector>
+using namespace std;
 
 class HostGroupState;
 
 
 /* Ports is the list of ports the user asked to be scanned (0 terminated),
    you can just pass NULL (it is only a stupid optimization that needs it) */
-Target *nexthost(HostGroupState *hs, TargetGroup *exclude_group);
+Target *nexthost(HostGroupState *hs, TargetGroup *exclude_group, vector <Service *>services_cmd);
 /* loads an exclude file into a excluded target list */
 TargetGroup* load_exclude(FILE *fExclude, char *szExclude);
 /* a debugging routine to dump an exclude list to stdout. */

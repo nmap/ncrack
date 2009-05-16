@@ -150,6 +150,8 @@ int TargetGroup::rewind() {
 	return -1;
 }
 
+
+
 /* Initializes (or reinitializes) the object with a new expression, such
 	 as 192.168.0.0/16 , 10.1.0-5.1-254 , or fe80::202:e3ff:fe14:1102 .  
 	 Returns 0 for success */  
@@ -162,16 +164,24 @@ int TargetGroup::parse_expr(const char * const target_expr, int af) {
 	char *hostexp = strdup(target_expr);
 	struct hostent *target;
 	namedhost = 0;
+	/* Ncrack additional variables */
+	char *s1, *s2, *services;
+	size_t service_len;
+
 
 	if (targets_type != TYPE_NONE)
 		Initialize();
-
 	ipsleft = 0;
 
 	if (af == AF_INET) {
 
+		/* separate service specification from host */
+		if ((s = strchr(hostexp, '[')) || (s = strstr(hostexp, "::")) || (s = strstr(hostexp, "://")))
+			*s = '\0';
+
 		if (strchr(hostexp, ':'))
 			fatal("Invalid host expression: %s -- colons only allowed in IPv6 addresses, and then you need the -6 switch", hostexp);
+
 
 		/*struct in_addr current_in;*/
 		addy[0] = addy[1] = addy[2] = addy[3] = addy[4] = NULL;
@@ -186,7 +196,7 @@ int TargetGroup::parse_expr(const char * const target_expr, int af) {
 		}
 		netmask  = ( s ) ? atoi(s) : 32;
 		if ((int) netmask < 0 || netmask > 32) {
-			error("Illegal netmask value (%d), must be /0 - /32 .  Assuming /32 (one host)", netmask);
+			error("Illegal netmask value (%d), must be /0 - /32 . Assuming /32 (one host)", netmask);
 			netmask = 32;
 		}
 		for(i=0; *(hostexp + i); i++) 
@@ -205,9 +215,11 @@ int TargetGroup::parse_expr(const char * const target_expr, int af) {
 					while (target->h_addr_list[count]) count++;
 
 					if (count > 1)
-						error("Warning: Hostname %s resolves to %d IPs. Using %s.", target_net, count, inet_ntoa(*((struct in_addr *)target->h_addr_list[0])));
+						error("Warning: Hostname %s resolves to %d IPs. Using %s.", 
+								target_net, count, inet_ntoa(*((struct in_addr *)target->h_addr_list[0])));
 				} else {
-					error("Failed to resolve given hostname/IP: %s.  Note that you can't use '/mask' AND '1-4,7,100-' style IP ranges", target_net);
+					error("Failed to resolve given hostname/IP: %s. "
+							"Note that you can't use '/mask' AND '1-4,7,100-' style IP ranges", target_net);
 					free(hostexp);
 					return 1;
 				}
@@ -235,7 +247,7 @@ int TargetGroup::parse_expr(const char * const target_expr, int af) {
 		}
 		else {
 			targets_type = IPV4_RANGES;
-			i=0;
+			i = 0;
 
 			while(*++r) {
 				if (*r == '.' && ++i < 4) {
@@ -243,36 +255,45 @@ int TargetGroup::parse_expr(const char * const target_expr, int af) {
 					addy[i] = r + 1;
 				}
 				else if (*r != '*' && *r != ',' && *r != '-' && !isdigit((int)*r)) 
-					fatal("Invalid character in  host specification.  Note in particular that square brackets [] are no longer allowed.  They were redundant and can simply be removed.");
+					fatal("Invalid character in  host specification.  Note in particular that square brackets [] are no longer allowed. "
+							"They were redundant and can simply be removed.");
 			}
 			if (i != 3) fatal("Invalid target host specification: %s", target_expr);
 
-			for(i=0; i < 4; i++) {
+			for (i = 0; i < 4; i++) {
 				j=0;
 				do {
 					s = strchr(addy[i],',');
-					if (s) *s = '\0';
-					if (*addy[i] == '*') { start = 0; end = 255; } 
-					else if (*addy[i] == '-') {
+					if (s) 
+						*s = '\0';
+					if (*addy[i] == '*') {
 						start = 0;
-						if (*(addy[i] + 1) == '\0') end = 255;
-						else end = atoi(addy[i]+ 1);
-					}
-					else {
+						end = 255;
+					} else if (*addy[i] == '-') {
+						start = 0;
+						if (*(addy[i] + 1) == '\0')
+							end = 255;
+						else 
+							end = atoi(addy[i]+ 1);
+					} else {
 						start = end = atoi(addy[i]);
-						if ((r = strchr(addy[i],'-')) && *(r+1) ) end = atoi(r + 1);
-						else if (r && !*(r+1)) end = 255;
+						if ((r = strchr(addy[i],'-')) && *(r+1) )
+							end = atoi(r + 1);
+						else if (r && !*(r+1))
+							end = 255;
 					}
-					/*	  if (o.debugging > 2)
-								log_write(LOG_STDOUT, "The first host is %d, and the last one is %d\n", start, end); */
+
 					if (start < 0 || start > end || start > 255 || end > 255)
 						fatal("Your host specifications are illegal!");
 					if (j + (end - start) > 255) 
 						fatal("Your host specifications are illegal!");
-					for(k=start; k <= end; k++)
+
+					for (k = start; k <= end; k++)
 						addresses[i][j++] = k;
-					last[i] = j-1;
-					if (s) addy[i] = s + 1;
+
+					last[i] = j - 1;
+					if (s) 
+						addy[i] = s + 1;
 				} while (s);
 			}
 		}
@@ -410,9 +431,9 @@ startover: /* to handle nmap --resume where I have already
 #if HAVE_SOCKADDR_SA_LEN
 		sin->sin_len = *sslen;
 #endif
-		if (o.debugging > 2) {
-			printf("doing %d.%d.%d.%d = %d.%d.%d.%d\n", current[0], current[1], current[2], current[3], addresses[0][current[0]],addresses[1][current[1]],addresses[2][current[2]],addresses[3][current[3]]);
-		}
+		//if (o.debugging > 2) {
+		//	printf("doing %d.%d.%d.%d = %d.%d.%d.%d\n", current[0], current[1], current[2], current[3], addresses[0][current[0]],addresses[1][current[1]],addresses[2][current[2]],addresses[3][current[3]]);
+		//}
 		/* Set the IP to the current value of everything */
 		sin->sin_addr.s_addr = htonl(addresses[0][current[0]] << 24 | 
 				addresses[1][current[1]] << 16 |
