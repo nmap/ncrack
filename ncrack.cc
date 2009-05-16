@@ -460,7 +460,7 @@ int main(int argc, char **argv)
 
 	} while (1);
 
-	printf("Ncrack finished.\n");
+	printf("\nNcrack finished.\n");
 	exit(EXIT_SUCCESS);
 
 }
