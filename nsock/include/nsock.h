@@ -59,7 +59,7 @@
 /* Would you like to include pcap support in nsock?
  * Pcap support code is currently unstable, so we give
  * you a choice. In future this #define will be removed.*/
-#define HAVE_PCAP 0  /* Ncrack doesn't need pcap */
+/* #define HAVE_PCAP 0  -- Ncrack doesn't need pcap */
 
 #ifndef NSOCK_H
 #define NSOCK_H
