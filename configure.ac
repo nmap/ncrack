@@ -7,7 +7,6 @@ AC_INIT(ncrack.cc)
 
 CXXFLAGS="-O0"
 
-LIBPCAP_LIBS="-lpcap"
 LIBSSL_LIBS="-lssl"
 
 AC_ARG_WITH(localdirs,

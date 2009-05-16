@@ -4,7 +4,7 @@
 # where protocol = either tcp or udp
 
 ftp 21/tcp
-telnet 23/tcp
 ssh 22/tcp
+telnet 23/tcp
 smtp 25/tcp
 

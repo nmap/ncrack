@@ -164,9 +164,7 @@ int TargetGroup::parse_expr(const char * const target_expr, int af) {
 	char *hostexp = strdup(target_expr);
 	struct hostent *target;
 	namedhost = 0;
-	/* Ncrack additional variables */
-	char *s1, *s2, *services;
-	size_t service_len;
+
 
 
 	if (targets_type != TYPE_NONE)
@@ -178,6 +176,8 @@ int TargetGroup::parse_expr(const char * const target_expr, int af) {
 		/* separate service specification from host */
 		if ((s = strchr(hostexp, '[')) || (s = strstr(hostexp, "::")) || (s = strstr(hostexp, "://")))
 			*s = '\0';
+
+		s = NULL;
 
 		if (strchr(hostexp, ':'))
 			fatal("Invalid host expression: %s -- colons only allowed in IPv6 addresses, and then you need the -6 switch", hostexp);
