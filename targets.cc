@@ -364,7 +364,7 @@ int dumpExclude(TargetGroup *exclude_group) {
 
 
 Target *
-nexthost(HostGroupState *hs, TargetGroup *exclude_group, vector <Service *>services_cmd)
+nexthost(HostGroupState *hs, TargetGroup *exclude_group, vector <service_lookup *>services_cmd)
 {
 	int hidx = 0;
 	struct sockaddr_storage ss;
@@ -388,7 +388,7 @@ nexthost(HostGroupState *hs, TargetGroup *exclude_group, vector <Service *>servi
 			hs->hostbatch[hidx] = new Target();
 			hs->hostbatch[hidx]->setTargetSockAddr(&ss, sslen);
 			/* copy service vector from TargetGroup expression into Target */
-			hs->hostbatch[hidx]->services.assign (hs->current_expression.services.begin(),
+			hs->hostbatch[hidx]->services.assign(hs->current_expression.services.begin(),
 					hs->current_expression.services.end());
 
 			/* put target expression in target if we have a named host without netmask */

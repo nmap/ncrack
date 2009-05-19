@@ -2,11 +2,12 @@
 #define GLOBAL_STRUCTURES_H
 
 #include "nsock.h"
+#include "nbase.h"
 
 
 typedef struct service_lookup {
 	char *name;
-	char *proto;
+	u8 proto;
 	u16 portno;
 } sevice_lookup;
 

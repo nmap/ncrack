@@ -6,10 +6,10 @@
 
 extern NcrackOps o;
 /* global supported services' lookup table from ncrak-services file */
-extern vector <service_lookup> ServiceLookup; 
+extern vector <service_lookup> ServicesSupported; 
 using namespace std;
 
-static int check_duplicate_services(vector <Service *> services, Service *serv);
+static int check_duplicate_services(vector <service_lookup *> services, service_lookup *serv);
 static unsigned long check_port(char *exp);
 
 
@@ -36,16 +36,17 @@ check_port(char *exp)
  * been resolved with a name-port.
  */
 static int
-check_duplicate_services(vector <Service *> services, Service *serv)
+check_duplicate_services(vector <service_lookup *> services, service_lookup *serv)
 {
-	vector <Service *>::iterator vi;
+	vector <service_lookup *>::iterator vi;
 
 	for (vi = services.begin(); vi != services.end(); vi++) {
-		if ((*vi)->name && !strcmp((*vi)->name, serv->name) &&
+		if (  //(*vi)->name && !strcmp((*vi)->name, serv->name) &&
 				(*vi)->portno == serv->portno) {
 			if (o.debugging > 5)
-				error("Ignoring duplicate service: '%s:%hu'\n",
-						serv->name, ntohs(serv->portno));
+				error("Ignoring duplicate service: '%s:%hu' . Collides with "
+						"'%s:%hu'\n", serv->name, serv->portno,
+						(*vi)->name, (*vi)->portno);
 			return -1;
 		}
 	}
@@ -59,7 +60,7 @@ check_duplicate_services(vector <Service *> services, Service *serv)
  * are created.
  */
 void
-append_services(vector <Service *> &dst, vector <Service *> src)
+append_services(vector <service_lookup *> &dst, vector <service_lookup *> src)
 {
 	unsigned int i, j;
 	int dup = 0;
@@ -70,7 +71,7 @@ append_services(vector <Service *> &dst, vector <Service *> src)
 					!strcmp(src[i]->name, dst[j]->name)) {
 				if (o.debugging > 5)
 					error("Ignoring duplicate service: '%s:%hu'\n",
-							src[i]->name, ntohs(src[i]->portno));
+							src[i]->name, src[i]->portno);
 				dup = 1;
 				break;
 			}
@@ -84,42 +85,42 @@ append_services(vector <Service *> &dst, vector <Service *> src)
 
 /*
  * Checks if current service is supported by looking at
- * the global lookup table ServiceLookup.
+ * the global lookup table ServicesSupported.
  * If a service name has no port, then a default is assigned.
  * If a port has no service name, then the corresponding service
  * name is assigned. Returns -1 if service is not supported.
  */
 int 
-check_supported_services(Service *serv)
+check_supported_services(service_lookup *serv)
 {
 	vector <service_lookup>::iterator vi;
-	/* 
+	/*
 	 * If only port is specified make search based on port.
 	 * If only service OR if service:port is specified then
 	 * lookup based on service name.
 	 */
 	if (!serv->name && serv->portno) {
-		for (vi = ServiceLookup.begin(); vi != ServiceLookup.end(); vi++) {
+		for (vi = ServicesSupported.begin(); vi != ServicesSupported.end(); vi++) {
 			if (vi->portno == serv->portno) {
 				serv->name = strdup(vi->name); /* assign service name */
 				break;
 			}
 		}
-		if (vi == ServiceLookup.end()) {
+		if (vi == ServicesSupported.end()) {
 			error("Service with default port '%hu' not supported! Ignoring...\n"
 					"For non-default ports specify <service-name>:<non-default-port>\n",
-					ntohs(serv->portno));
+					serv->portno);
 			return -1;
 		}
 	} else if (serv->name) {
-		for (vi = ServiceLookup.begin(); vi != ServiceLookup.end(); vi++) {
+		for (vi = ServicesSupported.begin(); vi != ServicesSupported.end(); vi++) {
 			if (!strcmp(vi->name, serv->name)) {
 				if (!serv->portno) /* assign default port number */
 					serv->portno = vi->portno;
 				break;
 			}
 		}
-		if (vi == ServiceLookup.end()) {
+		if (vi == ServicesSupported.end()) {
 			error("Service with name '%s' not supported! Ignoring...\n",
 					serv->name);
 			return -1;
@@ -127,6 +128,7 @@ check_supported_services(Service *serv)
 	} else 
 		fatal("%s failed due to invalid parsing\n", __func__);
 
+	serv->proto = vi->proto;  // TODO: check for UDP (duplicate etc)
 	return 0;
 }
 
@@ -136,7 +138,7 @@ check_supported_services(Service *serv)
  * Prepares expression by removing delimiters that separate target-service
  */
 int 
-parse_services_target(char *const exp, vector <Service *> &services)
+parse_services_target(char *const exp, vector <service_lookup *> &services)
 {
 	char *s1, *s2, *servexp;
 	size_t service_len;
@@ -168,12 +170,11 @@ parse_services_target(char *const exp, vector <Service *> &services)
  * separation delimiters
  */
 int 
-parse_services_handler(char *const exp, vector <Service *> &services)
+parse_services_handler(char *const exp, vector <service_lookup *> &services)
 {
 	unsigned int nports;
 	char *temp, *s;
-	Service *serv;
-	vector <service_lookup>::iterator vi;
+	service_lookup *serv;
 
 	nports = 0;
 	while (1) {
@@ -185,15 +186,15 @@ parse_services_handler(char *const exp, vector <Service *> &services)
 		if (temp == NULL)
 			break;
 
-		serv = new Service();
+		serv = (service_lookup *)safe_zalloc(sizeof(service_lookup));
 
 		if (isdigit(temp[0])) { /* just port number */
-			serv->portno = htons((uint16_t)check_port(temp));
+			serv->portno = (uint16_t)check_port(temp);
 		} else {	/* service name and/or port number */
 			if ((s = strchr(temp, ':'))) {	/* service name and port number */
 				*s = '\0';
 				serv->name = strdup(temp);
-				serv->portno = htons((uint16_t)check_port(++s));
+				serv->portno = (uint16_t)check_port(++s);
 			} else	/* service name only */
 				serv->name = strdup(temp);
 		}	
@@ -238,7 +239,8 @@ void error(const char *fmt, ...) {
 	 user-generated option such as "max_scan_delay" and returns 0 if the
 	 two values are considered equivalant (for example, - and _ are
 	 considered to be the same), nonzero otherwise. */
-int optcmp(const char *a, const char *b) {
+int
+optcmp(const char *a, const char *b) {
 	while(*a && *b) {
 		if (*a == '_' || *a == '-') {
 			if (*b != '_' && *b != '-')
@@ -252,4 +254,19 @@ int optcmp(const char *a, const char *b) {
 		return 1;
 	return 0;
 }
+
+
+/* convert string to protocol number */
+u8
+str2proto(char *str)
+{
+	if (!strcmp(str, "tcp"))
+		return IPPROTO_TCP;
+	else if (!strcmp(str, "udp"))
+		return IPPROTO_UDP;
+	else 
+		return 0;
+}
+
+
 

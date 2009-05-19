@@ -121,6 +121,8 @@ void *realloc();
 
 #define MAXLINE 255
 
+#include "global_structures.h"
+
 
 // #define _POSIX_C_SOURCE
 

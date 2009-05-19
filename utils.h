@@ -11,7 +11,7 @@
 #include <unistd.h>
 #endif
 
-#include "Service.h"
+#include "global_structures.h"
 #include <vector>
 using namespace std;
 
@@ -40,9 +40,10 @@ using namespace std;
 int optcmp(const char *a, const char *b);
 
 /* parse service/port information for Ncrack */
-int parse_services_handler(char *const exp, vector <Service *> &services);
-int parse_services_target(char *const exp, vector <Service *> &services);
-void append_services(vector <Service *> &dst, vector <Service *> src);
+int parse_services_handler(char *const exp, vector <service_lookup *> &services);
+int parse_services_target(char *const exp, vector <service_lookup *> &services);
+void append_services(vector <service_lookup *> &dst, vector <service_lookup *> src);
+u8 str2proto(char *str);
 
 
 

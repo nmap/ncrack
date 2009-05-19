@@ -95,7 +95,6 @@
 #define TARGET_H
 
 #include "ncrack.h"
-#include "Service.h"
 
 #ifndef INET6_ADDRSTRLEN
 #define INET6_ADDRSTRLEN 46
@@ -184,7 +183,7 @@ class Target {
 		char *hostname; // Null if unable to resolve or unset
 		char *targetname; // The name of the target host given on the commmand line if it is a named host
 
-		vector <Service *> services; /* services to crack */
+		vector <service_lookup *> services; /* services to crack */
 
 	private:
 		void Initialize();

@@ -97,6 +97,7 @@
 
 #include "ncrack.h"
 #include "Target.h"
+#include "global_structures.h"
 
 #include <vector>
 
@@ -133,7 +134,7 @@ class TargetGroup {
   /* Skip an octet in the range array */
   int skip_range(_octet_nums octet);
 
-	vector <Service *>services;
+	vector <service_lookup *>services;
 
  private:
   enum _targets_types targets_type;

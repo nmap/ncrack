@@ -13,21 +13,26 @@ extern NcrackOps o;
 using namespace std;
 
 /* global lookup table for available services */
-vector <service_lookup> ServiceLookup; 
+vector <service_lookup> ServicesSupported; 
 
-
+#define DEFAULT_CONNECT_TIMEOUT 5000
 
 extern void call_module(m_data *);
 
+/* callback handlers */
 void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 void ncrack_module_end(nsock_pool nsp, nsock_iod nsi, void *mydata);
 
+/* schedule additional connections */
+int ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
+/* ncrack initialization */
+static int ncrack(vector <Target *> &Targets);
+
 static void print_usage(void);
 static void lookup_init(const char *const filename);
 static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
-static int ncrack(vector <Target *> &Targets);
 
 
 static void
@@ -72,7 +77,6 @@ lookup_init(const char *const filename)
 	char line[1024];
 	char servicename[128], proto[16];
 	u16 portno;
-	int lineno = 0;
 	FILE *fp;
 	vector <service_lookup>::iterator vi;
 	service_lookup temp;
@@ -82,108 +86,32 @@ lookup_init(const char *const filename)
 		fatal("%s: failed to open file %s for reading!\n", __func__, filename);
 
 	while(fgets(line, sizeof(line), fp)) {
-		lineno++;
 		if (*line == '\n' || *line == '#')
 			continue;
 
 		if (sscanf(line, "%127s %hu/%15s", servicename, &portno, proto) != 3)
 			fatal("invalid ncrack-services file: %s\n", filename);
 
-		temp.portno = htons(portno);
-		temp.proto = proto;
+		temp.portno = portno;
+		temp.proto = str2proto(proto);
 		temp.name = strdup(servicename);
 
-		for (vi = ServiceLookup.begin(); vi != ServiceLookup.end(); vi++) {
-			if ((vi->portno == temp.portno) && !(strcmp(vi->proto, temp.proto))
+		for (vi = ServicesSupported.begin(); vi != ServicesSupported.end(); vi++) {
+			if ((vi->portno == temp.portno) && (vi->proto == temp.proto)
 					&& !(strcmp(vi->name, temp.name))) {
 				if (o.debugging)
 					error("Port %d proto %s is duplicated in services file %s\n", 
-							ntohs(portno), proto, filename);
+							portno, proto, filename);
 				continue;
 			}
 		}
-		ServiceLookup.push_back(temp);
+		ServicesSupported.push_back(temp);
 	}
 
 	fclose(fp);
 }
 
 
-
-/* 
- * It handles module endings
- */
-void
-ncrack_module_end(nsock_pool nsp, nsock_iod nsi, void *mydata)
-{
-	m_data *mdata = (m_data *) mydata;
-
-	if (mdata->attempts < mdata->max_attempts) {
-		call_module(mdata);
-	}
-
-}
-
-
-void
-ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
-{
-	nsock_iod nsi = nse_iod(nse);
-	enum nse_status status = nse_status(nse);
-	enum nse_type type = nse_type(nse);
-	int nbytes;
-	char *str;
-	m_data *mdata = (m_data *) mydata;
-
-	printf("%s: status %s\n", __func__, nse_status2str(status));
-
-	str = nse_readbuf(nse, &nbytes);
-	mdata->buf = (char *)malloc(nbytes);
-	mdata->bufsize = nbytes;
-	memcpy(mdata->buf, str, nbytes);
-
-	call_module(mdata);
-
-	return;
-}
-
-
-
-
-void
-ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
-{
-	nsock_iod nsi = nse_iod(nse);
-	enum nse_status status = nse_status(nse);
-	enum nse_type type = nse_type(nse);
-
-	m_data *mdata = (m_data *) mydata;
-
-	printf("%s: status %s\n", __func__, nse_status2str(status));
-
-	call_module(mdata);
-
-	return;
-}
-
-
-
-
-void
-ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
-{
-	nsock_iod nsi = nse_iod(nse);
-	enum nse_status status = nse_status(nse);
-	enum nse_type type = nse_type(nse);
-
-	m_data *mdata = (m_data *) mydata;
-	mdata->protocol = IPPROTO_TCP;
-	mdata->state = 0;
-
-	call_module(mdata);
-
-	return;
-}
 
 
 
@@ -218,21 +146,12 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv)
 }
 
 
-static void
-ncrack_service(void)
-{
-	//if (strcmp(o.service, "ftp"));
-
-	// use lookup table 
-
-}
-
 
 
 
 int main(int argc, char **argv)
 {
-	vector <Service *> services_cmd;
+	vector <service_lookup *> services_cmd;
 
 	FILE *inputfd = NULL;
 	unsigned long l;
@@ -443,7 +362,7 @@ int main(int argc, char **argv)
 				for (unsigned int j = 0; j < Targets[i]->services.size(); j++) {
 					printf("  %s:%hu\n", 
 							Targets[i]->services[j]->name,
-							ntohs(Targets[i]->services[j]->portno));
+							Targets[i]->services[j]->portno);
 				}
 			}
 		} else {
@@ -466,45 +385,171 @@ int main(int argc, char **argv)
 }
 
 
+/* 
+* It handles module endings
+*/
+void
+ncrack_module_end(nsock_pool nsp, nsock_iod nsi, void *mydata)
+{
+ m_data *mdata = (m_data *) mydata;
+
+ if (mdata->attempts < mdata->max_attempts) {
+	 call_module(mdata);
+ }
+
+}
+
+
+void
+ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
+{
+ nsock_iod nsi = nse_iod(nse);
+ enum nse_status status = nse_status(nse);
+ enum nse_type type = nse_type(nse);
+ int nbytes;
+ char *str;
+ m_data *mdata = (m_data *) mydata;
+
+ printf("%s: status %s\n", __func__, nse_status2str(status));
+
+ str = nse_readbuf(nse, &nbytes);
+ mdata->buf = (char *)malloc(nbytes);
+ mdata->bufsize = nbytes;
+ memcpy(mdata->buf, str, nbytes);
+
+ call_module(mdata);
+
+ return;
+}
+
+
+
+
+void
+ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
+{
+ nsock_iod nsi = nse_iod(nse);
+ enum nse_status status = nse_status(nse);
+ enum nse_type type = nse_type(nse);
+
+ m_data *mdata = (m_data *) mydata;
+
+ printf("%s: status %s\n", __func__, nse_status2str(status));
+
+ call_module(mdata);
+
+ return;
+}
+
+
+
+
+void
+ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
+{
+ nsock_iod nsi = nse_iod(nse);
+ enum nse_status status = nse_status(nse);
+ enum nse_type type = nse_type(nse);
+
+ //m_data *mdata = (m_data *) mydata;
+ //mdata->protocol = IPPROTO_TCP;
+ //mdata->state = 0;
+
+ //call_module(mdata);
+
+ return;
+}
+
+
+
+
+int
+ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
+  Service *serv;
+	Connection *connection;
+	struct sockaddr_storage ss;
+	size_t ss_len;
+	list <Service *>::iterator li;
+
+
+	if (SG->last_accessed == SG->services_remaining.end())
+		li = SG->services_remaining.begin();
+	else 
+		li = SG->last_accessed;
+
+	int i = 0;
+
+  while (SG->active_connections < SG->ideal_parallelism
+			&& SG->services_finished.size() != SG->total_services) {
+		serv = *li;
+		if (serv->target->timedOut(nsock_gettimeofday())) {
+      // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
+      continue;
+    }
+
+		/* Schedule 1 connection for this service */
+		connection = new Connection();
+		if ((connection->niod = nsi_new(nsp, serv)) == NULL) {
+      fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
+    }
+		serv->connections.push_back(connection);
+
+		serv->target->TargetSockAddr(&ss, &ss_len);
+		if (serv->proto == IPPROTO_TCP)
+      nsock_connect_tcp(nsp, connection->niod, ncrack_connect_handler, 
+			DEFAULT_CONNECT_TIMEOUT, serv, 
+			(struct sockaddr *)&ss, ss_len,
+			serv->portno);
+    else {
+      assert(serv->proto == IPPROTO_UDP);
+      nsock_connect_udp(nsp, connection->niod, ncrack_connect_handler, 
+			serv, (struct sockaddr *) &ss, ss_len,
+			serv->portno);
+    }
+
+		i++; // temporary
+		if (i == 10)
+			break;
+
+		SG->last_accessed = li;
+		if (++li == SG->services_remaining.end())
+			li = SG->services_remaining.begin();
+
+		// pop / push etc
+
+	}
+	return 0;
+}
+
+
+
+
+
 static int
 ncrack(vector <Target *> &Targets)
 {
 	/* nsock variables */
-	nsock_iod tcp_nsi;
+	struct timeval now;
 	enum nsock_loopstatus loopret;
 	nsock_pool nsp;
-	nsock_event_id ev;
 	int tracelevel = 0;
+	ServiceGroup *SG;
 
-	struct timeval now;
-
-	/* module specific data */
-	m_data mdata; 
+	SG = new ServiceGroup(Targets);
 
 	/* create nsock p00l */
-	if (!(nsp = nsp_new(NULL))) 
+	if (!(nsp = nsp_new(SG))) 
 		fatal("Can't create nsock pool.\n");
 
 	gettimeofday(&now, NULL);
 	nsp_settrace(nsp, tracelevel, &now);
 
-	if ((tcp_nsi = nsi_new(nsp, NULL)) == NULL)
-		fatal("Failed to create new nsock_iod.  QUITTING.\n");
-
-
-
-	memset(&mdata, 0, sizeof(mdata));
-	mdata.nsp = nsp;
-	mdata.nsi = tcp_nsi;
-	mdata.max_attempts = 4;
-
-	//ev = nsock_connect_tcp(nsp, tcp_nsi, ncrack_connect_handler, 10000, &mdata,
-	//		(struct sockaddr *) &taddr, sizeof taddr, port);
+	ncrack_probes(nsp, SG);
 
 	/* nsock loop */
 	loopret = nsock_loop(nsp, -1);
-
-	printf("nsock_loop returned %d\n", loopret);
+	if (o.debugging > 8)
+		printf("nsock_loop returned %d\n", loopret);
 
 	return 0;
 
