@@ -373,6 +373,10 @@ int main(int argc, char **argv)
 		/* Free all of the Targets */
 		while(!Targets.empty()) {
 			currenths = Targets.back();
+			while (!currenths->services.empty()) {
+				free(currenths->services.back());
+				currenths->services.pop_back();
+			}		
 			delete currenths;
 			Targets.pop_back();
 		}
