@@ -294,10 +294,8 @@ int main(int argc, char **argv)
 
 	o.setaf(AF_INET);
 
-	char **host_exp_group;
-	HostGroupState *hstate;
+
 	Target *currenths;
-	int num_host_exp_groups;
 	char *host_spec = NULL;
 	vector <Target *> Targets;
 
@@ -314,92 +312,60 @@ int main(int argc, char **argv)
 			free(exclude_spec);
 	}
 
-	host_exp_group = (char **) safe_malloc(o.max_group_size * sizeof(char *));
-	num_host_exp_groups = 0;
-
-	o.max_group_size = 4096;
-	unsigned int ideal_scan_group_size = o.max_group_size;
-
-	hstate = new HostGroupState(o.max_group_size, host_exp_group, num_host_exp_groups);
 
 
-	do {
-		while (Targets.size() < ideal_scan_group_size) {
-			currenths = nexthost(hstate, exclude_group, services_cmd);
-			if (!currenths) {
-				/* Try to refill with any remaining expressions */
-				/* First free the old ones */
-				for(int i = 0; i < num_host_exp_groups; i++)
-					free(host_exp_group[i]);
+	while ((host_spec = grab_next_host_spec(inputfd, argc, argv))) {
 
-				num_host_exp_groups = 0;
-				/* Now grab any new expressions */
-				while (num_host_exp_groups < o.max_group_size && 
-						(host_spec = grab_next_host_spec(inputfd, argc, argv))) {
-					// For purposes of random scan - TODO: see this
-					host_exp_group[num_host_exp_groups++] = strdup(host_spec);
-				}
+		/* preparse and separate host - service < TODO */
 
-				if (num_host_exp_groups == 0)
-					break;
-				delete hstate;
-				hstate = new HostGroupState(o.max_group_size, host_exp_group, num_host_exp_groups);
-				/* Try one last time -- with new expressions */
-				currenths = nexthost(hstate, exclude_group, services_cmd);
-				if (!currenths)
-					break;
-			}
+		while ((currenths = nexthost(host_spec, exclude_group))) {
 			Targets.push_back(currenths);
 		}
+	}
 
-		if (Targets.size() == 0)
-			break; 
-
-		if (o.list_only) {
-			printf("\n=== Targets ===\n");
-			for (unsigned int i = 0; i < Targets.size(); i++) {
-				printf("Host: %s\n", Targets[i]->NameIP());
-				for (unsigned int j = 0; j < Targets[i]->services.size(); j++) {
-					printf("  %s:%hu\n", 
-							Targets[i]->services[j]->name,
-							Targets[i]->services[j]->portno);
-				}
+	if (o.list_only) {
+		printf("\n=== Targets ===\n");
+		for (unsigned int i = 0; i < Targets.size(); i++) {
+			printf("Host: %s\n", Targets[i]->NameIP());
+			for (unsigned int j = 0; j < Targets[i]->services.size(); j++) {
+				printf("  %s:%hu\n", 
+						Targets[i]->services[j]->name,
+						Targets[i]->services[j]->portno);
 			}
-		} else {
-			/* Ncrack 'em all! */
-			ncrack(Targets);
 		}
+	} else {
+		/* Ncrack 'em all! */
+		ncrack(Targets);
+	}
 
-		/* Free all of the Targets */
-		while(!Targets.empty()) {
-			currenths = Targets.back();
-			while (!currenths->services.empty()) {
-				free(currenths->services.back());
-				currenths->services.pop_back();
-			}		
-			delete currenths;
-			Targets.pop_back();
-		}
+	/* Free all of the Targets */
+	while(!Targets.empty()) {
+		currenths = Targets.back();
+		while (!currenths->services.empty()) {
+			free(currenths->services.back());
+			currenths->services.pop_back();
+		}		
+		delete currenths;
+		Targets.pop_back();
+	}
 
-	} while (1);
 
 	printf("\nNcrack finished.\n");
 	exit(EXIT_SUCCESS);
-
 }
 
 
 /* 
-* It handles module endings
-*/
+ * It handles module endings
+ */
 void
 ncrack_module_end(nsock_pool nsp, nsock_iod nsi, void *mydata)
 {
- m_data *mdata = (m_data *) mydata;
+	m_data *mdata = (m_data *) mydata;
 
- if (mdata->attempts < mdata->max_attempts) {
-	 call_module(mdata);
- }
+	if (mdata->attempts < mdata->max_attempts) {
+		call_module(mdata);
+	}
 
 }
 
@@ -407,23 +373,23 @@ ncrack_module_end(nsock_pool nsp, nsock_iod nsi, void *mydata)
 void
 ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
- nsock_iod nsi = nse_iod(nse);
- enum nse_status status = nse_status(nse);
- enum nse_type type = nse_type(nse);
- int nbytes;
- char *str;
- m_data *mdata = (m_data *) mydata;
+	nsock_iod nsi = nse_iod(nse);
+	enum nse_status status = nse_status(nse);
+	enum nse_type type = nse_type(nse);
+	int nbytes;
+	char *str;
+	m_data *mdata = (m_data *) mydata;
 
- printf("%s: status %s\n", __func__, nse_status2str(status));
+	printf("%s: status %s\n", __func__, nse_status2str(status));
 
- str = nse_readbuf(nse, &nbytes);
- mdata->buf = (char *)malloc(nbytes);
- mdata->bufsize = nbytes;
- memcpy(mdata->buf, str, nbytes);
+	str = nse_readbuf(nse, &nbytes);
+	mdata->buf = (char *)malloc(nbytes);
+	mdata->bufsize = nbytes;
+	memcpy(mdata->buf, str, nbytes);
 
- call_module(mdata);
+	call_module(mdata);
 
- return;
+	return;
 }
 
 
@@ -432,17 +398,17 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 void
 ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
- nsock_iod nsi = nse_iod(nse);
- enum nse_status status = nse_status(nse);
- enum nse_type type = nse_type(nse);
+	nsock_iod nsi = nse_iod(nse);
+	enum nse_status status = nse_status(nse);
+	enum nse_type type = nse_type(nse);
 
- m_data *mdata = (m_data *) mydata;
+	m_data *mdata = (m_data *) mydata;
 
- printf("%s: status %s\n", __func__, nse_status2str(status));
+	printf("%s: status %s\n", __func__, nse_status2str(status));
 
- call_module(mdata);
+	call_module(mdata);
 
- return;
+	return;
 }
 
 
@@ -451,17 +417,17 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 void
 ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
- nsock_iod nsi = nse_iod(nse);
- enum nse_status status = nse_status(nse);
- enum nse_type type = nse_type(nse);
+	nsock_iod nsi = nse_iod(nse);
+	enum nse_status status = nse_status(nse);
+	enum nse_type type = nse_type(nse);
 
- //m_data *mdata = (m_data *) mydata;
- //mdata->protocol = IPPROTO_TCP;
- //mdata->state = 0;
+	//m_data *mdata = (m_data *) mydata;
+	//mdata->protocol = IPPROTO_TCP;
+	//mdata->state = 0;
 
- //call_module(mdata);
+	//call_module(mdata);
 
- return;
+	return;
 }
 
 
@@ -469,7 +435,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 int
 ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
-  Service *serv;
+	Service *serv;
 	Connection *connection;
 	struct sockaddr_storage ss;
 	size_t ss_len;
@@ -483,33 +449,33 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 
 	int i = 0;
 
-  while (SG->active_connections < SG->ideal_parallelism
+	while (SG->active_connections < SG->ideal_parallelism
 			&& SG->services_finished.size() != SG->total_services) {
 		serv = *li;
 		if (serv->target->timedOut(nsock_gettimeofday())) {
-      // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
-      continue;
-    }
+			// end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
+			continue;
+		}
 
 		/* Schedule 1 connection for this service */
 		connection = new Connection();
 		if ((connection->niod = nsi_new(nsp, serv)) == NULL) {
-      fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
-    }
+			fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
+		}
 		serv->connections.push_back(connection);
 
 		serv->target->TargetSockAddr(&ss, &ss_len);
 		if (serv->proto == IPPROTO_TCP)
-      nsock_connect_tcp(nsp, connection->niod, ncrack_connect_handler, 
-			DEFAULT_CONNECT_TIMEOUT, serv, 
-			(struct sockaddr *)&ss, ss_len,
-			serv->portno);
-    else {
-      assert(serv->proto == IPPROTO_UDP);
-      nsock_connect_udp(nsp, connection->niod, ncrack_connect_handler, 
-			serv, (struct sockaddr *) &ss, ss_len,
-			serv->portno);
-    }
+			nsock_connect_tcp(nsp, connection->niod, ncrack_connect_handler, 
+					DEFAULT_CONNECT_TIMEOUT, serv, 
+					(struct sockaddr *)&ss, ss_len,
+					serv->portno);
+		else {
+			assert(serv->proto == IPPROTO_UDP);
+			nsock_connect_udp(nsp, connection->niod, ncrack_connect_handler, 
+					serv, (struct sockaddr *) &ss, ss_len,
+					serv->portno);
+		}
 
 		i++; // temporary
 		if (i == 10)

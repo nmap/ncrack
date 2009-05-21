@@ -160,7 +160,7 @@ class Target {
 			 away when you setTargetSockAddr(), so make sure you do th	ese in proper
 			 order
 			 */
-		void setTargetName(char *name);
+		void setTargetName(const char *name);
 
 		/* Starts the timeout clock for the host running (e.g. you are
 			 beginning a scan).  If you do not have the current time handy,

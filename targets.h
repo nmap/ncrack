@@ -115,18 +115,16 @@
 #include <vector>
 using namespace std;
 
-class HostGroupState;
+/* creates and returns next host from current expression
+ * and also takes care of exclusion of user-specified hosts
+ */
+Target *nexthost(const char *expr, TargetGroup *exclude_group);
 
-
-/* Ports is the list of ports the user asked to be scanned (0 terminated),
-   you can just pass NULL (it is only a stupid optimization that needs it) */
-Target *nexthost(HostGroupState *hs, TargetGroup *exclude_group, vector <service_lookup *>services_cmd);
 /* loads an exclude file into a excluded target list */
 TargetGroup* load_exclude(FILE *fExclude, char *szExclude);
+
 /* a debugging routine to dump an exclude list to stdout. */
 int dumpExclude(TargetGroup*exclude_group);
-/* Returns the last host obtained by nexthost.  It will be given again the next
-   time you call nexthost(). */
-void returnhost(HostGroupState *hs);
+
 #endif /* TARGETS_H */
 

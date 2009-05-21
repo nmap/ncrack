@@ -164,25 +164,5 @@ class TargetGroup {
   int namedhost;
 };
 
-class HostGroupState {
- public:
-  HostGroupState(int lookahead, char *target_expressions[], int num_expressions);
-  ~HostGroupState();
-  Target **hostbatch;
-  int max_batch_sz; /* The size of the hostbatch[] array */
-  int current_batch_sz; /* The number of VALID members of hostbatch[] */
-  int next_batch_no; /* The index of the next hostbatch[] member to be given 
-			back to the user */
-  char **target_expressions; /* An array of target expression strings, passed
-				to us by the client (client is also in charge
-				of deleting it AFTER it is done with the 
-				hostgroup_state */
-  int num_expressions;       /* The number of valid expressions in 
-				target_expressions member above */
-  int next_expression;   /* The index of the next expression we have
-			    to handle */
-  TargetGroup current_expression; /* For batch chunking -- targets in queue */
-
-};
 
 #endif /* TARGETGROUP_H */

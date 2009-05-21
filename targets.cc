@@ -119,13 +119,6 @@ static inline int gethostnum(Target *hostbatch[], Target *target) {
 
 
 
-/* Returns the last host obtained by nexthost.  It will be given again the next
-	 time you call nexthost(). */
-void returnhost(HostGroupState *hs) {
-	assert(hs->next_batch_no > 0);
-	hs->next_batch_no--;
-}
-
 /* Is the host passed as Target to be excluded, much of this logic had  (mdmcl)
  * to be rewritten from wam's original code to allow for the objects */
 static int hostInExclude(struct sockaddr *checksock, size_t checksocklen, 
@@ -363,79 +356,39 @@ int dumpExclude(TargetGroup *exclude_group) {
 }
 
 
+
 Target *
-nexthost(HostGroupState *hs, TargetGroup *exclude_group, vector <service_lookup *>services_cmd)
+nexthost(const char *expr, TargetGroup *exclude_group)
 {
-	int hidx = 0;
 	struct sockaddr_storage ss;
 	size_t sslen;
+	Target *host;
+	static TargetGroup group;
+	static bool newexp = true; /* true for new expression */
 
-	if (hs->next_batch_no < hs->current_batch_sz) {
-		/* Woop!  This is easy -- we just pass back the next host struct */
-		return hs->hostbatch[hs->next_batch_no++];
+	if (newexp) {
+		group = TargetGroup::TargetGroup();
+		group.parse_expr(expr, o.af());
+		newexp = false;
 	}
 
-	hs->current_batch_sz = hs->next_batch_no = 0;
-	do {
-		/* Grab anything we have in our current_expression */
-		while (hs->current_batch_sz < hs->max_batch_sz && 
-				hs->current_expression.get_next_host(&ss, &sslen) == 0)
-		{
-			if (hostInExclude((struct sockaddr *)&ss, sslen, exclude_group)) {
-				continue; /* Skip any hosts the user asked to exclude */
-			}
-			hidx = hs->current_batch_sz;
-			hs->hostbatch[hidx] = new Target();
-			hs->hostbatch[hidx]->setTargetSockAddr(&ss, sslen);
-			/* copy service vector from TargetGroup expression into Target */
-			hs->hostbatch[hidx]->services.assign(hs->current_expression.services.begin(),
-					hs->current_expression.services.end());
-
-			/* put target expression in target if we have a named host without netmask */
-			if ( hs->current_expression.get_targets_type() == TargetGroup::IPV4_NETMASK  &&
-					hs->current_expression.get_namedhost() &&
-					!strchr( hs->target_expressions[hs->next_expression-1], '/' ) ) {
-				hs->hostbatch[hidx]->setTargetName(hs->target_expressions[hs->next_expression-1]);
-			}
-			hs->current_batch_sz++;
-			o.numhosts_scanned++;
-		}
-
-		if (hs->current_batch_sz < hs->max_batch_sz && hs->next_expression < hs->num_expressions) {
-			/* We are going to have to pop in another expression. */
-			//	while (hs->current_expression.parse_expr(hs->target_expressions[hs->next_expression++], o.af()) != 0) {
-			while (1) {
-				hs->current_expression.services.clear();
-				int ret = hs->current_expression.parse_expr(hs->target_expressions[hs->next_expression], o.af());
-				parse_services_target(hs->target_expressions[hs->next_expression], hs->current_expression.services);
-
-				append_services(hs->current_expression.services, services_cmd);
-
-#if 0
-				printf("\n=== Target Group: %s ===\n", hs->target_expressions[hs->next_expression]);
-				for (unsigned int i = 0; i < hs->current_expression.services.size(); i++) {
-					if (hs->current_expression.services[i]->portno) 
-						printf("portno %d ", ntohs(hs->current_expression.services[i]->portno));
-					if (hs->current_expression.services[i]->name)
-						printf("name %s ", hs->current_expression.services[i]->name);
-					printf("\n");
-				}
-#endif
-
-				if (!ret) {
-					hs->next_expression++;
-					break;
-				}
-				hs->next_expression++;
-				if (hs->next_expression >= hs->num_expressions)
-					break;
-			}
-		} else 
-			break;
-		} while(1);
-
-		if (hs->current_batch_sz == 0)
+	/* Skip any hosts the user asked to exclude */
+	do { 
+		if (group.get_next_host(&ss, &sslen)) {  /* no more targets */
+			newexp = true;
 			return NULL;
+		}
+	}	while (hostInExclude((struct sockaddr *)&ss, sslen, exclude_group));
 
-		return hs->hostbatch[hs->next_batch_no++];
+	host = new Target();
+	host->setTargetSockAddr(&ss, sslen);
+
+	/* put target expression in target if we have a named host without netmask */
+	if (group.get_targets_type() == TargetGroup::IPV4_NETMASK  &&
+			group.get_namedhost() && !strchr(expr, '/' ) ) {
+			host->setTargetName(expr);
 	}
+
+	return host;
+}
+

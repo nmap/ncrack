@@ -521,23 +521,4 @@ int TargetGroup::return_last_host() {
 	return 0;
 }
 
-/* Lookahead is the number of hosts that can be
-	 checked (such as ping scanned) in advance.  Randomize causes each
-	 group of up to lookahead hosts to be internally shuffled around.
-	 The target_expressions array MUST REMAIN VALID IN MEMORY as long as
-	 this class instance is used -- the array is NOT copied.
-	 */
-HostGroupState::HostGroupState(int lookahead, char *expr[], int numexpr) {
-	assert(lookahead > 0);
-	hostbatch = (Target **) safe_zalloc(sizeof(Target *) * lookahead);
-	max_batch_sz = lookahead;
-	current_batch_sz = 0;
-	next_batch_no = 0;
-	target_expressions = expr;
-	num_expressions = numexpr;
-	next_expression = 0;
-}
 
-HostGroupState::~HostGroupState() {
-	free(hostbatch);
-}
