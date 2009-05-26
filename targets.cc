@@ -385,7 +385,7 @@ nexthost(const char *expr, TargetGroup *exclude_group)
 
 	/* put target expression in target if we have a named host without netmask */
 	if (group.get_targets_type() == TargetGroup::IPV4_NETMASK  &&
-			group.get_namedhost() && !strchr(expr, '/' ) ) {
+			group.get_namedhost() && !strchr(expr, '/' )) {
 			host->setTargetName(expr);
 	}
 

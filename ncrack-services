@@ -1,6 +1,6 @@
 # Ncrack available services 
 # Use this file to add additional supported services in the format specified:
-# <service_name> <port_number>/<protocol>
+# <service_name> <port_number>/<protocol> <module-specific-options>
 # where protocol = either tcp or udp
 
 ftp 21/tcp

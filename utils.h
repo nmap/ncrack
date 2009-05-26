@@ -11,9 +11,7 @@
 #include <unistd.h>
 #endif
 
-#include "global_structures.h"
-#include <vector>
-using namespace std;
+#include "nbase.h"
 
 /* Timeval subtraction in microseconds */
 #define TIMEVAL_SUBTRACT(a,b) (((a).tv_sec - (b).tv_sec) * 1000000 + (a).tv_usec - (b).tv_usec)
@@ -39,11 +37,23 @@ using namespace std;
    considered to be the same), nonzero otherwise. */
 int optcmp(const char *a, const char *b);
 
-/* parse service/port information for Ncrack */
-int parse_services_handler(char *const exp, vector <service_lookup *> &services);
-int parse_services_target(char *const exp, vector <service_lookup *> &services);
-void append_services(vector <service_lookup *> &dst, vector <service_lookup *> src);
+/* convert string to protocol number */
 u8 str2proto(char *str);
+
+/* strtoul with error checking */
+unsigned long int Strtoul(const char *nptr);
+
+/* 
+ * Return a copy of 'size' characters from 'src' string.
+ * Will always null terminate by allocating 1 additional char.
+ */
+char *Strndup(char *src, size_t size);
+
+/* Convert string to port (in host-byte order) */
+u16 str2port(char *exp);
+
+
+
 
 
 

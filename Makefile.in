@@ -14,9 +14,9 @@ LIBS = @LIBNSOCK_LIBS@ @LIBNBASE_LIBS@ @LIBSSL_LIBS@
 
 TARGET = ncrack
 
-export SRCS = ncrack.cc module.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc
+export SRCS = ncrack.cc module.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc services.cc
 
-OBJS = ncrack.o module.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o
+OBJS = ncrack.o module.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o services.o
 
 .cc.o :
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@

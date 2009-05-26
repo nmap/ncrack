@@ -39,18 +39,21 @@ class Service
 		int done;
 
 		/* timing options that override global ones */
-		unsigned int T_connections;
-		unsigned int T_login_attempts;
-		unsigned int timeout;
+		unsigned long connection_limit; 
+		unsigned long auth_limit;
+		unsigned long connection_delay;
+		int retries;
+		/* misc options */
+		bool ssl;
+		void *module_data; /* service/module-specific data */
 
 		list <Connection *> connections;
-		void *module_data; /* service/module-specific data */
 };
 
 
 class ServiceGroup {
 public:
-  ServiceGroup(vector<Target *> &Targets);
+  ServiceGroup();
   ~ServiceGroup();
   list<Service *> services_finished; /* Services finished (successfully or not) */
   list<Service *> services_in_progress; /* Services currently being cracked */ 

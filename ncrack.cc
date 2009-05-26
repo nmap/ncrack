@@ -1,6 +1,7 @@
 #include "ncrack.h"
 #include "NcrackOps.h"
 #include "utils.h"
+#include "services.h"
 #include "targets.h"
 #include "TargetGroup.h"
 #include "nsock.h"
@@ -13,7 +14,7 @@ extern NcrackOps o;
 using namespace std;
 
 /* global lookup table for available services */
-vector <service_lookup> ServicesSupported; 
+vector <global_service> ServicesTable;
 
 #define DEFAULT_CONNECT_TIMEOUT 5000
 
@@ -26,9 +27,10 @@ void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 void ncrack_module_end(nsock_pool nsp, nsock_iod nsi, void *mydata);
 
 /* schedule additional connections */
-int ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
+static int ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
 /* ncrack initialization */
-static int ncrack(vector <Target *> &Targets);
+static int ncrack(vector <Target *> &Targets, ServiceGroup *SG);
+
 
 static void print_usage(void);
 static void lookup_init(const char *const filename);
@@ -76,10 +78,13 @@ lookup_init(const char *const filename)
 {
 	char line[1024];
 	char servicename[128], proto[16];
+	char *opt;
 	u16 portno;
 	FILE *fp;
-	vector <service_lookup>::iterator vi;
-	service_lookup temp;
+	vector <global_service>::iterator vi;
+	global_service temp;
+
+	memset(&temp, 0, sizeof(temp));
 
 	fp = fopen(filename, "r");
 	if (!fp) 
@@ -92,20 +97,21 @@ lookup_init(const char *const filename)
 		if (sscanf(line, "%127s %hu/%15s", servicename, &portno, proto) != 3)
 			fatal("invalid ncrack-services file: %s\n", filename);
 
-		temp.portno = portno;
-		temp.proto = str2proto(proto);
-		temp.name = strdup(servicename);
+		temp.lookup.portno = portno;
+		temp.lookup.proto = str2proto(proto);
+		temp.lookup.name = strdup(servicename);
 
-		for (vi = ServicesSupported.begin(); vi != ServicesSupported.end(); vi++) {
-			if ((vi->portno == temp.portno) && (vi->proto == temp.proto)
-					&& !(strcmp(vi->name, temp.name))) {
+		for (vi = ServicesTable.begin(); vi != ServicesTable.end(); vi++) {
+			if ((vi->lookup.portno == temp.lookup.portno) && (vi->lookup.proto == temp.lookup.proto)
+					&& !(strcmp(vi->lookup.name, temp.lookup.name))) {
 				if (o.debugging)
 					error("Port %d proto %s is duplicated in services file %s\n", 
 							portno, proto, filename);
 				continue;
 			}
 		}
-		ServicesSupported.push_back(temp);
+
+		ServicesTable.push_back(temp);
 	}
 
 	fclose(fp);
@@ -151,10 +157,27 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-	vector <service_lookup *> services_cmd;
+	ts_spec spec;
 
 	FILE *inputfd = NULL;
 	unsigned long l;
+
+	char *host_spec = NULL;
+	Target *currenths = NULL;
+	vector <Target *> Targets; 	/* targets to be ncracked */
+	vector <Target *>::iterator Tvi;
+
+	ServiceGroup *SG;						/* all services to be cracked */
+	list <Service *>::iterator li;
+
+	vector <Service *>Services;	/* temporary services vector */
+	vector <Service *>::iterator Svi;	/* iterator for services vector */
+	Service *service;
+
+	vector <service_lookup *> services_cmd;
+	vector <service_lookup *>::iterator SCvi;
+
+
 
 	/* time variables */
 	struct tm *tm;
@@ -211,7 +234,7 @@ int main(int argc, char **argv)
 
 	/* Argument parsing */
 	optind = 1;
-	while((arg = getopt_long_only(argc, argv, "hd::i:p:s:vV", long_options, &option_index)) != EOF) {
+	while((arg = getopt_long_only(argc, argv, "d:h:i:m:p:s:vV", long_options, &option_index)) != EOF) {
 		switch(arg) {
 			case 0:
 				if (!strcmp(long_options[option_index].name, "excludefile")) {
@@ -236,7 +259,7 @@ int main(int argc, char **argv)
 						error("host-timeout is given in milliseconds, so you specified less "
 								"than 30 seconds (%lims). This is allowed but not recommended.", l);
 				} else if (!strcmp(long_options[option_index].name, "services")) {
-					parse_services_handler(optarg, services_cmd);
+					parse_services(optarg, services_cmd);
 				} else if (!strcmp(long_options[option_index].name, "list")) {
 					o.list_only++;
 				}
@@ -260,9 +283,12 @@ int main(int argc, char **argv)
 					if (!inputfd) 
 						fatal("Failed to open input file %s for reading", optarg);
 				}
-				break; 
+				break;
+			case 'm':
+				parse_module_options(optarg);
+				break;
 			case 'p':   /* services */
-				parse_services_handler(optarg, services_cmd); 
+				parse_services(optarg, services_cmd); 
 				break;
 			case 's':	/* only list hosts */
 				if (*optarg == 'L')
@@ -282,8 +308,7 @@ int main(int argc, char **argv)
 				print_usage();
 		}
 	}
-
-
+	
 	// ncrack_service();
 
 	now = time(NULL);
@@ -295,9 +320,6 @@ int main(int argc, char **argv)
 	o.setaf(AF_INET);
 
 
-	Target *currenths;
-	char *host_spec = NULL;
-	vector <Target *> Targets;
 
 	/* lets load our exclude list */
 	if ((NULL != excludefd) || (NULL != exclude_spec)) {
@@ -313,41 +335,100 @@ int main(int argc, char **argv)
 	}
 
 
+	SG = new ServiceGroup();
 
 	while ((host_spec = grab_next_host_spec(inputfd, argc, argv))) {
 
-		/* preparse and separate host - service < TODO */
+		/* preparse and separate host - service */
+		spec = parse_services_target(host_spec);
+		
+		// printf("%s://%s:%s?%s\n", spec.service_name, spec.host_expr, spec.portno, spec.service_options);
 
-		while ((currenths = nexthost(host_spec, exclude_group))) {
-			Targets.push_back(currenths);
+		if (spec.service_name) {
+			service = new Service();
+			service->name = strdup(spec.service_name);
+			Services.push_back(service);
+		} else {
+			for (SCvi = services_cmd.begin(); SCvi != services_cmd.end(); SCvi++) {
+				service = new Service();
+				service->name = (*SCvi)->name;
+				service->portno = (*SCvi)->portno;
+				service->proto = (*SCvi)->proto;
+				Services.push_back(service);
+			}
 		}
+
+		/* first apply global options -g TODO */
+
+		/* then apply options from ServiceTable */
+		for (Svi = Services.begin(); Svi != Services.end(); Svi++) {
+			apply_service_options(*Svi);
+		}
+
+		/* finally, if they have been specified, apply options from host */
+		if (spec.service_options)
+			apply_host_options(Services[0], spec.service_options);
+		if (spec.portno)
+			Services[0]->portno = str2port(spec.portno);
+
+		while ((currenths = nexthost(spec.host_expr, exclude_group))) {
+			Targets.push_back(currenths);
+			while (!Services.empty()) {
+				service = Services.back();
+				service->target = currenths;
+				/* check for duplicates */
+				for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
+					if (!strcmp((*li)->target->NameIP(), currenths->NameIP()) &&
+							(!strcmp((*li)->name, service->name)) && ((*li)->portno == service->portno))
+						fatal("Duplicate service %s for target %s !\n", service->name, currenths->NameIP());
+				}
+				SG->services_remaining.push_back(service);
+				SG->total_services++;
+				Services.pop_back();
+			}
+		}
+		clean_spec(&spec);
 	}
 
 	if (o.list_only) {
+		if (o.debugging > 3) {
+			printf("\n=== ServicesTable ===\n");
+			for (unsigned int i = 0; i < ServicesTable.size(); i++) {
+				printf("%s:%hu cl=%lu, al=%lu, cd=%lu, mr=%d\n", 
+						ServicesTable[i].lookup.name,
+						ServicesTable[i].lookup.portno,
+						ServicesTable[i].timing.connection_limit,
+						ServicesTable[i].timing.auth_limit,
+						ServicesTable[i].timing.connection_delay,
+						ServicesTable[i].timing.retries);
+			}
+		}
 		printf("\n=== Targets ===\n");
 		for (unsigned int i = 0; i < Targets.size(); i++) {
 			printf("Host: %s\n", Targets[i]->NameIP());
-			for (unsigned int j = 0; j < Targets[i]->services.size(); j++) {
-				printf("  %s:%hu\n", 
-						Targets[i]->services[j]->name,
-						Targets[i]->services[j]->portno);
+			for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
+				if ((*li)->target == Targets[i])
+					printf("  %s:%hu cl=%lu, al=%lu, cd=%lu, mr=%d\n", 
+							(*li)->name, (*li)->portno, (*li)->connection_limit,
+							(*li)->auth_limit, (*li)->connection_delay, (*li)->retries);
 			}
 		}
 	} else {
+		if (!SG->total_services)
+			fatal("No services specified!\n");
+
+		SG->last_accessed = SG->services_remaining.end();
 		/* Ncrack 'em all! */
-		ncrack(Targets);
+		ncrack(Targets, SG);
 	}
 
 	/* Free all of the Targets */
 	while(!Targets.empty()) {
 		currenths = Targets.back();
-		while (!currenths->services.empty()) {
-			free(currenths->services.back());
-			currenths->services.pop_back();
-		}		
 		delete currenths;
 		Targets.pop_back();
 	}
+	delete SG;
 
 
 	printf("\nNcrack finished.\n");
@@ -433,7 +514,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
 
-int
+static int
 ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 	Service *serv;
 	Connection *connection;
@@ -496,16 +577,13 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 
 
 static int
-ncrack(vector <Target *> &Targets)
+ncrack(vector <Target *> &Targets, ServiceGroup *SG)
 {
 	/* nsock variables */
 	struct timeval now;
 	enum nsock_loopstatus loopret;
 	nsock_pool nsp;
 	int tracelevel = 0;
-	ServiceGroup *SG;
-
-	SG = new ServiceGroup(Targets);
 
 	/* create nsock p00l */
 	if (!(nsp = nsp_new(SG))) 

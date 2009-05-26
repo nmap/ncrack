@@ -1,3 +1,6 @@
+#ifndef NCRACK_OPS_H
+#define NCRACK_OPS_H 1
+
 #include "ncrack.h"
 
 class NcrackOps {
@@ -20,3 +23,5 @@ class NcrackOps {
 	private:
 		int addressfamily; /*  Address family:  AF_INET or AF_INET6 */  
 };
+
+#endif

@@ -183,8 +183,6 @@ class Target {
 		char *hostname; // Null if unable to resolve or unset
 		char *targetname; // The name of the target host given on the commmand line if it is a named host
 
-		vector <service_lookup *> services; /* services to crack */
-
 	private:
 		void Initialize();
 		void FreeInternal(); // Free memory allocated inside this object
