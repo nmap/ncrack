@@ -157,7 +157,7 @@ class Target {
 			 host. */
 		const char *TargetName() { return targetname; }
 		/* You can set to NULL to erase a name.  The targetname is blown
-			 away when you setTargetSockAddr(), so make sure you do th	ese in proper
+			 away when you setTargetSockAddr(), so make sure you do these in proper
 			 order
 			 */
 		void setTargetName(const char *name);

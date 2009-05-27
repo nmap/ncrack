@@ -403,8 +403,15 @@ int main(int argc, char **argv)
 			Services[0]->portno = str2port(spec.portno);
 
 		while ((currenths = nexthost(spec.host_expr, exclude_group))) {
-			Targets.push_back(currenths);
-			printf("%s \n", currenths->NameIP());
+			for (Tvi = Targets.begin(); Tvi != Targets.end(); Tvi++) {
+				if (!(strcmp((*Tvi)->NameIP(), currenths->NameIP())))
+					break;
+				}
+			if (Tvi == Targets.end())
+				Targets.push_back(currenths);
+			else 
+				currenths = *Tvi;
+
 			for (Svi = Services.begin(); Svi != Services.end(); Svi++) {
 				service = new Service(**Svi);
 
@@ -441,7 +448,10 @@ int main(int argc, char **argv)
 		}
 		printf("\n=== Targets ===\n");
 		for (unsigned int i = 0; i < Targets.size(); i++) {
-			printf("Host: %s\n", Targets[i]->NameIP());
+			printf("Host: %s", Targets[i]->NameIP());
+			if (Targets[i]->targetname)
+				printf(" ( %s ) ", Targets[i]->targetname);
+			printf("\n");
 			for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
 				if ((*li)->target == Targets[i])
 					printf("  %s:%hu cl=%ld, al=%ld, cd=%ld, mr=%ld\n", 
