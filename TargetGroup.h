@@ -134,7 +134,7 @@ class TargetGroup {
   /* Skip an octet in the range array */
   int skip_range(_octet_nums octet);
 
-	vector <service_lookup *>services;
+  vector <service_lookup *>services;
 
  private:
   enum _targets_types targets_type;
@@ -157,7 +157,7 @@ class TargetGroup {
   u8 last[4];  
 
 /* Number of IPs left in this structure -- set to 0 if 
-		  the fields are not valid */
+      the fields are not valid */
   unsigned long long ipsleft; 
 
   // is the current target expression a named host

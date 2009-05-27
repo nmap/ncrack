@@ -65,7 +65,7 @@ void fatal(const char *fmt, ...)
      __attribute__ ((format (printf, 1, 2)));
 void error(const char *fmt, ...)
      __attribute__ ((format (printf, 1, 2)));
-	
+  
 
 #ifdef __cplusplus
 }

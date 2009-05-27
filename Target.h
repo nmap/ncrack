@@ -105,94 +105,94 @@ using namespace std;
 
 
 struct host_timeout_nfo {
-	unsigned long msecs_used; /* How many msecs has this Target used? */
-	bool toclock_running; /* Is the clock running right now? */
-	struct timeval toclock_start; /* When did the clock start? */
-	time_t host_start, host_end; /* The absolute start and end for this host */
+  unsigned long msecs_used; /* How many msecs has this Target used? */
+  bool toclock_running; /* Is the clock running right now? */
+  struct timeval toclock_start; /* When did the clock start? */
+  time_t host_start, host_end; /* The absolute start and end for this host */
 };
 
 class Target {
-	public: /* For now ... a lot of the data members should be made private */
-		Target();
-		~Target();
-		/* Recycles the object by freeing internal objects and reinitializing
-			 to default state */
-		void Recycle();
-		/* Fills a sockaddr_storage with the AF_INET or AF_INET6 address
-			 information of the target.  This is a preferred way to get the
-			 address since it is portable for IPv6 hosts.  Returns 0 for
-			 success. ss_len must be provided.  It is not examined, but is set
-			 to the size of the sockaddr copied in. */
-		int TargetSockAddr(struct sockaddr_storage *ss, size_t *ss_len);
-		/* Note that it is OK to pass in a sockaddr_in or sockaddr_in6 casted
-			 to sockaddr_storage */
-		void setTargetSockAddr(struct sockaddr_storage *ss, size_t ss_len);
-		// Returns IPv4 target host address or {0} if unavailable.
-		struct in_addr v4host();
-		const struct in_addr *v4hostip() const;
-		/* The IPv4 or IPv6 literal string for the target host */
-		const char *targetipstr() { return targetipstring; }
-		/* Give the name from the last setHostName() call, which should be
-			 the name obtained from reverse-resolution (PTR query) of the IP (v4
-			 or v6).  If the name has not been set, or was set to NULL, an empty
-			 string ("") is returned to make printing easier. */
-		const char *HostName() { return hostname? hostname : "";  }
-		/* You can set to NULL to erase a name or if it failed to resolve -- or 
-			 just don't call this if it fails to resolve.  The hostname is blown
-			 away when you setTargetSockAddr(), so make sure you do these in proper
-			 order
-			 */
-		void setHostName(char *name);
-		/* Generates a printable string consisting of the host's IP
-			 address and hostname (if available).  Eg "www.insecure.org
-			 (64.71.184.53)" or "fe80::202:e3ff:fe14:1102".  The name is
-			 written into the buffer provided, which is also returned.  Results
-			 that do not fit in buflen will be truncated. */
-		const char *NameIP(char *buf, size_t buflen);
-		/* This next version returns a STATIC buffer -- so no concurrency */
-		const char *NameIP();
+  public: /* For now ... a lot of the data members should be made private */
+    Target();
+    ~Target();
+    /* Recycles the object by freeing internal objects and reinitializing
+       to default state */
+    void Recycle();
+    /* Fills a sockaddr_storage with the AF_INET or AF_INET6 address
+       information of the target.  This is a preferred way to get the
+       address since it is portable for IPv6 hosts.  Returns 0 for
+       success. ss_len must be provided.  It is not examined, but is set
+       to the size of the sockaddr copied in. */
+    int TargetSockAddr(struct sockaddr_storage *ss, size_t *ss_len);
+    /* Note that it is OK to pass in a sockaddr_in or sockaddr_in6 casted
+       to sockaddr_storage */
+    void setTargetSockAddr(struct sockaddr_storage *ss, size_t ss_len);
+    // Returns IPv4 target host address or {0} if unavailable.
+    struct in_addr v4host();
+    const struct in_addr *v4hostip() const;
+    /* The IPv4 or IPv6 literal string for the target host */
+    const char *targetipstr() { return targetipstring; }
+    /* Give the name from the last setHostName() call, which should be
+       the name obtained from reverse-resolution (PTR query) of the IP (v4
+       or v6).  If the name has not been set, or was set to NULL, an empty
+       string ("") is returned to make printing easier. */
+    const char *HostName() { return hostname? hostname : "";  }
+    /* You can set to NULL to erase a name or if it failed to resolve -- or 
+       just don't call this if it fails to resolve.  The hostname is blown
+       away when you setTargetSockAddr(), so make sure you do these in proper
+       order
+       */
+    void setHostName(char *name);
+    /* Generates a printable string consisting of the host's IP
+       address and hostname (if available).  Eg "www.insecure.org
+       (64.71.184.53)" or "fe80::202:e3ff:fe14:1102".  The name is
+       written into the buffer provided, which is also returned.  Results
+       that do not fit in buflen will be truncated. */
+    const char *NameIP(char *buf, size_t buflen);
+    /* This next version returns a STATIC buffer -- so no concurrency */
+    const char *NameIP();
 
-		/* Give the name from the last setTargetName() call, which is the 
-			 name of the target given on the command line if it's a named
-			 host. */
-		const char *TargetName() { return targetname; }
-		/* You can set to NULL to erase a name.  The targetname is blown
-			 away when you setTargetSockAddr(), so make sure you do these in proper
-			 order
-			 */
-		void setTargetName(const char *name);
+    /* Give the name from the last setTargetName() call, which is the 
+       name of the target given on the command line if it's a named
+       host. */
+    const char *TargetName() { return targetname; }
+    /* You can set to NULL to erase a name.  The targetname is blown
+       away when you setTargetSockAddr(), so make sure you do these in proper
+       order
+       */
+    void setTargetName(const char *name);
 
-		/* Starts the timeout clock for the host running (e.g. you are
-			 beginning a scan).  If you do not have the current time handy,
-			 you can pass in NULL.  When done, call stopTimeOutClock (it will
-			 also automatically be stopped of timedOut() returns true) */
-		void startTimeOutClock(const struct timeval *now);
-		/* The complement to startTimeOutClock. */
-		void stopTimeOutClock(const struct timeval *now);
-		/* Is the timeout clock currently running? */
-		bool timeOutClockRunning() { return htn.toclock_running; }
-		/* Returns whether the host is timedout.  If the timeoutclock is
-			 running, counts elapsed time for that.  Pass NULL if you don't have the
-			 current time handy.  You might as well also pass NULL if the
-			 clock is not running, as the func won't need the time. */
-		bool timedOut(const struct timeval *now);
-		/* Return time_t for the start and end time of this host */
-		time_t StartTime() { return htn.host_start; }
-		time_t EndTime() { return htn.host_end; }
+    /* Starts the timeout clock for the host running (e.g. you are
+       beginning a scan).  If you do not have the current time handy,
+       you can pass in NULL.  When done, call stopTimeOutClock (it will
+       also automatically be stopped of timedOut() returns true) */
+    void startTimeOutClock(const struct timeval *now);
+    /* The complement to startTimeOutClock. */
+    void stopTimeOutClock(const struct timeval *now);
+    /* Is the timeout clock currently running? */
+    bool timeOutClockRunning() { return htn.toclock_running; }
+    /* Returns whether the host is timedout.  If the timeoutclock is
+       running, counts elapsed time for that.  Pass NULL if you don't have the
+       current time handy.  You might as well also pass NULL if the
+       clock is not running, as the func won't need the time. */
+    bool timedOut(const struct timeval *now);
+    /* Return time_t for the start and end time of this host */
+    time_t StartTime() { return htn.host_start; }
+    time_t EndTime() { return htn.host_end; }
 
-		char *hostname; // Null if unable to resolve or unset
-		char *targetname; // The name of the target host given on the commmand line if it is a named host
+    char *hostname; // Null if unable to resolve or unset
+    char *targetname; // The name of the target host given on the commmand line if it is a named host
 
-	private:
-		void Initialize();
-		void FreeInternal(); // Free memory allocated inside this object
-		// Creates a "presentation" formatted string out of the IPv4/IPv6 address
-		void GenerateIPString();
-		struct sockaddr_storage targetsock;
-		size_t targetsocklen;
-		char targetipstring[INET6_ADDRSTRLEN];
-		char *nameIPBuf; /* for the NameIP(void) function to return */
-		struct host_timeout_nfo htn;
+  private:
+    void Initialize();
+    void FreeInternal(); // Free memory allocated inside this object
+    // Creates a "presentation" formatted string out of the IPv4/IPv6 address
+    void GenerateIPString();
+    struct sockaddr_storage targetsock;
+    size_t targetsocklen;
+    char targetipstring[INET6_ADDRSTRLEN];
+    char *nameIPBuf; /* for the NameIP(void) function to return */
+    struct host_timeout_nfo htn;
 };
 
 #endif /* TARGET_H */

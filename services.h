@@ -8,10 +8,10 @@ using namespace std;
 
 /* target-service specification */
 typedef struct ts_spec {
-	char *service_name;
-	char *host_expr;
-	char *service_options;
-	char *portno;
+  char *service_name;
+  char *host_expr;
+  char *service_options;
+  char *portno;
 } ts_spec;
 
 

@@ -104,17 +104,17 @@ extern NcrackOps o;
 using namespace std;
 
 /* Gets the host number (index) of target in the hostbatch array of
-	 pointers.  Note that the target MUST EXIST in the array or all
-	 heck will break loose. */
+   pointers.  Note that the target MUST EXIST in the array or all
+   heck will break loose. */
 static inline int gethostnum(Target *hostbatch[], Target *target) {
-	int i = 0;
-	do {
-		if (hostbatch[i] == target)
-			return i;
-	} while(++i);
+  int i = 0;
+  do {
+    if (hostbatch[i] == target)
+      return i;
+  } while(++i);
 
-	fatal("fluxx0red");
-	return 0; // Unreached
+  fatal("fluxx0red");
+  return 0; // Unreached
 }
 
 
@@ -122,188 +122,188 @@ static inline int gethostnum(Target *hostbatch[], Target *target) {
 /* Is the host passed as Target to be excluded, much of this logic had  (mdmcl)
  * to be rewritten from wam's original code to allow for the objects */
 static int hostInExclude(struct sockaddr *checksock, size_t checksocklen, 
-		TargetGroup *exclude_group) {
-	unsigned long tmpTarget; /* ip we examine */
-	int i=0;                 /* a simple index */
-	char targets_type;       /* what is the address type of the Target Group */
-	struct sockaddr_storage ss; 
-	struct sockaddr_in *sin = (struct sockaddr_in *) &ss;
-	size_t slen;             /* needed for funct but not used */
-	unsigned long mask = 0;  /* our trusty netmask, which we convert to nbo */
-	struct sockaddr_in *checkhost;
+    TargetGroup *exclude_group) {
+  unsigned long tmpTarget; /* ip we examine */
+  int i=0;                 /* a simple index */
+  char targets_type;       /* what is the address type of the Target Group */
+  struct sockaddr_storage ss; 
+  struct sockaddr_in *sin = (struct sockaddr_in *) &ss;
+  size_t slen;             /* needed for funct but not used */
+  unsigned long mask = 0;  /* our trusty netmask, which we convert to nbo */
+  struct sockaddr_in *checkhost;
 
-	if ((TargetGroup *)0 == exclude_group)
-		return 0;
+  if ((TargetGroup *)0 == exclude_group)
+    return 0;
 
-	assert(checksocklen >= sizeof(struct sockaddr_in));
-	checkhost = (struct sockaddr_in *) checksock;
-	if (checkhost->sin_family != AF_INET)
-		checkhost = NULL;
+  assert(checksocklen >= sizeof(struct sockaddr_in));
+  checkhost = (struct sockaddr_in *) checksock;
+  if (checkhost->sin_family != AF_INET)
+    checkhost = NULL;
 
-	/* First find out what type of addresses are in the target group */
-	targets_type = exclude_group[i].get_targets_type();
+  /* First find out what type of addresses are in the target group */
+  targets_type = exclude_group[i].get_targets_type();
 
-	/* Lets go through the targets until we reach our uninitialized placeholder */
-	while (exclude_group[i].get_targets_type() != TargetGroup::TYPE_NONE)
-	{ 
-		/* while there are still hosts in the target group */
-		while (exclude_group[i].get_next_host(&ss, &slen) == 0) {
-			tmpTarget = sin->sin_addr.s_addr; 
+  /* Lets go through the targets until we reach our uninitialized placeholder */
+  while (exclude_group[i].get_targets_type() != TargetGroup::TYPE_NONE)
+  { 
+    /* while there are still hosts in the target group */
+    while (exclude_group[i].get_next_host(&ss, &slen) == 0) {
+      tmpTarget = sin->sin_addr.s_addr; 
 
-			/* For Netmasks simply compare the network bits and move to the next
-			 * group if it does not compare, we don't care about the individual addrs */
-			if (targets_type == TargetGroup::IPV4_NETMASK) {
-				mask = htonl((unsigned long) (0-1) << (32-exclude_group[i].get_mask()));
-				if ((tmpTarget & mask) == (checkhost->sin_addr.s_addr & mask)) {
-					exclude_group[i].rewind();
-					return 1;
-				}
-				else {
-					break;
-				}
-			} 
-			/* For ranges we need to be a little more slick, if we don't find a match
-			 * we should skip the rest of the addrs in the octet, thank wam for this
-			 * optimization */
-			else if (targets_type == TargetGroup::IPV4_RANGES) {
-				if (tmpTarget == checkhost->sin_addr.s_addr) {
-					exclude_group[i].rewind();
-					return 1;
-				}
-				else { /* note these are in network byte order */
-					if ((tmpTarget & 0x000000ff) != (checkhost->sin_addr.s_addr & 0x000000ff))
-						exclude_group[i].skip_range(TargetGroup::FIRST_OCTET); 
-					else if ((tmpTarget & 0x0000ff00) != (checkhost->sin_addr.s_addr & 0x0000ff00))
-						exclude_group[i].skip_range(TargetGroup::SECOND_OCTET); 
-					else if ((tmpTarget & 0x00ff0000) != (checkhost->sin_addr.s_addr & 0x00ff0000))
-						exclude_group[i].skip_range(TargetGroup::THIRD_OCTET); 
+      /* For Netmasks simply compare the network bits and move to the next
+       * group if it does not compare, we don't care about the individual addrs */
+      if (targets_type == TargetGroup::IPV4_NETMASK) {
+        mask = htonl((unsigned long) (0-1) << (32-exclude_group[i].get_mask()));
+        if ((tmpTarget & mask) == (checkhost->sin_addr.s_addr & mask)) {
+          exclude_group[i].rewind();
+          return 1;
+        }
+        else {
+          break;
+        }
+      } 
+      /* For ranges we need to be a little more slick, if we don't find a match
+       * we should skip the rest of the addrs in the octet, thank wam for this
+       * optimization */
+      else if (targets_type == TargetGroup::IPV4_RANGES) {
+        if (tmpTarget == checkhost->sin_addr.s_addr) {
+          exclude_group[i].rewind();
+          return 1;
+        }
+        else { /* note these are in network byte order */
+          if ((tmpTarget & 0x000000ff) != (checkhost->sin_addr.s_addr & 0x000000ff))
+            exclude_group[i].skip_range(TargetGroup::FIRST_OCTET); 
+          else if ((tmpTarget & 0x0000ff00) != (checkhost->sin_addr.s_addr & 0x0000ff00))
+            exclude_group[i].skip_range(TargetGroup::SECOND_OCTET); 
+          else if ((tmpTarget & 0x00ff0000) != (checkhost->sin_addr.s_addr & 0x00ff0000))
+            exclude_group[i].skip_range(TargetGroup::THIRD_OCTET); 
 
-					continue;
-				}
-			}
+          continue;
+        }
+      }
 #if HAVE_IPV6
-			else if (targets_type == TargetGroup::IPV6_ADDRESS) {
-				fatal("exclude file not supported for IPV6 -- If it is important to you, send a mail to fyodor@insecure.org so I can guage support\n");
-			}
+      else if (targets_type == TargetGroup::IPV6_ADDRESS) {
+        fatal("exclude file not supported for IPV6 -- If it is important to you, send a mail to fyodor@insecure.org so I can guage support\n");
+      }
 #endif
-		}
-		exclude_group[i++].rewind();
-	}
+    }
+    exclude_group[i++].rewind();
+  }
 
-	/* we did not find the host */
-	return 0;
+  /* we did not find the host */
+  return 0;
 }
 
 /* loads an exclude file into an exclude target list  (mdmcl) */
 TargetGroup* load_exclude(FILE *fExclude, char *szExclude) {
-	int i=0;			/* loop counter */
-	int iLine=0;			/* line count */
-	int iListSz=0;		/* size of our exclude target list. 
-										 * It doubles in size as it gets
-										 *  close to filling up
-										 */
-	char acBuf[512];
-	char *p_acBuf;
-	TargetGroup *excludelist;	/* list of ptrs to excluded targets */
-	char *pc;			/* the split out exclude expressions */
-	char b_file = (char)0;        /* flag to indicate if we are using a file */
+  int i=0;      /* loop counter */
+  int iLine=0;      /* line count */
+  int iListSz=0;    /* size of our exclude target list. 
+                     * It doubles in size as it gets
+                     *  close to filling up
+                     */
+  char acBuf[512];
+  char *p_acBuf;
+  TargetGroup *excludelist; /* list of ptrs to excluded targets */
+  char *pc;     /* the split out exclude expressions */
+  char b_file = (char)0;        /* flag to indicate if we are using a file */
 
-	/* If there are no params return now with a NULL list */
-	if (((FILE *)0 == fExclude) && ((char *)0 == szExclude)) {
-		excludelist=NULL;
-		return excludelist;
-	}
+  /* If there are no params return now with a NULL list */
+  if (((FILE *)0 == fExclude) && ((char *)0 == szExclude)) {
+    excludelist=NULL;
+    return excludelist;
+  }
 
-	if ((FILE *)0 != fExclude)
-		b_file = (char)1;
+  if ((FILE *)0 != fExclude)
+    b_file = (char)1;
 
-	/* Since I don't know of a realloc equiv in C++, we will just count
-	 * the number of elements here. */
+  /* Since I don't know of a realloc equiv in C++, we will just count
+   * the number of elements here. */
 
-	/* If the input was given to us in a file, count the number of elements
-	 * in the file, and reset the file */
-	if (1 == b_file) {
-		while ((char *)0 != fgets(acBuf,sizeof(acBuf), fExclude)) {
-			/* the last line can contain no newline, then we have to check for EOF */
-			if ((char *)0 == strchr(acBuf, '\n') && !feof(fExclude)) {
-				fatal("Exclude file line %d was too long to read.  Exiting.", iLine);
-			}
-			pc=strtok(acBuf, "\t\n ");	
-			while (NULL != pc) {
-				iListSz++;
-				pc=strtok(NULL, "\t\n ");
-			}
-		}
-		rewind(fExclude);
-	} /* If the exclude file was provided via command line, count the elements here */
-	else {
-		p_acBuf=strdup(szExclude);
-		pc=strtok(p_acBuf, ",");
-		while (NULL != pc) {
-			iListSz++;
-			pc=strtok(NULL, ",");
-		}
-		free(p_acBuf);
-		p_acBuf = NULL;
-	}
+  /* If the input was given to us in a file, count the number of elements
+   * in the file, and reset the file */
+  if (1 == b_file) {
+    while ((char *)0 != fgets(acBuf,sizeof(acBuf), fExclude)) {
+      /* the last line can contain no newline, then we have to check for EOF */
+      if ((char *)0 == strchr(acBuf, '\n') && !feof(fExclude)) {
+        fatal("Exclude file line %d was too long to read.  Exiting.", iLine);
+      }
+      pc=strtok(acBuf, "\t\n ");  
+      while (NULL != pc) {
+        iListSz++;
+        pc=strtok(NULL, "\t\n ");
+      }
+    }
+    rewind(fExclude);
+  } /* If the exclude file was provided via command line, count the elements here */
+  else {
+    p_acBuf=strdup(szExclude);
+    pc=strtok(p_acBuf, ",");
+    while (NULL != pc) {
+      iListSz++;
+      pc=strtok(NULL, ",");
+    }
+    free(p_acBuf);
+    p_acBuf = NULL;
+  }
 
-	/* allocate enough TargetGroups to cover our entries, plus one that
-	 * remains uninitialized so we know we reached the end */
-	excludelist = new TargetGroup[iListSz + 1];
+  /* allocate enough TargetGroups to cover our entries, plus one that
+   * remains uninitialized so we know we reached the end */
+  excludelist = new TargetGroup[iListSz + 1];
 
-	/* don't use a for loop since the counter isn't incremented if the 
-	 * exclude entry isn't parsed
-	 */
-	i=0;
-	if (1 == b_file) {
-		/* If we are parsing a file load the exclude list from that */
-		while ((char *)0 != fgets(acBuf, sizeof(acBuf), fExclude)) {
-			++iLine;
-			if ((char *)0 == strchr(acBuf, '\n') && !feof(fExclude)) {
-				fatal("Exclude file line %d was too long to read.  Exiting.", iLine);
-			}
+  /* don't use a for loop since the counter isn't incremented if the 
+   * exclude entry isn't parsed
+   */
+  i=0;
+  if (1 == b_file) {
+    /* If we are parsing a file load the exclude list from that */
+    while ((char *)0 != fgets(acBuf, sizeof(acBuf), fExclude)) {
+      ++iLine;
+      if ((char *)0 == strchr(acBuf, '\n') && !feof(fExclude)) {
+        fatal("Exclude file line %d was too long to read.  Exiting.", iLine);
+      }
 
-			pc=strtok(acBuf, "\t\n ");	
+      pc=strtok(acBuf, "\t\n ");  
 
-			while ((char *)0 != pc) {
-				if(excludelist[i].parse_expr(pc,o.af()) == 0) {
-					if (o.debugging > 1)
-						error("Loaded exclude target of: %s", pc);
-					++i;
-				} 
-				pc=strtok(NULL, "\t\n ");
-			}
-		}
-	}
-	else {
-		/* If we are parsing command line, load the exclude file from the string */
-		p_acBuf=strdup(szExclude);
-		pc=strtok(p_acBuf, ",");
+      while ((char *)0 != pc) {
+        if(excludelist[i].parse_expr(pc,o.af()) == 0) {
+          if (o.debugging > 1)
+            error("Loaded exclude target of: %s", pc);
+          ++i;
+        } 
+        pc=strtok(NULL, "\t\n ");
+      }
+    }
+  }
+  else {
+    /* If we are parsing command line, load the exclude file from the string */
+    p_acBuf=strdup(szExclude);
+    pc=strtok(p_acBuf, ",");
 
-		while (NULL != pc) {
-			if(excludelist[i].parse_expr(pc,o.af()) == 0) {
-				if (o.debugging >1)
-					error("Loaded exclude target of: %s", pc);
-				++i;
-			} 
+    while (NULL != pc) {
+      if(excludelist[i].parse_expr(pc,o.af()) == 0) {
+        if (o.debugging >1)
+          error("Loaded exclude target of: %s", pc);
+        ++i;
+      } 
 
-			/* This is a totally cheezy hack, but since I can't use strtok_r...
-			 * If you can think of a better way to do this, feel free to change.
-			 * As for now, we will reset strtok each time we leave parse_expr */
-			{
-				int hack_i;
-				char *hack_c = strdup(szExclude);
+      /* This is a totally cheezy hack, but since I can't use strtok_r...
+       * If you can think of a better way to do this, feel free to change.
+       * As for now, we will reset strtok each time we leave parse_expr */
+      {
+        int hack_i;
+        char *hack_c = strdup(szExclude);
 
-				pc=strtok(hack_c, ",");
+        pc=strtok(hack_c, ",");
 
-				for (hack_i = 0; hack_i < i; hack_i++) 
-					pc=strtok(NULL, ",");
+        for (hack_i = 0; hack_i < i; hack_i++) 
+          pc=strtok(NULL, ",");
 
-				free(hack_c);
-			}
-		} 
-	}
-	return excludelist;
+        free(hack_c);
+      }
+    } 
+  }
+  return excludelist;
 }
 
 /* A debug routine to dump some information to stdout.                  (mdmcl)
@@ -315,44 +315,44 @@ TargetGroup* load_exclude(FILE *fExclude, char *szExclude) {
  * debugging, I went for the method below.
  */
 int dumpExclude(TargetGroup *exclude_group) {
-	int i=0, debug_save=0, type=TargetGroup::TYPE_NONE;
-	unsigned int mask = 0;
-	struct sockaddr_storage ss;
-	struct sockaddr_in *sin = (struct sockaddr_in *) &ss;
-	size_t slen;
+  int i=0, debug_save=0, type=TargetGroup::TYPE_NONE;
+  unsigned int mask = 0;
+  struct sockaddr_storage ss;
+  struct sockaddr_in *sin = (struct sockaddr_in *) &ss;
+  size_t slen;
 
-	/* shut off debugging for now, this is a debug routine in itself,
-	 * we don't want to see all the debug messages inside of the object */
-	debug_save = o.debugging;
-	o.debugging = 0;
+  /* shut off debugging for now, this is a debug routine in itself,
+   * we don't want to see all the debug messages inside of the object */
+  debug_save = o.debugging;
+  o.debugging = 0;
 
-	while ((type = exclude_group[i].get_targets_type()) != TargetGroup::TYPE_NONE)
-	{
-		switch (type) {
-			case TargetGroup::IPV4_NETMASK:
-				exclude_group[i].get_next_host(&ss, &slen);
-				mask = exclude_group[i].get_mask();
-				error("exclude host group %d is %s/%d\n", i, inet_ntoa(sin->sin_addr), mask);
-				break;
+  while ((type = exclude_group[i].get_targets_type()) != TargetGroup::TYPE_NONE)
+  {
+    switch (type) {
+      case TargetGroup::IPV4_NETMASK:
+        exclude_group[i].get_next_host(&ss, &slen);
+        mask = exclude_group[i].get_mask();
+        error("exclude host group %d is %s/%d\n", i, inet_ntoa(sin->sin_addr), mask);
+        break;
 
-			case TargetGroup::IPV4_RANGES:
-				while (exclude_group[i].get_next_host(&ss, &slen) == 0) 
-					error("exclude host group %d is %s\n", i, inet_ntoa(sin->sin_addr));
-				break;
+      case TargetGroup::IPV4_RANGES:
+        while (exclude_group[i].get_next_host(&ss, &slen) == 0) 
+          error("exclude host group %d is %s\n", i, inet_ntoa(sin->sin_addr));
+        break;
 
-			case TargetGroup::IPV6_ADDRESS:
-				fatal("IPV6 addresses are not supported in the exclude file\n");
-				break;
+      case TargetGroup::IPV6_ADDRESS:
+        fatal("IPV6 addresses are not supported in the exclude file\n");
+        break;
 
-			default:
-				fatal("Unknown target type in exclude file.\n");
-		}
-		exclude_group[i++].rewind();
-	}
+      default:
+        fatal("Unknown target type in exclude file.\n");
+    }
+    exclude_group[i++].rewind();
+  }
 
-	/* return debugging to what it was */
-	o.debugging = debug_save; 
-	return 1;
+  /* return debugging to what it was */
+  o.debugging = debug_save; 
+  return 1;
 }
 
 
@@ -360,35 +360,35 @@ int dumpExclude(TargetGroup *exclude_group) {
 Target *
 nexthost(const char *expr, TargetGroup *exclude_group)
 {
-	struct sockaddr_storage ss;
-	size_t sslen;
-	Target *host;
-	static TargetGroup group;
-	static bool newexp = true; /* true for new expression */
+  struct sockaddr_storage ss;
+  size_t sslen;
+  Target *host;
+  static TargetGroup group;
+  static bool newexp = true; /* true for new expression */
 
-	if (newexp) {
-		group = TargetGroup::TargetGroup();
-		group.parse_expr(expr, o.af());
-		newexp = false;
-	}
+  if (newexp) {
+    group = TargetGroup::TargetGroup();
+    group.parse_expr(expr, o.af());
+    newexp = false;
+  }
 
-	/* Skip any hosts the user asked to exclude */
-	do { 
-		if (group.get_next_host(&ss, &sslen)) {  /* no more targets */
-			newexp = true;
-			return NULL;
-		}
-	}	while (hostInExclude((struct sockaddr *)&ss, sslen, exclude_group));
+  /* Skip any hosts the user asked to exclude */
+  do { 
+    if (group.get_next_host(&ss, &sslen)) {  /* no more targets */
+      newexp = true;
+      return NULL;
+    }
+  } while (hostInExclude((struct sockaddr *)&ss, sslen, exclude_group));
 
-	host = new Target();
-	host->setTargetSockAddr(&ss, sslen);
+  host = new Target();
+  host->setTargetSockAddr(&ss, sslen);
 
-	/* put target expression in target if we have a named host without netmask */
-	if (group.get_targets_type() == TargetGroup::IPV4_NETMASK  &&
-			group.get_namedhost() && !strchr(expr, '/' )) {
-			host->setTargetName(expr);
-	}
+  /* put target expression in target if we have a named host without netmask */
+  if (group.get_targets_type() == TargetGroup::IPV4_NETMASK  &&
+      group.get_namedhost() && !strchr(expr, '/' )) {
+      host->setTargetName(expr);
+  }
 
-	return host;
+  return host;
 }
 
