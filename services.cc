@@ -7,6 +7,7 @@
 
 /* global supported services' lookup table from ncrak-services file */
 extern vector <global_service> ServicesTable; 
+extern NcrackOps o;
 using namespace std;
 
 static int check_duplicate_services(vector <service_lookup *> services, service_lookup *serv);
@@ -15,6 +16,7 @@ static int parse_service_argument(char *const arg, char **argname, char **argval
 static int check_duplicate_services(vector <service_lookup *> services, service_lookup *serv);
 static global_service parse_services_options(char *const exp);
 static int check_supported_services(service_lookup *serv);
+static global_service parse_services_options(char *const exp);
 
 
 
@@ -164,6 +166,8 @@ parse_module_options(char *const exp)
 }
 
 
+
+
 void
 apply_host_options(Service *service, char *const options)
 {
@@ -172,14 +176,14 @@ apply_host_options(Service *service, char *const options)
 	/* retrieve struct with options specified for this service */
 	temp = parse_services_options(options);
 
-	/* apply any options (non-zero) to this service */
-	if (temp.timing.connection_limit)
+	/* apply any valid options to this service */
+	if (temp.timing.connection_limit != -1)
 		service->connection_limit = temp.timing.connection_limit;
-	if (temp.timing.auth_limit)
+	if (temp.timing.auth_limit != -1)
 		service->auth_limit = temp.timing.auth_limit;
-	if (temp.timing.connection_delay)
+	if (temp.timing.connection_delay != -1)
 		service->connection_delay = temp.timing.connection_delay;
-	if (temp.timing.retries)
+	if (temp.timing.retries != -1)
 		service->retries = temp.timing.retries;
 	if (temp.misc.ssl)
 		service->ssl = temp.misc.ssl;
@@ -201,12 +205,16 @@ apply_service_options(Service *service)
 
 	if (!service->portno)
 		service->portno = vi->lookup.portno;
-	service->connection_limit = vi->timing.connection_limit;
-	service->auth_limit = vi->timing.auth_limit;
-	service->connection_delay = vi->timing.connection_delay;
-	service->retries = vi->timing.retries;
-	service->ssl = vi->misc.ssl;
-
+	if (vi->timing.connection_limit != -1)
+		service->connection_limit = vi->timing.connection_limit;
+	if (vi->timing.auth_limit != -1)
+		service->auth_limit = vi->timing.auth_limit;
+	if (vi->timing.connection_delay != -1)
+		service->connection_delay = vi->timing.connection_delay;
+	if (vi->timing.retries != -1)
+		service->retries = vi->timing.retries;
+	if (vi->misc.ssl)
+		service->ssl = vi->misc.ssl;
 }
 
 
@@ -232,9 +240,61 @@ clean_spec(ts_spec *spec)
 }
 
 
+void
+prepare_timing_template(timing_options *timing)
+{	
+	//TODO: select optimal values
+	if (!timing)
+		fatal("%s invalid pointer!\n", __func__);
+
+	if (o.timing_level == 0) { /* Paranoid */
+		timing->connection_limit = 1;
+		timing->auth_limit = 3;
+		timing->connection_delay = 10000; /* 10 secs */
+		timing->retries = 1;
+	} else if (o.timing_level == 1) { /* Sneaky */
+		timing->connection_limit = 2;
+		timing->auth_limit = 3;
+		timing->connection_delay = 7500; 
+		timing->retries = 1;
+	} else if (o.timing_level == 2) { /* Polite */
+		timing->connection_limit = 3;
+		timing->auth_limit = 5;
+		timing->connection_delay = 5000;
+		timing->retries = 1;
+	} else if (o.timing_level == 4) { /* Aggressive */
+		timing->connection_limit = 1000;
+		timing->auth_limit = 10;
+		timing->connection_delay = 500;
+		timing->retries = 15;
+	} else if (o.timing_level == 5) { /* Insane */
+		timing->connection_limit = 10000;
+		timing->auth_limit = 10;
+		timing->connection_delay = 0;
+		timing->retries = 20;
+	} else { /* Normal */
+		timing->connection_limit = 40;
+		timing->auth_limit = 5;
+		timing->connection_delay = 1000;
+		timing->retries = 10;
+	}
+}
+
+
+void
+apply_timing_template(Service *service, timing_options *timing)
+{
+	service->connection_limit = timing->connection_limit;
+	service->auth_limit = timing->auth_limit;
+	service->connection_delay = timing->connection_delay;
+	service->retries = timing->retries;
+}
+
+
+
+
 
 /**** Helper functions ****/
-
 
 
 /*
@@ -255,7 +315,6 @@ check_duplicate_services(vector <service_lookup *> services, service_lookup *ser
 	}
 	return 0;
 }
-
 
 
 /*
@@ -308,6 +367,29 @@ check_supported_services(service_lookup *serv)
 }
 
 
+
+/* 
+ * Goes through the available options comparing them with 'argname'
+ * and if it finds a match, it applies its value ('argval') into 
+ * the struct 'temp'
+ */
+static void
+check_service_option(global_service *temp, char *argname, char *argval)
+{
+	if (!strcmp("cl", argname))
+		temp->timing.connection_limit = Strtoul(argval);
+	else if (!strcmp("al", argname))
+		temp->timing.auth_limit = Strtoul(argval);
+	else if (!strcmp("cd", argname))
+		temp->timing.connection_delay = tval2msecs(argval);
+	else if (!strcmp("mr", argname))
+		temp->timing.retries = Strtoul(argval);
+	else //TODO misc options
+		error("Unknown service option: %s\n", argname);
+}
+
+
+
 static global_service
 parse_services_options(char *const exp)
 {
@@ -315,6 +397,11 @@ parse_services_options(char *const exp)
 	global_service temp;
 
 	memset(&temp, 0, sizeof(temp));
+	temp.timing.connection_limit = -1;
+	temp.timing.auth_limit = -1;
+	temp.timing.connection_delay = -1;
+	temp.timing.retries = -1;
+
 	arg = argval = argname = NULL;
 
 	/* check if we have only one option */
@@ -339,26 +426,6 @@ parse_services_options(char *const exp)
 	return temp;
 }
 
-
-/* 
- * Goes through the available options comparing them with 'argname'
- * and if it finds a match, it applies its value ('argval') into 
- * the struct 'temp'
- */
-static void
-check_service_option(global_service *temp, char *argname, char *argval)
-{
-	if (!strcmp("cl", argname))
-		temp->timing.connection_limit = Strtoul(argval);
-	else if (!strcmp("al", argname))
-		temp->timing.auth_limit = Strtoul(argval);
-	else if (!strcmp("cd", argname))
-		temp->timing.connection_delay = tval2msecs(argval);
-	else if (!strcmp("mr", argname))
-		temp->timing.retries = Strtoul(argval);
-	else //TODO misc options
-		error("Unknown service option: %s\n", argname);
-}
 
 
 /* 

@@ -21,6 +21,8 @@ void parse_module_options(char *const exp);
 void apply_service_options(Service *service);
 void apply_host_options(Service *service, char *const options);
 void parse_services(char *const exp, vector <service_lookup *> &services);
+void prepare_timing_template(timing_options *timing);
+void apply_timing_template(Service *service, timing_options *timing);
 void clean_spec(ts_spec *spec);
 
 #endif

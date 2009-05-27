@@ -12,8 +12,9 @@ class NcrackOps {
 		int af() { return addressfamily; }
 
 		uint16_t *portlist;
-		char *service;
-		int list_only;
+		bool global_options;
+		bool list_only;
+		int timing_level;
 		int debugging;
 		int verbose;
 		int numhosts_scanned;

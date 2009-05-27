@@ -85,6 +85,10 @@ lookup_init(const char *const filename)
 	global_service temp;
 
 	memset(&temp, 0, sizeof(temp));
+	temp.timing.connection_limit = -1;
+	temp.timing.auth_limit = -1;
+	temp.timing.connection_delay = -1;
+	temp.timing.retries = -1;
 
 	fp = fopen(filename, "r");
 	if (!fp) 
@@ -177,6 +181,9 @@ int main(int argc, char **argv)
 	vector <service_lookup *> services_cmd;
 	vector <service_lookup *>::iterator SCvi;
 
+	char  *glob_options;	/* -g option */
+	timing_options timing;
+
 
 
 	/* time variables */
@@ -203,6 +210,7 @@ int main(int argc, char **argv)
 		{"verbose", no_argument, 0, 'v'},
 		{"debug", optional_argument, 0, 'd'},
 		{"help", no_argument, 0, 'h'},
+	  {"timing", required_argument, 0, 'T'},
 		{"max_parallelism", required_argument, 0, 'M'},
 		{"max-parallelism", required_argument, 0, 'M'},
 		{"min_parallelism", required_argument, 0, 0},
@@ -212,10 +220,6 @@ int main(int argc, char **argv)
 		{"iL", required_argument, 0, 'i'},
 		{"host_timeout", required_argument, 0, 0},
 		{"host-timeout", required_argument, 0, 0},
-		{"max_hostgroup", required_argument, 0, 0},
-		{"max-hostgroup", required_argument, 0, 0},
-		{"min_hostgroup", required_argument, 0, 0},
-		{"min-hostgroup", required_argument, 0, 0},
 		{"scan_delay", required_argument, 0, 0},
 		{"scan-delay", required_argument, 0, 0},
 		{"max_scan_delay", required_argument, 0, 0},
@@ -234,7 +238,7 @@ int main(int argc, char **argv)
 
 	/* Argument parsing */
 	optind = 1;
-	while((arg = getopt_long_only(argc, argv, "d:h:i:m:p:s:vV", long_options, &option_index)) != EOF) {
+	while((arg = getopt_long_only(argc, argv, "d:g:h:i:m:p:s:T:vV", long_options, &option_index)) != EOF) {
 		switch(arg) {
 			case 0:
 				if (!strcmp(long_options[option_index].name, "excludefile")) {
@@ -270,6 +274,10 @@ int main(int argc, char **argv)
 				else 
 					o.debugging++; o.verbose++;
 				break;
+			case 'g':
+				glob_options = strdup(optarg);
+				o.global_options = true;
+				break;
 			case 'h':   /* help */
 				print_usage();
 				break;
@@ -292,10 +300,28 @@ int main(int argc, char **argv)
 				break;
 			case 's':	/* only list hosts */
 				if (*optarg == 'L')
-					o.list_only++;
+					o.list_only = true;
 				else {
 					error("Illegal argument for option '-s' Did you mean -sL?\n");
 					print_usage();
+				}
+				break;
+			case 'T':	/* timing template */
+				if (*optarg == '0' || (strcasecmp(optarg, "Paranoid") == 0)) {
+					o.timing_level = 0;
+				} else if (*optarg == '1' || (strcasecmp(optarg, "Sneaky") == 0)) {
+					o.timing_level = 1;
+				} else if (*optarg == '2' || (strcasecmp(optarg, "Polite") == 0)) {
+					o.timing_level = 2;
+				} else if (*optarg == '3' || (strcasecmp(optarg, "Normal") == 0)) {
+				} else if (*optarg == '4' || (strcasecmp(optarg, "Aggressive") == 0)) {
+					o.timing_level = 4;
+				} else if (*optarg == '5' || (strcasecmp(optarg, "Insane") == 0)) {
+					o.timing_level = 5;
+				} else {
+					fatal("Unknown timing mode (-T argument).  Use either \"Paranoid\", \"Sneaky\", "
+							"\"Polite\", \"Normal\", \"Aggressive\", \"Insane\" or a number from 0 "
+							" (Paranoid) to 5 (Insane)");
 				}
 				break;
 			case 'V':	
@@ -309,7 +335,8 @@ int main(int argc, char **argv)
 		}
 	}
 	
-	// ncrack_service();
+	/* Prepare -T option (3 is default) */
+	prepare_timing_template(&timing);
 
 	now = time(NULL);
 	tm = localtime(&now);
@@ -341,7 +368,7 @@ int main(int argc, char **argv)
 
 		/* preparse and separate host - service */
 		spec = parse_services_target(host_spec);
-		
+
 		// printf("%s://%s:%s?%s\n", spec.service_name, spec.host_expr, spec.portno, spec.service_options);
 
 		if (spec.service_name) {
@@ -358,10 +385,14 @@ int main(int argc, char **argv)
 			}
 		}
 
-		/* first apply global options -g TODO */
 
-		/* then apply options from ServiceTable */
 		for (Svi = Services.begin(); Svi != Services.end(); Svi++) {
+			/* first apply timing template */
+			apply_timing_template(*Svi, &timing);
+			/* then apply global options -g if they exist */
+			if (o.global_options) 
+				apply_host_options(*Svi, glob_options);
+			/* then apply options from ServiceTable (-m option) */
 			apply_service_options(*Svi);
 		}
 
@@ -373,8 +404,10 @@ int main(int argc, char **argv)
 
 		while ((currenths = nexthost(spec.host_expr, exclude_group))) {
 			Targets.push_back(currenths);
-			while (!Services.empty()) {
-				service = Services.back();
+			printf("%s \n", currenths->NameIP());
+			for (Svi = Services.begin(); Svi != Services.end(); Svi++) {
+				service = new Service(**Svi);
+
 				service->target = currenths;
 				/* check for duplicates */
 				for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
@@ -384,17 +417,20 @@ int main(int argc, char **argv)
 				}
 				SG->services_remaining.push_back(service);
 				SG->total_services++;
-				Services.pop_back();
 			}
 		}
+		Services.clear();
 		clean_spec(&spec);
 	}
 
 	if (o.list_only) {
 		if (o.debugging > 3) {
+			printf("\n=== Timing Template ===\n");
+			printf("cl=%ld, al=%ld, cd=%ld, mr=%ld\n", timing.connection_limit,
+					timing.auth_limit, timing.connection_delay, timing.retries);
 			printf("\n=== ServicesTable ===\n");
 			for (unsigned int i = 0; i < ServicesTable.size(); i++) {
-				printf("%s:%hu cl=%lu, al=%lu, cd=%lu, mr=%d\n", 
+				printf("%s:%hu cl=%ld, al=%ld, cd=%ld, mr=%ld\n", 
 						ServicesTable[i].lookup.name,
 						ServicesTable[i].lookup.portno,
 						ServicesTable[i].timing.connection_limit,
@@ -408,7 +444,7 @@ int main(int argc, char **argv)
 			printf("Host: %s\n", Targets[i]->NameIP());
 			for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
 				if ((*li)->target == Targets[i])
-					printf("  %s:%hu cl=%lu, al=%lu, cd=%lu, mr=%d\n", 
+					printf("  %s:%hu cl=%ld, al=%ld, cd=%ld, mr=%ld\n", 
 							(*li)->name, (*li)->portno, (*li)->connection_limit,
 							(*li)->auth_limit, (*li)->connection_delay, (*li)->retries);
 			}

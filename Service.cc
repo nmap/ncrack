@@ -28,7 +28,20 @@ Service::Service()
 	name = NULL;
 	portno = 0;
 	done = 0;
-	
+
+}
+
+/* copy constructor */
+Service::Service(const Service& ref)
+{
+	name = strdup(ref.name);
+	proto = ref.proto;
+	portno = ref.portno;
+	connection_limit = ref.connection_limit;
+	auth_limit = ref.auth_limit;
+	connection_delay = ref.connection_delay;
+	retries = ref.retries;
+	ssl = ref.ssl;
 
 }
 

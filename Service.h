@@ -31,6 +31,8 @@ class Service
 		Service();
 		~Service();
 
+		Service(const Service&); /* copy constructor */
+
 		Target *target; /* service belongs to this host */
 		char *name;
 		u8 proto;
@@ -39,10 +41,10 @@ class Service
 		int done;
 
 		/* timing options that override global ones */
-		unsigned long connection_limit; 
-		unsigned long auth_limit;
-		unsigned long connection_delay;
-		int retries;
+		long connection_limit; 
+		long auth_limit;
+		long connection_delay;
+		long retries;
 		/* misc options */
 		bool ssl;
 		void *module_data; /* service/module-specific data */

@@ -6,10 +6,11 @@
 NcrackOps o;
 
 NcrackOps::NcrackOps() {
-	service = NULL;
-	list_only = 0;
+	global_options = false;
+	list_only = false;
 	debugging = 0;
 	verbose = 0;
+	timing_level = 3;
 	numhosts_scanned = 0;
 	max_group_size = 1024;
 	host_timeout = 0;
