@@ -161,16 +161,16 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv)
 static void
 call_module(nsock_pool nsp, Connection *con)
 {
-        char *name = con->service->name;
+  char *name = con->service->name;
 
-        if (!strcmp(name, "ftp"))
-                ncrack_ftp(nsp, con);
-        else if (!strcmp(name, "ssh"))
-                ;//ncrack_ssh(nsp, nsi, con);
-        else if (!strcmp(name, "telnet"))
-                ;//ncrack_telnet(nsp, nsi, con);
-        else
-                fatal("Invalid service module: %s\n", name);
+  if (!strcmp(name, "ftp"))
+    ncrack_ftp(nsp, con);
+  else if (!strcmp(name, "ssh"))
+    ;//ncrack_ssh(nsp, nsi, con);
+  else if (!strcmp(name, "telnet"))
+    ;//ncrack_telnet(nsp, nsi, con);
+  else
+    fatal("Invalid service module: %s\n", name);
 }
 
 
@@ -350,7 +350,7 @@ int main(int argc, char **argv)
         print_usage();
     }
   }
-  
+
   /* Prepare -T option (3 is default) */
   prepare_timing_template(&timing);
 
@@ -422,7 +422,7 @@ int main(int argc, char **argv)
       for (Tvi = Targets.begin(); Tvi != Targets.end(); Tvi++) {
         if (!(strcmp((*Tvi)->NameIP(), currenths->NameIP())))
           break;
-        }
+      }
       if (Tvi == Targets.end())
         Targets.push_back(currenths);
       else 
@@ -504,11 +504,11 @@ int main(int argc, char **argv)
 void
 ncrack_module_end(nsock_pool nsp, void *mydata)
 {
-        Connection *con = (Connection *) mydata;
+  Connection *con = (Connection *) mydata;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
-        ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
-        list <Connection *>::iterator li;
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  list <Connection *>::iterator li;
 
   for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
     if ((*li)->niod == nsi)
@@ -520,8 +520,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   serv->connections.erase(li);
   SG->active_connections--;
 
-        /* see if we can initiate some more connections */
-        ncrack_probes(nsp, SG);  
+  /* see if we can initiate some more connections */
+  ncrack_probes(nsp, SG);  
 
 }
 
@@ -532,30 +532,30 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   nsock_iod nsi = nse_iod(nse);
   enum nse_status status = nse_status(nse);
   enum nse_type type = nse_type(nse);
-        ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
-        Connection *con = (Connection *) mydata;
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  Connection *con = (Connection *) mydata;
   int nbytes;
-        char *str;
+  char *str;
 
-        //assert(type == NSE_TYPE_READ);
-
-
-        if (status == NSE_STATUS_SUCCESS) {
-
-                str = nse_readbuf(nse, &nbytes);
-                con->buf = (char *)safe_malloc(nbytes);
-                con->bufsize = nbytes;
-                memcpy(con->buf, str, nbytes);
+  //assert(type == NSE_TYPE_READ);
 
 
-                call_module(nsp, con);
+  if (status == NSE_STATUS_SUCCESS) {
 
-        }
+    str = nse_readbuf(nse, &nbytes);
+    con->buf = (char *)safe_malloc(nbytes);
+    con->bufsize = nbytes;
+    memcpy(con->buf, str, nbytes);
 
-        /* see if we can initiate some more connections */
-        ncrack_probes(nsp, SG);
 
-        return;
+    call_module(nsp, con);
+
+  }
+
+  /* see if we can initiate some more connections */
+  ncrack_probes(nsp, SG);
+
+  return;
 }
 
 
@@ -564,20 +564,20 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 void
 ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
-        nsock_iod nsi = nse_iod(nse);
-        enum nse_status status = nse_status(nse);
-        enum nse_type type = nse_type(nse);
-        ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
-        Connection *con = (Connection *) mydata;
+  nsock_iod nsi = nse_iod(nse);
+  enum nse_status status = nse_status(nse);
+  enum nse_type type = nse_type(nse);
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  Connection *con = (Connection *) mydata;
 
 
 
-        call_module(nsp, con);
+  call_module(nsp, con);
 
-        /* see if we can initiate some more connections */
-        ncrack_probes(nsp, SG);
+  /* see if we can initiate some more connections */
+  ncrack_probes(nsp, SG);
 
-        return;
+  return;
 }
 
 
@@ -589,45 +589,45 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 void
 ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
-        nsock_iod nsi = nse_iod(nse);
-        enum nse_status status = nse_status(nse);
-        enum nse_type type = nse_type(nse);
-        ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
-        Connection *con = (Connection *) mydata;
+  nsock_iod nsi = nse_iod(nse);
+  enum nse_status status = nse_status(nse);
+  enum nse_type type = nse_type(nse);
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  Connection *con = (Connection *) mydata;
 
-        assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
+  assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
 
-        // if (svc->target->timedOut(nsock_gettimeofday())) {
-        //end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, nsi);
-        if (status == NSE_STATUS_SUCCESS) {
+  // if (svc->target->timedOut(nsock_gettimeofday())) {
+  //end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, nsi);
+  if (status == NSE_STATUS_SUCCESS) {
 
 #if HAVE_OPENSSL
-                // TODO: handle ossl
+    // TODO: handle ossl
 
 #endif
 
-                call_module(nsp, con);
+    call_module(nsp, con);
 
-        } else if (status == NSE_STATUS_TIMEOUT || status == NSE_STATUS_ERROR) {
-                // This is not good.  The connect() really shouldn't generally
-                // be timing out like that.  We'll mark this svc as incomplete
-                // and move it to the finished bin.
-                if (o.debugging)
-                        error("Got nsock CONNECT response with status %s - aborting this service", nse_status2str(status));
-                  ncrack_module_end(nsp, con);
-        } else if (status == NSE_STATUS_KILL) {
-                /* User probablby specified host_timeout and so the service scan is
-                         shutting down */
-                  ncrack_module_end(nsp, con);
-                  //return;
-        } else
-                fatal("Unexpected nsock status (%d) returned for connection attempt", (int) status);
+  } else if (status == NSE_STATUS_TIMEOUT || status == NSE_STATUS_ERROR) {
+    // This is not good.  The connect() really shouldn't generally
+    // be timing out like that.  We'll mark this svc as incomplete
+    // and move it to the finished bin.
+    if (o.debugging)
+      error("Got nsock CONNECT response with status %s - aborting this service", nse_status2str(status));
+    ncrack_module_end(nsp, con);
+  } else if (status == NSE_STATUS_KILL) {
+    /* User probablby specified host_timeout and so the service scan is
+       shutting down */
+    ncrack_module_end(nsp, con);
+    //return;
+  } else
+    fatal("Unexpected nsock status (%d) returned for connection attempt", (int) status);
 
 
-        /* see if we can initiate some more connections */
-        ncrack_probes(nsp, SG);
+  /* see if we can initiate some more connections */
+  ncrack_probes(nsp, SG);
 
-        return;
+  return;
 }
 
 
@@ -635,58 +635,58 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 static int
 ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
-        Service *serv;
-        Connection *con;
-        struct sockaddr_storage ss;
-        size_t ss_len;
-        list <Service *>::iterator li;
+  Service *serv;
+  Connection *con;
+  struct sockaddr_storage ss;
+  size_t ss_len;
+  list <Service *>::iterator li;
 
 
-        if (SG->last_accessed == SG->services_remaining.end())
-                li = SG->services_remaining.begin();
-        else 
-                li = SG->last_accessed;
+  if (SG->last_accessed == SG->services_remaining.end())
+    li = SG->services_remaining.begin();
+  else 
+    li = SG->last_accessed;
 
-        while (SG->active_connections < SG->ideal_parallelism
-                        && SG->services_finished.size() != SG->total_services) {
-                serv = *li;
-                if (serv->target->timedOut(nsock_gettimeofday())) {
-                        // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
-                        continue;
-                }
-
-
-                /* Schedule 1 connection for this service */
-                con = new Connection(serv);
-                if ((con->niod = nsi_new(nsp, serv)) == NULL) {
-                        fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
-                }
-                serv->connections.push_back(con);
-
-                serv->target->TargetSockAddr(&ss, &ss_len);
-                if (serv->proto == IPPROTO_TCP)
-                        nsock_connect_tcp(nsp, con->niod, ncrack_connect_handler, 
-                                        DEFAULT_CONNECT_TIMEOUT, con,
-                                        (struct sockaddr *)&ss, ss_len,
-                                        serv->portno);
-                else {
-                        assert(serv->proto == IPPROTO_UDP);
-                        nsock_connect_udp(nsp, con->niod, ncrack_connect_handler, 
-                                        serv, (struct sockaddr *) &ss, ss_len,
-                                        serv->portno);
-                }
-
-                SG->active_connections++;
+  while (SG->active_connections < SG->ideal_parallelism
+      && SG->services_finished.size() != SG->total_services) {
+    serv = *li;
+    if (serv->target->timedOut(nsock_gettimeofday())) {
+      // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
+      continue;
+    }
 
 
-                SG->last_accessed = li;
-                if (++li == SG->services_remaining.end())
-                        li = SG->services_remaining.begin();
+    /* Schedule 1 connection for this service */
+    con = new Connection(serv);
+    if ((con->niod = nsi_new(nsp, serv)) == NULL) {
+      fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
+    }
+    serv->connections.push_back(con);
 
-                // pop / push etc
+    serv->target->TargetSockAddr(&ss, &ss_len);
+    if (serv->proto == IPPROTO_TCP)
+      nsock_connect_tcp(nsp, con->niod, ncrack_connect_handler, 
+          DEFAULT_CONNECT_TIMEOUT, con,
+          (struct sockaddr *)&ss, ss_len,
+          serv->portno);
+    else {
+      assert(serv->proto == IPPROTO_UDP);
+      nsock_connect_udp(nsp, con->niod, ncrack_connect_handler, 
+          serv, (struct sockaddr *) &ss, ss_len,
+          serv->portno);
+    }
 
-        }
-        return 0;
+    SG->active_connections++;
+
+
+    SG->last_accessed = li;
+    if (++li == SG->services_remaining.end())
+      li = SG->services_remaining.begin();
+
+    // pop / push etc
+
+  }
+  return 0;
 }
 
 
@@ -696,26 +696,26 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 static int
 ncrack(vector <Target *> &Targets, ServiceGroup *SG)
 {
-        /* nsock variables */
-        struct timeval now;
-        enum nsock_loopstatus loopret;
-        nsock_pool nsp;
-        int tracelevel = 0;
+  /* nsock variables */
+  struct timeval now;
+  enum nsock_loopstatus loopret;
+  nsock_pool nsp;
+  int tracelevel = 0;
 
-        /* create nsock p00l */
-        if (!(nsp = nsp_new(SG))) 
-                fatal("Can't create nsock pool.\n");
+  /* create nsock p00l */
+  if (!(nsp = nsp_new(SG))) 
+    fatal("Can't create nsock pool.\n");
 
-        gettimeofday(&now, NULL);
-        nsp_settrace(nsp, tracelevel, &now);
+  gettimeofday(&now, NULL);
+  nsp_settrace(nsp, tracelevel, &now);
 
-        ncrack_probes(nsp, SG);
+  ncrack_probes(nsp, SG);
 
-        /* nsock loop */
-        loopret = nsock_loop(nsp, -1);
-        if (o.debugging > 8)
-                printf("nsock_loop returned %d\n", loopret);
+  /* nsock loop */
+  loopret = nsock_loop(nsp, -1);
+  if (o.debugging > 8)
+    printf("nsock_loop returned %d\n", loopret);
 
-        return 0;
+  return 0;
 
 }
