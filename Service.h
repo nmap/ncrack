@@ -7,6 +7,12 @@
 #include <list>
 
 
+#define BUFSIZE 256
+
+class Connection;
+class Service;
+class ServiceGroup;
+
 
 /* 
  * Active connection taking place for authenticating service.
@@ -16,11 +22,18 @@
 class Connection
 {
   public:
+                Connection(Service *serv);
+                ~Connection();
+
     // TODO: modify accordingly
     int time_started;
     int time_elapsed;
+                int state;
+                char *buf;
+                int bufsize;
     unsigned int login_attempts;  /* login attempts up until now */
     nsock_iod niod; /* I/O descriptor for this connection */
+                Service *service; /* service it belongs to */
 };
 
 
@@ -33,8 +46,9 @@ class Service
 
     Service(const Service&); /* copy constructor */
 
-    Target *target; /* service belongs to this host */
+                /* members */
     char *name;
+    Target *target; /* service belongs to this host */
     u8 proto;
     u16 portno;
 
@@ -51,6 +65,8 @@ class Service
 
     list <Connection *> connections;
 };
+
+
 
 
 class ServiceGroup {
