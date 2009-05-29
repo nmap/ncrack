@@ -29,6 +29,13 @@ Connection::Connection(Service *serv)
 	service = serv;
 }
 
+Connection::~Connection()
+{
+  if (buf) {
+    free(buf);
+    buf = NULL;
+  }
+}
 
 
 Service::Service()

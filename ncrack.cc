@@ -517,12 +517,12 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   if (li == serv->connections.end()) /* this shouldn't happen */
     fatal("%s: invalid niod!\n", __func__);
 
+  nsi_delete(nsi, NSOCK_PENDING_SILENT);
   serv->connections.erase(li);
   SG->active_connections--;
 
   /* see if we can initiate some more connections */
   ncrack_probes(nsp, SG);  
-
 }
 
 
@@ -543,14 +543,30 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   if (status == NSE_STATUS_SUCCESS) {
 
     str = nse_readbuf(nse, &nbytes);
-    con->buf = (char *)safe_malloc(nbytes);
+    con->buf = Strndup(str, nbytes);  /* we may need memcpy instead of strncpy */
     con->bufsize = nbytes;
-    memcpy(con->buf, str, nbytes);
-
 
     call_module(nsp, con);
 
+  } else if (status == NSE_STATUS_TIMEOUT) {
+    printf("read: nse_status_timeout\n");
+    ncrack_module_end(nsp, con);
+  } else if (status == NSE_STATUS_EOF) {
+    printf("read: nse_status_eof\n");
+    ncrack_module_end(nsp, con);
+  }  else if (status == NSE_STATUS_ERROR) {
+    printf("read: nse_status_error\n");
+    ncrack_module_end(nsp, con);
+  } else if (status == NSE_STATUS_KILL) {
+    printf("read: nse_status_kill\n");
+    /* User probablby specified host_timeout and so the service scan is 
+       shutting down */
+    ncrack_module_end(nsp, con);
+    //return;
+  } else {
+    fatal("Unexpected status (%d) in NSE_TYPE_READ callback.", (int) status);
   }
+
 
   /* see if we can initiate some more connections */
   ncrack_probes(nsp, SG);
@@ -609,11 +625,10 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     call_module(nsp, con);
 
   } else if (status == NSE_STATUS_TIMEOUT || status == NSE_STATUS_ERROR) {
-    // This is not good.  The connect() really shouldn't generally
-    // be timing out like that.  We'll mark this svc as incomplete
-    // and move it to the finished bin.
+    /* This is not good. connect() really shouldn't generally be timing out. */
     if (o.debugging)
-      error("Got nsock CONNECT response with status %s - aborting this service", nse_status2str(status));
+      error("Got nsock CONNECT response with status %s - aborting this service",
+          nse_status2str(status));
     ncrack_module_end(nsp, con);
   } else if (status == NSE_STATUS_KILL) {
     /* User probablby specified host_timeout and so the service scan is
@@ -625,6 +640,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
   /* see if we can initiate some more connections */
+  printf("con probes\n");
   ncrack_probes(nsp, SG);
 
   return;
@@ -645,7 +661,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   if (SG->last_accessed == SG->services_remaining.end())
     li = SG->services_remaining.begin();
   else 
-    li = SG->last_accessed;
+    li = SG->last_accessed++;
 
   while (SG->active_connections < SG->ideal_parallelism
       && SG->services_finished.size() != SG->total_services) {
@@ -655,6 +671,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       continue;
     }
 
+    printf("%s %s\n", serv->name, serv->target->NameIP());
+
 
     /* Schedule 1 connection for this service */
     con = new Connection(serv);
@@ -662,6 +680,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
     }
     serv->connections.push_back(con);
+    SG->active_connections++;
 
     serv->target->TargetSockAddr(&ss, &ss_len);
     if (serv->proto == IPPROTO_TCP)
@@ -676,7 +695,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
           serv->portno);
     }
 
-    SG->active_connections++;
 
 
     SG->last_accessed = li;
