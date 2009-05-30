@@ -27,6 +27,7 @@ Connection::Connection(Service *serv)
 {
 	state = 0;
 	service = serv;
+  retry = false;
 }
 
 Connection::~Connection()

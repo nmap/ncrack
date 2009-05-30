@@ -514,37 +514,39 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   list <Connection *>::iterator li;
   list <Service *>::iterator Sli;
 
-  for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
-    if ((*li)->niod == nsi)
-      break;
-  } 
-  if (li == serv->connections.end()) /* this shouldn't happen */
-    fatal("%s: invalid niod!\n", __func__);
-
-  nsi_delete(nsi, NSOCK_PENDING_SILENT);
-  serv->connections.erase(li);
-  /* Check if we had previously surpassed imposed connection limit so that
-   * we remove service from 'services_full' list to 'services_remaining' list.
-   */
-  if (serv->active_connections >= serv->connection_limit) {
-    for (Sli = SG->services_full.begin(); Sli != SG->services_full.end(); Sli++) {
-      // ??perhaps we should instead use a unique service id to cmp between them
-      if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
-          && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
+  if (con->retry && con->login_attempts < serv->auth_limit)
+    call_module(nsp, con); /* retry next login attempt within current connection */
+  else {
+    for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
+      if ((*li)->niod == nsi)
         break;
+    } 
+    if (li == serv->connections.end()) /* this shouldn't happen */
+      fatal("%s: invalid niod!\n", __func__);
+
+    nsi_delete(nsi, NSOCK_PENDING_SILENT);
+    serv->connections.erase(li);
+    /* Check if we had previously surpassed imposed connection limit so that
+     * we remove service from 'services_full' list to 'services_remaining' list.
+     */
+    if (serv->active_connections >= serv->connection_limit) {
+      for (Sli = SG->services_full.begin(); Sli != SG->services_full.end(); Sli++) {
+        // ??perhaps we should instead use a unique service id to cmp between them
+        if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
+            && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
+          break;
+      }
+      if (Sli == SG->services_full.end())
+        fatal("%s: no service found in 'services_full' list as should happen!\n", __func__);
+      SG->services_full.erase(Sli);
+      SG->services_remaining.push_back(serv);
     }
-    if (Sli == SG->services_full.end())
-      fatal("%s: no service found in services_full list as should happen!\n");
-    SG->services_full.erase(Sli);
-    SG->services_remaining.push_back(serv);
+
+    serv->active_connections--; // maybe do it on Connection destructor?
+    SG->active_connections--;
+    /* see if we can initiate some more connections */
+    ncrack_probes(nsp, SG);
   }
-
-  serv->active_connections--; // maybe do it on Connection destructor?
-  SG->active_connections--;
-
-
-  /* see if we can initiate some more connections */
-  ncrack_probes(nsp, SG);  
 }
 
 
@@ -695,7 +697,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 
     /* If the service's active connections surpass its imposed connection limit
      * then don't initiate any more connections for it and also move service in
-     * the services_full list so that it isn't reaccessed in this loop */
+     * the services_full list so that it won't be reaccessed in this loop */
     if (serv->active_connections >= serv->connection_limit) {
       li = SG->services_remaining.erase(li);
       SG->services_full.push_back(serv);

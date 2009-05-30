@@ -29,8 +29,9 @@ class Connection
 		int time_started;
 		int time_elapsed;
 		int state;
+    bool retry; /* true-> retry login attempt within current connection */
 		char *buf;
-		int bufsize;
+		int bufsize;  /* buffer size not including '\0' */
 		unsigned int login_attempts;  /* login attempts up until now */
 		nsock_iod niod; /* I/O descriptor for this connection */
 		Service *service; /* service it belongs to */
