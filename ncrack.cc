@@ -51,24 +51,27 @@ print_usage(void)
       "  --exclude <host1[,host2][,host3],...>: Exclude hosts/networks\n"
       "  --excludefile <exclude_file>: Exclude list from file\n"
       "SERVICE SPECIFICATION:\n"
-      "  Can pass target specific services (after each hostgroup) or global ones\n"
-      "  Services can be passed as names or default ports. For non-default ports\n"
-      "  they must be specified it in form 'service_name:port'\n"
-      "  Ex: scanme.nmap.org[ssh,ftp:310,25] 10.0.0.*://telnet -p ssh:2130\n"
-      "  -p <service-list>: services that will be applied to all hosts (global)\n"
+      "  Can pass target specific services in <service>://target (standard) notation or\n"
+      "  using -p which will be applied to all hosts in non-standard notation.\n"
+      "  Service arguments can be specified to be host-specific, type of service-specific\n"
+      "  (-m) or global (-g). Ex: ssh://10.0.0.10?al=10,cl=30 -m ssh:al=50 -g cd=3000\n"
+      "  -p <service-list>: services will be applied to all non-standard notation hosts\n"
+      "  -m <service>:<options>: options will be applied to all services of this type\n"
+      "  -g <options>: options will be applied to every service globally\n"
       "TIMING AND PERFORMANCE:\n"
       "  Options which take <time> are in milliseconds, unless you append 's'\n"
       "  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).\n"
-      "  --min-hostgroup/max-hostgroup <size>: Parallel host crack group sizes\n"
-      "  --min-parallelism/max-parallelism <time>: Probe parallelization\n"
-      "  --max-retries <tries>: Caps number of service connection attempts.\n"
+      "  -T<0-5>: Set timing template (higher is faster)\n"
+      "  --connection-limit <number>: threshold for total connections per minute\n"
+      "  --auth-limit <number>: upper limit of authentication attempts per minute\n"
+      "  --connection-delay <time>: delay between each connection initiation\n"
+      "  --max-retries <tries>: Caps number of service connection attempts\n"
       "  --host-timeout <time>: Give up on target after this long\n"
-      "  --scan-delay/--max-scan-delay <time>: Adjust delay between probes\n"
       "OUTPUT:\n"
       "  -v: Increase verbosity level (use twice or more for greater effect)\n"
       "  -d[level]: Set or increase debugging level (Up to 9 is meaningful)\n"
       "MISC:\n"
-      "  --list or -sL: only list hosts and services\n"
+      "  -sL or --list: only list hosts and services\n"
       "  -V: Print version number\n"
       "  -h: Print this help summary page.\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
   exit(EX_USAGE);
@@ -509,6 +512,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   nsock_iod nsi = con->niod;
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   list <Connection *>::iterator li;
+  list <Service *>::iterator Sli;
 
   for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
     if ((*li)->niod == nsi)
@@ -519,7 +523,25 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
   nsi_delete(nsi, NSOCK_PENDING_SILENT);
   serv->connections.erase(li);
+  /* Check if we had previously surpassed imposed connection limit so that
+   * we remove service from 'services_full' list to 'services_remaining' list.
+   */
+  if (serv->active_connections >= serv->connection_limit) {
+    for (Sli = SG->services_full.begin(); Sli != SG->services_full.end(); Sli++) {
+      // ??perhaps we should instead use a unique service id to cmp between them
+      if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
+          && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
+        break;
+    }
+    if (Sli == SG->services_full.end())
+      fatal("%s: no service found in services_full list as should happen!\n");
+    SG->services_full.erase(Sli);
+    SG->services_remaining.push_back(serv);
+  }
+
+  serv->active_connections--; // maybe do it on Connection destructor?
   SG->active_connections--;
+
 
   /* see if we can initiate some more connections */
   ncrack_probes(nsp, SG);  
@@ -537,13 +559,13 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   int nbytes;
   char *str;
 
-  //assert(type == NSE_TYPE_READ);
+  assert(type == NSE_TYPE_READ);
 
 
   if (status == NSE_STATUS_SUCCESS) {
 
     str = nse_readbuf(nse, &nbytes);
-    con->buf = Strndup(str, nbytes);  /* we may need memcpy instead of strncpy */
+    con->buf = Strndup(str, nbytes);  /* warning: we may need memcpy instead of strncpy */
     con->bufsize = nbytes;
 
     call_module(nsp, con);
@@ -627,8 +649,8 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   } else if (status == NSE_STATUS_TIMEOUT || status == NSE_STATUS_ERROR) {
     /* This is not good. connect() really shouldn't generally be timing out. */
     if (o.debugging)
-      error("Got nsock CONNECT response with status %s - aborting this service",
-          nse_status2str(status));
+      error("Got nsock CONNECT response with status %s - aborting this service %s\n",
+          nse_status2str(status), con->service->target->NameIP());
     ncrack_module_end(nsp, con);
   } else if (status == NSE_STATUS_KILL) {
     /* User probablby specified host_timeout and so the service scan is
@@ -640,7 +662,6 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
   /* see if we can initiate some more connections */
-  printf("con probes\n");
   ncrack_probes(nsp, SG);
 
   return;
@@ -658,21 +679,31 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   list <Service *>::iterator li;
 
 
-  if (SG->last_accessed == SG->services_remaining.end())
+  if (SG->last_accessed == SG->services_remaining.end()) 
     li = SG->services_remaining.begin();
   else 
     li = SG->last_accessed++;
 
   while (SG->active_connections < SG->ideal_parallelism
-      && SG->services_finished.size() != SG->total_services) {
+      && SG->services_finished.size() != SG->total_services
+      && SG->services_remaining.size() != 0) {
     serv = *li;
     if (serv->target->timedOut(nsock_gettimeofday())) {
       // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
-      continue;
+      goto next;
     }
 
-    printf("%s %s\n", serv->name, serv->target->NameIP());
+    /* If the service's active connections surpass its imposed connection limit
+     * then don't initiate any more connections for it and also move service in
+     * the services_full list so that it isn't reaccessed in this loop */
+    if (serv->active_connections >= serv->connection_limit) {
+      li = SG->services_remaining.erase(li);
+      SG->services_full.push_back(serv);
+      goto next;
+    }
 
+    if (o.debugging > 8)
+      printf("Connection to %s://%s:%hu\n", serv->name, serv->target->NameIP(), serv->portno);
 
     /* Schedule 1 connection for this service */
     con = new Connection(serv);
@@ -680,6 +711,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
     }
     serv->connections.push_back(con);
+    serv->active_connections++;
     SG->active_connections++;
 
     serv->target->TargetSockAddr(&ss, &ss_len);
@@ -695,13 +727,11 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
           serv->portno);
     }
 
-
+next:
 
     SG->last_accessed = li;
-    if (++li == SG->services_remaining.end())
+    if (++li == SG->services_remaining.end()) 
       li = SG->services_remaining.begin();
-
-    // pop / push etc
 
   }
   return 0;

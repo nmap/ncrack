@@ -52,6 +52,7 @@ class Service
 		u8 proto;
 		u16 portno;
 
+    long active_connections;
 		int done;
 
 		/* timing options that override global ones */
@@ -74,7 +75,8 @@ class ServiceGroup {
 		ServiceGroup();
 		~ServiceGroup();
 		list<Service *> services_finished; /* Services finished (successfully or not) */
-		list<Service *> services_in_progress; /* Services currently being cracked */ 
+		list<Service *> services_full; /* Services that temporarily cannot initiate another
+                                      connection due to timing constraints (connection limit) */
 		list<Service *> services_remaining; /* Services not started being cracked yet */
 		unsigned int total_services; /* how many services we need to crack in total */
 		unsigned int ideal_parallelism; /* Max (and desired) number of connections at once */

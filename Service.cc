@@ -45,6 +45,7 @@ Service::Service()
 	proto = IPPROTO_TCP;
 	portno = 0;
 	done = 0;
+  active_connections = 0;
 	connection_limit = -1;
 	auth_limit = -1;
 	connection_delay = -1;
