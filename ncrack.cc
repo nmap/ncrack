@@ -709,7 +709,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       && SG->services_remaining.size() != 0) {
     serv = *li;
 
-    printf("attempts: %d\n", serv->total_attempts);
+    if (o.debugging > 9)
+      printf("attempts: %d\n", serv->total_attempts);
 
     if (serv->target->timedOut(nsock_gettimeofday())) {
       // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
@@ -721,7 +722,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      */
     gettimeofday(&now, NULL);
     if (TIMEVAL_MSEC_SUBTRACT(now, serv->last) < serv->connection_delay) {
-      printf("MPHKA WAIT\n");
       li = SG->services_remaining.erase(li);
       SG->services_wait.push_back(serv);
       goto next;
@@ -733,7 +733,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      */
     if (serv->active_connections >= serv->connection_limit) {
       serv->full = true;
-      printf("MPHKA FULL\n");
       li = SG->services_remaining.erase(li);
       SG->services_full.push_back(serv);
       goto next;
