@@ -81,6 +81,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
     case FTP_FINI:
       con->state = FTP_BANNER;
       con->login_attempts++;
+      serv->total_attempts++;
       if (!con->buf || con->buf[0] != '2')
         printf("%s Password failed\n", hostinfo);
       else

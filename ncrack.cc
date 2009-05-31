@@ -63,7 +63,7 @@ print_usage(void)
       "   Timing:\n"
       "    cl (connection limit): maximum number of concurrent connections\n"
       "    al (authentication limit): upper limit of authentication attempts per connection\n"
-      "    cd (connection delay): delay between each connection initiation\n"
+      "    cd (connection delay): delay between each connection initiation (in milliseconds)\n"
       "    mr (max retries): caps number of service connection attempts\n"
       "   Module-specific:\n"
       "    path: http relative path\n"
@@ -514,39 +514,40 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   list <Connection *>::iterator li;
   list <Service *>::iterator Sli;
 
-  if (con->retry && con->login_attempts < serv->auth_limit)
+  if (con->retry && con->login_attempts < serv->auth_limit) {
     call_module(nsp, con); /* retry next login attempt within current connection */
-  else {
-    for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
-      if ((*li)->niod == nsi)
-        break;
-    } 
-    if (li == serv->connections.end()) /* this shouldn't happen */
-      fatal("%s: invalid niod!\n", __func__);
-
-    nsi_delete(nsi, NSOCK_PENDING_SILENT);
-    serv->connections.erase(li);
-    /* Check if we had previously surpassed imposed connection limit so that
-     * we remove service from 'services_full' list to 'services_remaining' list.
-     */
-    if (serv->active_connections >= serv->connection_limit) {
-      for (Sli = SG->services_full.begin(); Sli != SG->services_full.end(); Sli++) {
-        // ??perhaps we should instead use a unique service id to cmp between them
-        if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
-            && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
-          break;
-      }
-      if (Sli == SG->services_full.end())
-        fatal("%s: no service found in 'services_full' list as should happen!\n", __func__);
-      SG->services_full.erase(Sli);
-      SG->services_remaining.push_back(serv);
-    }
-
-    serv->active_connections--; // maybe do it on Connection destructor?
-    SG->active_connections--;
-    /* see if we can initiate some more connections */
-    ncrack_probes(nsp, SG);
+    return;
   }
+
+  for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
+    if ((*li)->niod == nsi)
+      break;
+  } 
+  if (li == serv->connections.end()) /* this shouldn't happen */
+    fatal("%s: invalid niod!\n", __func__);
+
+  nsi_delete(nsi, NSOCK_PENDING_SILENT);
+  serv->connections.erase(li);
+  /* Check if we had previously surpassed imposed connection limit so that
+   * we remove service from 'services_full' list to 'services_remaining' list.
+   */
+  if (serv->active_connections >= serv->connection_limit) {
+    for (Sli = SG->services_full.begin(); Sli != SG->services_full.end(); Sli++) {
+      // ??perhaps we should instead use a unique service id to cmp between them
+      if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
+          && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
+        break;
+    }
+    if (Sli == SG->services_full.end())
+      fatal("%s: no service found in 'services_full' list as should happen!\n", __func__);
+    SG->services_full.erase(Sli);
+    SG->services_remaining.push_back(serv);
+  }
+
+  serv->active_connections--; // maybe do it on Connection destructor?
+  SG->active_connections--;
+  /* see if we can initiate some more connections */
+  ncrack_probes(nsp, SG);
 }
 
 
@@ -612,8 +613,8 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   else if (status == NSE_STATUS_KILL)
     printf("write: nse_status_kill\n");
   else if (status == NSE_STATUS_ERROR) {
-  	err = nse_errorcode(nse);
-	  error("Got nsock WRITE error #%d (%s)", err, strerror(err));
+    err = nse_errorcode(nse);
+    error("Got nsock WRITE error #%d (%s)", err, strerror(err));
   } else {
     error("Got nsock WRITE response with status %s - aborting this service", nse_status2str(status));
   }
@@ -682,7 +683,22 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   struct sockaddr_storage ss;
   size_t ss_len;
   list <Service *>::iterator li;
+  list <Service *>::iterator temp;
+  struct timeval now;
 
+
+
+  /* First check for every service if connection_delay time has already
+   * passed since its last connection and move them back to 'services_remaining'
+   * list if it has.
+   */
+  gettimeofday(&now, NULL);
+  for (li = SG->services_wait.begin(); li != SG->services_wait.end(); li++) {
+    if (TIMEVAL_MSEC_SUBTRACT(now, (*li)->last) >= (*li)->connection_delay) {
+     SG->services_remaining.push_back(*li);
+     li = SG->services_wait.erase(li);
+    }
+  }
 
   if (SG->last_accessed == SG->services_remaining.end()) 
     li = SG->services_remaining.begin();
@@ -693,14 +709,28 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       && SG->services_finished.size() != SG->total_services
       && SG->services_remaining.size() != 0) {
     serv = *li;
+
+    printf("attempts: %d\n", serv->total_attempts);
+
     if (serv->target->timedOut(nsock_gettimeofday())) {
       // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
       goto next;
     }
 
+    /* If the service's last connection was earlier than 'connection_delay'
+     * milliseconds ago, then temporarily move service to 'services_wait' list
+     */
+    gettimeofday(&now, NULL);
+    if (TIMEVAL_MSEC_SUBTRACT(now, serv->last) < serv->connection_delay) {
+      li = SG->services_remaining.erase(li);
+      SG->services_wait.push_back(serv);
+      goto next;
+    }
+
     /* If the service's active connections surpass its imposed connection limit
      * then don't initiate any more connections for it and also move service in
-     * the services_full list so that it won't be reaccessed in this loop */
+     * the services_full list so that it won't be reaccessed in this loop.
+     */
     if (serv->active_connections >= serv->connection_limit) {
       li = SG->services_remaining.erase(li);
       SG->services_full.push_back(serv);
@@ -715,6 +745,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
     if ((con->niod = nsi_new(nsp, serv)) == NULL) {
       fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
     }
+    gettimeofday(&now, NULL);
+    serv->last = now;
     serv->connections.push_back(con);
     serv->active_connections++;
     SG->active_connections++;

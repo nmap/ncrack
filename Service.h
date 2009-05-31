@@ -54,7 +54,9 @@ class Service
 		u16 portno;
 
     long active_connections;
+    struct timeval last; /* time of last activated connection */
 		int done;
+    unsigned int total_attempts;
 
 		/* timing options that override global ones */
 		long connection_limit; 
@@ -83,6 +85,10 @@ class ServiceGroup {
      * connection due to timing constraints (connection limit)
      */
 		list<Service *> services_full;
+
+    /* Services that have to wait a time of 'connection_delay'
+     * until initiating another connection */
+    list<Service *> services_wait;
 
     /* Services not started being cracked yet */
 		list<Service *> services_remaining;

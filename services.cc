@@ -271,7 +271,7 @@ prepare_timing_template(timing_options *timing)
   } else if (o.timing_level == 4) { /* Aggressive */
     timing->connection_limit = 1000;
     timing->auth_limit = 10;
-    timing->connection_delay = 500;
+    timing->connection_delay = 250;
     timing->retries = 15;
     if (o.connection_limit == -1)
       o.connection_limit = 3000;
@@ -285,7 +285,7 @@ prepare_timing_template(timing_options *timing)
   } else { /* Normal */
     timing->connection_limit = 40;
     timing->auth_limit = 5;
-    timing->connection_delay = 1000;
+    timing->connection_delay = 100;
     timing->retries = 10;
     if (o.connection_limit == -1)
       o.connection_limit = 1500;

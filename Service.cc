@@ -45,6 +45,7 @@ Service::Service()
 	proto = IPPROTO_TCP;
 	portno = 0;
 	done = 0;
+  total_attempts = 0;
   active_connections = 0;
 	connection_limit = -1;
 	auth_limit = -1;
@@ -52,6 +53,7 @@ Service::Service()
 	retries = -1;
 	ssl = false;
 	module_data = NULL;
+  memset(&last, 0, sizeof(last));
 
 }
 
