@@ -49,7 +49,7 @@ AC_PROG_CXX
 AC_PROG_INSTALL
 
  if test -n "$GXX"; then
-      CXXFLAGS="$CXXFLAGS -Wall "
+      CXXFLAGS="$CXXFLAGS -Wall -Wextra "
  fi
 
 AC_MSG_CHECKING([whether the compiler is gcc 4 or greater])

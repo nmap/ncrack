@@ -399,8 +399,8 @@ int TargetGroup::get_next_host(struct sockaddr_storage *ss, size_t *sslen) {
   int octet;
   struct sockaddr_in *sin = (struct sockaddr_in *) ss;
   struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) ss;
-startover: /* to handle nmap --resume where I have already
-              scanned many of the IPs */  
+//startover: /* to handle nmap --resume where I have already
+  //            scanned many of the IPs */  
   assert(ss);
   assert(sslen);
 

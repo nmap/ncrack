@@ -29,7 +29,7 @@ void ncrack_module_end(nsock_pool nsp, void *mydata);
 /* schedule additional connections */
 static int ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
 /* ncrack initialization */
-static int ncrack(vector <Target *> &Targets, ServiceGroup *SG);
+static int ncrack(ServiceGroup *SG);
 /* module name demultiplexor */
 static void call_module(nsock_pool nsp, Connection* con);
 
@@ -55,17 +55,24 @@ print_usage(void)
       "  using -p which will be applied to all hosts in non-standard notation.\n"
       "  Service arguments can be specified to be host-specific, type of service-specific\n"
       "  (-m) or global (-g). Ex: ssh://10.0.0.10?al=10,cl=30 -m ssh:al=50 -g cd=3000\n"
+      "  Ex2: ncrack -p ssh,ftp:3500,25 10.0.0.10 scanme.nmap.org\n"
       "  -p <service-list>: services will be applied to all non-standard notation hosts\n"
       "  -m <service>:<options>: options will be applied to all services of this type\n"
       "  -g <options>: options will be applied to every service globally\n"
+      "  Available Options:\n"
+      "   Timing:\n"
+      "    cl (connection limit): maximum number of concurrent connections\n"
+      "    al (authentication limit): upper limit of authentication attempts per connection\n"
+      "    cd (connection delay): delay between each connection initiation\n"
+      "    mr (max retries): caps number of service connection attempts\n"
+      "   Module-specific:\n"
+      "    path: http relative path\n"
       "TIMING AND PERFORMANCE:\n"
       "  Options which take <time> are in milliseconds, unless you append 's'\n"
       "  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).\n"
       "  -T<0-5>: Set timing template (higher is faster)\n"
-      "  --connection-limit <number>: threshold for total connections per minute\n"
-      "  --auth-limit <number>: upper limit of authentication attempts per minute\n"
-      "  --connection-delay <time>: delay between each connection initiation\n"
-      "  --max-retries <tries>: Caps number of service connection attempts\n"
+      "  --connection-limit <number>: threshold for total concurrent connections\n"
+      "  --auth-limit <number>: upper limit of authentication attempts per connection\n"
       "  --host-timeout <time>: Give up on target after this long\n"
       "OUTPUT:\n"
       "  -v: Increase verbosity level (use twice or more for greater effect)\n"
@@ -200,10 +207,8 @@ int main(int argc, char **argv)
   vector <service_lookup *> services_cmd;
   vector <service_lookup *>::iterator SCvi;
 
-  char  *glob_options;  /* -g option */
-  timing_options timing;
-
-
+  char  *glob_options;  /* for -g option */
+  timing_options timing; /* for -T option */
 
   /* time variables */
   struct tm *tm;
@@ -230,21 +235,13 @@ int main(int argc, char **argv)
     {"debug", optional_argument, 0, 'd'},
     {"help", no_argument, 0, 'h'},
     {"timing", required_argument, 0, 'T'},
-    {"max_parallelism", required_argument, 0, 'M'},
-    {"max-parallelism", required_argument, 0, 'M'},
-    {"min_parallelism", required_argument, 0, 0},
-    {"min-parallelism", required_argument, 0, 0},
     {"excludefile", required_argument, 0, 0},
     {"exclude", required_argument, 0, 0},
     {"iL", required_argument, 0, 'i'},
     {"host_timeout", required_argument, 0, 0},
     {"host-timeout", required_argument, 0, 0},
-    {"scan_delay", required_argument, 0, 0},
-    {"scan-delay", required_argument, 0, 0},
-    {"max_scan_delay", required_argument, 0, 0},
-    {"max-scan-delay", required_argument, 0, 0},
-    {"max_retries", required_argument, 0, 0},
-    {"max-retries", required_argument, 0, 0},
+    {"connection_limit", required_argument, 0, 0},
+    {"connection-limit", required_argument, 0, 0},
     {0, 0, 0, 0}
   };
 
@@ -285,6 +282,8 @@ int main(int argc, char **argv)
           parse_services(optarg, services_cmd);
         } else if (!strcmp(long_options[option_index].name, "list")) {
           o.list_only++;
+        } else if (!optcmp(long_options[option_index].name, "connection-limit")) {
+          o.connection_limit = atoi(optarg);
         }
         break;
       case 'd': 
@@ -382,6 +381,7 @@ int main(int argc, char **argv)
 
 
   SG = new ServiceGroup();
+  SG->connection_limit = o.connection_limit;
 
   while ((host_spec = grab_next_host_spec(inputfd, argc, argv))) {
 
@@ -484,7 +484,7 @@ int main(int argc, char **argv)
 
     SG->last_accessed = SG->services_remaining.end();
     /* Ncrack 'em all! */
-    ncrack(Targets, SG);
+    ncrack(SG);
   }
 
   /* Free all of the Targets */
@@ -553,7 +553,6 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 void
 ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
-  nsock_iod nsi = nse_iod(nse);
   enum nse_status status = nse_status(nse);
   enum nse_type type = nse_type(nse);
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
@@ -562,7 +561,6 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   char *str;
 
   assert(type == NSE_TYPE_READ);
-
 
   if (status == NSE_STATUS_SUCCESS) {
 
@@ -604,15 +602,21 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 void
 ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
-  nsock_iod nsi = nse_iod(nse);
   enum nse_status status = nse_status(nse);
-  enum nse_type type = nse_type(nse);
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
+  int err;
 
-
-
-  call_module(nsp, con);
+  if (status == NSE_STATUS_SUCCESS)
+    call_module(nsp, con);
+  else if (status == NSE_STATUS_KILL)
+    printf("write: nse_status_kill\n");
+  else if (status == NSE_STATUS_ERROR) {
+  	err = nse_errorcode(nse);
+	  error("Got nsock WRITE error #%d (%s)", err, strerror(err));
+  } else {
+    error("Got nsock WRITE response with status %s - aborting this service", nse_status2str(status));
+  }
 
   /* see if we can initiate some more connections */
   ncrack_probes(nsp, SG);
@@ -629,7 +633,6 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 void
 ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
-  nsock_iod nsi = nse_iod(nse);
   enum nse_status status = nse_status(nse);
   enum nse_type type = nse_type(nse);
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
@@ -686,7 +689,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   else 
     li = SG->last_accessed++;
 
-  while (SG->active_connections < SG->ideal_parallelism
+  while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
       && SG->services_remaining.size() != 0) {
     serv = *li;
@@ -744,7 +747,7 @@ next:
 
 
 static int
-ncrack(vector <Target *> &Targets, ServiceGroup *SG)
+ncrack(ServiceGroup *SG)
 {
   /* nsock variables */
   struct timeval now;

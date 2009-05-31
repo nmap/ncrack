@@ -252,31 +252,43 @@ prepare_timing_template(timing_options *timing)
     timing->auth_limit = 3;
     timing->connection_delay = 10000; /* 10 secs */
     timing->retries = 1;
+    if (o.connection_limit == -1)
+      o.connection_limit = 50;
   } else if (o.timing_level == 1) { /* Sneaky */
     timing->connection_limit = 2;
     timing->auth_limit = 3;
     timing->connection_delay = 7500; 
     timing->retries = 1;
+    if (o.connection_limit == -1)
+      o.connection_limit = 150;
   } else if (o.timing_level == 2) { /* Polite */
     timing->connection_limit = 3;
     timing->auth_limit = 5;
     timing->connection_delay = 5000;
     timing->retries = 1;
+    if (o.connection_limit == -1)
+      o.connection_limit = 500;
   } else if (o.timing_level == 4) { /* Aggressive */
     timing->connection_limit = 1000;
     timing->auth_limit = 10;
     timing->connection_delay = 500;
     timing->retries = 15;
+    if (o.connection_limit == -1)
+      o.connection_limit = 3000;
   } else if (o.timing_level == 5) { /* Insane */
     timing->connection_limit = 10000;
     timing->auth_limit = 10;
     timing->connection_delay = 0;
     timing->retries = 20;
+    if (o.connection_limit == -1)
+      o.connection_limit = 10000;
   } else { /* Normal */
     timing->connection_limit = 40;
     timing->auth_limit = 5;
     timing->connection_delay = 1000;
     timing->retries = 10;
+    if (o.connection_limit == -1)
+      o.connection_limit = 1500;
   }
 }
 

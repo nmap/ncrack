@@ -1810,7 +1810,6 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 CXXFLAGS="-O0"
 
-LIBPCAP_LIBS="-lpcap"
 LIBSSL_LIBS="-lssl"
 
 
@@ -4116,7 +4115,7 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
  if test -n "$GXX"; then
-      CXXFLAGS="$CXXFLAGS -Wall "
+      CXXFLAGS="$CXXFLAGS -Wall -Wextra "
  fi
 
 { $as_echo "$as_me:$LINENO: checking whether the compiler is gcc 4 or greater" >&5

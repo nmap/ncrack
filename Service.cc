@@ -9,7 +9,6 @@ ServiceGroup::ServiceGroup()
 	/* members initialization */
 	total_services = 0;
 	active_connections = 0;
-	ideal_parallelism = 3; // TODO: modify for performance
 
 	gettimeofday(&now, NULL);
 

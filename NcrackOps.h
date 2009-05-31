@@ -11,18 +11,18 @@ class NcrackOps {
     void setaf(int af) { addressfamily = af; }
     int af() { return addressfamily; }
 
-    uint16_t *portlist;
-    bool global_options;
-    bool list_only;
-    int timing_level;
-    int debugging;
+    bool global_options; /* true if -g has been specified */
+    bool list_only;      /* only list hosts and exit */
+    int timing_level;    /* timing template number: T(0-5) */
+    int debugging;       /* valid for range 0-9 */
     int verbose;
     int numhosts_scanned;
-    int max_group_size;
+    long connection_limit;  /* global maximum total connections */
+    long auth_limit;  /* global maximum authentication attempts */
     unsigned long host_timeout;
 
   private:
-    int addressfamily; /*  Address family:  AF_INET or AF_INET6 */  
+    int addressfamily; /* Address family:  AF_INET or AF_INET6 */  
 };
 
 #endif

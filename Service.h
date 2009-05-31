@@ -75,16 +75,25 @@ class ServiceGroup {
 	public:
 		ServiceGroup();
 		~ServiceGroup();
-		list<Service *> services_finished; /* Services finished (successfully or not) */
-		list<Service *> services_full; /* Services that temporarily cannot initiate another
-                                      connection due to timing constraints (connection limit) */
-		list<Service *> services_remaining; /* Services not started being cracked yet */
-		unsigned int total_services; /* how many services we need to crack in total */
-		unsigned int ideal_parallelism; /* Max (and desired) number of connections at once */
-		unsigned int active_connections; /* total number of active connections */
-		list <Service *>::iterator last_accessed; /* last element accessed */
-		//  ScanProgressMeter *SPM;
+    
+    /* Services finished (successfully or not) */
+		list<Service *> services_finished; 
+
+    /* Services that temporarily cannot initiate another
+     * connection due to timing constraints (connection limit)
+     */
+		list<Service *> services_full;
+
+    /* Services not started being cracked yet */
+		list<Service *> services_remaining;
+
+		unsigned long total_services; /* how many services we need to crack in total */
+
+		long active_connections; /* total number of active connections */
+    long connection_limit; /* maximum total number of active connections */
+
 		int num_hosts_timedout; /* # of hosts timed out during (or before) scan */
+		list <Service *>::iterator last_accessed; /* last element accessed */
 };
 
 
