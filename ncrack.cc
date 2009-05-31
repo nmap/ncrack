@@ -531,7 +531,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   /* Check if we had previously surpassed imposed connection limit so that
    * we remove service from 'services_full' list to 'services_remaining' list.
    */
-  if (serv->active_connections >= serv->connection_limit) {
+  if (serv->full) {
     for (Sli = SG->services_full.begin(); Sli != SG->services_full.end(); Sli++) {
       // ??perhaps we should instead use a unique service id to cmp between them
       if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
@@ -541,6 +541,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     if (Sli == SG->services_full.end())
       fatal("%s: no service found in 'services_full' list as should happen!\n", __func__);
     SG->services_full.erase(Sli);
+    serv->full = false;
     SG->services_remaining.push_back(serv);
   }
 
@@ -683,9 +684,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   struct sockaddr_storage ss;
   size_t ss_len;
   list <Service *>::iterator li;
-  list <Service *>::iterator temp;
   struct timeval now;
-
 
 
   /* First check for every service if connection_delay time has already
@@ -722,6 +721,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      */
     gettimeofday(&now, NULL);
     if (TIMEVAL_MSEC_SUBTRACT(now, serv->last) < serv->connection_delay) {
+      printf("MPHKA WAIT\n");
       li = SG->services_remaining.erase(li);
       SG->services_wait.push_back(serv);
       goto next;
@@ -732,6 +732,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * the services_full list so that it won't be reaccessed in this loop.
      */
     if (serv->active_connections >= serv->connection_limit) {
+      serv->full = true;
+      printf("MPHKA FULL\n");
       li = SG->services_remaining.erase(li);
       SG->services_full.push_back(serv);
       goto next;
@@ -786,6 +788,7 @@ ncrack(ServiceGroup *SG)
   enum nsock_loopstatus loopret;
   nsock_pool nsp;
   int tracelevel = 0;
+  int err;
 
   /* create nsock p00l */
   if (!(nsp = nsp_new(SG))) 
@@ -794,13 +797,24 @@ ncrack(ServiceGroup *SG)
   gettimeofday(&now, NULL);
   nsp_settrace(nsp, tracelevel, &now);
 
+
+  SG->MinDelay();
+  
   ncrack_probes(nsp, SG);
 
   /* nsock loop */
-  loopret = nsock_loop(nsp, -1);
+  do {
+    loopret = nsock_loop(nsp, (int) SG->min_connection_delay);
+    if (loopret == NSOCK_LOOP_ERROR) {
+      err = nsp_geterrorcode(nsp);
+      fatal("Unexpected nsock_loop error. Error code %d (%s)\n", err, strerror(err));
+    }
+    ncrack_probes(nsp, SG);
+ 
+  } while (loopret == NSOCK_LOOP_TIMEOUT);
+
   if (o.debugging > 8)
     printf("nsock_loop returned %d\n", loopret);
 
   return 0;
-
 }

@@ -1,6 +1,26 @@
 #include "Service.h"
 
 
+/* 
+ * Find and set minimum connection delay from all services 
+ */
+void
+ServiceGroup::MinDelay()
+{
+  list<long> delays;
+  list<Service *>::iterator li;
+
+  for (li = services_remaining.begin(); li != services_remaining.end(); li++) {
+    delays.push_back((*li)->connection_delay);
+  }
+
+  delays.sort();
+  min_connection_delay = delays.front();
+  delays.clear();
+}
+
+
+
 
 ServiceGroup::ServiceGroup()
 {
@@ -45,6 +65,7 @@ Service::Service()
 	proto = IPPROTO_TCP;
 	portno = 0;
 	done = 0;
+  full = false;
   total_attempts = 0;
   active_connections = 0;
 	connection_limit = -1;

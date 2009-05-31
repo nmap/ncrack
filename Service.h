@@ -56,6 +56,7 @@ class Service
     long active_connections;
     struct timeval last; /* time of last activated connection */
 		int done;
+    bool full;  /* service is now on 'services_full' list */
     unsigned int total_attempts;
 
 		/* timing options that override global ones */
@@ -77,6 +78,9 @@ class ServiceGroup {
 	public:
 		ServiceGroup();
 		~ServiceGroup();
+
+    /* Find and set minimum connection delay from all services */
+    void MinDelay();
     
     /* Services finished (successfully or not) */
 		list<Service *> services_finished; 
@@ -95,6 +99,7 @@ class ServiceGroup {
 
 		unsigned long total_services; /* how many services we need to crack in total */
 
+    long min_connection_delay;  /* minimum connection delay from all services */
 		long active_connections; /* total number of active connections */
     long connection_limit; /* maximum total number of active connections */
 
