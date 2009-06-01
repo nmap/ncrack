@@ -42,7 +42,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
       con->state = FTP_USER_R;
       if (!con->login_attempts) {
         if (!con->buf || con->buf[0] != '2') {
-          error("Not ftp or service was shutdown\n");
+          error("%s Not ftp or service was shutdown\n", hostinfo);
           ncrack_module_end(nsp, con);
         }
         else {
@@ -79,21 +79,15 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
       break;
 
     case FTP_FINI:
-      con->state = FTP_BANNER;
       con->login_attempts++;
       serv->total_attempts++;
       if (!con->buf || con->buf[0] != '2')
         printf("%s Password failed\n", hostinfo);
       else
         printf("Success!\n");   
-      break;
-
-    default:
-      break;
-  }
-  if (con->state == FTP_FINI) {
-    con->retry = true;
-    return ncrack_module_end(nsp, con);
+      con->state = FTP_BANNER;
+      con->retry = true;
+      return ncrack_module_end(nsp, con);
   }
   /* make sure that ncrack_module_end() is always called last to have 
    * tail recursion or else stack space overflow might occur */

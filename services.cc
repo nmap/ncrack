@@ -284,7 +284,7 @@ prepare_timing_template(timing_options *timing)
       o.connection_limit = 10000;
   } else { /* Normal */
     timing->connection_limit = 40;
-    timing->auth_limit = 5;
+    timing->auth_limit = 3;
     timing->connection_delay = 100;
     timing->retries = 10;
     if (o.connection_limit == -1)
