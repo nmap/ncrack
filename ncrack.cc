@@ -177,7 +177,7 @@ load_login_file(FILE *file, int mode)
 {
   char line[1024];
   char *tmp;
-  vector <char *> *p;
+  vector <char *> *p = NULL;
 
   if (mode == USER)
     p = &LoginArray;
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
   vector <service_lookup *> services_cmd;
   vector <service_lookup *>::iterator SCvi;
 
-  char  *glob_options;  /* for -g option */
+  char  *glob_options = NULL;  /* for -g option */
   timing_options timing; /* for -T option */
 
   /* time variables */
@@ -621,7 +621,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
   enum nse_type type = nse_type(nse);
- // ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   int nbytes;
   char *str;
@@ -637,13 +637,16 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     call_module(nsp, con);
 
   } else if (status == NSE_STATUS_TIMEOUT) {
-    printf("read: nse_status_timeout\n");
+    if (o.debugging)
+      printf("read: nse_status_timeout\n");
     ncrack_module_end(nsp, con);
   } else if (status == NSE_STATUS_EOF) {
-    printf("read: nse_status_eof\n");
+    if (o.debugging > 5)
+      printf("read: nse_status_eof\n");
     ncrack_module_end(nsp, con);
   }  else if (status == NSE_STATUS_ERROR) {
-    printf("read: nse_status_error\n");
+    if (o.debugging)
+      printf("read: nse_status_error\n");
     ncrack_module_end(nsp, con);
   } else if (status == NSE_STATUS_KILL) {
     printf("read: nse_status_kill\n");
@@ -657,7 +660,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
   /* see if we can initiate some more connections */
-  //  ncrack_probes(nsp, SG);
+ // ncrack_probes(nsp, SG);
 
   return;
 }
@@ -669,7 +672,7 @@ void
 ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
-//  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   int err;
 
@@ -685,7 +688,7 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   }
 
   /* see if we can initiate some more connections */
-  //   ncrack_probes(nsp, SG);
+//  ncrack_probes(nsp, SG);
 
   return;
 }
@@ -701,7 +704,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
   enum nse_type type = nse_type(nse);
- // ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
@@ -730,7 +733,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
   /* see if we can initiate some more connections */
-  //  ncrack_probes(nsp, SG);
+//  ncrack_probes(nsp, SG);
 
   return;
 }

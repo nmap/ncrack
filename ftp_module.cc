@@ -86,7 +86,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
           printf("%s Login failed: %s %s\n", hostinfo, con->login, con->pass);
       }
       else
-        printf("Success!\n");   
+        printf("%s Success: %s %s\n", hostinfo, con->login, con->pass);   
       con->state = FTP_BANNER;
       con->retry = true;
       con->service->NextPair(&con->login, &con->pass);

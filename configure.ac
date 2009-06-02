@@ -5,7 +5,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(ncrack.cc)
 
 
-CXXFLAGS="-O0"
+CXXFLAGS="-O2"
 
 LIBSSL_LIBS="-lssl"
 
