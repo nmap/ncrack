@@ -17,6 +17,9 @@ using namespace std;
 
 /* global lookup table for available services */
 vector <global_service> ServicesTable;
+/* global login and pass array */
+vector <char *> LoginArray;
+vector <char *> PassArray;
 
 
 /* callback handlers */
@@ -32,6 +35,9 @@ static int ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
 static int ncrack(ServiceGroup *SG);
 /* module name demultiplexor */
 static void call_module(nsock_pool nsp, Connection* con);
+
+static void load_login_file(FILE *file, int mode);
+enum mode { USER, PASS };
 
 
 static void print_usage(void);
@@ -105,7 +111,7 @@ lookup_init(const char *const filename)
   if (!fp) 
     fatal("%s: failed to open file %s for reading!\n", __func__, filename);
 
-  while(fgets(line, sizeof(line), fp)) {
+  while (fgets(line, sizeof(line), fp)) {
     if (*line == '\n' || *line == '#')
       continue;
 
@@ -131,8 +137,6 @@ lookup_init(const char *const filename)
 
   fclose(fp);
 }
-
-
 
 
 
@@ -169,6 +173,30 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv)
 
 
 static void
+load_login_file(FILE *file, int mode)
+{
+  char line[1024];
+  char *tmp;
+  vector <char *> *p;
+
+  if (mode == USER)
+    p = &LoginArray;
+  else if (mode == PASS)
+    p = &PassArray;
+  else 
+    fatal("%s invalid mode specified!\n", __func__);
+
+  while (fgets(line, sizeof(line), file)) {
+    if (*line == '\n')
+      continue;
+    tmp = Strndup(line, strlen(line) - 1);
+    p->push_back(tmp);
+  }
+}
+
+
+
+static void
 call_module(nsock_pool nsp, Connection *con)
 {
   char *name = con->service->name;
@@ -190,6 +218,8 @@ int main(int argc, char **argv)
   ts_spec spec;
 
   FILE *inputfd = NULL;
+  FILE *loginfd = NULL;
+  FILE *passfd = NULL;
   unsigned long l;
 
   char *host_spec = NULL;
@@ -254,7 +284,8 @@ int main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "d:g:h:i:m:p:s:T:vV", long_options, &option_index)) != EOF) {
+  while((arg = getopt_long_only(argc, argv, "d:g:h:i:L:P:m:p:s:T:vV", long_options,
+          &option_index)) != EOF) {
     switch(arg) {
       case 0:
         if (!strcmp(long_options[option_index].name, "excludefile")) {
@@ -310,6 +341,30 @@ int main(int argc, char **argv)
             fatal("Failed to open input file %s for reading", optarg);
         }
         break;
+      case 'L':
+        if (loginfd)
+          fatal("Only one input filename allowed");
+        if (!strcmp(optarg, "-"))
+          loginfd = stdin;
+        else {    
+          loginfd = fopen(optarg, "r");
+          if (!loginfd) 
+            fatal("Failed to open input file %s for reading", optarg);
+          load_login_file(loginfd, USER);
+        }
+        break;
+      case 'P':
+        if (passfd)
+          fatal("Only one input filename allowed");
+        if (!strcmp(optarg, "-"))
+          passfd = stdin;
+        else {    
+          passfd = fopen(optarg, "r");
+          if (!passfd) 
+            fatal("Failed to open input file %s for reading", optarg);
+        }
+        load_login_file(passfd, PASS);
+        break;
       case 'm':
         parse_module_options(optarg);
         break;
@@ -353,6 +408,11 @@ int main(int argc, char **argv)
     }
   }
 
+  if (!loginfd)
+    fatal("You have to specify a username file using -L <filename>\n");
+  if (!passfd)
+    fatal("You have to specify a password file using -P <filename>\n");
+
   /* Prepare -T option (3 is default) */
   prepare_timing_template(&timing);
 
@@ -393,13 +453,17 @@ int main(int argc, char **argv)
     if (spec.service_name) {
       service = new Service();
       service->name = strdup(spec.service_name);
+      service->LoginArray = &LoginArray;
+      service->PassArray = &PassArray;
       Services.push_back(service);
-    } else {
+    } else {  /* -p option */
       for (SCvi = services_cmd.begin(); SCvi != services_cmd.end(); SCvi++) {
         service = new Service();
         service->name = (*SCvi)->name;
         service->portno = (*SCvi)->portno;
         service->proto = (*SCvi)->proto;
+        service->LoginArray = &LoginArray;
+        service->PassArray = &PassArray;
         Services.push_back(service);
       }
     }
@@ -472,7 +536,7 @@ int main(int argc, char **argv)
         printf(" ( %s ) ", Targets[i]->targetname);
       printf("\n");
       for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
-        if ((*li)->target == Targets[i])
+        if ((*li)->target == Targets[i]) 
           printf("  %s:%hu cl=%ld, al=%ld, cd=%ld, mr=%ld\n", 
               (*li)->name, (*li)->portno, (*li)->connection_limit,
               (*li)->auth_limit, (*li)->connection_delay, (*li)->retries);
@@ -557,7 +621,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
   enum nse_type type = nse_type(nse);
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+ // ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   int nbytes;
   char *str;
@@ -593,7 +657,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
   /* see if we can initiate some more connections */
-  ncrack_probes(nsp, SG);
+  //  ncrack_probes(nsp, SG);
 
   return;
 }
@@ -605,7 +669,7 @@ void
 ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+//  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   int err;
 
@@ -621,7 +685,7 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   }
 
   /* see if we can initiate some more connections */
-  ncrack_probes(nsp, SG);
+  //   ncrack_probes(nsp, SG);
 
   return;
 }
@@ -637,7 +701,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
   enum nse_type type = nse_type(nse);
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+ // ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
@@ -660,16 +724,13 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
           nse_status2str(status), con->service->target->NameIP());
     ncrack_module_end(nsp, con);
   } else if (status == NSE_STATUS_KILL) {
-    /* User probablby specified host_timeout and so the service scan is
-       shutting down */
     ncrack_module_end(nsp, con);
-    //return;
   } else
     fatal("Unexpected nsock status (%d) returned for connection attempt", (int) status);
 
 
   /* see if we can initiate some more connections */
-  ncrack_probes(nsp, SG);
+  //  ncrack_probes(nsp, SG);
 
   return;
 }
@@ -694,8 +755,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   gettimeofday(&now, NULL);
   for (li = SG->services_wait.begin(); li != SG->services_wait.end(); li++) {
     if (TIMEVAL_MSEC_SUBTRACT(now, (*li)->last) >= (*li)->connection_delay) {
-     SG->services_remaining.push_back(*li);
-     li = SG->services_wait.erase(li);
+      SG->services_remaining.push_back(*li);
+      li = SG->services_wait.erase(li);
     }
   }
 
@@ -709,8 +770,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       && SG->services_remaining.size() != 0) {
     serv = *li;
 
-    if (o.debugging > 9)
-      printf("attempts: %d\n", serv->total_attempts);
+    // if (o.debugging > 9)
+    printf("attempts: %d\n", serv->total_attempts);
 
     if (serv->target->timedOut(nsock_gettimeofday())) {
       // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
@@ -798,7 +859,7 @@ ncrack(ServiceGroup *SG)
 
 
   SG->MinDelay();
-  
+
   ncrack_probes(nsp, SG);
 
   /* nsock loop */
@@ -809,7 +870,7 @@ ncrack(ServiceGroup *SG)
       fatal("Unexpected nsock_loop error. Error code %d (%s)\n", err, strerror(err));
     }
     ncrack_probes(nsp, SG);
- 
+
   } while (loopret == NSOCK_LOOP_TIMEOUT);
 
   if (o.debugging > 8)

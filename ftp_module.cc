@@ -50,7 +50,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
             printf("%s reply: %s", hostinfo, con->buf);
         }
       }
-      strncpy(lbuf, "USER ithilgore\r\n", sizeof(lbuf) - 1);
+      snprintf(lbuf, sizeof(lbuf), "USER %s\r\n", con->login);
       nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, -1);
       break;
 
@@ -63,13 +63,13 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
       con->state = FTP_PASS;
       if (!con->buf || con->buf[0] != '3') {
         if (o.debugging > 6)
-          printf("%s User failed\n", hostinfo);
+          printf("%s Username failed\n", hostinfo);
       }
       else {
         if (o.debugging > 6)
           printf("%s reply: %s", hostinfo, con->buf);
       }
-      strncpy(lbuf, "PASS ithilgore\r\n", sizeof(lbuf) - 1);
+      snprintf(lbuf, sizeof(lbuf), "PASS %s\r\n", con->pass);
       nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, -1);
       break;
 
@@ -81,12 +81,15 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
     case FTP_FINI:
       con->login_attempts++;
       serv->total_attempts++;
-      if (!con->buf || con->buf[0] != '2')
-        printf("%s Password failed\n", hostinfo);
+      if (!con->buf || con->buf[0] != '2') {
+        if (o.debugging > 3)
+          printf("%s Login failed: %s %s\n", hostinfo, con->login, con->pass);
+      }
       else
         printf("Success!\n");   
       con->state = FTP_BANNER;
       con->retry = true;
+      con->service->NextPair(&con->login, &con->pass);
       return ncrack_module_end(nsp, con);
   }
   /* make sure that ncrack_module_end() is always called last to have 

@@ -25,9 +25,11 @@ class Connection
 		Connection(Service *serv);
 		~Connection();
 
-		// TODO: modify accordingly
 		int time_started;
 		int time_elapsed;
+    char *login;
+    char *pass;
+
 		int state;
     bool retry; /* true-> retry login attempt within current connection */
 		char *buf;
@@ -46,12 +48,16 @@ class Service
 		~Service();
 
 		Service(const Service&); /* copy constructor */
+    void NextPair(char **login, char **pass);
 
 		/* members */
 		char *name;
 		Target *target; /* service belongs to this host */
 		u8 proto;
 		u16 portno;
+
+    vector <char *> *LoginArray;
+    vector <char *> *PassArray;
 
     long active_connections;
     struct timeval last; /* time of last activated connection */
@@ -69,6 +75,11 @@ class Service
 		void *module_data; /* service/module-specific data */
 
 		list <Connection *> connections;
+  private:
+    vector <char *>::iterator loginvi;
+    vector <char *>::iterator passvi;
+    char *NextLogin();
+    char *NextPass();
 };
 
 

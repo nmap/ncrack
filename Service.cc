@@ -47,6 +47,7 @@ Connection::Connection(Service *serv)
 	state = 0;
 	service = serv;
   retry = false;
+  service->NextPair(&login, &pass);
 }
 
 Connection::~Connection()
@@ -75,7 +76,8 @@ Service::Service()
 	ssl = false;
 	module_data = NULL;
   memset(&last, 0, sizeof(last));
-
+  LoginArray = NULL;
+  PassArray = NULL;
 }
 
 /* copy constructor */
@@ -89,8 +91,57 @@ Service::Service(const Service& ref)
 	connection_delay = ref.connection_delay;
 	retries = ref.retries;
 	ssl = ref.ssl;
+  LoginArray = ref.LoginArray;
+  PassArray = ref.PassArray;
+  loginvi = LoginArray->begin();
+  passvi = PassArray->begin();
 
 }
+
+char *
+Service::NextLogin()
+{
+  char *ret;
+
+  if (loginvi == LoginArray->end()) 
+    loginvi = LoginArray->begin();
+
+  ret = *loginvi;
+  loginvi++;
+  return ret;
+}
+
+
+char *
+Service::NextPass()
+{
+  char *ret;
+
+  if (passvi == PassArray->end())
+    passvi = PassArray->begin();
+
+  ret = *passvi;
+  passvi++;
+  return ret;
+}
+
+void
+Service::NextPair(char **login, char **pass)
+{
+  static vector <char *>::iterator vi = PassArray->begin();
+
+  if (vi == PassArray->end()) {
+    vi = PassArray->begin();
+    *login = NextLogin();
+  } else {
+    *login = *loginvi;
+  }
+  *pass = NextPass();
+
+  vi++;  
+}
+
+
 
 Service::~Service()
 {
