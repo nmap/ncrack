@@ -4,6 +4,7 @@
 #include "services.h"
 #include "targets.h"
 #include "TargetGroup.h"
+#include "ServiceGroup.h"
 #include "nsock.h"
 #include "global_structures.h"
 #include "modules.h"
@@ -11,6 +12,8 @@
 #include <vector>
 
 #define DEFAULT_CONNECT_TIMEOUT 5000
+#define DEFAULT_USERNAME_FILE "./username.lst"
+#define DEFAULT_PASSWORD_FILE "./password.lst"
 
 extern NcrackOps o;
 using namespace std;
@@ -36,7 +39,7 @@ static int ncrack(ServiceGroup *SG);
 /* module name demultiplexor */
 static void call_module(nsock_pool nsp, Connection* con);
 
-static void load_login_file(FILE *file, int mode);
+static void load_login_file(const char *filename, int mode);
 enum mode { USER, PASS };
 
 
@@ -78,8 +81,12 @@ print_usage(void)
       "  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).\n"
       "  -T<0-5>: Set timing template (higher is faster)\n"
       "  --connection-limit <number>: threshold for total concurrent connections\n"
-      "  --auth-limit <number>: upper limit of authentication attempts per connection\n"
-      "  --host-timeout <time>: Give up on target after this long\n"
+   //   "  --auth-limit <number>: upper limit of authentication attempts per connection\n"
+  //    "  --host-timeout <time>: Give up on target after this long\n"
+      "AUTHENTICATION:\n"
+      "  -L <filename>: username file\n"
+      "  -P <filename>: password file\n"
+      "  --policy: password policy\n"
       "OUTPUT:\n"
       "  -v: Increase verbosity level (use twice or more for greater effect)\n"
       "  -d[level]: Set or increase debugging level (Up to 9 is meaningful)\n"
@@ -173,11 +180,20 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv)
 
 
 static void
-load_login_file(FILE *file, int mode)
+load_login_file(const char *filename, int mode)
 {
   char line[1024];
   char *tmp;
+  FILE *fd;
   vector <char *> *p = NULL;
+
+  if (!strcmp(filename, "-"))
+    fd = stdin;
+  else {    
+    fd = fopen(filename, "r");
+    if (!fd) 
+      fatal("Failed to open input file %s for reading\n", filename);
+  }
 
   if (mode == USER)
     p = &LoginArray;
@@ -186,7 +202,7 @@ load_login_file(FILE *file, int mode)
   else 
     fatal("%s invalid mode specified!\n", __func__);
 
-  while (fgets(line, sizeof(line), file)) {
+  while (fgets(line, sizeof(line), fd)) {
     if (*line == '\n')
       continue;
     tmp = Strndup(line, strlen(line) - 1);
@@ -218,8 +234,6 @@ int main(int argc, char **argv)
   ts_spec spec;
 
   FILE *inputfd = NULL;
-  FILE *loginfd = NULL;
-  FILE *passfd = NULL;
   unsigned long l;
 
   char *host_spec = NULL;
@@ -284,7 +298,7 @@ int main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "d:g:h:i:L:P:m:p:s:T:vV", long_options,
+  while((arg = getopt_long_only(argc, argv, "d:g:hi:L:P:m:p:s:T:vV", long_options,
           &option_index)) != EOF) {
     switch(arg) {
       case 0:
@@ -342,28 +356,10 @@ int main(int argc, char **argv)
         }
         break;
       case 'L':
-        if (loginfd)
-          fatal("Only one input filename allowed");
-        if (!strcmp(optarg, "-"))
-          loginfd = stdin;
-        else {    
-          loginfd = fopen(optarg, "r");
-          if (!loginfd) 
-            fatal("Failed to open input file %s for reading", optarg);
-          load_login_file(loginfd, USER);
-        }
+        load_login_file(optarg, USER);
         break;
       case 'P':
-        if (passfd)
-          fatal("Only one input filename allowed");
-        if (!strcmp(optarg, "-"))
-          passfd = stdin;
-        else {    
-          passfd = fopen(optarg, "r");
-          if (!passfd) 
-            fatal("Failed to open input file %s for reading", optarg);
-        }
-        load_login_file(passfd, PASS);
+        load_login_file(optarg, PASS);
         break;
       case 'm':
         parse_module_options(optarg);
@@ -408,10 +404,10 @@ int main(int argc, char **argv)
     }
   }
 
-  if (!loginfd)
-    fatal("You have to specify a username file using -L <filename>\n");
-  if (!passfd)
-    fatal("You have to specify a password file using -P <filename>\n");
+  if (LoginArray.empty())
+    load_login_file(DEFAULT_USERNAME_FILE, USER);
+  if (PassArray.empty())
+    load_login_file(DEFAULT_PASSWORD_FILE, PASS);
 
   /* Prepare -T option (3 is default) */
   prepare_timing_template(&timing);
@@ -572,15 +568,31 @@ void
 ncrack_module_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
+  nsock_iod nsi = con->niod;
+
+  // see if peer closed
+  nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
+  con->check = true;
+  return;
+}
+
+
+void
+ncrack_connection_end(nsock_pool nsp, void *mydata)
+{
+  Connection *con = (Connection *) mydata;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   list <Connection *>::iterator li;
   list <Service *>::iterator Sli;
 
-  if (con->retry && con->login_attempts < serv->auth_limit) {
-    call_module(nsp, con); /* retry next login attempt within current connection */
-    return;
+  /* 
+   * If authentication was completed, then if login pair was extracted
+   * from pool, permanently remove it from it
+   */
+  if (con->auth_complete) {
+    serv->RemoveFromPool(con->login, con->pass);
   }
 
   for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
@@ -590,24 +602,15 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   if (li == serv->connections.end()) /* this shouldn't happen */
     fatal("%s: invalid niod!\n", __func__);
 
+  SG->auth_rate_meter.update(con->login_attempts, NULL);
+
   nsi_delete(nsi, NSOCK_PENDING_SILENT);
   serv->connections.erase(li);
   /* Check if we had previously surpassed imposed connection limit so that
    * we remove service from 'services_full' list to 'services_remaining' list.
    */
-  if (serv->full) {
-    for (Sli = SG->services_full.begin(); Sli != SG->services_full.end(); Sli++) {
-      // ??perhaps we should instead use a unique service id to cmp between them
-      if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
-          && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
-        break;
-    }
-    if (Sli == SG->services_full.end())
-      fatal("%s: no service found in 'services_full' list as should happen!\n", __func__);
-    SG->services_full.erase(Sli);
-    serv->full = false;
-    SG->services_remaining.push_back(serv);
-  }
+  if (serv->full)
+    SG->UnFull(serv);
 
   serv->active_connections--; // maybe do it on Connection destructor?
   SG->active_connections--;
@@ -623,6 +626,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   enum nse_type type = nse_type(nse);
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
+  Service *serv = con->service;
   int nbytes;
   char *str;
 
@@ -633,22 +637,54 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     str = nse_readbuf(nse, &nbytes);
     con->buf = Strndup(str, nbytes);  /* warning: we may need memcpy instead of strncpy */
     con->bufsize = nbytes;
-
     call_module(nsp, con);
 
   } else if (status == NSE_STATUS_TIMEOUT) {
-    if (o.debugging)
-      printf("read: nse_status_timeout\n");
-    ncrack_module_end(nsp, con);
+    if (con->check) {
+      /* 
+       * If authentication was completed, then if login pair was extracted
+       * from pool, permanently remove it from it
+       */
+      if (con->auth_complete)
+        serv->RemoveFromPool(con->login, con->pass);
+
+      if (con->retry 
+          && con->login_attempts < serv->auth_limit
+          && serv->NextPair(&con->login, &con->pass) == 0)
+        call_module(nsp, con);
+      else 
+        ncrack_connection_end(nsp, con);
+
+    } else {
+      serv->AppendToPool(con->login, con->pass);
+      if (serv->stalled)
+        SG->UnStall(serv);
+      if (o.debugging)
+        printf("read: nse_status_timeout\n");
+      ncrack_connection_end(nsp, con);
+    }
   } else if (status == NSE_STATUS_EOF) {
+    if (!con->auth_complete) {
+      printf("NONCOMPLETE!!\n");
+      serv->AppendToPool(con->login, con->pass);
+      if (serv->stalled)
+       SG->UnStall(serv);
+    }
     if (o.debugging > 5)
-      printf("read: nse_status_eof\n");
-    ncrack_module_end(nsp, con);
+      printf("%s Connection closed\n", serv->HostInfo());
+    ncrack_connection_end(nsp, con);
   }  else if (status == NSE_STATUS_ERROR) {
+    serv->AppendToPool(con->login, con->pass);
+    if (serv->stalled)
+      SG->UnStall(serv);
     if (o.debugging)
       printf("read: nse_status_error\n");
     ncrack_module_end(nsp, con);
   } else if (status == NSE_STATUS_KILL) {
+    serv->AppendToPool(con->login, con->pass);
+    if (serv->stalled)
+      SG->UnStall(serv);
+ 
     printf("read: nse_status_kill\n");
     /* User probablby specified host_timeout and so the service scan is 
        shutting down */
@@ -660,7 +696,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
   /* see if we can initiate some more connections */
- // ncrack_probes(nsp, SG);
+  // ncrack_probes(nsp, SG);
 
   return;
 }
@@ -672,7 +708,6 @@ void
 ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   int err;
 
@@ -688,7 +723,7 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   }
 
   /* see if we can initiate some more connections */
-//  ncrack_probes(nsp, SG);
+  //  ncrack_probes(nsp, SG);
 
   return;
 }
@@ -706,6 +741,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   enum nse_type type = nse_type(nse);
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
+  Service *serv = con->service;
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
 
@@ -721,19 +757,27 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     call_module(nsp, con);
 
   } else if (status == NSE_STATUS_TIMEOUT || status == NSE_STATUS_ERROR) {
+    serv->AppendToPool(con->login, con->pass);
+    if (serv->stalled)
+      SG->UnStall(serv);
+
     /* This is not good. connect() really shouldn't generally be timing out. */
     if (o.debugging)
       error("Got nsock CONNECT response with status %s - aborting this service %s\n",
           nse_status2str(status), con->service->target->NameIP());
     ncrack_module_end(nsp, con);
   } else if (status == NSE_STATUS_KILL) {
+    printf("connect: nse_status_kill\n");
+    serv->AppendToPool(con->login, con->pass);
+    if (serv->stalled)
+      SG->UnStall(serv);
     ncrack_module_end(nsp, con);
   } else
     fatal("Unexpected nsock status (%d) returned for connection attempt", (int) status);
 
 
   /* see if we can initiate some more connections */
-//  ncrack_probes(nsp, SG);
+  //  ncrack_probes(nsp, SG);
 
   return;
 }
@@ -771,14 +815,18 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
       && SG->services_remaining.size() != 0) {
+
     serv = *li;
+    SG->last_accessed = li;
+    if (++li == SG->services_remaining.end()) 
+      li = SG->services_remaining.begin();
+
 
     // if (o.debugging > 9)
-    printf("attempts: %d\n", serv->total_attempts);
 
     if (serv->target->timedOut(nsock_gettimeofday())) {
       // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
-      goto next;
+      continue;
     }
 
     /* If the service's last connection was earlier than 'connection_delay'
@@ -788,7 +836,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
     if (TIMEVAL_MSEC_SUBTRACT(now, serv->last) < serv->connection_delay) {
       li = SG->services_remaining.erase(li);
       SG->services_wait.push_back(serv);
-      goto next;
+      continue;
     }
 
     /* If the service's active connections surpass its imposed connection limit
@@ -799,14 +847,48 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       serv->full = true;
       li = SG->services_remaining.erase(li);
       SG->services_full.push_back(serv);
-      goto next;
+      continue;
     }
+
+    printf("attempts: %d  rate: %.2f \n", serv->total_attempts, SG->auth_rate_meter.getCurrentRate());
+
+    /* 
+     * To mark a service as completely finished, first:
+     * a) make sure the username list has finished being iterated through once
+     * b) make sure that the mirror pair pool, which holds temporary login pairs that
+     *    are currently being used, is empty
+     */
+    if (serv->done && serv->isMirrorPoolEmpty()) {
+      printf("MOVING TO FINISHED\n");
+      li = SG->services_remaining.erase(li);
+      SG->services_finished.push_back(serv);
+      continue;
+    }
+
+    /* 
+     * If the username list iteration has finished, then don't initiate another
+     * connection until our pair_pool has at least one element to grab another
+     * pair from.
+     */
+    if (serv->done && serv->isPoolEmpty() && !serv->isMirrorPoolEmpty()) {
+      printf("CANT INITIATE YET\n");
+      serv->stalled = true;
+      li = SG->services_remaining.erase(li);
+      SG->services_stalled.push_back(serv);
+      continue;
+    }
+
 
     if (o.debugging > 8)
       printf("Connection to %s://%s:%hu\n", serv->name, serv->target->NameIP(), serv->portno);
 
     /* Schedule 1 connection for this service */
     con = new Connection(serv);
+    if (con->service->NextPair(&con->login, &con->pass) != 0) {
+      delete con;
+      continue;
+    }
+
     if ((con->niod = nsi_new(nsp, serv)) == NULL) {
       fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
     }
@@ -828,12 +910,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
           serv, (struct sockaddr *) &ss, ss_len,
           serv->portno);
     }
-
-next:
-
-    SG->last_accessed = li;
-    if (++li == SG->services_remaining.end()) 
-      li = SG->services_remaining.begin();
 
   }
   return 0;
@@ -862,6 +938,7 @@ ncrack(ServiceGroup *SG)
 
 
   SG->MinDelay();
+  SG->auth_rate_meter.start();
 
   ncrack_probes(nsp, SG);
 

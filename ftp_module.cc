@@ -22,14 +22,13 @@ enum states { FTP_INIT, FTP_BANNER, FTP_USER_R, FTP_USER_W, FTP_PASS, FTP_FINI, 
 void
 ncrack_ftp(nsock_pool nsp, Connection *con)
 {
-  char hostinfo[1024];
   char lbuf[BUFSIZE]; /* local buffer */
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
-
-  snprintf(hostinfo, sizeof(hostinfo), "%s://%s:%hu", serv->name,
-      serv->target->NameIP(), serv->portno);
+  const char *hostinfo = serv->HostInfo();
   con->retry = false; 
+  con->check = false;
+  con->auth_complete = false;
 
   switch (con->state)
   {
@@ -89,7 +88,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
         printf("%s Success: %s %s\n", hostinfo, con->login, con->pass);   
       con->state = FTP_BANNER;
       con->retry = true;
-      con->service->NextPair(&con->login, &con->pass);
+      con->auth_complete = true;
       return ncrack_module_end(nsp, con);
   }
   /* make sure that ncrack_module_end() is always called last to have 

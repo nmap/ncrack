@@ -4,14 +4,15 @@
 #include "ncrack.h"
 #include "utils.h"
 #include "Target.h"
+#include "timing.h"
 #include <list>
 
 
 #define BUFSIZE 256
+#define MAX_HOSTINFO_LEN 1024
 
 class Connection;
 class Service;
-class ServiceGroup;
 
 
 /* 
@@ -30,6 +31,9 @@ class Connection
     char *login;
     char *pass;
 
+    bool check;
+    bool auth_complete;
+
 		int state;
     bool retry; /* true-> retry login attempt within current connection */
 		char *buf;
@@ -40,6 +44,12 @@ class Connection
 };
 
 
+typedef struct loginpair
+{
+  char *login;
+  char *pass;
+} loginpair;
+
 
 class Service
 {
@@ -48,7 +58,12 @@ class Service
 		~Service();
 
 		Service(const Service&); /* copy constructor */
-    void NextPair(char **login, char **pass);
+    int NextPair(char **login, char **pass);
+    const char *HostInfo(void);
+    void AppendToPool(char *login, char *pass);
+    void RemoveFromPool(char *login, char *pass);
+    bool isMirrorPoolEmpty(void);
+    bool isPoolEmpty(void);
 
 		/* members */
 		char *name;
@@ -56,13 +71,18 @@ class Service
 		u8 proto;
 		u16 portno;
 
+    
+		bool done;    /* true if username list has been iterated through */
+    bool stalled; /* service is now on 'services_stalled' list */
+    bool full;    /* service is now on 'services_full' list */
+
+    bool pool_used; 
+
     vector <char *> *LoginArray;
     vector <char *> *PassArray;
 
     long active_connections;
     struct timeval last; /* time of last activated connection */
-		int done;
-    bool full;  /* service is now on 'services_full' list */
     unsigned int total_attempts;
 
 		/* timing options that override global ones */
@@ -76,48 +96,35 @@ class Service
 
 		list <Connection *> connections;
   private:
+
+    /* 
+     * hostinfo in form "<service_name>://<ip or hostname>:<port number>"
+     * e.g ftp://scanme.nmap.org:21
+     */
+    char *hostinfo;
+
+    /* 
+     * Login pair pool that holds pairs that didn't manage to be authenticated
+     * due to an error (the host timed out, the connection was forcefully closed
+     * etc). If this pool has elements, then the next returned pair from
+     * NextPair() will come from this pool. NextPair() will remove the
+     * element from the list.
+     */
+    list <loginpair> pair_pool;
+
+    /* 
+     * Mirror login pair pool, that holds pairs from login pair pool but which
+     * aren't removed from the list at the time they are used (by NextPair().
+     * By this way we can determine, if we are currently using pairs from the
+     * pair_pool by checking if the mirror_pair_pool is non-empty.
+     */
+    list <loginpair> mirror_pair_pool;
+
     vector <char *>::iterator loginvi;
     vector <char *>::iterator passvi;
-    char *NextLogin();
-    char *NextPass();
+    char *NextLogin(void);
+    char *NextPass(void);
 };
-
-
-
-
-class ServiceGroup {
-	public:
-		ServiceGroup();
-		~ServiceGroup();
-
-    /* Find and set minimum connection delay from all services */
-    void MinDelay();
-    
-    /* Services finished (successfully or not) */
-		list<Service *> services_finished; 
-
-    /* Services that temporarily cannot initiate another
-     * connection due to timing constraints (connection limit)
-     */
-		list<Service *> services_full;
-
-    /* Services that have to wait a time of 'connection_delay'
-     * until initiating another connection */
-    list<Service *> services_wait;
-
-    /* Services not started being cracked yet */
-		list<Service *> services_remaining;
-
-		unsigned long total_services; /* how many services we need to crack in total */
-
-    long min_connection_delay;  /* minimum connection delay from all services */
-		long active_connections; /* total number of active connections */
-    long connection_limit; /* maximum total number of active connections */
-
-		int num_hosts_timedout; /* # of hosts timed out during (or before) scan */
-		list <Service *>::iterator last_accessed; /* last element accessed */
-};
-
 
 
 
