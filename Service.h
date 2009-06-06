@@ -67,6 +67,14 @@ class Service
     bool isMirrorPoolEmpty(void);
     bool isPoolEmpty(void);
 
+    void SetListRemaining(void);
+    void SetListWait(void);
+    void SetListStalled(void);
+    void SetListFull(void);
+    void SetListFinishing(void);
+    void SetListFinished(void);
+
+
 		/* members */
 		char *name;
 		Target *target; /* service belongs to this host */
@@ -75,19 +83,22 @@ class Service
 
     
 		bool userfini;  /* true if username list has been iterated through */
-    bool stalled;   /* service is now on 'services_stalled' list */
-    bool full;      /* service is now on 'services_full' list */
-    bool finishing; /* service is now on 'services_finishing' list */
-    bool finished;  /* service is now on 'services_finished' list */
+  
+    bool list_remaining;/* service is now on 'services_remaining' list */
+    bool list_wait;     /* service is now on 'services_wait' list */
+    bool list_stalled;  /* service is now on 'services_stalled' list */ 
+    bool list_full;     /* service is now on 'services_full' list */
+    bool list_finishing;/* service is now on 'services_finishing' list */
+    bool list_finished; /* service is now on 'services_finished' list */
 
 
     vector <char *> *LoginArray;
     vector <char *> *PassArray;
 
     long active_connections;
-    struct timeval last; /* time of last activated connection */
     unsigned int total_attempts;
     unsigned int finished_attempts;
+    struct timeval last; /* time of last activated connection */
 
 		/* timing options that override global ones */
 		long connection_limit; 

@@ -20,7 +20,7 @@ class ServiceGroup {
 
     void UnFini(Service *serv);
     void Fini(Service *serv);
-
+    void MovToFin(Service *serv);
     
     /* Services finished (successfully or not) */
 		list<Service *> services_finished; 

@@ -42,6 +42,37 @@ ServiceGroup::~ServiceGroup()
 
 
 
+void
+ServiceGroup::MovToFin(Service *serv)
+{
+  list <Service *>::iterator Sli;
+  list <Service *> *p = NULL;
+
+  if (serv->list_remaining)
+    p = &services_remaining;
+  else if (serv->list_stalled)
+    p = &services_stalled;
+  else 
+    fatal("%s: can't move to finished from any other list than remaining "
+        " or stalled!\n", __func__);
+
+  for (Sli = p->begin(); Sli != p->end(); Sli++) {
+    // ??perhaps we should instead use a unique service id to cmp between them
+    if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
+        && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
+      break;
+  }
+  if (Sli == p->end()) 
+    fatal("%s: no service found in list as should happen!\n", __func__);
+
+  p->erase(Sli);
+  serv->SetListFull();
+  services_finished.push_back(serv);
+  printf("%s FINISHED!!!!\n", serv->HostInfo());
+
+}
+
+
 
 void
 ServiceGroup::UnFini(Service *serv)
@@ -57,8 +88,9 @@ ServiceGroup::UnFini(Service *serv)
   if (Sli == services_finishing.end())
     fatal("%s: no service found in 'services_finishing' list as should happen!\n", __func__);
   services_finishing.erase(Sli);
-  serv->finishing = false;
+  serv->SetListRemaining();
   services_remaining.push_back(serv);
+  printf("%s moved from FINISHING to REMAINING\n", serv->HostInfo());
 }
 
 
@@ -76,8 +108,7 @@ ServiceGroup::Fini(Service *serv)
   if (Sli == services_finishing.end())
     fatal("%s: no service found in 'services_finishing' list as should happen!\n", __func__);
   services_finishing.erase(Sli);
-  serv->finishing = false;
-  serv->finished = true;
+  serv->SetListFull();
   services_finished.push_back(serv);
   printf("%s FINISHED!!!!\n", serv->HostInfo());
 }
@@ -99,9 +130,9 @@ ServiceGroup::UnStall(Service *serv)
   if (Sli == services_stalled.end())
     fatal("%s: no service found in 'services_stalled' list as should happen!\n", __func__);
   services_stalled.erase(Sli);
-  serv->stalled = false;
+  serv->SetListRemaining();
   services_remaining.push_back(serv);
-  printf("moved %s from stalled to remaining\n", serv->HostInfo());
+  printf("%s moved from STALLED to REMAINING\n", serv->HostInfo());
 
 }
 
@@ -120,10 +151,10 @@ ServiceGroup::UnFull(Service *serv)
   if (Sli == services_full.end())
     fatal("%s: no service found in 'services_full' list as should happen!\n", __func__);
   services_full.erase(Sli);
-  serv->full = false;
+  serv->SetListRemaining();
   services_remaining.push_back(serv);
 
-  printf("moved %s from full to remaining\n", serv->HostInfo());
+  printf("%s moved from FULL to REMAINING\n", serv->HostInfo());
 
 }
 

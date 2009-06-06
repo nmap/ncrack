@@ -26,11 +26,15 @@ Service::Service()
 	target = NULL;
 	proto = IPPROTO_TCP;
 	portno = 0;
+
 	userfini = false;
-  full = false;
-  stalled = false;
-  finishing = false;
-  finished = false;
+  list_remaining = true;
+  list_full = false;
+  list_wait = false;
+  list_stalled = false;
+  list_finishing = false;
+  list_finished = false;
+  
   total_attempts = 0;
   finished_attempts = 0;
   active_connections = 0;
@@ -64,11 +68,15 @@ Service::Service(const Service& ref)
   active_connections = 0;
   total_attempts = 0;
   finished_attempts = 0;
-  full = false;
+
   userfini = false;
-  finishing = false;
-  stalled = false;
-  finished = false;
+  list_remaining = true;
+  list_full = false;
+  list_wait = false;
+  list_stalled = false;
+  list_finishing = false;
+  list_finished = false;
+  
   hostinfo = NULL;
 }
 
@@ -96,7 +104,7 @@ Service::NextLogin(void)
   loginvi++;
 
   if (loginvi == LoginArray->end()) {
-    printf("%s Username list finished\n", HostInfo());
+    printf("%s Username list finished!\n", HostInfo());
     userfini = true;
     return NULL;
   }
@@ -112,14 +120,87 @@ Service::NextPass(void)
   char *ret;
 
   ret = *passvi;
-  printf("PASS %s\n", ret);
+//  printf("password %s\n", ret);
   passvi++;
   return ret;
 }
 
 
+
+void
+Service::SetListRemaining(void)
+{
+  list_remaining = true;
+  list_wait = false;
+  list_stalled = false;
+  list_full = false;
+  list_finishing = false;
+  list_finished = false;
+}
+
+void
+Service::SetListWait(void)
+{
+  list_remaining = false;
+  list_wait = true;
+  list_stalled = false;
+  list_full = false;
+  list_finishing = false;
+  list_finished = false;
+}
+
+
+void
+Service::SetListStalled(void)
+{
+  list_remaining = false;
+  list_wait = false;
+  list_stalled = true;
+  list_full = false;
+  list_finishing = false;
+  list_finished = false;
+}
+
+
+void
+Service::SetListFull(void)
+{
+  list_remaining = false;
+  list_wait = false;
+  list_stalled = false;
+  list_full = true;
+  list_finishing = false;
+  list_finished = false;
+}
+
+
+
+void
+Service::SetListFinishing(void)
+{
+  list_remaining = false;
+  list_wait = false;
+  list_stalled = false;
+  list_full = false;
+  list_finishing = true;
+  list_finished = false;
+}
+
+
+void
+Service::SetListFinished(void)
+{
+  list_remaining = false;
+  list_wait = false;
+  list_stalled = false;
+  list_full = false;
+  list_finishing = false;
+  list_finished = true;
+}
+
+
 /* 
- * returns -1 for end of login list
+ * returns -1 for end of login list and empty pool
  * 0 for successful retrieval through lists
  * 1 for successful retrieval through pool
  */
@@ -141,7 +222,7 @@ Service::NextPair(char **login, char **pass)
     *login = tmp.login;
     *pass = tmp.pass;
     pair_pool.erase(pairli);
-    printf("Pool: extract %s %s\n", tmp.login, tmp.pass);
+    printf("%s Pool: extract %s %s\n", HostInfo(), tmp.login, tmp.pass);
     return 1;
   }
 
@@ -180,7 +261,7 @@ Service::RemoveFromPool(char *login, char *pass)
       break;
   }
   if (li != mirror_pair_pool.end()) {
-    printf("Pool: Removed %s %s\n", tmp.login, tmp.pass);
+    printf("%s Pool: Removed %s %s\n", HostInfo(), tmp.login, tmp.pass);
     mirror_pair_pool.erase(li);
   }
 }
@@ -203,7 +284,7 @@ Service::AppendToPool(char *login, char *pass)
   tmp.pass = pass;
   pair_pool.push_back(tmp);
 
-  printf("Pool: Append %s %s \n", tmp.login, tmp.pass);
+  printf("%s Pool: Append %s %s \n", HostInfo(), tmp.login, tmp.pass);
 
   /* 
    * Try and see if login pair was already in our mirror pool. Only if
