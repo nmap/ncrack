@@ -8,7 +8,6 @@ Connection::Connection(Service *serv)
 	service = serv;
   retry = false;
   auth_complete = false;
-  from_pool = false;
   login_attempts = 0;
 }
 
@@ -30,7 +29,8 @@ Service::Service()
 	done = false;
   full = false;
   stalled = false;
-  pool_used = false;
+  finishing = false;
+  finished = false;
   total_attempts = 0;
   active_connections = 0;
 	connection_limit = -1;
@@ -62,10 +62,11 @@ Service::Service(const Service& ref)
   passvi = PassArray->begin();
   active_connections = 0;
   total_attempts = 0;
-  pool_used = false;
   full = false;
   done = false;
+  finishing = false;
   stalled = false;
+  finished = false;
   hostinfo = NULL;
 }
 

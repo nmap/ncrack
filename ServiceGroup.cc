@@ -44,6 +44,47 @@ ServiceGroup::~ServiceGroup()
 
 
 void
+ServiceGroup::UnFini(Service *serv)
+{
+  list <Service *>::iterator Sli;
+
+  for (Sli = services_finishing.begin(); Sli != services_finishing.end(); Sli++) {
+    // ??perhaps we should instead use a unique service id to cmp between them
+    if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
+        && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
+      break;
+  }
+  if (Sli == services_finishing.end())
+    fatal("%s: no service found in 'services_finishing' list as should happen!\n", __func__);
+  services_finishing.erase(Sli);
+  serv->finishing = false;
+  services_remaining.push_back(serv);
+}
+
+
+void
+ServiceGroup::Fini(Service *serv)
+{
+  list <Service *>::iterator Sli;
+
+  for (Sli = services_finishing.begin(); Sli != services_finishing.end(); Sli++) {
+    // ??perhaps we should instead use a unique service id to cmp between them
+    if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
+        && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
+      break;
+  }
+  if (Sli == services_finishing.end())
+    fatal("%s: no service found in 'services_finishing' list as should happen!\n", __func__);
+  services_finishing.erase(Sli);
+  serv->finishing = false;
+  serv->finished = true;
+  services_finished.push_back(serv);
+}
+
+
+
+
+void
 ServiceGroup::UnStall(Service *serv)
 {
   list <Service *>::iterator Sli;

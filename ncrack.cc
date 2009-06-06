@@ -616,7 +616,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   nsi_delete(nsi, NSOCK_PENDING_SILENT);
   serv->connections.erase(li);
-  /* Check if we had previously surpassed imposed connection limit so that
+  /*
+   * Check if we had previously surpassed imposed connection limit so that
    * we remove service from 'services_full' list to 'services_remaining' list.
    */
   if (serv->full)
@@ -624,6 +625,21 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   serv->active_connections--; // maybe do it on Connection destructor?
   SG->active_connections--;
+
+  /*
+   * If service was on 'services_finishing' (username list finished, pool empty
+   * but still pending connections) then:
+   * - if new pairs arised into pool, move to 'services_remaining' again
+   * - else if no more connections are pending, move to 'services_finished'
+   */
+  if (serv->finishing) {
+    if (!serv->isMirrorPoolEmpty())
+      SG->UnFini(serv);
+    else if (!serv->active_connections)
+      SG->Fini(serv);
+  }
+
+
   /* see if we can initiate some more connections */
   ncrack_probes(nsp, SG);
 }
@@ -658,8 +674,8 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
         if (pair_ret == 1)
           con->from_pool = true;
         call_module(nsp, con);
-      } else 
-          ncrack_connection_end(nsp, con);
+      } else
+        ncrack_connection_end(nsp, con);
 
     } else {
       serv->AppendToPool(con->login, con->pass);
@@ -860,16 +876,27 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
     printf("attempts: %d  rate: %.2f \n", serv->total_attempts, SG->auth_rate_meter.getCurrentRate());
 
     /* 
-     * To mark a service as completely finished, first:
-     * a) make sure the username list has finished being iterated through once
-     * b) make sure that the mirror pair pool, which holds temporary login pairs that
+     * To mark a service as completely finished, first make sure:
+     * a) that the username list has finished being iterated through once
+     * b) that the mirror pair pool, which holds temporary login pairs which
      *    are currently being used, is empty
+     * c) that no pending connections are left
+     * d) that the service hasn't already finished 
      */
     if (serv->done && serv->isMirrorPoolEmpty()) {
-      printf("MOVING TO FINISHED\n");
-      li = SG->services_remaining.erase(li);
-      SG->services_finished.push_back(serv);
-      continue;
+      if (!serv->active_connections && !serv->finished) {
+        printf("MOVING TO FINISHED\n");
+        li = SG->services_remaining.erase(li);
+        serv->finished = true;
+        SG->services_finished.push_back(serv);
+        continue;
+      } else {
+        printf("moving to FINISHING\n");
+        serv->finishing = true;
+        li = SG->services_remaining.erase(li);
+        SG->services_finishing.push_back(serv);
+        continue;
+      }
     }
 
     /* 

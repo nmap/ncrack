@@ -17,9 +17,15 @@ class ServiceGroup {
     void UnStall(Service *serv);
 
     void UnFull(Service *serv);
+
+    void UnFini(Service *serv);
+    void Fini(Service *serv);
+
     
     /* Services finished (successfully or not) */
 		list<Service *> services_finished; 
+
+    list<Service *> services_finishing;
 
     /* Services that temporarily cannot initiate another
      * connection due to timing constraints (connection limit)

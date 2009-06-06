@@ -28,20 +28,21 @@ class Connection
 
 		int time_started;
 		int time_elapsed;
+
     char *login;
     char *pass;
 
-    bool check;
-    bool auth_complete;
-    bool from_pool;
+    bool check;         /* true -> check if peer closed connection on us */
+    bool auth_complete; /* true -> login pair tested */
+    bool from_pool;     /* true -> login pair was extracted from pair_pool */
+    bool retry;         /* true- > retry login attempt within current connection */
 
-		int state;
-    bool retry; /* true-> retry login attempt within current connection */
-		char *buf;
+		int state;    /* module state-machine's current state */
+		char *buf;    /* auxiliary buffer */
 		int bufsize;  /* buffer size not including '\0' */
 		unsigned int login_attempts;  /* login attempts up until now */
-		nsock_iod niod; /* I/O descriptor for this connection */
-		Service *service; /* service it belongs to */
+		nsock_iod niod;     /* I/O descriptor for this connection */
+		Service *service;   /* service it belongs to */
 };
 
 
@@ -73,11 +74,12 @@ class Service
 		u16 portno;
 
     
-		bool done;    /* true if username list has been iterated through */
-    bool stalled; /* service is now on 'services_stalled' list */
-    bool full;    /* service is now on 'services_full' list */
+		bool done;      /* true if username list has been iterated through */
+    bool stalled;   /* service is now on 'services_stalled' list */
+    bool full;      /* service is now on 'services_full' list */
+    bool finishing; /* service is now on 'services_finishing' list */
+    bool finished;  /* service is now on 'services_finished' list */
 
-    bool pool_used; 
 
     vector <char *> *LoginArray;
     vector <char *> *PassArray;
