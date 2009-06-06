@@ -568,11 +568,28 @@ void
 ncrack_module_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
+  Service *serv = con->service;
   nsock_iod nsi = con->niod;
 
-  // see if peer closed
-  nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
+  /* 
+   * If authentication was completed, then if login pair was extracted
+   * from pool, permanently remove it from it
+   */
+  if (con->auth_complete) {
+    if (con->from_pool && !serv->isMirrorPoolEmpty()) {
+      serv->RemoveFromPool(con->login, con->pass);
+      con->from_pool = false;
+    }
+  }
+
+  /* 
+   * Since there is no portable way to check if the peer has closed the
+   * connection or not (hence we are in CLOSE_WAIT state), issue a read call
+   * with a very small timeout and check if nsock timed out (host hasn't closed
+   * connection yet) or returned an EOF (host sent FIN making active close)
+   */
   con->check = true;
+  nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
   return;
 }
 
@@ -587,14 +604,6 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   list <Connection *>::iterator li;
   list <Service *>::iterator Sli;
 
-  /* 
-   * If authentication was completed, then if login pair was extracted
-   * from pool, permanently remove it from it
-   */
-  if (con->auth_complete) {
-    if (!serv->isMirrorPoolEmpty())
-      serv->RemoveFromPool(con->login, con->pass);
-  }
 
   for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
     if ((*li)->niod == nsi)
@@ -628,6 +637,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
+  int pair_ret;
   int nbytes;
   char *str;
 
@@ -642,21 +652,14 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   } else if (status == NSE_STATUS_TIMEOUT) {
     if (con->check) {
-      /* 
-       * If authentication was completed, then if login pair was extracted
-       * from pool, permanently remove it from it
-       */
-      if (con->auth_complete) {
-        if (!serv->isMirrorPoolEmpty())
-          serv->RemoveFromPool(con->login, con->pass);
-      }
 
-      if (con->retry 
-          && con->login_attempts < serv->auth_limit
-          && serv->NextPair(&con->login, &con->pass) == 0)
+      if (con->retry && con->login_attempts < serv->auth_limit
+          && (pair_ret = serv->NextPair(&con->login, &con->pass)) != -1) {
+        if (pair_ret == 1)
+          con->from_pool = true;
         call_module(nsp, con);
-      else 
-        ncrack_connection_end(nsp, con);
+      } else 
+          ncrack_connection_end(nsp, con);
 
     } else {
       serv->AppendToPool(con->login, con->pass);
@@ -671,7 +674,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       printf("NONCOMPLETE!!\n");
       serv->AppendToPool(con->login, con->pass);
       if (serv->stalled)
-       SG->UnStall(serv);
+        SG->UnStall(serv);
     }
     if (o.debugging > 5)
       printf("%s Connection closed\n", serv->HostInfo());
@@ -687,7 +690,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->AppendToPool(con->login, con->pass);
     if (serv->stalled)
       SG->UnStall(serv);
- 
+
     printf("read: nse_status_kill\n");
     /* User probablby specified host_timeout and so the service scan is 
        shutting down */
@@ -796,6 +799,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   size_t ss_len;
   list <Service *>::iterator li;
   struct timeval now;
+  int pair_ret;
 
 
   /* First check for every service if connection_delay time has already
@@ -887,10 +891,12 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 
     /* Schedule 1 connection for this service */
     con = new Connection(serv);
-    if (con->service->NextPair(&con->login, &con->pass) != 0) {
+    if ((pair_ret = con->service->NextPair(&con->login, &con->pass)) == -1) {
       delete con;
       continue;
     }
+    if (pair_ret == 1)
+      con->from_pool = true;
 
     if ((con->niod = nsi_new(nsp, serv)) == NULL) {
       fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);

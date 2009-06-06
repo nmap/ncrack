@@ -8,6 +8,7 @@ Connection::Connection(Service *serv)
 	service = serv;
   retry = false;
   auth_complete = false;
+  from_pool = false;
   login_attempts = 0;
 }
 
@@ -119,7 +120,8 @@ Service::NextPass(void)
 
 /* 
  * returns -1 for end of login list
- * 0 for success
+ * 0 for successful retrieval through lists
+ * 1 for successful retrieval through pool
  */
 int 
 Service::NextPair(char **login, char **pass)
@@ -143,7 +145,7 @@ Service::NextPair(char **login, char **pass)
     *pass = tmp.pass;
     pair_pool.erase(pairli);
     printf("Pool: extract %s %s\n", tmp.login, tmp.pass);
-    return 0;
+    return 1;
   }
 
   if (login_list_finished)
@@ -172,6 +174,8 @@ Service::RemoveFromPool(char *login, char *pass)
   loginpair tmp;
   list <loginpair>::iterator li;
 
+  printf("Pool: Remove\n");
+
   if (!login || !pass)
     return;
 
@@ -179,7 +183,7 @@ Service::RemoveFromPool(char *login, char *pass)
   tmp.pass = pass;
 
   for (li = mirror_pair_pool.begin(); li != mirror_pair_pool.end(); li++) {
-    if ((tmp.login == li->login) && (tmp.pass = li->pass))
+    if ((tmp.login == li->login) && (tmp.pass == li->pass))
       break;
   }
   if (li != mirror_pair_pool.end()) {
@@ -213,7 +217,7 @@ Service::AppendToPool(char *login, char *pass)
    * it doesn't already exist, then append it to the list.
    */
   for (li = mirror_pair_pool.begin(); li != mirror_pair_pool.end(); li++) {
-    if ((tmp.login == li->login) && (tmp.pass = li->pass))
+    if ((tmp.login == li->login) && (tmp.pass == li->pass))
       break;
   }
   if (li == mirror_pair_pool.end())

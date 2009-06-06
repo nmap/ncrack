@@ -33,6 +33,7 @@ class Connection
 
     bool check;
     bool auth_complete;
+    bool from_pool;
 
 		int state;
     bool retry; /* true-> retry login attempt within current connection */
