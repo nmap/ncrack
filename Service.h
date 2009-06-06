@@ -74,7 +74,7 @@ class Service
 		u16 portno;
 
     
-		bool done;      /* true if username list has been iterated through */
+		bool userfini; /* true if username list has been iterated through */
     bool stalled;   /* service is now on 'services_stalled' list */
     bool full;      /* service is now on 'services_full' list */
     bool finishing; /* service is now on 'services_finishing' list */

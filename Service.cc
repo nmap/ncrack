@@ -26,7 +26,7 @@ Service::Service()
 	target = NULL;
 	proto = IPPROTO_TCP;
 	portno = 0;
-	done = false;
+	userfini = false;
   full = false;
   stalled = false;
   finishing = false;
@@ -63,7 +63,7 @@ Service::Service(const Service& ref)
   active_connections = 0;
   total_attempts = 0;
   full = false;
-  done = false;
+  userfini = false;
   finishing = false;
   stalled = false;
   finished = false;
@@ -95,7 +95,7 @@ Service::NextLogin(void)
 
   if (loginvi == LoginArray->end()) {
     printf("DONE!\n");
-    done = true;
+    userfini = true;
     return NULL;
   }
 
@@ -108,9 +108,6 @@ char *
 Service::NextPass(void)
 {
   char *ret;
-
-  if (passvi == PassArray->end())
-    passvi = PassArray->begin();
 
   ret = *passvi;
   printf("PASS %s\n", ret);
@@ -127,15 +124,12 @@ Service::NextPass(void)
 int 
 Service::NextPair(char **login, char **pass)
 {
-  static bool login_list_finished = false;
-
   if (!PassArray)
     fatal("%s: uninitialized LoginArray\n", __func__);
 
   if (!PassArray)
     fatal("%s: uninitialized PassArray\n", __func__);
 
-  static vector <char *>::iterator vi = PassArray->begin();
   loginpair tmp;
 
   if (!pair_pool.empty()) {
@@ -149,14 +143,13 @@ Service::NextPair(char **login, char **pass)
     return 1;
   }
 
-  if (login_list_finished)
+  if (userfini)
     return -1;
     
-  if (vi == PassArray->end()) {
-    vi = PassArray->begin();
+  if (passvi == PassArray->end()) {
+    passvi = PassArray->begin();
     *login = NextLogin();
     if (!*login) {
-      login_list_finished = true;
       return -1;
     }
   } else {
@@ -164,7 +157,6 @@ Service::NextPair(char **login, char **pass)
   }
   *pass = NextPass();
 
-  vi++;  
   return 0;
 }
 

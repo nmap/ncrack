@@ -883,7 +883,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * c) that no pending connections are left
      * d) that the service hasn't already finished 
      */
-    if (serv->done && serv->isMirrorPoolEmpty()) {
+    if (serv->userfini && serv->isMirrorPoolEmpty()) {
       if (!serv->active_connections && !serv->finished) {
         printf("MOVING TO FINISHED\n");
         li = SG->services_remaining.erase(li);
@@ -904,7 +904,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * connection until our pair_pool has at least one element to grab another
      * pair from.
      */
-    if (serv->done && serv->isPoolEmpty() && !serv->isMirrorPoolEmpty()) {
+    if (serv->userfini && serv->isPoolEmpty() && !serv->isMirrorPoolEmpty()) {
       printf("CANT INITIATE YET\n");
       serv->stalled = true;
       li = SG->services_remaining.erase(li);
