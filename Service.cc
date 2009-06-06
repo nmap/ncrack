@@ -32,6 +32,7 @@ Service::Service()
   finishing = false;
   finished = false;
   total_attempts = 0;
+  finished_attempts = 0;
   active_connections = 0;
 	connection_limit = -1;
 	auth_limit = -1;
@@ -62,6 +63,7 @@ Service::Service(const Service& ref)
   passvi = PassArray->begin();
   active_connections = 0;
   total_attempts = 0;
+  finished_attempts = 0;
   full = false;
   userfini = false;
   finishing = false;
@@ -94,7 +96,7 @@ Service::NextLogin(void)
   loginvi++;
 
   if (loginvi == LoginArray->end()) {
-    printf("DONE!\n");
+    printf("%s Username list finished\n", HostInfo());
     userfini = true;
     return NULL;
   }
@@ -166,8 +168,6 @@ Service::RemoveFromPool(char *login, char *pass)
 {
   loginpair tmp;
   list <loginpair>::iterator li;
-
-  printf("Pool: Remove\n");
 
   if (!login || !pass)
     return;

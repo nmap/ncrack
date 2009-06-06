@@ -45,7 +45,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
           ncrack_module_end(nsp, con);
         }
         else {
-          if (o.debugging > 6)
+          if (o.debugging > 8)
             printf("%s reply: %s", hostinfo, con->buf);
         }
       }
@@ -61,11 +61,11 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
     case FTP_USER_W:
       con->state = FTP_PASS;
       if (!con->buf || con->buf[0] != '3') {
-        if (o.debugging > 6)
+        if (o.debugging > 8)
           printf("%s Username failed\n", hostinfo);
       }
       else {
-        if (o.debugging > 6)
+        if (o.debugging > 8)
           printf("%s reply: %s", hostinfo, con->buf);
       }
       snprintf(lbuf, sizeof(lbuf), "PASS %s\r\n", con->pass);
@@ -78,8 +78,6 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
       break;
 
     case FTP_FINI:
-      con->login_attempts++;
-      serv->total_attempts++;
       if (!con->buf || con->buf[0] != '2') {
         if (o.debugging > 3)
           printf("%s Login failed: %s %s\n", hostinfo, con->login, con->pass);
@@ -87,10 +85,9 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
       else
         printf("%s Success: %s %s\n", hostinfo, con->login, con->pass);   
       con->state = FTP_BANNER;
-      con->retry = true;
-      con->auth_complete = true;
+
       return ncrack_module_end(nsp, con);
   }
-  /* make sure that ncrack_module_end() is always called last to have 
+  /* make sure that ncrack_module_end() is always called last or returned to have 
    * tail recursion or else stack space overflow might occur */
 }

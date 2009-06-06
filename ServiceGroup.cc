@@ -79,6 +79,7 @@ ServiceGroup::Fini(Service *serv)
   serv->finishing = false;
   serv->finished = true;
   services_finished.push_back(serv);
+  printf("%s FINISHED!!!!\n", serv->HostInfo());
 }
 
 
@@ -100,6 +101,7 @@ ServiceGroup::UnStall(Service *serv)
   services_stalled.erase(Sli);
   serv->stalled = false;
   services_remaining.push_back(serv);
+  printf("moved %s from stalled to remaining\n", serv->HostInfo());
 
 }
 

@@ -74,7 +74,7 @@ class Service
 		u16 portno;
 
     
-		bool userfini; /* true if username list has been iterated through */
+		bool userfini;  /* true if username list has been iterated through */
     bool stalled;   /* service is now on 'services_stalled' list */
     bool full;      /* service is now on 'services_full' list */
     bool finishing; /* service is now on 'services_finishing' list */
@@ -87,6 +87,7 @@ class Service
     long active_connections;
     struct timeval last; /* time of last activated connection */
     unsigned int total_attempts;
+    unsigned int finished_attempts;
 
 		/* timing options that override global ones */
 		long connection_limit; 
@@ -117,7 +118,7 @@ class Service
 
     /* 
      * Mirror login pair pool, that holds pairs from login pair pool but which
-     * aren't removed from the list at the time they are used (by NextPair().
+     * aren't removed from the list at the time they are used.
      * By this way we can determine, if we are currently using pairs from the
      * pair_pool by checking if the mirror_pair_pool is non-empty.
      */
