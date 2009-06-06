@@ -47,7 +47,7 @@ unsigned long int Strtoul(const char *nptr);
  * Return a copy of 'size' characters from 'src' string.
  * Will always null terminate by allocating 1 additional char.
  */
-char *Strndup(char *src, size_t size);
+char *Strndup(const char *src, size_t size);
 
 /* Convert string to port (in host-byte order) */
 u16 str2port(char *exp);

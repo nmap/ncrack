@@ -605,7 +605,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   list <Connection *>::iterator li;
   list <Service *>::iterator Sli;
 
-  serv->total_attempts++;
+  if (!con->auth_complete)
+    serv->total_attempts++;
 
   for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
     if ((*li)->niod == nsi)
@@ -623,7 +624,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
    * we remove service from 'services_full' list to 'services_remaining' list.
    */
   if (serv->list_full)
-    SG->UnFull(serv);
+    SG->MoveServiceToList(serv, &SG->services_remaining);
 
   serv->active_connections--;
   SG->active_connections--;
@@ -636,9 +637,9 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
    */
   if (serv->list_finishing) {
     if (!serv->isMirrorPoolEmpty())
-      SG->UnFini(serv);
+      SG->MoveServiceToList(serv, &SG->services_remaining);
     else if (!serv->active_connections)
-      SG->Fini(serv);
+      SG->MoveServiceToList(serv, &SG->services_finished);
   }
 
   printf("%s Attempts: total %d completed %d --- rate %.2f \n", 
@@ -647,7 +648,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   /* Check if service finished for good. */
   if (serv->userfini && serv->isMirrorPoolEmpty() && !serv->active_connections)
-    SG->MovToFin(serv);
+    SG->MoveServiceToList(serv, &SG->services_finished);
 
   /* see if we can initiate some more connections */
   ncrack_probes(nsp, SG);
@@ -691,7 +692,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
         printf("%s read: nse_status_timeout\n", hostinfo);
       serv->AppendToPool(con->login, con->pass);
       if (serv->list_stalled)
-        SG->UnStall(serv);
+        SG->MoveServiceToList(serv, &SG->services_remaining);
       ncrack_connection_end(nsp, con);
     }
 
@@ -701,7 +702,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       printf("%s Peer closed on us in the middle of authentication!", hostinfo);
       serv->AppendToPool(con->login, con->pass);
       if (serv->list_stalled)
-        SG->UnStall(serv);
+        SG->MoveServiceToList(serv, &SG->services_remaining);
     }
     if (o.debugging > 5)
       printf("%s Connection closed\n", hostinfo);
@@ -713,7 +714,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       printf("read: nse_status_error\n");
     serv->AppendToPool(con->login, con->pass);
     if (serv->list_stalled)
-      SG->UnStall(serv);
+      SG->MoveServiceToList(serv, &SG->services_remaining);
     ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_KILL) {
@@ -785,7 +786,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
           nse_status2str(status));
     serv->AppendToPool(con->login, con->pass);
     if (serv->list_stalled)
-      SG->UnStall(serv);
+      SG->MoveServiceToList(serv, &SG->services_remaining);
     ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_KILL) {
@@ -793,7 +794,8 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     printf("connect: nse_status_kill\n");
     serv->AppendToPool(con->login, con->pass);
     if (serv->list_stalled)
-      SG->UnStall(serv);
+      SG->MoveServiceToList(serv, &SG->services_remaining);
+      //SG->UnStall(serv);
     ncrack_connection_end(nsp, con);
 
   } else
@@ -825,9 +827,10 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   gettimeofday(&now, NULL);
   for (li = SG->services_wait.begin(); li != SG->services_wait.end(); li++) {
     if (TIMEVAL_MSEC_SUBTRACT(now, (*li)->last) >= (*li)->connection_delay) {
-      (*li)->SetListRemaining();
-      SG->services_remaining.push_back(*li);
-      li = SG->services_wait.erase(li);
+      li = SG->MoveServiceToList(*li, &SG->services_remaining);
+      //(*li)->SetListRemaining();
+      //SG->services_remaining.push_back(*li);
+      //li = SG->services_wait.erase(li);
     }
   }
 
@@ -842,20 +845,20 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 
     serv = *li;
     hostinfo = serv->HostInfo();
+    printf("hostinfo: %s \n", hostinfo);
 
     //if (serv->target->timedOut(nsock_gettimeofday())) {
     // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
     //  goto next;
     // }
 
-    /* If the service's last connection was earlier than 'connection_delay'
+    /*
+     * If the service's last connection was earlier than 'connection_delay'
      * milliseconds ago, then temporarily move service to 'services_wait' list
      */
     gettimeofday(&now, NULL);
     if (TIMEVAL_MSEC_SUBTRACT(now, serv->last) < serv->connection_delay) {
-      serv->SetListWait();
-      li = SG->services_remaining.erase(li);
-      SG->services_wait.push_back(serv);
+      li = SG->MoveServiceToList(serv, &SG->services_wait);
       goto next;
     }
 
@@ -864,10 +867,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * the services_full list so that it won't be reaccessed in this loop.
      */
     if (serv->active_connections >= serv->connection_limit) {
-      serv->SetListFull();
-      li = SG->services_remaining.erase(li);
-      SG->services_full.push_back(serv);
-      printf("%s moved to FULL\n", hostinfo);
+      li = SG->MoveServiceToList(serv, &SG->services_full);
       goto next;
     }
 
@@ -882,16 +882,10 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      */
     if (serv->userfini && serv->isMirrorPoolEmpty() && !serv->list_finished) {
       if (!serv->active_connections) {
-        li = SG->services_remaining.erase(li);
-        serv->SetListFinished();
-        SG->services_finished.push_back(serv);
-        printf("%s moved to FINISHED\n", hostinfo);
+        li = SG->MoveServiceToList(serv, &SG->services_finished);
         goto next;
       } else {
-        serv->SetListFinishing();
-        li = SG->services_remaining.erase(li);
-        SG->services_finishing.push_back(serv);
-        printf("%s moved to FINISHING\n", hostinfo);
+        li = SG->MoveServiceToList(serv, &SG->services_finishing);
         goto next;
       }
     }
@@ -902,10 +896,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * pair from.
      */
     if (serv->userfini && serv->isPoolEmpty() && !serv->isMirrorPoolEmpty()) {
-      serv->SetListStalled();
-      li = SG->services_remaining.erase(li);
-      SG->services_stalled.push_back(serv);
-      printf("%s moved to STALLED\n", hostinfo);
+      li = SG->MoveServiceToList(serv, &SG->services_stalled);
       goto next;
     }
 

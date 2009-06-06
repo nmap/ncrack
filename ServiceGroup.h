@@ -14,14 +14,8 @@ class ServiceGroup {
     /* Find and set minimum connection delay from all services */
     void MinDelay(void);
 
-    void UnStall(Service *serv);
+    list <Service *>::iterator MoveServiceToList(Service *serv, list <Service *> *dst);
 
-    void UnFull(Service *serv);
-
-    void UnFini(Service *serv);
-    void Fini(Service *serv);
-    void MovToFin(Service *serv);
-    
     /* Services finished (successfully or not) */
 		list<Service *> services_finished; 
 

@@ -1,4 +1,7 @@
 #include "ServiceGroup.h"
+#include "NcrackOps.h"
+
+extern NcrackOps o;
 
 
 /* 
@@ -41,121 +44,75 @@ ServiceGroup::~ServiceGroup()
 }
 
 
-
-void
-ServiceGroup::MovToFin(Service *serv)
+list <Service *>::iterator
+ServiceGroup::MoveServiceToList(Service *serv, list <Service *> *dst)
 {
-  list <Service *>::iterator Sli;
-  list <Service *> *p = NULL;
+  list <Service *>::iterator li;
+  list <Service *> *src = NULL;
+  const char *srcname = NULL;
+  const char *dstname = NULL;
 
-  if (serv->list_remaining)
-    p = &services_remaining;
-  else if (serv->list_stalled)
-    p = &services_stalled;
-  else 
-    fatal("%s: can't move to finished from any other list than remaining "
-        " or stalled!\n", __func__);
-
-  for (Sli = p->begin(); Sli != p->end(); Sli++) {
-    // ??perhaps we should instead use a unique service id to cmp between them
-    if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
-        && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
+  assert(dst);
+  if (serv->list_remaining) {
+    src = &services_remaining;
+    srcname = Strndup("REMAINING", sizeof("REMAINING") - 1);
+  } else if (serv->list_wait) {
+    src = &services_wait;
+    srcname = Strndup("WAIT", sizeof("WAIT") - 1);
+  } else if (serv->list_stalled) {
+    src = &services_stalled;
+    srcname = Strndup("STALLED", sizeof("STALLED") - 1);
+  } else if (serv->list_full) {
+    src = &services_full;
+    srcname = Strndup("FULL", sizeof("FULL") - 1);
+  } else if (serv->list_finishing) {
+    src = &services_finishing;
+    srcname = Strndup("FINISHING", sizeof("FINISHING") - 1);
+  } else if (serv->list_finished) {
+    fatal("%s: service %s tried to move from services_finished! "
+        " That cannot happen!\n", __func__, serv->HostInfo());
+  } else 
+    fatal("%s: service %s doesn't belong in any list!\n", __func__, serv->HostInfo()); 
+ 
+  for (li = src->begin(); li != src->end(); li++) {
+    if (((*li)->portno == serv->portno) && (!strcmp((*li)->name, serv->name)) 
+      && (!(strcmp((*li)->target->NameIP(), serv->target->NameIP()))))
       break;
   }
-  if (Sli == p->end()) 
-    fatal("%s: no service found in list as should happen!\n", __func__);
+  if (li == src->end())
+    fatal("%s: no service %s found in list %s as should happen!\n", __func__, 
+        serv->HostInfo(), srcname);
 
-  p->erase(Sli);
-  serv->SetListFull();
-  services_finished.push_back(serv);
-  printf("%s FINISHED!!!!\n", serv->HostInfo());
+  if (dst == &services_remaining) {
+    serv->SetListRemaining();
+    dstname = Strndup("REMAINING", sizeof("REMAINING") - 1);
+  } else if (dst == &services_wait) {
+    serv->SetListWait();
+    dstname = Strndup("WAIT", sizeof("WAIT") - 1);
+  } else if (dst == &services_stalled) {
+    serv->SetListStalled();
+    dstname = Strndup("STALLED", sizeof("STALLED") - 1);
+  } else if (dst == &services_full) {
+    serv->SetListFull();
+    dstname = Strndup("FULL", sizeof("FULL") - 1);
+  } else if (dst == &services_finishing) {
+    serv->SetListFinishing();
+    dstname = Strndup("FINISHING", sizeof("FINISHING") - 1);
+  } else if (dst == &services_finished) {
+    serv->SetListFinished();
+    dstname = Strndup("FINISHED", sizeof("FINISHED") - 1);
+  } else
+    fatal("%s destination list invalid!\n", __func__);
 
-}
+  li = src->erase(li);
+  dst->push_back(serv);
 
+  if (o.debugging > 5)
+    printf("%s moved from list %s to %s\n", serv->HostInfo(), srcname, dstname);
 
-
-void
-ServiceGroup::UnFini(Service *serv)
-{
-  list <Service *>::iterator Sli;
-
-  for (Sli = services_finishing.begin(); Sli != services_finishing.end(); Sli++) {
-    // ??perhaps we should instead use a unique service id to cmp between them
-    if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
-        && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
-      break;
-  }
-  if (Sli == services_finishing.end())
-    fatal("%s: no service found in 'services_finishing' list as should happen!\n", __func__);
-  services_finishing.erase(Sli);
-  serv->SetListRemaining();
-  services_remaining.push_back(serv);
-  printf("%s moved from FINISHING to REMAINING\n", serv->HostInfo());
-}
-
-
-void
-ServiceGroup::Fini(Service *serv)
-{
-  list <Service *>::iterator Sli;
-
-  for (Sli = services_finishing.begin(); Sli != services_finishing.end(); Sli++) {
-    // ??perhaps we should instead use a unique service id to cmp between them
-    if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
-        && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
-      break;
-  }
-  if (Sli == services_finishing.end())
-    fatal("%s: no service found in 'services_finishing' list as should happen!\n", __func__);
-  services_finishing.erase(Sli);
-  serv->SetListFull();
-  services_finished.push_back(serv);
-  printf("%s FINISHED!!!!\n", serv->HostInfo());
-}
-
-
-
-
-void
-ServiceGroup::UnStall(Service *serv)
-{
-  list <Service *>::iterator Sli;
-
-  for (Sli = services_stalled.begin(); Sli != services_stalled.end(); Sli++) {
-    // ??perhaps we should instead use a unique service id to cmp between them
-    if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
-        && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
-      break;
-  }
-  if (Sli == services_stalled.end())
-    fatal("%s: no service found in 'services_stalled' list as should happen!\n", __func__);
-  services_stalled.erase(Sli);
-  serv->SetListRemaining();
-  services_remaining.push_back(serv);
-  printf("%s moved from STALLED to REMAINING\n", serv->HostInfo());
-
-}
-
-
-void
-ServiceGroup::UnFull(Service *serv)
-{
-  list <Service *>::iterator Sli;
-
-  for (Sli = services_full.begin(); Sli != services_full.end(); Sli++) {
-    // ??perhaps we should instead use a unique service id to cmp between them
-    if (((*Sli)->portno == serv->portno) && (!strcmp((*Sli)->name, serv->name)) 
-        && (!(strcmp((*Sli)->target->NameIP(), serv->target->NameIP()))))
-      break;
-  }
-  if (Sli == services_full.end())
-    fatal("%s: no service found in 'services_full' list as should happen!\n", __func__);
-  services_full.erase(Sli);
-  serv->SetListRemaining();
-  services_remaining.push_back(serv);
-
-  printf("%s moved from FULL to REMAINING\n", serv->HostInfo());
-
+  free((char *)srcname);
+  free((char *)dstname);
+  return li;
 }
 
 

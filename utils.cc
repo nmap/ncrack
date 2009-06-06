@@ -21,7 +21,7 @@ Strtoul(const char *nptr)
  * Will always null terminate by allocating 1 additional char.
  */
 char *
-Strndup(char *src, size_t size)
+Strndup(const char *src, size_t size)
 {
   char *ret;
   ret = (char *)safe_malloc(size + 1);
