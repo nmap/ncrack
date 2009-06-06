@@ -629,7 +629,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   /*
    * If service was on 'services_finishing' (username list finished, pool empty
    * but still pending connections) then:
-   * - if new pairs arised into pool, move to 'services_remaining' again
+   * - if new pairs arrived into pool, move to 'services_remaining' again
    * - else if no more connections are pending, move to 'services_finished'
    */
   if (serv->finishing) {
@@ -639,6 +639,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       SG->Fini(serv);
   }
 
+  printf("%s attempts: %d --- rate %.2f \n", serv->HostInfo(), serv->total_attempts,
+      SG->auth_rate_meter.getCurrentRate());
 
   /* see if we can initiate some more connections */
   ncrack_probes(nsp, SG);
@@ -816,6 +818,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   list <Service *>::iterator li;
   struct timeval now;
   int pair_ret;
+  char *login, *pass;
 
 
   /* First check for every service if connection_delay time has already
@@ -840,17 +843,13 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       && SG->services_remaining.size() != 0) {
 
     serv = *li;
-    SG->last_accessed = li;
-    if (++li == SG->services_remaining.end()) 
-      li = SG->services_remaining.begin();
-
 
     // if (o.debugging > 9)
 
-    if (serv->target->timedOut(nsock_gettimeofday())) {
+    //if (serv->target->timedOut(nsock_gettimeofday())) {
       // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
-      continue;
-    }
+    //  goto next;
+   // }
 
     /* If the service's last connection was earlier than 'connection_delay'
      * milliseconds ago, then temporarily move service to 'services_wait' list
@@ -859,7 +858,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
     if (TIMEVAL_MSEC_SUBTRACT(now, serv->last) < serv->connection_delay) {
       li = SG->services_remaining.erase(li);
       SG->services_wait.push_back(serv);
-      continue;
+      goto next;
     }
 
     /* If the service's active connections surpass its imposed connection limit
@@ -867,13 +866,14 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * the services_full list so that it won't be reaccessed in this loop.
      */
     if (serv->active_connections >= serv->connection_limit) {
+      printf("moving %s to full \n", serv->HostInfo());
       serv->full = true;
       li = SG->services_remaining.erase(li);
       SG->services_full.push_back(serv);
-      continue;
+      goto next;
     }
 
-    printf("attempts: %d  rate: %.2f \n", serv->total_attempts, SG->auth_rate_meter.getCurrentRate());
+ //   printf("attempts: %d  rate: %.2f \n", serv->total_attempts, SG->auth_rate_meter.getCurrentRate());
 
     /* 
      * To mark a service as completely finished, first make sure:
@@ -889,13 +889,13 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
         li = SG->services_remaining.erase(li);
         serv->finished = true;
         SG->services_finished.push_back(serv);
-        continue;
+        goto next;
       } else {
-        printf("moving to FINISHING\n");
+        printf("moving %s to FINISHING\n", serv->HostInfo());
         serv->finishing = true;
         li = SG->services_remaining.erase(li);
         SG->services_finishing.push_back(serv);
-        continue;
+        goto next;
       }
     }
 
@@ -909,21 +909,24 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       serv->stalled = true;
       li = SG->services_remaining.erase(li);
       SG->services_stalled.push_back(serv);
-      continue;
+      goto next;
     }
 
+    if ((pair_ret = serv->NextPair(&login, &pass)) == -1) {
+      //printf("goto next\n");
+      goto next;
+    }
 
     if (o.debugging > 8)
-      printf("Connection to %s://%s:%hu\n", serv->name, serv->target->NameIP(), serv->portno);
+      printf("Connection to %s\n", serv->HostInfo());
 
     /* Schedule 1 connection for this service */
     con = new Connection(serv);
-    if ((pair_ret = con->service->NextPair(&con->login, &con->pass)) == -1) {
-      delete con;
-      continue;
-    }
+
     if (pair_ret == 1)
       con->from_pool = true;
+    con->login = login;
+    con->pass = pass;
 
     if ((con->niod = nsi_new(nsp, serv)) == NULL) {
       fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
@@ -946,6 +949,12 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
           serv, (struct sockaddr *) &ss, ss_len,
           serv->portno);
     }
+
+next:
+
+    SG->last_accessed = li;
+    if (++li == SG->services_remaining.end()) 
+      li = SG->services_remaining.begin();
 
   }
   return 0;

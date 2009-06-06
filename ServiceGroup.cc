@@ -121,6 +121,8 @@ ServiceGroup::UnFull(Service *serv)
   serv->full = false;
   services_remaining.push_back(serv);
 
+  printf("moved %s from full to remaining\n", serv->HostInfo());
+
 }
 
 
