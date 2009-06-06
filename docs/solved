@@ -1,0 +1,73 @@
+
+
+
+CLOSE_WAIT check
+------------------
+
+Ncrack will now check if the connection has been closed by the peer before
+trying out a new authentication attempt within that connection. It does that
+by issuing a read call (through nsock) with a tiny timeout. If nsock returns
+NSE_STATUS_TIMEOUT instead of an NSE_STATUS_EOF, then our connection hasn't been
+closed yet by the peer. Of course we check that by using an additional boolean
+variable so as to differentiate between normal timeouts and this particular
+one. There is not really any other *portable* way to check if our connection
+is in CLOSE_WAIT state (e.g Linux netstat just parses /proc and *BSD use
+fcntl et al)
+
+
+
+NextPair Problem
+------------------
+
+Problem: each service that needs to be cracked holds a pointer to the loaded
+username list and password list (they are vector objects). Each time a new
+connection is made or a new authentication attempt is going to be tried in the
+current connection then we need to call NextPair() which gives us the next login
+username and password pair. The normal way to do that would be to just move the
+password list iterator each time, and the username list iterator once the
+password list iterator has finished one full iteration. However, by using this
+crude approach arises the following problem: 
+
+-- What happens when a connection is prematurely closed by the peer for one
+reason or another (before the current login pair is actually tested)? --
+
+It is obvious that the iterator approach would never really try out that pair,
+because it would just forget about the unfinished authentication attempt and
+move on giving the next (always unique) pair.
+
+Solution: (still needs to be more tested for some end-cases)
+
+Each time a connection is prematurely closed by the peer, which essentially
+means that our current authentication attempt was not completed, then we throw
+the current pair inside the service's login-pair pool (which is a stl list). The
+next time we are going to ask for a pair from NextPair(), if the pair_pool
+is not empty, then it will return us one element from that, giving us the
+opportunity to retry that pair once again. The element is removed from the pool
+when we extract it from NextPair() and if the authentication doesn't finish this
+time either, then we move it back to the list so it can be reused later once
+again (and this will go on happening until the authentication finishes all steps
+for that pair or any other pair in that situation).
+
+The problem, however, is a little more complex than it first seems:
+
+-- What happens if the username list iteration finishes while we have pending
+authentication attempts taking place but the pairs for these attempts had been
+extracted from the pair_pool? --
+
+Normally, since the pair_pool has its elements removed and would be 
+empty at the time the username list iteration finishes, then there is no
+way to actually know if the service needs to be moved to the services_finished
+list (which should be moved there only after *every* pair has been tested out,
+including everything from the pair_pool).
+To be able to account for that, we keep a separate mirror_pair_pool which holds
+copies of the current pairs being tested out from the main pair_pool. Each time
+a pair has been tested out fully, then we can remove that element from the
+mirror_pair_pool (remember that the element from the pair_pool had already been
+removed at the time it was returned from NextPair()). If it fails being tested,
+then we move back that pair to the pair_pool list only (we already have a copy
+at the mirror_pair_pool). 
+Note down, that all this happens to take care of a highly improbable case, but
+which however just *might* happen one day. Also, note that every list involved
+in the solution is usually really small so any iterations are not
+resource-consuming.
+

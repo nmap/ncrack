@@ -592,7 +592,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
    * from pool, permanently remove it from it
    */
   if (con->auth_complete) {
-    serv->RemoveFromPool(con->login, con->pass);
+    if (!serv->isMirrorPoolEmpty())
+      serv->RemoveFromPool(con->login, con->pass);
   }
 
   for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
@@ -645,8 +646,10 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
        * If authentication was completed, then if login pair was extracted
        * from pool, permanently remove it from it
        */
-      if (con->auth_complete)
-        serv->RemoveFromPool(con->login, con->pass);
+      if (con->auth_complete) {
+        if (!serv->isMirrorPoolEmpty())
+          serv->RemoveFromPool(con->login, con->pass);
+      }
 
       if (con->retry 
           && con->login_attempts < serv->auth_limit

@@ -136,13 +136,13 @@ Service::NextPair(char **login, char **pass)
   loginpair tmp;
 
   if (!pair_pool.empty()) {
-    printf("Pool!\n");
     
     list <loginpair>::iterator pairli = pair_pool.begin();
     tmp = pair_pool.front();
     *login = tmp.login;
     *pass = tmp.pass;
     pair_pool.erase(pairli);
+    printf("Pool: extract %s %s\n", tmp.login, tmp.pass);
     return 0;
   }
 
@@ -172,9 +172,7 @@ Service::RemoveFromPool(char *login, char *pass)
   loginpair tmp;
   list <loginpair>::iterator li;
 
-  if (!login)
-    return;
-  if (!pass)
+  if (!login || !pass)
     return;
 
   tmp.login = login;
@@ -185,7 +183,7 @@ Service::RemoveFromPool(char *login, char *pass)
       break;
   }
   if (li != mirror_pair_pool.end()) {
-    printf("Removed from pool\n");
+    printf("Pool: Removed %s %s\n", tmp.login, tmp.pass);
     mirror_pair_pool.erase(li);
   }
 }
@@ -198,7 +196,6 @@ Service::AppendToPool(char *login, char *pass)
   loginpair tmp;
   list <loginpair>::iterator li;
 
-  printf("Append\n");
 
   if (!login)
     fatal("%s: tried to append NULL login into pair pool\n", __func__);
@@ -208,6 +205,8 @@ Service::AppendToPool(char *login, char *pass)
   tmp.login = login;
   tmp.pass = pass;
   pair_pool.push_back(tmp);
+
+  printf("Pool: Append %s %s \n", tmp.login, tmp.pass);
 
   /* 
    * Try and see if login pair was already in our mirror pool. Only if
