@@ -87,8 +87,6 @@ parse_services_target(char *const exp)
 
   temp.host_expr = Strndup(s, host_len);
 
-  printf("%s %s %s \n", temp.service_name, temp.portno, temp.service_options);
-
   return temp;
 }
 
@@ -398,6 +396,11 @@ check_supported_services(service_lookup *serv)
 }
 
 
+/* 
+ * Returns service name corresponding to the given port. It will first
+ * check ServicesTable for the availability of support for the service with
+ * that default port number.
+ */
 static char *
 port2name(char *port)
 {
@@ -411,7 +414,7 @@ port2name(char *port)
   portno = str2port(port);
   for (vi = ServicesTable.begin(); vi != ServicesTable.end(); vi++) {
     if (vi->lookup.portno == portno) {
-      name = strdup(vi->lookup.name); /* assign service name */
+      name = strdup(vi->lookup.name);
       break;
     }
   }

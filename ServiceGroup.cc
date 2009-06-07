@@ -13,7 +13,7 @@ ServiceGroup::MinDelay(void)
   list<long> delays;
   list<Service *>::iterator li;
 
-  for (li = services_remaining.begin(); li != services_remaining.end(); li++) {
+  for (li = services_active.begin(); li != services_active.end(); li++) {
     delays.push_back((*li)->connection_delay);
   }
 
@@ -53,9 +53,9 @@ ServiceGroup::MoveServiceToList(Service *serv, list <Service *> *dst)
   const char *dstname = NULL;
 
   assert(dst);
-  if (serv->list_remaining) {
-    src = &services_remaining;
-    srcname = Strndup("REMAINING", sizeof("REMAINING") - 1);
+  if (serv->list_active) {
+    src = &services_active;
+    srcname = Strndup("ACTIVE", sizeof("ACTIVE") - 1);
   } else if (serv->list_wait) {
     src = &services_wait;
     srcname = Strndup("WAIT", sizeof("WAIT") - 1);
@@ -69,8 +69,9 @@ ServiceGroup::MoveServiceToList(Service *serv, list <Service *> *dst)
     src = &services_finishing;
     srcname = Strndup("FINISHING", sizeof("FINISHING") - 1);
   } else if (serv->list_finished) {
-    fatal("%s: service %s tried to move from services_finished! "
-        "That cannot happen!\n", __func__, serv->HostInfo());
+    return services_finished.end();
+    //fatal("%s: service %s tried to move from services_finished! "
+    //   "That cannot happen!\n", __func__, serv->HostInfo());
   } else 
     fatal("%s: service %s doesn't belong in any list!\n", __func__, serv->HostInfo()); 
  
@@ -83,9 +84,9 @@ ServiceGroup::MoveServiceToList(Service *serv, list <Service *> *dst)
     fatal("%s: no service %s found in list %s as should happen!\n", __func__, 
         serv->HostInfo(), srcname);
 
-  if (dst == &services_remaining) {
-    serv->SetListRemaining();
-    dstname = Strndup("REMAINING", sizeof("REMAINING") - 1);
+  if (dst == &services_active) {
+    serv->SetListActive();
+    dstname = Strndup("ACTIVE", sizeof("ACTIVE") - 1);
   } else if (dst == &services_wait) {
     serv->SetListWait();
     dstname = Strndup("WAIT", sizeof("WAIT") - 1);

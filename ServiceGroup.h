@@ -36,8 +36,8 @@ class ServiceGroup {
      */
     list<Service *> services_stalled;
 
-    /* Services not started being cracked yet */
-		list<Service *> services_remaining;
+    /* Services that can initiate more connections */
+		list<Service *> services_active;
 
 		unsigned long total_services; /* how many services we need to crack in total */
 

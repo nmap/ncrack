@@ -28,13 +28,15 @@ Service::Service()
 	portno = 0;
 
 	userfini = false;
-  list_remaining = true;
+  list_active = true;
   list_full = false;
   list_wait = false;
   list_stalled = false;
   list_finishing = false;
   list_finished = false;
-  
+  just_started = true;
+
+  failed_connections = 0;
   total_attempts = 0;
   finished_attempts = 0;
   active_connections = 0;
@@ -68,14 +70,16 @@ Service::Service(const Service& ref)
   active_connections = 0;
   total_attempts = 0;
   finished_attempts = 0;
+  failed_connections = 0;
 
   userfini = false;
-  list_remaining = true;
+  list_active = true;
   list_full = false;
   list_wait = false;
   list_stalled = false;
   list_finishing = false;
   list_finished = false;
+  just_started = true;
   
   hostinfo = NULL;
 }
@@ -128,9 +132,9 @@ Service::NextPass(void)
 
 
 void
-Service::SetListRemaining(void)
+Service::SetListActive(void)
 {
-  list_remaining = true;
+  list_active = true;
   list_wait = false;
   list_stalled = false;
   list_full = false;
@@ -141,7 +145,7 @@ Service::SetListRemaining(void)
 void
 Service::SetListWait(void)
 {
-  list_remaining = false;
+  list_active = false;
   list_wait = true;
   list_stalled = false;
   list_full = false;
@@ -153,7 +157,7 @@ Service::SetListWait(void)
 void
 Service::SetListStalled(void)
 {
-  list_remaining = false;
+  list_active = false;
   list_wait = false;
   list_stalled = true;
   list_full = false;
@@ -165,7 +169,7 @@ Service::SetListStalled(void)
 void
 Service::SetListFull(void)
 {
-  list_remaining = false;
+  list_active = false;
   list_wait = false;
   list_stalled = false;
   list_full = true;
@@ -178,7 +182,7 @@ Service::SetListFull(void)
 void
 Service::SetListFinishing(void)
 {
-  list_remaining = false;
+  list_active = false;
   list_wait = false;
   list_stalled = false;
   list_full = false;
@@ -190,7 +194,7 @@ Service::SetListFinishing(void)
 void
 Service::SetListFinished(void)
 {
-  list_remaining = false;
+  list_active = false;
   list_wait = false;
   list_stalled = false;
   list_full = false;

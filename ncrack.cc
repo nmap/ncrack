@@ -496,12 +496,12 @@ int main(int argc, char **argv)
 
         service->target = currenths;
         /* check for duplicates */
-        for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
+        for (li = SG->services_active.begin(); li != SG->services_active.end(); li++) {
           if (!strcmp((*li)->target->NameIP(), currenths->NameIP()) &&
               (!strcmp((*li)->name, service->name)) && ((*li)->portno == service->portno))
             fatal("Duplicate service %s for target %s !\n", service->name, currenths->NameIP());
         }
-        SG->services_remaining.push_back(service);
+        SG->services_active.push_back(service);
         SG->total_services++;
       }
     }
@@ -531,7 +531,7 @@ int main(int argc, char **argv)
       if (Targets[i]->targetname)
         printf(" ( %s ) ", Targets[i]->targetname);
       printf("\n");
-      for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
+      for (li = SG->services_active.begin(); li != SG->services_active.end(); li++) {
         if ((*li)->target == Targets[i]) 
           printf("  %s:%hu cl=%ld, al=%ld, cd=%ld, mr=%ld\n", 
               (*li)->name, (*li)->portno, (*li)->connection_limit,
@@ -542,7 +542,7 @@ int main(int argc, char **argv)
     if (!SG->total_services)
       fatal("No services specified!\n");
 
-    SG->last_accessed = SG->services_remaining.end();
+    SG->last_accessed = SG->services_active.end();
     /* Ncrack 'em all! */
     ncrack(SG);
   }
@@ -572,10 +572,11 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   nsock_iod nsi = con->niod;
 
   con->login_attempts++;
-  con->service->total_attempts++;
-  con->service->finished_attempts++;
   con->retry = true;
   con->auth_complete = true;
+  serv->total_attempts++;
+  serv->finished_attempts++;
+  serv->just_started = false; /* at least 1 successful connection */
 
   /* If login pair was extracted from pool, permanently remove it from it. */
   if (con->from_pool && !serv->isMirrorPoolEmpty()) {
@@ -621,10 +622,10 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   serv->connections.erase(li);
   /*
    * Check if we had previously surpassed imposed connection limit so that
-   * we remove service from 'services_full' list to 'services_remaining' list.
+   * we remove service from 'services_full' list to 'services_active' list.
    */
   if (serv->list_full)
-    SG->MoveServiceToList(serv, &SG->services_remaining);
+    SG->MoveServiceToList(serv, &SG->services_active);
 
   serv->active_connections--;
   SG->active_connections--;
@@ -632,12 +633,12 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   /*
    * If service was on 'services_finishing' (username list finished, pool empty
    * but still pending connections) then:
-   * - if new pairs arrived into pool, move to 'services_remaining' again
+   * - if new pairs arrived into pool, move to 'services_active' again
    * - else if no more connections are pending, move to 'services_finished'
    */
   if (serv->list_finishing) {
     if (!serv->isMirrorPoolEmpty())
-      SG->MoveServiceToList(serv, &SG->services_remaining);
+      SG->MoveServiceToList(serv, &SG->services_active);
     else if (!serv->active_connections)
       SG->MoveServiceToList(serv, &SG->services_finished);
   }
@@ -692,7 +693,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
         printf("%s read: nse_status_timeout\n", hostinfo);
       serv->AppendToPool(con->login, con->pass);
       if (serv->list_stalled)
-        SG->MoveServiceToList(serv, &SG->services_remaining);
+        SG->MoveServiceToList(serv, &SG->services_active);
       ncrack_connection_end(nsp, con);
     }
 
@@ -702,7 +703,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       printf("%s Peer closed on us in the middle of authentication!", hostinfo);
       serv->AppendToPool(con->login, con->pass);
       if (serv->list_stalled)
-        SG->MoveServiceToList(serv, &SG->services_remaining);
+        SG->MoveServiceToList(serv, &SG->services_active);
     }
     if (o.debugging > 5)
       printf("%s Connection closed\n", hostinfo);
@@ -714,7 +715,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       printf("read: nse_status_error\n");
     serv->AppendToPool(con->login, con->pass);
     if (serv->list_stalled)
-      SG->MoveServiceToList(serv, &SG->services_remaining);
+      SG->MoveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_KILL) {
@@ -765,6 +766,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
+  int err;
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
 
@@ -781,12 +783,21 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   } else if (status == NSE_STATUS_TIMEOUT || status == NSE_STATUS_ERROR) {
 
     /* This is not good. connect() really shouldn't generally be timing out. */
-    if (o.debugging)
-      printf("%s got nsock CONNECT response with status %s\n", serv->HostInfo(),
-          nse_status2str(status));
+    if (o.debugging) {
+      err = nse_errorcode(nse);
+      printf("%s got nsock CONNECT response with status %s error: %s\n", serv->HostInfo(),
+          nse_status2str(status), strerror(err));
+    }
+    serv->failed_connections++;
     serv->AppendToPool(con->login, con->pass);
+    /* Failure of connecting on first attempt means we should probably drop
+     * the service for good. */
+    if (serv->just_started) {
+      // serv->finish_reason = 
+      SG->MoveServiceToList(serv, &SG->services_finished);
+    }
     if (serv->list_stalled)
-      SG->MoveServiceToList(serv, &SG->services_remaining);
+      SG->MoveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_KILL) {
@@ -794,7 +805,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     printf("connect: nse_status_kill\n");
     serv->AppendToPool(con->login, con->pass);
     if (serv->list_stalled)
-      SG->MoveServiceToList(serv, &SG->services_remaining);
+      SG->MoveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
 
   } else
@@ -820,24 +831,24 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 
 
   /* First check for every service if connection_delay time has already
-   * passed since its last connection and move them back to 'services_remaining'
+   * passed since its last connection and move them back to 'services_active'
    * list if it has.
    */
   gettimeofday(&now, NULL);
   for (li = SG->services_wait.begin(); li != SG->services_wait.end(); li++) {
     if (TIMEVAL_MSEC_SUBTRACT(now, (*li)->last) >= (*li)->connection_delay) {
-      li = SG->MoveServiceToList(*li, &SG->services_remaining);
+      li = SG->MoveServiceToList(*li, &SG->services_active);
     }
   }
 
-  if (SG->last_accessed == SG->services_remaining.end()) 
-    li = SG->services_remaining.begin();
+  if (SG->last_accessed == SG->services_active.end()) 
+    li = SG->services_active.begin();
   else 
     li = SG->last_accessed++;
 
   while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
-      && SG->services_remaining.size() != 0) {
+      && SG->services_active.size() != 0) {
 
     serv = *li;
     hostinfo = serv->HostInfo();
@@ -935,8 +946,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 next:
 
     SG->last_accessed = li;
-    if (++li == SG->services_remaining.end()) 
-      li = SG->services_remaining.begin();
+    if (++li == SG->services_active.end()) 
+      li = SG->services_active.begin();
 
   }
   return 0;
