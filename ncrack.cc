@@ -647,7 +647,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       SG->auth_rate_meter.getCurrentRate());
 
   /* Check if service finished for good. */
-  if (serv->userfini && serv->isMirrorPoolEmpty() && !serv->active_connections)
+  if (serv->userfini && serv->isMirrorPoolEmpty() && !serv->active_connections && !serv->list_finished)
     SG->MoveServiceToList(serv, &SG->services_finished);
 
   /* see if we can initiate some more connections */
@@ -795,7 +795,6 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->AppendToPool(con->login, con->pass);
     if (serv->list_stalled)
       SG->MoveServiceToList(serv, &SG->services_remaining);
-      //SG->UnStall(serv);
     ncrack_connection_end(nsp, con);
 
   } else
@@ -828,9 +827,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   for (li = SG->services_wait.begin(); li != SG->services_wait.end(); li++) {
     if (TIMEVAL_MSEC_SUBTRACT(now, (*li)->last) >= (*li)->connection_delay) {
       li = SG->MoveServiceToList(*li, &SG->services_remaining);
-      //(*li)->SetListRemaining();
-      //SG->services_remaining.push_back(*li);
-      //li = SG->services_wait.erase(li);
     }
   }
 
@@ -845,7 +841,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 
     serv = *li;
     hostinfo = serv->HostInfo();
-    printf("hostinfo: %s \n", hostinfo);
 
     //if (serv->target->timedOut(nsock_gettimeofday())) {
     // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE

@@ -70,7 +70,7 @@ ServiceGroup::MoveServiceToList(Service *serv, list <Service *> *dst)
     srcname = Strndup("FINISHING", sizeof("FINISHING") - 1);
   } else if (serv->list_finished) {
     fatal("%s: service %s tried to move from services_finished! "
-        " That cannot happen!\n", __func__, serv->HostInfo());
+        "That cannot happen!\n", __func__, serv->HostInfo());
   } else 
     fatal("%s: service %s doesn't belong in any list!\n", __func__, serv->HostInfo()); 
  
