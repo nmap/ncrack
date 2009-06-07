@@ -17,7 +17,7 @@ static int check_duplicate_services(vector <service_lookup *> services, service_
 static global_service parse_services_options(char *const exp);
 static int check_supported_services(service_lookup *serv);
 static global_service parse_services_options(char *const exp);
-
+static char *port2name(char *portno);
 
 
 /* 
@@ -40,35 +40,54 @@ parse_services_target(char *const exp)
     temp.service_name = Strndup(exp, name_len);
     s += sizeof("://") - 1;
   } else
-    s = exp;
+    s = exp;  /* no service name */
 
-  if ((h = strchr(s, '?'))) {
-    if (s == exp)
-      fatal("You must specify a service for arguments to be applied to: %s\n", exp);
+  /* case when we have arguments */
+  if ((h = strchr(s, ','))) {
+
     if ((p = strchr(s, ':')) && (p < h)) {
       port_len = h - p - 1;
       temp.portno = Strndup(++p, port_len);
-    }
-    if (p)
+    } else if (s == exp)  /* neither port nor service name! */
+        fatal("You must specify either a service name or a port (or both): %s\n", exp);
+
+    if (p) { /* port has been specified */
       host_len = h - s - port_len - 1;
-    else 
+      if (s == exp) {
+      /* No service name was provided so we find the default one based on the
+       * port by looking at the supported services table (ServicesTable). */
+        temp.service_name = port2name(temp.portno);
+      }
+    } else {
+      /* port not specified, but to reach here means that sevice-name had been specified */
       host_len = h - s;
+    }
 
     options_len = exp + tot_len - h;
     temp.service_options = Strndup(++h, options_len);
-  } else {
+
+  } else {  /* case of no arguments */
     if ((p = strchr(s, ':'))) {
-      if (s == exp)
-        fatal("You must specify a service for arguments to be applied to: %s\n", exp);
       port_len = exp + tot_len - p;
       temp.portno = Strndup(++p, port_len);
     }
-    if (p)
+
+    if (p) {
       host_len = --p - s;
-    else 
+      if (s == exp) {
+      /* No service name was provided so we find the default one based on the
+       * port by looking at the supported services table (ServicesTable). */
+        temp.service_name = port2name(temp.portno);
+      }
+    } else {
+      /* only hostname specified (-p option will determine services) */
       host_len = exp + tot_len - s;
+    }
   }
+
   temp.host_expr = Strndup(s, host_len);
+
+  printf("%s %s %s \n", temp.service_name, temp.portno, temp.service_options);
 
   return temp;
 }
@@ -378,6 +397,28 @@ check_supported_services(service_lookup *serv)
   return 0;
 }
 
+
+static char *
+port2name(char *port)
+{
+  vector <global_service>::iterator vi;
+  u16 portno;
+  char *name = NULL;
+
+  if (!port)
+    fatal("%s NULL port given!\n", __func__);
+
+  portno = str2port(port);
+  for (vi = ServicesTable.begin(); vi != ServicesTable.end(); vi++) {
+    if (vi->lookup.portno == portno) {
+      name = strdup(vi->lookup.name); /* assign service name */
+      break;
+    }
+  }
+  if (vi == ServicesTable.end())
+    fatal("Service with default port '%hu' not supported!\n", portno);
+  return name;
+}
 
 
 /* 
