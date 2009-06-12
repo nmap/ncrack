@@ -311,7 +311,7 @@ prepare_timing_template(timing_options *timing)
     if (o.connection_limit == -1)
       o.connection_limit = 10000;
   } else { /* Normal */
-    timing->min_connection_limit = 10;
+    timing->min_connection_limit = 7;
     timing->max_connection_limit = 30;
     timing->auth_tries = 6;
     timing->connection_delay = 0;

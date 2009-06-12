@@ -31,11 +31,33 @@
 #define TIMEVAL_AFTER(a, b) (((a).tv_sec > (b).tv_sec) || ((a).tv_sec == (b).tv_sec && (a).tv_usec > (b).tv_usec))
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void fatal(const char *fmt, ...)
+     __attribute__ ((format (printf, 1, 2)));
+void error(const char *fmt, ...)
+     __attribute__ ((format (printf, 1, 2)));
+  
+
+#ifdef __cplusplus
+}
+#endif
+
 
 /* Return num if it is between min and max.  Otherwise return min or
    max (whichever is closest to num), */
-template<class T> T box(T bmin, T bmax, T bnum);
-
+template<class T> T box(T bmin, T bmax, T bnum) {
+  if (bmin > bmax)
+    fatal("box(%d, %d, %d) called (min,max,num)", (int) bmin, (int) bmax, (int) bnum);
+  //  assert(bmin <= bmax);
+  if (bnum >= bmax)
+    return bmax;
+  if (bnum <= bmin)
+    return bmin;
+  return bnum;
+}
 
 /* Compare a canonical option name (e.g. "max-scan-delay") with a
    user-generated option such as "max_scan_delay" and returns 0 if the
@@ -58,23 +80,5 @@ char *Strndup(const char *src, size_t size);
 /* Convert string to port (in host-byte order) */
 u16 str2port(char *exp);
 
-
-
-
-
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void fatal(const char *fmt, ...)
-     __attribute__ ((format (printf, 1, 2)));
-void error(const char *fmt, ...)
-     __attribute__ ((format (printf, 1, 2)));
-  
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* UTILS_H */

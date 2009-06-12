@@ -590,10 +590,25 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   /* 
    * If that was our first connection and successfully made it up to the point of
    * completing an authentication, then calculate initial ideal_parallelism (which
-   * was 1 previously) based on the min_connection_limit and max_connection_limit.
+   * was 1 previously) based on the box of min_connection_limit, max_connection_limit
+   * and a default desired parallelism for each timing template.
    */
   if (serv->just_started == true) {
-    serv->ideal_parallelism = (serv->min_connection_limit + serv->max_connection_limit) / 2;
+    long desired_par = 1;
+    if (o.timing_level == 0)
+      desired_par = 1;
+    else if (o.timing_level == 1)
+      desired_par = 3;
+    else if (o.timing_level == 2)
+      desired_par = 4;
+    else if (o.timing_level == 3)
+      desired_par = 10;
+    else if (o.timing_level == 4)
+      desired_par = 15;
+    else if (o.timing_level == 5)
+      desired_par = 20;
+
+    serv->ideal_parallelism = box(serv->min_connection_limit, serv->max_connection_limit, desired_par);
     serv->just_started = false;
   }
 
@@ -602,7 +617,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   gettimeofday(&now, NULL);
   if (TIMEVAL_MSEC_SUBTRACT(now, serv->last_auth_rate.time) >= 500) {
     current_rate = serv->auth_rate_meter.getCurrentRate();
-    printf("CHECKING\n last: %.2f  current %.2f \n", serv->last_auth_rate.rate, current_rate);
+    printf("%s last: %.2f  current %.2f parallelism %ld\n", serv->HostInfo(),
+        serv->last_auth_rate.rate, current_rate, serv->ideal_parallelism);
     if (current_rate < serv->last_auth_rate.rate + 3) {
       //serv->connection_limit++;
       //printf("%s Increasing connection limit %ld\n", serv->HostInfo(), serv->connection_limit);
