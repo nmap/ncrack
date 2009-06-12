@@ -32,10 +32,9 @@ class Connection
     char *login;
     char *pass;
 
-    bool check;         /* true -> check if peer closed connection on us */
+    bool check_closed;  /* true -> check if peer closed connection on us */
     bool auth_complete; /* true -> login pair tested */
     bool from_pool;     /* true -> login pair was extracted from pair_pool */
-    bool retry;         /* true- > retry login attempt within current connection */
 
 		int state;          /* module state-machine's current state */
 		char *buf;          /* auxiliary buffer */

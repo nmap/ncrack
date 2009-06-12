@@ -6,9 +6,10 @@ Connection::Connection(Service *serv)
 {
 	state = 0;
 	service = serv;
-  retry = false;
+  check_closed = false;
   auth_complete = false;
   login_attempts = 0;
+  buf = NULL;
 }
 
 Connection::~Connection()

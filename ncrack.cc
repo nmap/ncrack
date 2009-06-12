@@ -217,8 +217,7 @@ call_module(nsock_pool nsp, Connection *con)
   char *name = con->service->name;
 
   /* initialize connection state variables */
-  con->retry = false; 
-  con->check = false;
+  con->check_closed = false;
   con->auth_complete = false;
 
   if (!strcmp(name, "ftp"))
@@ -582,7 +581,6 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   double current_rate;
 
   con->login_attempts++;
-  con->retry = true;
   con->auth_complete = true;
   serv->total_attempts++;
   serv->finished_attempts++;
@@ -640,7 +638,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
    * with a very small timeout and check if nsock timed out (host hasn't closed
    * connection yet) or returned an EOF (host sent FIN making active close)
    */
-  con->check = true;
+  con->check_closed = true;
   nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
   return;
 }
@@ -730,27 +728,43 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   if (status == NSE_STATUS_SUCCESS) {
 
     str = nse_readbuf(nse, &nbytes);
+    /* don't forget to free possibly previous allocated memory */
+    if (con->buf) {
+      free(con->buf);
+      con->buf = NULL;
+    }
     con->buf = Strndup(str, nbytes);  /* warning: we may need memcpy instead of strncpy */
     con->bufsize = nbytes;
     call_module(nsp, con);
 
   } else if (status == NSE_STATUS_TIMEOUT) {
 
-    if (con->check) {
-      if (con->retry && con->login_attempts < serv->auth_tries
+    /* First check if we are just making sure the host hasn't closed
+     * on us, and so we are still in ESTABLISHED state, instead of
+     * CLOSE_WAIT - we do this by issuing a read call with a tiny timeout.
+     * If we are still connected, then we can go on checking if we can make
+     * another authentication attempt in this particular connection.
+     */
+    if (con->check_closed) {
+      /* Make another authentication attempt only if:
+       * 1. we hanen't surpassed the authentication limit per connection for this service
+       * 2. we still have enough login pairs from the pool
+       */
+      if (con->login_attempts < serv->auth_tries
           && (pair_ret = serv->NextPair(&con->login, &con->pass)) != -1) {
         if (pair_ret == 1)
           con->from_pool = true;
         call_module(nsp, con);
       } else
         ncrack_connection_end(nsp, con);
+    /* This is a normal timeout */
     } else {
       if (o.debugging)
         printf("%s read: nse_status_timeout\n", hostinfo);
       serv->AppendToPool(con->login, con->pass);
       if (serv->list_stalled)
         SG->MoveServiceToList(serv, &SG->services_active);
-      ncrack_connection_end(nsp, con);
+      ncrack_connection_end(nsp, con);  // should we always close connection or try to wait?
     }
 
   } else if (status == NSE_STATUS_EOF) {
