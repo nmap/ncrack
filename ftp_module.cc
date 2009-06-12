@@ -26,9 +26,6 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
-  con->retry = false; 
-  con->check = false;
-  con->auth_complete = false;
 
   switch (con->state)
   {
@@ -80,6 +77,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
     case FTP_FINI:
       if (!con->buf || con->buf[0] != '2') {
         if (o.debugging > 3)
+          //printf("%s reply: %s", hostinfo, con->buf);
           printf("%s Login failed: %s %s\n", hostinfo, con->login, con->pass);
       }
       else

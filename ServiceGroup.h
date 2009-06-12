@@ -49,7 +49,6 @@ class ServiceGroup {
 		list <Service *>::iterator last_accessed; /* last element accessed */
 
     RateMeter auth_rate_meter;
-    double last_auth_rate;
 };
 
 #endif

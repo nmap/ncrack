@@ -37,10 +37,10 @@ class Connection
     bool from_pool;     /* true -> login pair was extracted from pair_pool */
     bool retry;         /* true- > retry login attempt within current connection */
 
-		int state;    /* module state-machine's current state */
-		char *buf;    /* auxiliary buffer */
-		int bufsize;  /* buffer size not including '\0' */
-		unsigned int login_attempts;  /* login attempts up until now */
+		int state;          /* module state-machine's current state */
+		char *buf;          /* auxiliary buffer */
+		int bufsize;        /* buffer size not including '\0' */
+		long login_attempts;/* login attempts up until now */
 		nsock_iod niod;     /* I/O descriptor for this connection */
 		Service *service;   /* service it belongs to */
 };
@@ -100,20 +100,29 @@ class Service
     struct timeval last; /* time of last activated connection */
 
 		/* timing options that override global ones */
-		long connection_limit; 
-		long auth_limit;
-		long connection_delay;
-		long retries;
+		long min_connection_limit;  /* minimum number of concurrent parallel connections */
+    long max_connection_limit;  /* maximum number of concurrent parallel connections */
+    long ideal_parallelism;     /* ideal number of concurrent parallel connections */
+		long auth_tries;            /* authentication attempts per connections */
+		long connection_delay;      /* number of milliseconds to wait between each connection */
+		long connection_retries;    /* number of connection retries after connection failure */
 		/* misc options */
 		bool ssl;
 		void *module_data; /* service/module-specific data */
 
+    RateMeter auth_rate_meter;
+    struct last_auth_rate { 
+      double rate;
+      struct timeval time;
+    } last_auth_rate;
+
 		list <Connection *> connections;
+
   private:
 
     /* 
      * hostinfo in form "<service_name>://<ip or hostname>:<port number>"
-     * e.g ftp://scanme.nmap.org:21
+     * e.g ftp://scanme.nmap.org:21 - Will be returned by HostInfo()  
      */
     char *hostinfo;
 

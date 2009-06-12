@@ -63,25 +63,23 @@ print_usage(void)
       "  Can pass target specific services in <service>://target (standard) notation or\n"
       "  using -p which will be applied to all hosts in non-standard notation.\n"
       "  Service arguments can be specified to be host-specific, type of service-specific\n"
-      "  (-m) or global (-g). Ex: ssh://10.0.0.10?al=10,cl=30 -m ssh:al=50 -g cd=3000\n"
+      "  (-m) or global (-g). Ex: ssh://10.0.0.10,al=10,cl=30 -m ssh:at=50 -g cd=3000\n"
       "  Ex2: ncrack -p ssh,ftp:3500,25 10.0.0.10 scanme.nmap.org\n"
       "  -p <service-list>: services will be applied to all non-standard notation hosts\n"
       "  -m <service>:<options>: options will be applied to all services of this type\n"
       "  -g <options>: options will be applied to every service globally\n"
       "  Available Options:\n"
       "   Timing:\n"
-      "    cl (connection limit): maximum number of concurrent connections\n"
-      "    al (authentication limit): upper limit of authentication attempts per connection\n"
+      "    cl (min connection limit): minimum number of concurrent parallel connections\n"
+      "    CL (max connection limit): maximum number of concurrent parallel connections\n"
+      "    at (authentication tries): authentication attempts per connection\n"
       "    cd (connection delay): delay between each connection initiation (in milliseconds)\n"
-      "    mr (max retries): caps number of service connection attempts\n"
-      "   Module-specific:\n"
-      "    path: http relative path\n"
+      "    cr (connection retries): caps number of service connection attempts\n"
       "TIMING AND PERFORMANCE:\n"
       "  Options which take <time> are in milliseconds, unless you append 's'\n"
       "  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).\n"
       "  -T<0-5>: Set timing template (higher is faster)\n"
       "  --connection-limit <number>: threshold for total concurrent connections\n"
-   //   "  --auth-limit <number>: upper limit of authentication attempts per connection\n"
   //    "  --host-timeout <time>: Give up on target after this long\n"
       "AUTHENTICATION:\n"
       "  -L <filename>: username file\n"
@@ -109,10 +107,11 @@ lookup_init(const char *const filename)
   global_service temp;
 
   memset(&temp, 0, sizeof(temp));
-  temp.timing.connection_limit = -1;
-  temp.timing.auth_limit = -1;
+  temp.timing.min_connection_limit = -1;
+  temp.timing.max_connection_limit = -1;
+  temp.timing.auth_tries = -1;
   temp.timing.connection_delay = -1;
-  temp.timing.retries = -1;
+  temp.timing.connection_retries = -1;
 
   fp = fopen(filename, "r");
   if (!fp) 
@@ -216,6 +215,11 @@ static void
 call_module(nsock_pool nsp, Connection *con)
 {
   char *name = con->service->name;
+
+  /* initialize connection state variables */
+  con->retry = false; 
+  con->check = false;
+  con->auth_complete = false;
 
   if (!strcmp(name, "ftp"))
     ncrack_ftp(nsp, con);
@@ -383,6 +387,7 @@ int main(int argc, char **argv)
         } else if (*optarg == '2' || (strcasecmp(optarg, "Polite") == 0)) {
           o.timing_level = 2;
         } else if (*optarg == '3' || (strcasecmp(optarg, "Normal") == 0)) {
+          o.timing_level = 3;
         } else if (*optarg == '4' || (strcasecmp(optarg, "Aggressive") == 0)) {
           o.timing_level = 4;
         } else if (*optarg == '5' || (strcasecmp(optarg, "Insane") == 0)) {
@@ -512,17 +517,19 @@ int main(int argc, char **argv)
   if (o.list_only) {
     if (o.debugging > 3) {
       printf("\n=== Timing Template ===\n");
-      printf("cl=%ld, al=%ld, cd=%ld, mr=%ld\n", timing.connection_limit,
-          timing.auth_limit, timing.connection_delay, timing.retries);
+      printf("cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", timing.min_connection_limit,
+          timing.max_connection_limit, timing.auth_tries, timing.connection_delay,
+          timing.connection_retries);
       printf("\n=== ServicesTable ===\n");
       for (unsigned int i = 0; i < ServicesTable.size(); i++) {
-        printf("%s:%hu cl=%ld, al=%ld, cd=%ld, mr=%ld\n", 
+        printf("%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
             ServicesTable[i].lookup.name,
             ServicesTable[i].lookup.portno,
-            ServicesTable[i].timing.connection_limit,
-            ServicesTable[i].timing.auth_limit,
+            ServicesTable[i].timing.min_connection_limit,
+            ServicesTable[i].timing.max_connection_limit,
+            ServicesTable[i].timing.auth_tries,
             ServicesTable[i].timing.connection_delay,
-            ServicesTable[i].timing.retries);
+            ServicesTable[i].timing.connection_retries);
       }
     }
     printf("\n=== Targets ===\n");
@@ -533,9 +540,10 @@ int main(int argc, char **argv)
       printf("\n");
       for (li = SG->services_active.begin(); li != SG->services_active.end(); li++) {
         if ((*li)->target == Targets[i]) 
-          printf("  %s:%hu cl=%ld, al=%ld, cd=%ld, mr=%ld\n", 
-              (*li)->name, (*li)->portno, (*li)->connection_limit,
-              (*li)->auth_limit, (*li)->connection_delay, (*li)->retries);
+          printf("  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
+              (*li)->name, (*li)->portno, (*li)->min_connection_limit,
+              (*li)->max_connection_limit, (*li)->auth_tries, 
+              (*li)->connection_delay, (*li)->connection_retries);
       }
     }
   } else {
@@ -570,6 +578,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
+  struct timeval now;
+  double current_rate;
 
   con->login_attempts++;
   con->retry = true;
@@ -577,6 +587,21 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   serv->total_attempts++;
   serv->finished_attempts++;
   serv->just_started = false; /* at least 1 successful connection */
+
+  serv->auth_rate_meter.update(1, NULL);
+
+  gettimeofday(&now, NULL);
+  if (TIMEVAL_MSEC_SUBTRACT(now, serv->last_auth_rate.time) >= 500) {
+    current_rate = serv->auth_rate_meter.getCurrentRate();
+    printf("CHECKING\n last: %.2f  current %.2f \n", serv->last_auth_rate.rate, current_rate);
+    if (current_rate < serv->last_auth_rate.rate + 3) {
+      //serv->connection_limit++;
+      //printf("%s Increasing connection limit %ld\n", serv->HostInfo(), serv->connection_limit);
+    }
+    serv->last_auth_rate.time = now;
+    serv->last_auth_rate.rate = current_rate;
+ }
+
 
   /* If login pair was extracted from pool, permanently remove it from it. */
   if (con->from_pool && !serv->isMirrorPoolEmpty()) {
@@ -604,10 +629,13 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   nsock_iod nsi = con->niod;
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   list <Connection *>::iterator li;
-  list <Service *>::iterator Sli;
 
-  if (!con->auth_complete)
+  if (!con->auth_complete) {
     serv->total_attempts++;
+    printf("%s Dropping connection limit due to connection error!\n", serv->HostInfo());
+    //if (serv->connection_limit - 5 >= 1)
+    //  serv->connection_limit -= 5;
+  }
 
   for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
     if ((*li)->niod == nsi)
@@ -620,15 +648,18 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   nsi_delete(nsi, NSOCK_PENDING_SILENT);
   serv->connections.erase(li);
+
+  serv->active_connections--;
+  SG->active_connections--;
+
+
   /*
    * Check if we had previously surpassed imposed connection limit so that
    * we remove service from 'services_full' list to 'services_active' list.
    */
-  if (serv->list_full)
+  if (serv->list_full && serv->active_connections < serv->ideal_parallelism)
     SG->MoveServiceToList(serv, &SG->services_active);
 
-  serv->active_connections--;
-  SG->active_connections--;
 
   /*
    * If service was on 'services_finishing' (username list finished, pool empty
@@ -681,7 +712,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   } else if (status == NSE_STATUS_TIMEOUT) {
 
     if (con->check) {
-      if (con->retry && con->login_attempts < serv->auth_limit
+      if (con->retry && con->login_attempts < serv->auth_tries
           && (pair_ret = serv->NextPair(&con->login, &con->pass)) != -1) {
         if (pair_ret == 1)
           con->from_pool = true;
@@ -700,7 +731,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   } else if (status == NSE_STATUS_EOF) {
 
     if (!con->auth_complete) {
-      printf("%s Peer closed on us in the middle of authentication!", hostinfo);
+      printf("%s Peer closed on us in the middle of authentication!\n", hostinfo);
       serv->AppendToPool(con->login, con->pass);
       if (serv->list_stalled)
         SG->MoveServiceToList(serv, &SG->services_active);
@@ -751,8 +782,6 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   return;
 }
-
-
 
 
 
@@ -872,7 +901,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * then don't initiate any more connections for it and also move service in
      * the services_full list so that it won't be reaccessed in this loop.
      */
-    if (serv->active_connections >= serv->connection_limit) {
+    if (serv->active_connections >= serv->ideal_parallelism) {
       li = SG->MoveServiceToList(serv, &SG->services_full);
       goto next;
     }
@@ -963,6 +992,7 @@ ncrack(ServiceGroup *SG)
   /* nsock variables */
   struct timeval now;
   enum nsock_loopstatus loopret;
+  list <Service *>::iterator li;
   nsock_pool nsp;
   int tracelevel = 0;
   int err;
@@ -976,7 +1006,10 @@ ncrack(ServiceGroup *SG)
 
 
   SG->MinDelay();
+  /* initiate all authentication rate meters */
   SG->auth_rate_meter.start();
+  for (li = SG->services_active.begin(); li != SG->services_active.end(); li++)
+    (*li)->auth_rate_meter.start();
 
   ncrack_probes(nsp, SG);
 

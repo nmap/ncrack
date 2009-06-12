@@ -170,14 +170,16 @@ parse_module_options(char *const exp)
   }
 
   /* apply any options (non-zero) to global ServicesTable */
-  if (temp.timing.connection_limit)
-    vi->timing.connection_limit = temp.timing.connection_limit;
-  if (temp.timing.auth_limit)
-    vi->timing.auth_limit = temp.timing.auth_limit;
+  if (temp.timing.min_connection_limit)
+    vi->timing.min_connection_limit = temp.timing.min_connection_limit;
+  if (temp.timing.max_connection_limit)
+    vi->timing.max_connection_limit = temp.timing.max_connection_limit;
+  if (temp.timing.auth_tries)
+    vi->timing.auth_tries = temp.timing.auth_tries;
   if (temp.timing.connection_delay)
     vi->timing.connection_delay = temp.timing.connection_delay;
-  if (temp.timing.retries)
-    vi->timing.retries = temp.timing.retries;
+  if (temp.timing.connection_retries)
+    vi->timing.connection_retries = temp.timing.connection_retries;
   if (temp.misc.ssl)
     vi->misc.ssl = temp.misc.ssl;
 }
@@ -194,14 +196,16 @@ apply_host_options(Service *service, char *const options)
   temp = parse_services_options(options);
 
   /* apply any valid options to this service */
-  if (temp.timing.connection_limit != -1)
-    service->connection_limit = temp.timing.connection_limit;
-  if (temp.timing.auth_limit != -1)
-    service->auth_limit = temp.timing.auth_limit;
+  if (temp.timing.min_connection_limit != -1)
+    service->min_connection_limit = temp.timing.min_connection_limit;
+  if (temp.timing.max_connection_limit != -1)
+    service->max_connection_limit = temp.timing.max_connection_limit;
+  if (temp.timing.auth_tries != -1)
+    service->auth_tries = temp.timing.auth_tries;
   if (temp.timing.connection_delay != -1)
     service->connection_delay = temp.timing.connection_delay;
-  if (temp.timing.retries != -1)
-    service->retries = temp.timing.retries;
+  if (temp.timing.connection_retries != -1)
+    service->connection_retries = temp.timing.connection_retries;
   if (temp.misc.ssl)
     service->ssl = temp.misc.ssl;
 
@@ -222,14 +226,16 @@ apply_service_options(Service *service)
 
   if (!service->portno)
     service->portno = vi->lookup.portno;
-  if (vi->timing.connection_limit != -1)
-    service->connection_limit = vi->timing.connection_limit;
-  if (vi->timing.auth_limit != -1)
-    service->auth_limit = vi->timing.auth_limit;
+  if (vi->timing.min_connection_limit != -1)
+    service->min_connection_limit = vi->timing.min_connection_limit;
+  if (vi->timing.max_connection_limit != -1)
+    service->max_connection_limit = vi->timing.max_connection_limit;
+  if (vi->timing.auth_tries != -1)
+    service->auth_tries = vi->timing.auth_tries;
   if (vi->timing.connection_delay != -1)
     service->connection_delay = vi->timing.connection_delay;
-  if (vi->timing.retries != -1)
-    service->retries = vi->timing.retries;
+  if (vi->timing.connection_retries != -1)
+    service->connection_retries = vi->timing.connection_retries;
   if (vi->misc.ssl)
     service->ssl = vi->misc.ssl;
 }
@@ -265,45 +271,51 @@ prepare_timing_template(timing_options *timing)
     fatal("%s invalid pointer!\n", __func__);
 
   if (o.timing_level == 0) { /* Paranoid */
-    timing->connection_limit = 1;
-    timing->auth_limit = 3;
+    timing->min_connection_limit = 1;
+    timing->max_connection_limit = 1;
+    timing->auth_tries = 3;
     timing->connection_delay = 10000; /* 10 secs */
-    timing->retries = 1;
+    timing->connection_retries = 1;
     if (o.connection_limit == -1)
       o.connection_limit = 50;
   } else if (o.timing_level == 1) { /* Sneaky */
-    timing->connection_limit = 2;
-    timing->auth_limit = 3;
+    timing->min_connection_limit = 2;
+    timing->max_connection_limit = 4;
+    timing->auth_tries = 3;
     timing->connection_delay = 7500; 
-    timing->retries = 1;
+    timing->connection_retries = 1;
     if (o.connection_limit == -1)
       o.connection_limit = 150;
   } else if (o.timing_level == 2) { /* Polite */
-    timing->connection_limit = 3;
-    timing->auth_limit = 5;
+    timing->min_connection_limit = 3;
+    timing->max_connection_limit = 5;
+    timing->auth_tries = 5;
     timing->connection_delay = 5000;
-    timing->retries = 1;
+    timing->connection_retries = 1;
     if (o.connection_limit == -1)
       o.connection_limit = 500;
   } else if (o.timing_level == 4) { /* Aggressive */
-    timing->connection_limit = 1000;
-    timing->auth_limit = 10;
-    timing->connection_delay = 250;
-    timing->retries = 15;
+    timing->min_connection_limit = 10;
+    timing->max_connection_limit = 40;
+    timing->auth_tries = 10;
+    timing->connection_delay = 0;
+    timing->connection_retries = 15;
     if (o.connection_limit == -1)
       o.connection_limit = 3000;
   } else if (o.timing_level == 5) { /* Insane */
-    timing->connection_limit = 10000;
-    timing->auth_limit = 10;
+    timing->min_connection_limit = 15;
+    timing->max_connection_limit = 1000;
+    timing->auth_tries = 10;
     timing->connection_delay = 0;
-    timing->retries = 20;
+    timing->connection_retries = 20;
     if (o.connection_limit == -1)
       o.connection_limit = 10000;
   } else { /* Normal */
-    timing->connection_limit = 25;
-    timing->auth_limit = 6;
+    timing->min_connection_limit = 10;
+    timing->max_connection_limit = 30;
+    timing->auth_tries = 6;
     timing->connection_delay = 0;
-    timing->retries = 10;
+    timing->connection_retries = 10;
     if (o.connection_limit == -1)
       o.connection_limit = 1500;
   }
@@ -313,10 +325,11 @@ prepare_timing_template(timing_options *timing)
 void
 apply_timing_template(Service *service, timing_options *timing)
 {
-  service->connection_limit = timing->connection_limit;
-  service->auth_limit = timing->auth_limit;
+  service->min_connection_limit = timing->min_connection_limit;
+  service->max_connection_limit = timing->max_connection_limit;
+  service->auth_tries = timing->auth_tries;
   service->connection_delay = timing->connection_delay;
-  service->retries = timing->retries;
+  service->connection_retries = timing->connection_retries;
 }
 
 
@@ -433,13 +446,15 @@ static void
 check_service_option(global_service *temp, char *argname, char *argval)
 {
   if (!strcmp("cl", argname))
-    temp->timing.connection_limit = Strtoul(argval);
+    temp->timing.min_connection_limit = Strtoul(argval);
+  else if (!strcmp("CL", argname))
+    temp->timing.max_connection_limit = Strtoul(argval);
   else if (!strcmp("al", argname))
-    temp->timing.auth_limit = Strtoul(argval);
+    temp->timing.auth_tries = Strtoul(argval);
   else if (!strcmp("cd", argname))
     temp->timing.connection_delay = tval2msecs(argval);
   else if (!strcmp("mr", argname))
-    temp->timing.retries = Strtoul(argval);
+    temp->timing.connection_retries = Strtoul(argval);
   else //TODO misc options
     error("Unknown service option: %s\n", argname);
 }
@@ -453,10 +468,11 @@ parse_services_options(char *const exp)
   global_service temp;
 
   memset(&temp, 0, sizeof(temp));
-  temp.timing.connection_limit = -1;
-  temp.timing.auth_limit = -1;
+  temp.timing.min_connection_limit = -1;
+  temp.timing.max_connection_limit = -1;
+  temp.timing.auth_tries = -1;
   temp.timing.connection_delay = -1;
-  temp.timing.retries = -1;
+  temp.timing.connection_retries = -1;
 
   arg = argval = argname = NULL;
 

@@ -15,12 +15,12 @@ typedef struct service_lookup {
 
 
 typedef struct timing_options {
-  long connection_limit;  /* maximum number connections per minute */
-  long auth_limit;  /* maximum number of authentication attempts per minute */
-  long connection_delay; /* number of milliseconds to wait between each connection */
-  long retries; /* number of connection retries before marking host as dead */
+  long min_connection_limit;/* minimum number of parallel connections */
+  long max_connection_limit;/* maximum number of parallel connections */
+  long auth_tries;          /* authentication attempts per connection */
+  long connection_delay;    /* number of milliseconds to wait between each connection */
+  long connection_retries;  /* number of connection retries after connection failure */
 
-  // TODO: more options??
 } timing_options;
 
 

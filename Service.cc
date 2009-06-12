@@ -40,16 +40,21 @@ Service::Service()
   total_attempts = 0;
   finished_attempts = 0;
   active_connections = 0;
-	connection_limit = -1;
-	auth_limit = -1;
+
+	min_connection_limit = -1;
+  max_connection_limit = -1;
+  ideal_parallelism = -1;
+	auth_tries = -1;
 	connection_delay = -1;
-	retries = -1;
+	connection_retries = -1;
+
 	ssl = false;
 	module_data = NULL;
   memset(&last, 0, sizeof(last));
   LoginArray = NULL;
   PassArray = NULL;
   hostinfo = NULL;
+  memset(&last_auth_rate, 0, sizeof(last_auth_rate));
 }
 
 /* copy constructor */
@@ -58,10 +63,13 @@ Service::Service(const Service& ref)
 	name = strdup(ref.name);
 	proto = ref.proto;
 	portno = ref.portno;
-	connection_limit = ref.connection_limit;
-	auth_limit = ref.auth_limit;
+
+	min_connection_limit = ref.min_connection_limit;
+  max_connection_limit = ref.max_connection_limit;
+	auth_tries = ref.auth_tries;
 	connection_delay = ref.connection_delay;
-	retries = ref.retries;
+	connection_retries = ref.connection_retries;
+
 	ssl = ref.ssl;
   LoginArray = ref.LoginArray;
   PassArray = ref.PassArray;
@@ -82,6 +90,7 @@ Service::Service(const Service& ref)
   just_started = true;
   
   hostinfo = NULL;
+  memset(&last_auth_rate, 0, sizeof(last_auth_rate));
 }
 
 
@@ -211,7 +220,7 @@ Service::SetListFinished(void)
 int 
 Service::NextPair(char **login, char **pass)
 {
-  if (!PassArray)
+  if (!LoginArray)
     fatal("%s: uninitialized LoginArray\n", __func__);
 
   if (!PassArray)
