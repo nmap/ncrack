@@ -586,7 +586,16 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   con->auth_complete = true;
   serv->total_attempts++;
   serv->finished_attempts++;
-  serv->just_started = false; /* at least 1 successful connection */
+  
+  /* 
+   * If that was our first connection and successfully made it up to the point of
+   * completing an authentication, then calculate initial ideal_parallelism (which
+   * was 1 previously) based on the min_connection_limit and max_connection_limit.
+   */
+  if (serv->just_started == true) {
+    serv->ideal_parallelism = (serv->min_connection_limit + serv->max_connection_limit) / 2;
+    serv->just_started = false;
+  }
 
   serv->auth_rate_meter.update(1, NULL);
 

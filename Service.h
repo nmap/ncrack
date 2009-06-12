@@ -60,8 +60,11 @@ class Service
 		~Service();
 
 		Service(const Service&); /* copy constructor */
-    int NextPair(char **login, char **pass);
     const char *HostInfo(void);
+    
+    void CalculateParallelism(void);
+
+    int NextPair(char **login, char **pass);
     void AppendToPool(char *login, char *pass);
     void RemoveFromPool(char *login, char *pass);
     bool isMirrorPoolEmpty(void);
@@ -94,10 +97,10 @@ class Service
     bool just_started;
     unsigned int failed_connections;
     long active_connections;
+    struct timeval last; /* time of last activated connection */
 
     unsigned int total_attempts;
     unsigned int finished_attempts;
-    struct timeval last; /* time of last activated connection */
 
 		/* timing options that override global ones */
 		long min_connection_limit;  /* minimum number of concurrent parallel connections */

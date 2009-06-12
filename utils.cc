@@ -2,6 +2,21 @@
 #include "Service.h"
 
 
+/* Return num if it is between min and max.  Otherwise return min or
+   max (whichever is closest to num), */
+template<class T> T box(T bmin, T bmax, T bnum) {
+  if (bmin > bmax)
+    fatal("box(%d, %d, %d) called (min,max,num)", (int) bmin, (int) bmax, (int) bnum);
+  //  assert(bmin <= bmax);
+  if (bnum >= bmax)
+    return bmax;
+  if (bnum <= bmin)
+    return bmin;
+  return bnum;
+}
+
+
+
 /* strtoul with error checking */
 unsigned long int
 Strtoul(const char *nptr)

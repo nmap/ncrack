@@ -445,17 +445,37 @@ port2name(char *port)
 static void
 check_service_option(global_service *temp, char *argname, char *argval)
 {
-  if (!strcmp("cl", argname))
-    temp->timing.min_connection_limit = Strtoul(argval);
-  else if (!strcmp("CL", argname))
-    temp->timing.max_connection_limit = Strtoul(argval);
-  else if (!strcmp("al", argname))
-    temp->timing.auth_tries = Strtoul(argval);
-  else if (!strcmp("cd", argname))
+  if (!strcmp("cl", argname)) {
+    long limit = Strtoul(argval);
+    if (limit < 0)
+      fatal("Minimum connection limit (cl) '%ld' cannot be a negative number!\n", limit);
+    if (temp->timing.max_connection_limit != -1 && temp->timing.max_connection_limit < limit)
+      fatal("Minimum connection limit (cl) '%ld' cannot be larger than "
+        "maximum connection limit (CL) '%ld'!\n", 
+        limit, temp->timing.max_connection_limit);
+    temp->timing.min_connection_limit = limit;
+  } else if (!strcmp("CL", argname)) {
+    long limit = Strtoul(argval);
+    if (limit < 0)
+      fatal("Maximum connection limit (CL) '%ld' cannot be a negative number!\n", limit);
+    if (temp->timing.min_connection_limit != -1 && temp->timing.min_connection_limit > limit)
+      fatal("Maximum connection limit (CL) '%ld' cannot be smaller than "
+          "minimum connection limit (cl) '%ld'!\n",
+          limit, temp->timing.min_connection_limit);
+    temp->timing.max_connection_limit = limit;
+  } else if (!strcmp("at", argname)) {
+    long tries = Strtoul(argval);
+    if (tries < 0)
+      fatal("Authentication tries (at) '%ld' cannot be a negative number!\n", tries);
+    temp->timing.auth_tries = tries;
+  } else if (!strcmp("cd", argname)) {
     temp->timing.connection_delay = tval2msecs(argval);
-  else if (!strcmp("mr", argname))
-    temp->timing.connection_retries = Strtoul(argval);
-  else //TODO misc options
+  } else if (!strcmp("cr", argname)) {
+    long retries = Strtoul(argval);
+    if (retries < 0)
+      fatal("Connection retries (cr) '%ld' cannot be a negative number!\n", retries);
+    temp->timing.connection_retries = retries;
+  } else //TODO misc options
     error("Unknown service option: %s\n", argname);
 }
 

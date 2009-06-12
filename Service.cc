@@ -43,7 +43,7 @@ Service::Service()
 
 	min_connection_limit = -1;
   max_connection_limit = -1;
-  ideal_parallelism = -1;
+  ideal_parallelism = 1;  /* we start with 1 connection exactly */
 	auth_tries = -1;
 	connection_delay = -1;
 	connection_retries = -1;
@@ -69,6 +69,7 @@ Service::Service(const Service& ref)
 	auth_tries = ref.auth_tries;
 	connection_delay = ref.connection_delay;
 	connection_retries = ref.connection_retries;
+  ideal_parallelism = 1;  /* we start with 1 connection exactly */
 
 	ssl = ref.ssl;
   LoginArray = ref.LoginArray;
@@ -92,6 +93,21 @@ Service::Service(const Service& ref)
   hostinfo = NULL;
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
 }
+
+
+
+void
+CalculateParallelism(void)
+{
+  
+
+
+
+
+}
+
+
+
 
 
 const char *
