@@ -46,7 +46,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
             printf("%s reply: %s", hostinfo, con->buf);
         }
       }
-      snprintf(lbuf, sizeof(lbuf), "USER %s\r\n", con->login);
+      snprintf(lbuf, sizeof(lbuf), "USER %s\r\n", con->user);
       nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, -1);
       break;
 
@@ -78,10 +78,10 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
       if (!con->buf || con->buf[0] != '2') {
         if (o.debugging > 3)
           //printf("%s reply: %s", hostinfo, con->buf);
-          printf("%s Login failed: %s %s\n", hostinfo, con->login, con->pass);
+          printf("%s Login failed: %s %s\n", hostinfo, con->user, con->pass);
       }
       else
-        printf("%s Success: %s %s\n", hostinfo, con->login, con->pass);   
+        printf("%s Success: %s %s\n", hostinfo, con->user, con->pass);   
       con->state = FTP_BANNER;
 
       return ncrack_module_end(nsp, con);

@@ -2,10 +2,6 @@
 #include "Service.h"
 
 
-
-
-
-
 /* strtoul with error checking */
 unsigned long int
 Strtoul(const char *nptr)

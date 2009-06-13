@@ -11,6 +11,7 @@ class NcrackOps {
     void setaf(int af) { addressfamily = af; }
     int af() { return addressfamily; }
 
+    bool passwords_first;/* iterate password list for each username instead of opposite */
     bool global_options; /* true if -g has been specified */
     bool list_only;      /* only list hosts and exit */
     int timing_level;    /* timing template number: T(0-5) */
@@ -18,7 +19,6 @@ class NcrackOps {
     int verbose;
     int numhosts_scanned;
     long connection_limit;  /* global maximum total connections */
-    long auth_limit;  /* global maximum authentication attempts */
     unsigned long host_timeout;
 
   private:

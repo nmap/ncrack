@@ -29,7 +29,7 @@ class Connection
 		int time_started;
 		int time_elapsed;
 
-    char *login;
+    char *user;
     char *pass;
 
     bool check_closed;  /* true -> check if peer closed connection on us */
@@ -47,7 +47,7 @@ class Connection
 
 typedef struct loginpair
 {
-  char *login;
+  char *user;
   char *pass;
 } loginpair;
 
@@ -61,8 +61,6 @@ class Service
 		Service(const Service&); /* copy constructor */
     const char *HostInfo(void);
     
-    void CalculateParallelism(void);
-
     int NextPair(char **login, char **pass);
     void AppendToPool(char *login, char *pass);
     void RemoveFromPool(char *login, char *pass);
@@ -82,7 +80,7 @@ class Service
 		u8 proto;
 		u16 portno;
   
-		bool userfini;      /* true if username list has been iterated through */ 
+		bool loginlist_fini;/* true if login list has been iterated through */ 
     bool list_active;   /* service is now on 'services_active' list */
     bool list_wait;     /* service is now on 'services_wait' list */
     bool list_stalled;  /* service is now on 'services_stalled' list */ 
@@ -90,7 +88,7 @@ class Service
     bool list_finishing;/* service is now on 'services_finishing' list */
     bool list_finished; /* service is now on 'services_finished' list */
 
-    vector <char *> *LoginArray;
+    vector <char *> *UserArray;
     vector <char *> *PassArray;
 
     bool just_started;
@@ -145,10 +143,8 @@ class Service
      */
     list <loginpair> mirror_pair_pool;
 
-    vector <char *>::iterator loginvi;
+    vector <char *>::iterator uservi;
     vector <char *>::iterator passvi;
-    char *NextLogin(void);
-    char *NextPass(void);
 };
 
 

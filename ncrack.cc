@@ -21,7 +21,7 @@ using namespace std;
 /* global lookup table for available services */
 vector <global_service> ServicesTable;
 /* global login and pass array */
-vector <char *> LoginArray;
+vector <char *> UserArray;
 vector <char *> PassArray;
 
 
@@ -82,9 +82,9 @@ print_usage(void)
       "  --connection-limit <number>: threshold for total concurrent connections\n"
   //    "  --host-timeout <time>: Give up on target after this long\n"
       "AUTHENTICATION:\n"
-      "  -L <filename>: username file\n"
+      "  -U <filename>: username file\n"
       "  -P <filename>: password file\n"
-      "  --policy: password policy\n"
+      "  --passwords-first: Iterate password list for each username. Default is opposite.\n"
       "OUTPUT:\n"
       "  -v: Increase verbosity level (use twice or more for greater effect)\n"
       "  -d[level]: Set or increase debugging level (Up to 9 is meaningful)\n"
@@ -195,7 +195,7 @@ load_login_file(const char *filename, int mode)
   }
 
   if (mode == USER)
-    p = &LoginArray;
+    p = &UserArray;
   else if (mode == PASS)
     p = &PassArray;
   else 
@@ -289,6 +289,8 @@ int main(int argc, char **argv)
     {"host-timeout", required_argument, 0, 0},
     {"connection_limit", required_argument, 0, 0},
     {"connection-limit", required_argument, 0, 0},
+    {"passwords_first", no_argument, 0, 0},
+    {"passwords-first", no_argument, 0, 0},
     {0, 0, 0, 0}
   };
 
@@ -301,7 +303,7 @@ int main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "d:g:hi:L:P:m:p:s:T:vV", long_options,
+  while((arg = getopt_long_only(argc, argv, "d:g:hi:U:P:m:p:s:T:vV", long_options,
           &option_index)) != EOF) {
     switch(arg) {
       case 0:
@@ -332,6 +334,8 @@ int main(int argc, char **argv)
           o.list_only++;
         } else if (!optcmp(long_options[option_index].name, "connection-limit")) {
           o.connection_limit = atoi(optarg);
+        } else if (!optcmp(long_options[option_index].name, "passwords-first")) {
+          o.passwords_first = true;
         }
         break;
       case 'd': 
@@ -358,7 +362,7 @@ int main(int argc, char **argv)
             fatal("Failed to open input file %s for reading", optarg);
         }
         break;
-      case 'L':
+      case 'U':
         load_login_file(optarg, USER);
         break;
       case 'P':
@@ -408,7 +412,7 @@ int main(int argc, char **argv)
     }
   }
 
-  if (LoginArray.empty())
+  if (UserArray.empty())
     load_login_file(DEFAULT_USERNAME_FILE, USER);
   if (PassArray.empty())
     load_login_file(DEFAULT_PASSWORD_FILE, PASS);
@@ -453,7 +457,7 @@ int main(int argc, char **argv)
     if (spec.service_name) {
       service = new Service();
       service->name = strdup(spec.service_name);
-      service->LoginArray = &LoginArray;
+      service->UserArray = &UserArray;
       service->PassArray = &PassArray;
       Services.push_back(service);
     } else {  /* -p option */
@@ -462,7 +466,7 @@ int main(int argc, char **argv)
         service->name = (*SCvi)->name;
         service->portno = (*SCvi)->portno;
         service->proto = (*SCvi)->proto;
-        service->LoginArray = &LoginArray;
+        service->UserArray = &UserArray;
         service->PassArray = &PassArray;
         Services.push_back(service);
       }
@@ -578,7 +582,6 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   struct timeval now;
-  double current_rate;
 
   con->login_attempts++;
   con->auth_complete = true;
@@ -614,7 +617,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
   gettimeofday(&now, NULL);
   if (TIMEVAL_MSEC_SUBTRACT(now, serv->last_auth_rate.time) >= 500) {
-    current_rate = serv->auth_rate_meter.getCurrentRate();
+    double current_rate = serv->auth_rate_meter.getCurrentRate();
     printf("%s last: %.2f  current %.2f parallelism %ld\n", serv->HostInfo(),
         serv->last_auth_rate.rate, current_rate, serv->ideal_parallelism);
     if (current_rate < serv->last_auth_rate.rate + 3) {
@@ -628,7 +631,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
   /* If login pair was extracted from pool, permanently remove it from it. */
   if (con->from_pool && !serv->isMirrorPoolEmpty()) {
-    serv->RemoveFromPool(con->login, con->pass);
+    serv->RemoveFromPool(con->user, con->pass);
     con->from_pool = false;
   }
 
@@ -702,7 +705,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       SG->auth_rate_meter.getCurrentRate());
 
   /* Check if service finished for good. */
-  if (serv->userfini && serv->isMirrorPoolEmpty() && !serv->active_connections && !serv->list_finished)
+  if (serv->loginlist_fini && serv->isMirrorPoolEmpty() && !serv->active_connections && !serv->list_finished)
     SG->MoveServiceToList(serv, &SG->services_finished);
 
   /* see if we can initiate some more connections */
@@ -751,7 +754,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
        * 2. we still have enough login pairs from the pool
        */
       if (con->login_attempts < serv->auth_tries
-          && (pair_ret = serv->NextPair(&con->login, &con->pass)) != -1) {
+          && (pair_ret = serv->NextPair(&con->user, &con->pass)) != -1) {
         if (pair_ret == 1)
           con->from_pool = true;
         call_module(nsp, con);
@@ -761,7 +764,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     } else {
       if (o.debugging)
         printf("%s read: nse_status_timeout\n", hostinfo);
-      serv->AppendToPool(con->login, con->pass);
+      serv->AppendToPool(con->user, con->pass);
       if (serv->list_stalled)
         SG->MoveServiceToList(serv, &SG->services_active);
       ncrack_connection_end(nsp, con);  // should we always close connection or try to wait?
@@ -771,27 +774,25 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
     if (!con->auth_complete) {
       printf("%s Peer closed on us in the middle of authentication!\n", hostinfo);
-      serv->AppendToPool(con->login, con->pass);
+      serv->AppendToPool(con->user, con->pass);
       if (serv->list_stalled)
         SG->MoveServiceToList(serv, &SG->services_active);
     }
     if (o.debugging > 5)
-      printf("%s Connection closed\n", hostinfo);
+      printf("%s Connection closed by peer\n", hostinfo);
     ncrack_connection_end(nsp, con);
 
   }  else if (status == NSE_STATUS_ERROR) {
 
     if (o.debugging)
       printf("read: nse_status_error\n");
-    serv->AppendToPool(con->login, con->pass);
+    serv->AppendToPool(con->user, con->pass);
     if (serv->list_stalled)
       SG->MoveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_KILL) {
     printf("read: nse_status_kill\n");
-    /* User probablby specified host_timeout and so the service scan is 
-       shutting down */
 
   } else
     fatal("Unexpected status (%d) in NSE_TYPE_READ callback.", (int) status);
@@ -857,7 +858,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
           nse_status2str(status), strerror(err));
     }
     serv->failed_connections++;
-    serv->AppendToPool(con->login, con->pass);
+    serv->AppendToPool(con->user, con->pass);
     /* Failure of connecting on first attempt means we should probably drop
      * the service for good. */
     if (serv->just_started) {
@@ -871,7 +872,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   } else if (status == NSE_STATUS_KILL) {
 
     printf("connect: nse_status_kill\n");
-    serv->AppendToPool(con->login, con->pass);
+    serv->AppendToPool(con->user, con->pass);
     if (serv->list_stalled)
       SG->MoveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
@@ -954,7 +955,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * c) that no pending connections are left
      * d) that the service hasn't already finished 
      */
-    if (serv->userfini && serv->isMirrorPoolEmpty() && !serv->list_finished) {
+    if (serv->loginlist_fini && serv->isMirrorPoolEmpty() && !serv->list_finished) {
       if (!serv->active_connections) {
         li = SG->MoveServiceToList(serv, &SG->services_finished);
         goto next;
@@ -969,7 +970,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * connection until our pair_pool has at least one element to grab another
      * pair from.
      */
-    if (serv->userfini && serv->isPoolEmpty() && !serv->isMirrorPoolEmpty()) {
+    if (serv->loginlist_fini && serv->isPoolEmpty() && !serv->isMirrorPoolEmpty()) {
       li = SG->MoveServiceToList(serv, &SG->services_stalled);
       goto next;
     }
@@ -986,7 +987,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 
     if (pair_ret == 1)
       con->from_pool = true;
-    con->login = login;
+    con->user = login;
     con->pass = pass;
 
     if ((con->niod = nsi_new(nsp, serv)) == NULL) {

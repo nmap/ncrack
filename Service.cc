@@ -1,4 +1,7 @@
 #include "Service.h"
+#include "NcrackOps.h"
+
+extern NcrackOps o;
 
 
 /* A connection must *always* belong to one specific Service */
@@ -28,7 +31,7 @@ Service::Service()
 	proto = IPPROTO_TCP;
 	portno = 0;
 
-	userfini = false;
+	loginlist_fini = false;
   list_active = true;
   list_full = false;
   list_wait = false;
@@ -52,7 +55,7 @@ Service::Service()
 	ssl = false;
 	module_data = NULL;
   memset(&last, 0, sizeof(last));
-  LoginArray = NULL;
+  UserArray = NULL;
   PassArray = NULL;
   hostinfo = NULL;
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
@@ -73,16 +76,16 @@ Service::Service(const Service& ref)
   ideal_parallelism = 1;  /* we start with 1 connection exactly */
 
 	ssl = ref.ssl;
-  LoginArray = ref.LoginArray;
+  UserArray = ref.UserArray;
   PassArray = ref.PassArray;
-  loginvi = LoginArray->begin();
+  uservi = UserArray->begin();
   passvi = PassArray->begin();
   active_connections = 0;
   total_attempts = 0;
   finished_attempts = 0;
   failed_connections = 0;
 
-  userfini = false;
+  loginlist_fini = false;
   list_active = true;
   list_full = false;
   list_wait = false;
@@ -94,21 +97,6 @@ Service::Service(const Service& ref)
   hostinfo = NULL;
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
 }
-
-
-
-void
-CalculateParallelism(void)
-{
-  
-
-
-
-
-}
-
-
-
 
 
 const char *
@@ -126,34 +114,6 @@ Service::HostInfo(void)
   return hostinfo;
 }
 
-
-char *
-Service::NextLogin(void)
-{
-  char *ret;
-  loginvi++;
-
-  if (loginvi == LoginArray->end()) {
-    printf("%s Username list finished!\n", HostInfo());
-    userfini = true;
-    return NULL;
-  }
-
-  ret = *loginvi;
-  return ret;
-}
-
-
-char *
-Service::NextPass(void)
-{
-  char *ret;
-
-  ret = *passvi;
-//  printf("password %s\n", ret);
-  passvi++;
-  return ret;
-}
 
 
 
@@ -235,63 +195,91 @@ Service::SetListFinished(void)
  * 1 for successful retrieval through pool
  */
 int 
-Service::NextPair(char **login, char **pass)
+Service::NextPair(char **user, char **pass)
 {
-  if (!LoginArray)
-    fatal("%s: uninitialized LoginArray\n", __func__);
+  if (!UserArray)
+    fatal("%s: uninitialized UserArray\n", __func__);
 
   if (!PassArray)
     fatal("%s: uninitialized PassArray\n", __func__);
 
   loginpair tmp;
 
+  /* If the login pair pool is not empty, then give priority to these
+   * pairs and extract the first one you find. */
   if (!pair_pool.empty()) {
     
     list <loginpair>::iterator pairli = pair_pool.begin();
     tmp = pair_pool.front();
-    *login = tmp.login;
+    *user = tmp.user;
     *pass = tmp.pass;
     pair_pool.erase(pairli);
-    printf("%s Pool: extract %s %s\n", HostInfo(), tmp.login, tmp.pass);
+    if (o.debugging > 4)
+      printf("%s Pool: extract %s %s\n", HostInfo(), tmp.user, tmp.pass);
     return 1;
   }
 
-  if (userfini)
+  if (loginlist_fini)
     return -1;
-    
-  if (passvi == PassArray->end()) {
-    passvi = PassArray->begin();
-    *login = NextLogin();
-    if (!*login) {
-      return -1;
+
+  /* Iteration of username list for each password (default). */
+  if (!o.passwords_first) {
+    /* If username list finished one iteration then reset the username pointer
+     * to show at the beginning and get password from password list. */
+    if (uservi == UserArray->end()) {
+      uservi = UserArray->begin();
+      passvi++;
+      if (passvi == PassArray->end()) {
+        if (o.debugging > 4)
+          printf("%s Password list finished!\n", HostInfo());
+        loginlist_fini = true;
+        return -1;
+      }
     }
-  } else {
-    *login = *loginvi;
+    *pass = *passvi;
+    *user = *uservi;
+    uservi++;
+  } else if (o.passwords_first) { /* Iteration of password list for each username. */
+    /* If password list finished one iteration then reset the password pointer
+     * to show at the beginning and get next username from username list. */
+    if (passvi == PassArray->end()) {                                          
+      passvi = PassArray->begin();
+      uservi++;
+      if (uservi == UserArray->end()) {
+        if (o.debugging > 4)
+          printf("%s Username list finished!\n", HostInfo());
+        loginlist_fini = true;
+        return -1;
+      } 
+    } 
+    *user = *uservi;
+    *pass = *passvi;
+    passvi++;
   }
-  *pass = NextPass();
 
   return 0;
 }
 
 
 void
-Service::RemoveFromPool(char *login, char *pass)
+Service::RemoveFromPool(char *user, char *pass)
 {
   loginpair tmp;
   list <loginpair>::iterator li;
 
-  if (!login || !pass)
+  if (!user || !pass)
     return;
 
-  tmp.login = login;
+  tmp.user = user;
   tmp.pass = pass;
 
   for (li = mirror_pair_pool.begin(); li != mirror_pair_pool.end(); li++) {
-    if ((tmp.login == li->login) && (tmp.pass == li->pass))
+    if ((tmp.user == li->user) && (tmp.pass == li->pass))
       break;
   }
   if (li != mirror_pair_pool.end()) {
-    printf("%s Pool: Removed %s %s\n", HostInfo(), tmp.login, tmp.pass);
+    if (o.debugging > 4)
+      printf("%s Pool: Removed %s %s\n", HostInfo(), tmp.user, tmp.pass);
     mirror_pair_pool.erase(li);
   }
 }
@@ -299,34 +287,33 @@ Service::RemoveFromPool(char *login, char *pass)
 
 
 void
-Service::AppendToPool(char *login, char *pass)
+Service::AppendToPool(char *user, char *pass)
 {
   loginpair tmp;
   list <loginpair>::iterator li;
 
-
-  if (!login)
-    fatal("%s: tried to append NULL login into pair pool\n", __func__);
+  if (!user)
+    fatal("%s: tried to append NULL user into pair pool\n", __func__);
   if (!pass)
     fatal("%s: tried to append NULL password into pair pool\n", __func__);
 
-  tmp.login = login;
+  tmp.user = user;
   tmp.pass = pass;
   pair_pool.push_back(tmp);
 
-  printf("%s Pool: Append %s %s \n", HostInfo(), tmp.login, tmp.pass);
+  if (o.debugging > 4)
+    printf("%s Pool: Append %s %s \n", HostInfo(), tmp.user, tmp.pass);
 
   /* 
    * Try and see if login pair was already in our mirror pool. Only if
    * it doesn't already exist, then append it to the list.
    */
   for (li = mirror_pair_pool.begin(); li != mirror_pair_pool.end(); li++) {
-    if ((tmp.login == li->login) && (tmp.pass == li->pass))
+    if ((tmp.user == li->user) && (tmp.pass == li->pass))
       break;
   }
   if (li == mirror_pair_pool.end())
     mirror_pair_pool.push_back(tmp);
-
 }
 
 
