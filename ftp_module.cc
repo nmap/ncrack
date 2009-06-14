@@ -1,11 +1,8 @@
 #include "ncrack.h"
 #include "nsock.h"
-#include "utils.h"
-#include "global_structures.h"
 #include "NcrackOps.h"
 #include "Service.h"
 #include "modules.h"
-#include <string.h>
 #include <list>
 
 
@@ -17,7 +14,7 @@ extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 
-enum states { FTP_INIT, FTP_BANNER, FTP_USER_R, FTP_USER_W, FTP_PASS, FTP_FINI, END };
+enum states { FTP_INIT, FTP_BANNER, FTP_USER_R, FTP_USER_W, FTP_PASS, FTP_FINI };
 
 void
 ncrack_ftp(nsock_pool nsp, Connection *con)

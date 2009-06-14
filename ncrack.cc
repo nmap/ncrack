@@ -222,10 +222,10 @@ call_module(nsock_pool nsp, Connection *con)
 
   if (!strcmp(name, "ftp"))
     ncrack_ftp(nsp, con);
+  else if (!strcmp(name, "telnet"))
+    ncrack_telnet(nsp, con);
   else if (!strcmp(name, "ssh"))
     ;//ncrack_ssh(nsp, nsi, con);
-  else if (!strcmp(name, "telnet"))
-    ;//ncrack_telnet(nsp, nsi, con);
   else
     fatal("Invalid service module: %s\n", name);
 }
