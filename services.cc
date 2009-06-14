@@ -279,8 +279,8 @@ prepare_timing_template(timing_options *timing)
     if (o.connection_limit == -1)
       o.connection_limit = 50;
   } else if (o.timing_level == 1) { /* Sneaky */
-    timing->min_connection_limit = 2;
-    timing->max_connection_limit = 4;
+    timing->min_connection_limit = 1;
+    timing->max_connection_limit = 2;
     timing->auth_tries = 3;
     timing->connection_delay = 7500; 
     timing->connection_retries = 1;
@@ -296,7 +296,7 @@ prepare_timing_template(timing_options *timing)
       o.connection_limit = 500;
   } else if (o.timing_level == 4) { /* Aggressive */
     timing->min_connection_limit = 10;
-    timing->max_connection_limit = 40;
+    timing->max_connection_limit = 100;
     timing->auth_tries = 10;
     timing->connection_delay = 0;
     timing->connection_retries = 15;

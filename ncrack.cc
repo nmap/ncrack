@@ -599,15 +599,15 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     if (o.timing_level == 0)
       desired_par = 1;
     else if (o.timing_level == 1)
-      desired_par = 3;
+      desired_par = 1;
     else if (o.timing_level == 2)
       desired_par = 4;
     else if (o.timing_level == 3)
       desired_par = 10;
     else if (o.timing_level == 4)
-      desired_par = 15;
+      desired_par = 30;
     else if (o.timing_level == 5)
-      desired_par = 20;
+      desired_par = 50;
 
     serv->ideal_parallelism = box(serv->min_connection_limit, serv->max_connection_limit, desired_par);
     serv->just_started = false;
