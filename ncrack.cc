@@ -33,6 +33,7 @@ void ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 
 /* module ending handler */
 void ncrack_module_end(nsock_pool nsp, void *mydata);
+void ncrack_connection_end(nsock_pool nsp, void *mydata);
 
 /* schedule additional connections */
 static int ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
@@ -584,6 +585,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   struct timeval now;
+  int pair_ret;
 
   con->login_attempts++;
   con->auth_complete = true;
@@ -638,13 +640,29 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   }
 
   /* 
+   * If we need to check whether peer is alive or not we do the following:
    * Since there is no portable way to check if the peer has closed the
    * connection or not (hence we are in CLOSE_WAIT state), issue a read call
    * with a very small timeout and check if nsock timed out (host hasn't closed
    * connection yet) or returned an EOF (host sent FIN making active close)
+   * Note, however that the connection might have already indicated that the
+   * peer is alive (for example telnetd sends the next login prompt along with the
+   * authentication results, denoting that it immediately expects another
+   * authentication attempt), so in that case we need to get the next login pair
+   * only and make no additional check.
    */
-  con->check_closed = true;
-  nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
+  if (con->peer_alive) {
+    if (con->login_attempts < serv->auth_tries
+        && (pair_ret = serv->NextPair(&con->user, &con->pass)) != -1) {
+      if (pair_ret == 1)
+        con->from_pool = true;
+      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+    } else
+      ncrack_connection_end(nsp, con);
+  } else {
+    con->check_closed = true;
+    nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
+  }
   return;
 }
 
@@ -763,7 +781,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
         call_module(nsp, con);
       } else
         ncrack_connection_end(nsp, con);
-    /* This is a normal timeout */
+      /* This is a normal timeout */
     } else {
       if (o.debugging)
         printf("%s read: nse_status_timeout\n", hostinfo);

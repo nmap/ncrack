@@ -11,6 +11,8 @@ Connection::Connection(Service *serv)
 	service = serv;
   check_closed = false;
   auth_complete = false;
+  auth_success = false;
+  peer_alive = false;
   login_attempts = 0;
   buf = NULL;
   misc_info = NULL;

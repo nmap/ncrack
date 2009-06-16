@@ -33,8 +33,10 @@ class Connection
     char *pass;
 
     bool check_closed;  /* true -> check if peer closed connection on us */
+    bool peer_alive;    /* true -> if peer is certain to be alive currently */
     bool auth_complete; /* true -> login pair tested */
     bool from_pool;     /* true -> login pair was extracted from pair_pool */
+    bool auth_success;  /* true -> we found a valid pair!!! */
 
     void *misc_info;    /* additional state information that might be needed */
 

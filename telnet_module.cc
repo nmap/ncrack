@@ -46,7 +46,7 @@ typedef struct telnet_info {
 
 
 enum states { TELNET_INIT, TELNET_OPTIONS_1, TELNET_OPTIONS_2, TELNET_AUTH, TELNET_ECHO_USER,
-  TELNET_USER_R, TELNET_USER_W, TELNET_ECHO_PASS, TELNET_PASS, TELNET_FINI };
+  TELNET_PASS_R, TELNET_PASS_W, TELNET_FINI };
 
 void
 ncrack_telnet(nsock_pool nsp, Connection *con)
@@ -66,6 +66,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
   if (con->misc_info)
     info = (telnet_info *) con->misc_info;
 
+  con->peer_alive = false;
+
   switch (con->state)
   {
     case TELNET_INIT:
@@ -75,11 +77,6 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       break;
 
     case TELNET_OPTIONS_1:
-
-
-      /* Check if peer telnet daemon sent any option negotiation.
-       * If he didn't, then we assume he doesn't support option negotiation. 
-       */
       /* Telnet Option Parsing */
       while (*recvbufptr == (char) IAC
           && ((recvbufptr - con->buf) < con->bufsize)
@@ -157,7 +154,6 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
         }
       }
 
-     // printf("%d %d\n", recvbufptr - con->buf, con->bufsize);
       datasize = con->bufsize - (recvbufptr - con->buf);
 
       /* Now check for banner and login prompt */
@@ -201,7 +197,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
 
     case TELNET_AUTH:
       if (info->linemode) {
-        con->state = TELNET_USER_R;
+        con->state = TELNET_PASS_R;
         snprintf(lbuf, sizeof(lbuf), "%s\r", con->user);
         nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, -1);
       } else {
@@ -214,7 +210,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
 
         /* we can move on to reading the password prompt */
         if (con->buf && memsearch(con->buf, "\r", con->bufsize)) {
-          con->state = TELNET_USER_R;
+          con->state = TELNET_PASS_R;
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
         }
@@ -239,69 +235,46 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
       break;
 
-    case TELNET_USER_R:
-      con->state = TELNET_USER_W;
+    case TELNET_PASS_R:
+      con->state = TELNET_PASS_W;
       nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
       break;
 
-    case TELNET_USER_W:
-      if (1 == 1 || info->linemode) {
-        con->state = TELNET_PASS;
-        snprintf(lbuf, sizeof(lbuf), "%s\r", con->pass);
-        nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, -1);
-      } else {
-        /* No linemode: send each password byte as individual packet */
-
-        /* we can move on to reading the last reply */
-        if (con->buf && memsearch(con->buf, "\r", con->bufsize)) {
-          printf("SHA\n");
-          con->state = TELNET_USER_W;
-          nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
-          break;
-        }
-
-        if (!info->passptr)
-          info->passptr = con->pass;
-
-        if (info->passptr - con->pass == strlen(con->pass)) {
-          printf("PASS end\n");
-          lbuf[0] = '\r';
-          lbuf[1] = '\0';
-          nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, 2);
-        } else {
-          lbuf[0] = info->passptr[0];
-          printf("%c \n", lbuf[0]);
-          info->passptr++;
-          nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, 1);
-        }
-        con->state = TELNET_ECHO_PASS;
-      }
-      break;
-
-    case TELNET_ECHO_PASS:
-      printf("echo pass\n");
-      con->state = TELNET_USER_W;
-      nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
-      break;
-
-    case TELNET_PASS:
+    case TELNET_PASS_W:
+      /* After some testing, it seems that we can send the password
+       * as one packet, even if linemode is disabled. */
       con->state = TELNET_FINI;
-      nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
+      snprintf(lbuf, sizeof(lbuf), "%s\r", con->pass);
+      nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, -1);
       break;
 
     case TELNET_FINI:
-      if (!con->buf) {
-        if (o.debugging > 3)
-          printf("%s Login failed: %s %s\n", hostinfo, con->user, con->pass);
-      } else if ((con->buf[0] == '>') || (con->buf[0] == '#')) {
-        printf("%s Success: %s %s\n", hostinfo, con->user, con->pass);
-      } else 
-        printf("%s Unknown reply: %s\n", hostinfo, con->buf);
-      con->state = TELNET_AUTH;
-
-      return ncrack_module_end(nsp, con);
+      if (memsearch(con->buf, "incorrect", con->bufsize)
+          || memsearch(con->buf, "fail", con->bufsize)) {
+        if (o.debugging > 8)
+          printf("%s Failed %s %s\n", hostinfo, con->user, con->pass);
+        con->state = TELNET_AUTH;
+        info->userptr = NULL;
+        info->passptr = NULL;
+        /* If telnetd sent the final answer along with the new login prompt
+         * (something which happens with some daemons), then we don't need to 
+         * check if the peer has closed the connection because obviously he hasn't!
+         */
+        if (memsearch(con->buf, "login", con->bufsize)
+            || memsearch(con->buf, "username", con->bufsize))
+            con->peer_alive = true;
+        return ncrack_module_end(nsp, con);
+      } else if (memsearch(con->buf, ">", con->bufsize)
+          || memsearch(con->buf, "$", con->bufsize)
+          || memsearch(con->buf, "#", con->bufsize)) {
+        printf("%s SUCCESS %s %s\n", hostinfo, con->user, con->pass);
+        con->auth_success = true;
+        return ncrack_module_end(nsp, con);
+      } else {  /* wait for more replies */
+        con->state = TELNET_FINI;
+        nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
+      }
   }
-  /* make sure that ncrack_module_end() is always called last or returned to have 
-   * tail recursion or else stack space overflow might occur */
+
 }
 
