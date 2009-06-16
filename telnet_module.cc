@@ -53,7 +53,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
 {
   char lbuf[BUFSIZE]; /* local buffer */
   /* We can't let nsock handle the size by looking at '\0'
-   * because telnet uses 0 values for options */
+   * because telnet uses 0 as a valid value for options 
+   * (e.g binary transmission option) */
   size_t lbufsize;  
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
@@ -157,10 +158,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       /* Now check for banner and login prompt */
       if (datasize > 0) {
         if (o.debugging > 8) {
-          /*
-          for (int i = 0; i < con->bufsize; i++) 
-            printf("%c", recvbufptr[i]);
-          printf("\n"); */
+          memprint(recvbufptr, datasize);
+          printf("\n");
         }
         /* If we see a certain pattern that denotes that we can start
          * authentication then we note that down. */

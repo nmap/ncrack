@@ -9,6 +9,7 @@ memprint(const char *addr, size_t bytes)
   for (i = 0; i < bytes; i++) {
     printf("%c", addr[i]);
   }
+  fflush(stdout);
 }
 
 

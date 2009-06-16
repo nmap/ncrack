@@ -757,7 +757,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       free(con->buf);
       con->buf = NULL;
     }
-    con->buf = (char *) safe_malloc(nbytes);
+    con->buf = (char *) safe_zalloc(nbytes + 1);
     memcpy(con->buf, str, nbytes);
     con->bufsize = nbytes;
     call_module(nsp, con);
@@ -1102,7 +1102,7 @@ ncrack(ServiceGroup *SG)
     }
     ncrack_probes(nsp, SG);
 
-  } while (loopret == NSOCK_LOOP_TIMEOUT);
+  } while (SG->services_finished.size() != SG->total_services);
 
   if (o.debugging > 4)
     printf("nsock_loop returned %d\n", loopret);
