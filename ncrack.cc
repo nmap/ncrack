@@ -222,6 +222,7 @@ call_module(nsock_pool nsp, Connection *con)
   /* initialize connection state variables */
   con->check_closed = false;
   con->auth_complete = false;
+  con->peer_alive = false;
 
   if (!strcmp(name, "ftp"))
     ncrack_ftp(nsp, con);

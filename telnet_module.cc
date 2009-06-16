@@ -66,8 +66,6 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
   if (con->misc_info)
     info = (telnet_info *) con->misc_info;
 
-  con->peer_alive = false;
-
   switch (con->state)
   {
     case TELNET_INIT:
@@ -159,11 +157,10 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       /* Now check for banner and login prompt */
       if (datasize > 0) {
         if (o.debugging > 8) {
-          printf("%s Options reply:\n", hostinfo);
+          /*
           for (int i = 0; i < con->bufsize; i++) 
             printf("%c", recvbufptr[i]);
-          printf("\n");
-
+          printf("\n"); */
         }
         /* If we see a certain pattern that denotes that we can start
          * authentication then we note that down. */
@@ -216,13 +213,12 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
         }
 
         if (info->userptr - con->user == strlen(con->user)) {
-          printf("USER end\n");
           lbuf[0] = '\r'; 
           lbuf[1] = '\0';
           nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, 2);
         } else {
           lbuf[0] = info->userptr[0];
-          printf("%c \n", lbuf[0]);
+          //printf("%c \n", lbuf[0]);
           info->userptr++;
           nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, 1);
         }
@@ -256,7 +252,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
         con->state = TELNET_AUTH;
         info->userptr = NULL;
         info->passptr = NULL;
-        /* If telnetd sent the final answer along with the new login prompt
+        /* 
+         * If telnetd sent the final answer along with the new login prompt
          * (something which happens with some daemons), then we don't need to 
          * check if the peer has closed the connection because obviously he hasn't!
          */
@@ -264,12 +261,14 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
             || memsearch(con->buf, "username", con->bufsize))
             con->peer_alive = true;
         return ncrack_module_end(nsp, con);
+
       } else if (memsearch(con->buf, ">", con->bufsize)
           || memsearch(con->buf, "$", con->bufsize)
           || memsearch(con->buf, "#", con->bufsize)) {
         printf("%s SUCCESS %s %s\n", hostinfo, con->user, con->pass);
         con->auth_success = true;
         return ncrack_module_end(nsp, con);
+
       } else {  /* wait for more replies */
         con->state = TELNET_FINI;
         nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);

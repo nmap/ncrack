@@ -2,12 +2,24 @@
 #include "Service.h"
 
 
+void
+memprint(const char *addr, size_t bytes)
+{
+  size_t i;
+  for (i = 0; i < bytes; i++) {
+    printf("%c", addr[i]);
+  }
+}
+
+
+
 /* 
  * Case insensitive memory search - a combination of memmem and strcasestr
  * Will search for a particular string 'pneedle' in the first 'bytes' of
  * memory starting at 'haystack'
  */
-char *memsearch(const char *haystack, const char *pneedle, size_t bytes) {
+char *
+memsearch(const char *haystack, const char *pneedle, size_t bytes) {
   char buf[512];
   unsigned int needlelen;
   const char *p;

@@ -37,8 +37,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
         if (!con->buf || con->buf[0] != '2') {
           error("%s Not ftp or service was shutdown\n", hostinfo);
           ncrack_module_end(nsp, con);
-        }
-        else {
+        } else {
           if (o.debugging > 8)
             printf("%s reply: %s", hostinfo, con->buf);
         }
@@ -57,8 +56,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
       if (!con->buf || con->buf[0] != '3') {
         if (o.debugging > 8)
           printf("%s Username failed\n", hostinfo);
-      }
-      else {
+      } else {
         if (o.debugging > 8)
           printf("%s reply: %s", hostinfo, con->buf);
       }
@@ -76,8 +74,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
         if (o.debugging > 3)
           //printf("%s reply: %s", hostinfo, con->buf);
           printf("%s Login failed: %s %s\n", hostinfo, con->user, con->pass);
-      }
-      else
+      } else
         printf("%s Success: %s %s\n", hostinfo, con->user, con->pass);   
       con->state = FTP_BANNER;
 
