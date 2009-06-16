@@ -36,9 +36,11 @@ class Connection
     bool auth_complete; /* true -> login pair tested */
     bool from_pool;     /* true -> login pair was extracted from pair_pool */
 
+    void *misc_info;    /* additional state information that might be needed */
+
 		int state;          /* module state-machine's current state */
 		char *buf;          /* auxiliary buffer */
-		int bufsize;        /* buffer size not including '\0' */
+		int bufsize;        /* total buffer size in bytes */
 		long login_attempts;/* login attempts up until now */
 		nsock_iod niod;     /* I/O descriptor for this connection */
 		Service *service;   /* service it belongs to */

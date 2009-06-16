@@ -59,6 +59,15 @@ template<class T> T box(T bmin, T bmax, T bnum) {
   return bnum;
 }
 
+
+/* 
+ * Case insensitive memory search - a combination of memmem and strcasestr
+ * Will search for a particular string 'pneedle' in the first 'bytes' of
+ * memory starting at 'haystack'
+ */
+char *memsearch(const char *haystack, const char *pneedle, size_t bytes);
+
+
 /* Compare a canonical option name (e.g. "max-scan-delay") with a
    user-generated option such as "max_scan_delay" and returns 0 if the
    two values are considered equivalant (for example, - and _ are

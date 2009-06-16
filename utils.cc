@@ -2,6 +2,52 @@
 #include "Service.h"
 
 
+/* 
+ * Case insensitive memory search - a combination of memmem and strcasestr
+ * Will search for a particular string 'pneedle' in the first 'bytes' of
+ * memory starting at 'haystack'
+ */
+char *memsearch(const char *haystack, const char *pneedle, size_t bytes) {
+  char buf[512];
+  unsigned int needlelen;
+  const char *p;
+  char *needle, *q, *foundto;
+  size_t i;
+
+  /* Should crash if !pneedle -- this is OK */
+  if (!*pneedle) return (char *) haystack;
+  if (!haystack) return NULL;
+
+  needlelen = (unsigned int) strlen(pneedle);
+  if (needlelen >= sizeof(buf)) {
+    needle = (char *) safe_malloc(needlelen + 1);
+  } else needle = buf;
+  p = pneedle; q = needle;
+  while((*q++ = tolower(*p++)))
+    ;
+  p = haystack - 1; foundto = needle;
+
+  i = 0;
+  while(i < bytes) {
+    ++p;
+    if(tolower(*p) == *foundto) {
+      if(!*++foundto) {
+        /* Yeah, we found it */
+        if (needlelen >= sizeof(buf))
+          free(needle);
+        return (char *) (p - needlelen + 1);
+      }
+    } else
+      foundto = needle;
+    i++;
+  }
+  if (needlelen >= sizeof(buf))
+    free(needle);
+  return NULL;
+}
+
+
+
 /* strtoul with error checking */
 unsigned long int
 Strtoul(const char *nptr)

@@ -13,6 +13,7 @@ Connection::Connection(Service *serv)
   auth_complete = false;
   login_attempts = 0;
   buf = NULL;
+  misc_info = NULL;
 }
 
 Connection::~Connection()
@@ -20,6 +21,10 @@ Connection::~Connection()
   if (buf) {
     free(buf);
     buf = NULL;
+  }
+  if (misc_info) {
+    free(misc_info);
+    misc_info = NULL;
   }
 }
 

@@ -7,8 +7,6 @@ AC_INIT(ncrack.cc)
 
 CXXFLAGS="-O2"
 
-#LIBSSL_LIBS="-lssl"
-
 AC_ARG_WITH(localdirs,
 AC_HELP_STRING([--with-localdirs], [Explicitly ask compiler to use /usr/local/{include,libs} if they exist ]),
   [ case "$with_localdirs" in
@@ -267,7 +265,6 @@ AC_CONFIG_SUBDIRS(nsock/src)
 
 
 AC_SUBST(LIBPCAP_LIBS)
-AC_SUBST(LIBSSL_LIBS)
 AC_SUBST(CPPFLAGS)
 AC_SUBST(LDFLAGS)
 

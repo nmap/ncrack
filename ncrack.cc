@@ -29,6 +29,8 @@ vector <char *> PassArray;
 void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+void ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+
 /* module ending handler */
 void ncrack_module_end(nsock_pool nsp, void *mydata);
 
@@ -736,7 +738,8 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       free(con->buf);
       con->buf = NULL;
     }
-    con->buf = Strndup(str, nbytes);  /* warning: we may need memcpy instead of strncpy */
+    con->buf = (char *) safe_malloc(nbytes);
+    memcpy(con->buf, str, nbytes);
     con->bufsize = nbytes;
     call_module(nsp, con);
 
@@ -824,6 +827,24 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 }
 
 
+void
+ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
+{
+  enum nse_status status = nse_status(nse);
+  Connection *con = (Connection *) mydata;
+
+  if (status == NSE_STATUS_SUCCESS) {
+    if (con->buf) {
+      free(con->buf);
+      con->buf = NULL;
+    }
+    call_module(nsp, con);
+  }
+  else 
+    printf("timer handler error!!!!\n");
+
+  return;
+}
 
 
 
