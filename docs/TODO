@@ -1,0 +1,40 @@
+TODO:
+
+
+* Test telnet module, thoroughly
+
+* Port Ncrack to Windows
+
+* Test buffering cases for all modules, when for example we need to search for certain patterns
+  but the pattern is split in 2 separate packets due to a small window.
+
+* Implement queueing mechanism for ServiceGroup lists.
+
+* Handle case when connection limit is more than the total passwords/usernames in list
+
+* If a connection times out continuously for 1 service and the rest of the services
+  need to poll for new events through nsock_loop, the fact that
+  ncrack_connection_end calls ncrack_probes again won't let that happen
+  So for many errors of 1 connection perhaps just toss service into a special list so
+  that we can move on for the time being.
+
+* Implement Service timeout, where the user imposes a certain timeout
+  after which the service is marked as finished regardless of the progress
+  so far.
+
+* Code output.cc and -oN option.
+
+* Implement interactive Ncrack output.
+
+* Implement on-the-fly 'Status Report' within interactive Ncrack output.
+
+* Complete dynamic timing engine
+
+* Code ssh module
+
+* Append Nmap licence headers to each ncrack file for starters and later revisit the
+  issue of maybe adapting them for Ncrack specifically.
+
+* Complete ncrack callback handlers documentation.
+
+
