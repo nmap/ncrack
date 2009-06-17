@@ -13,6 +13,7 @@ Connection::Connection(Service *serv)
   auth_complete = false;
   auth_success = false;
   peer_alive = false;
+  peer_might_close = false;
   login_attempts = 0;
   buf = NULL;
   misc_info = NULL;
@@ -50,6 +51,7 @@ Service::Service()
   failed_connections = 0;
   total_attempts = 0;
   finished_attempts = 0;
+  supported_attempts = 0;
   active_connections = 0;
 
 	min_connection_limit = -1;

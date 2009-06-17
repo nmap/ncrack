@@ -70,6 +70,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
   switch (con->state)
   {
     case TELNET_INIT:
+      con->peer_might_close = false;
       con->misc_info = (telnet_info *)safe_zalloc(sizeof(telnet_info));
       con->state = TELNET_OPTIONS_1;
       nsock_read(nsp, nsi, ncrack_read_handler, 50000, con);
@@ -240,6 +241,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
        * as one packet, even if linemode is disabled. */
       con->state = TELNET_FINI;
       snprintf(lbuf, sizeof(lbuf), "%s\r", con->pass);
+      con->peer_might_close = true;
       nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, -1);
       break;
 

@@ -32,6 +32,22 @@ class Connection
     char *user;
     char *pass;
 
+    /* 
+     * True when we peer might close connection at the near moment. 
+     * Consider the case, when some services after reaching the maximum
+     * authentication limit per connecton, just drop the connection without
+     * specifically telling you that you failed at the last authentication
+     * attempt. Thus, we use this, to be able to count the correct number of
+     * maximum attempts the peer lets us do (stored in 'supported_attempts'
+     * inside the Service class). A module should probably set it to true
+     * after writing the password on the wire and before issuing the next
+     * read call. Also if you use it, don't forget to set it to false, in the first
+     * state of your module, because we might need it to differentiate between
+     * normal server FINs and FINs/RSTs sent in the middle of an authentication
+     * due to strange network conditions.
+     */
+    bool peer_might_close; 
+
     bool check_closed;  /* true -> check if peer closed connection on us */
     bool peer_alive;    /* true -> if peer is certain to be alive currently */
     bool auth_complete; /* true -> login pair tested */
@@ -100,8 +116,21 @@ class Service
     long active_connections;
     struct timeval last; /* time of last activated connection */
 
+    /*
+     * How many attempts the service supports per connection before
+     * closing on us. This is used as a valuable piece of information
+     * for many timing checks, and is gathered during the first connection
+     * (since that probably is the most reliable one, because in the beginning
+     * we haven't opened up too many connections yet)
+     */
+    unsigned int supported_attempts;
+
+    /* total auth attempts, including failed ones */
     unsigned int total_attempts;
-    unsigned int finished_attempts;
+    
+    /* auth attempts that have finished up to the point of completing
+     * all authentication steps and getting the results */
+    unsigned int finished_attempts; 
 
 		/* timing options that override global ones */
 		long min_connection_limit;  /* minimum number of concurrent parallel connections */

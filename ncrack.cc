@@ -583,7 +583,7 @@ void
 ncrack_module_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+ // ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   struct timeval now;
@@ -593,32 +593,10 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   con->auth_complete = true;
   serv->total_attempts++;
   serv->finished_attempts++;
+
+  if (serv->just_started)
+    serv->supported_attempts++;
   
-  /* 
-   * If that was our first connection and successfully made it up to the point of
-   * completing an authentication, then calculate initial ideal_parallelism (which
-   * was 1 previously) based on the box of min_connection_limit, max_connection_limit
-   * and a default desired parallelism for each timing template.
-   */
-  if (serv->just_started == true) {
-    long desired_par = 1;
-    if (o.timing_level == 0)
-      desired_par = 1;
-    else if (o.timing_level == 1)
-      desired_par = 1;
-    else if (o.timing_level == 2)
-      desired_par = 4;
-    else if (o.timing_level == 3)
-      desired_par = 10;
-    else if (o.timing_level == 4)
-      desired_par = 30;
-    else if (o.timing_level == 5)
-      desired_par = 50;
-
-    serv->ideal_parallelism = box(serv->min_connection_limit, serv->max_connection_limit, desired_par);
-    serv->just_started = false;
-  }
-
   serv->auth_rate_meter.update(1, NULL);
 
   gettimeofday(&now, NULL);
@@ -632,15 +610,17 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     }
     serv->last_auth_rate.time = now;
     serv->last_auth_rate.rate = current_rate;
- }
+  }
 
 
+#if 0
   /*
    * Since we possibly updated the ideal_parallelism with a new value, check if
-   * can remove service from 'services_full' list to 'services_active' list.
+   * can move service from 'services_full' list to 'services_active' list.
    */
   if (serv->list_full && serv->active_connections < serv->ideal_parallelism)
     SG->MoveServiceToList(serv, &SG->services_active);
+#endif 
 
 
   /* If login pair was extracted from pool, permanently remove it from it. */
@@ -674,7 +654,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
   }
 
-  ncrack_probes(nsp, SG);
+ // ncrack_probes(nsp, SG);
 }
 
 
@@ -687,7 +667,36 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   list <Connection *>::iterator li;
 
-  if (!con->auth_complete) {
+
+  /* 
+   * If that was our first connection and successfully made it up to the point of
+   * completing an authentication, then calculate initial ideal_parallelism (which
+   * was 1 previously) based on the box of min_connection_limit, max_connection_limit
+   * and a default desired parallelism for each timing template.
+   */
+  if (serv->just_started == true) {
+    serv->just_started = false;
+    if (con->auth_complete) {
+      long desired_par = 1;
+      if (o.timing_level == 0)
+        desired_par = 1;
+      else if (o.timing_level == 1)
+        desired_par = 1;
+      else if (o.timing_level == 2)
+        desired_par = 4;
+      else if (o.timing_level == 3)
+        desired_par = 10;
+      else if (o.timing_level == 4)
+        desired_par = 30;
+      else if (o.timing_level == 5)
+        desired_par = 50;
+
+      serv->ideal_parallelism = box(serv->min_connection_limit, serv->max_connection_limit, desired_par);
+    }
+  }
+
+
+  if (!con->auth_complete && !con->peer_might_close) {
     serv->total_attempts++;
     printf("%s Dropping connection limit due to connection error!\n", serv->HostInfo());
     //if (serv->connection_limit - 5 >= 1)
@@ -731,8 +740,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       SG->MoveServiceToList(serv, &SG->services_finished);
   }
 
-  printf("%s Attempts: total %d completed %d --- rate %.2f \n", 
-      serv->HostInfo(), serv->total_attempts, serv->finished_attempts,
+  printf("%s Attempts: total %d completed %d supported %d --- rate %.2f \n", 
+      serv->HostInfo(), serv->total_attempts, serv->finished_attempts, serv->supported_attempts,
       SG->auth_rate_meter.getCurrentRate());
 
   /* Check if service finished for good. */
@@ -804,7 +813,20 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   } else if (status == NSE_STATUS_EOF) {
 
-    if (!con->auth_complete) {
+    /* 
+     * If we are dealing with the first connection for that service, then check
+     * if we are on the point where peer might close any moment (usually we set
+     * 'peer_might_close' after writing the password on the network and before
+     * issuing the next read call), so we can increment the number of maximum
+     * allowed authentication attempts per connection. 
+     */
+    if (serv->just_started && con->peer_might_close) 
+      serv->supported_attempts++;
+
+    /* Now this is strange: peer closed on us in the middle of authentication.
+     * This shouldn't happen, unless extreme network conditions are happening!
+     */
+    else if (!con->auth_complete && !con->peer_might_close) {
       printf("%s Peer closed on us in the middle of authentication!\n", hostinfo);
       serv->AppendToPool(con->user, con->pass);
       if (serv->list_stalled)

@@ -37,4 +37,13 @@ TODO:
 
 * Complete ncrack callback handlers documentation.
 
+* For future reference on modules like http: consider saving state information like
+  the http parsing that needs to be done only 1 time per host inside the
+  service, so that future connections can refer to that instead of having to
+  redo that work. That will add probably add to the speed.
+
+* For -vv verbose mode, possibly save the banner for each service and show it at
+  the end. Also we can show a sample session, showing the special patterns used
+  in the authentication steps. These may also prove useful for user submissions
+  of new exotic patterns for modules, like telnet, that need them.
 
