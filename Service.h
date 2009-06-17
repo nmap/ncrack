@@ -48,6 +48,13 @@ class Connection
      */
     bool peer_might_close; 
 
+    /* True if we have received a server reply, that indicated that it didn't
+     * close the connection prematurely. This may used in cases, when the
+     * server may close the connection after the maximum allowed auth attempts
+     * are reached, but will also print a relative message saying we failed.
+     */
+    bool finished_normally;
+
     bool check_closed;  /* true -> check if peer closed connection on us */
     bool peer_alive;    /* true -> if peer is certain to be alive currently */
     bool auth_complete; /* true -> login pair tested */

@@ -198,16 +198,40 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
         snprintf(lbuf, sizeof(lbuf), "%s\r", con->user);
         nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, -1);
       } else {
+        con->state = TELNET_ECHO_USER;
         /* Since our peer doesn't support linemode, we need to send each
          * character of the username in individual packets. We send 1 byte
          * and wait for the server's echo and so on...
          */
+
         if (!info->userptr)
           info->userptr = con->user;
+        
+        /* OK, here's the deal: we need to account for the fact that some
+         * telnet daemons (hint: cisco routers) send the initial login prompt
+         * and then start sending telnet options. Since we have already, sent
+         * the first username character by now, we will just have to ignore
+         * those options, and wait until we see our character echoed back in
+         * order to go on sending the rest of the username.
+         */
+        if (con->buf && info->userptr > con->user
+            && (info->userptr - con->user) != strlen(con->user)) {
+          /* Some telnet daemons send the echo reply with a \0 byte in front of
+           * the echoed characted. Damn inconsistencies. */
+          if ((con->bufsize > 2 && con->buf[1] != *(info->userptr - 1))
+              || (con->bufsize == 1 && con->buf[0] != *(info->userptr - 1))) {
+            nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+            break;
+          }
+        }
 
         /* we can move on to reading the password prompt */
-        if (con->buf && memsearch(con->buf, "\r", con->bufsize)) {
-          con->state = TELNET_PASS_R;
+        if (con->buf && info->userptr > con->user &&
+            memsearch(con->buf, "\r", con->bufsize)) {
+          if (memsearch(con->buf, "password", con->bufsize)) 
+            con->state = TELNET_PASS_W;
+          else
+            con->state = TELNET_PASS_R;
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
         }
@@ -218,11 +242,9 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
           nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, 2);
         } else {
           lbuf[0] = info->userptr[0];
-          //printf("%c \n", lbuf[0]);
           info->userptr++;
           nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, 1);
         }
-        con->state = TELNET_ECHO_USER;
       }
       break;
 
@@ -253,6 +275,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
         con->state = TELNET_AUTH;
         info->userptr = NULL;
         info->passptr = NULL;
+        con->finished_normally = true;
+        
         /* 
          * If telnetd sent the final answer along with the new login prompt
          * (something which happens with some daemons), then we don't need to 
@@ -260,7 +284,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
          */
         if (memsearch(con->buf, "login", con->bufsize)
             || memsearch(con->buf, "username", con->bufsize))
-            con->peer_alive = true;
+          con->peer_alive = true;
         return ncrack_module_end(nsp, con);
 
       } else if (memsearch(con->buf, ">", con->bufsize)

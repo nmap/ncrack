@@ -223,6 +223,7 @@ call_module(nsock_pool nsp, Connection *con)
   con->check_closed = false;
   con->auth_complete = false;
   con->peer_alive = false;
+  con->finished_normally = false;
 
   if (!strcmp(name, "ftp"))
     ncrack_ftp(nsp, con);
@@ -583,7 +584,6 @@ void
 ncrack_module_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
- // ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   struct timeval now;
@@ -611,17 +611,6 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     serv->last_auth_rate.time = now;
     serv->last_auth_rate.rate = current_rate;
   }
-
-
-#if 0
-  /*
-   * Since we possibly updated the ideal_parallelism with a new value, check if
-   * can move service from 'services_full' list to 'services_active' list.
-   */
-  if (serv->list_full && serv->active_connections < serv->ideal_parallelism)
-    SG->MoveServiceToList(serv, &SG->services_active);
-#endif 
-
 
   /* If login pair was extracted from pool, permanently remove it from it. */
   if (con->from_pool && !serv->isMirrorPoolEmpty()) {
@@ -654,7 +643,6 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
   }
 
- // ncrack_probes(nsp, SG);
 }
 
 
@@ -820,13 +808,13 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
      * issuing the next read call), so we can increment the number of maximum
      * allowed authentication attempts per connection. 
      */
-    if (serv->just_started && con->peer_might_close) 
+    if (serv->just_started && con->peer_might_close && !con->finished_normally) 
       serv->supported_attempts++;
 
     /* Now this is strange: peer closed on us in the middle of authentication.
      * This shouldn't happen, unless extreme network conditions are happening!
      */
-    else if (!con->auth_complete && !con->peer_might_close) {
+    else if (!con->auth_complete && !con->peer_might_close && !con->finished_normally) {
       printf("%s Peer closed on us in the middle of authentication!\n", hostinfo);
       serv->AppendToPool(con->user, con->pass);
       if (serv->list_stalled)
