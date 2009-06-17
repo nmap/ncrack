@@ -196,10 +196,16 @@ apply_host_options(Service *service, char *const options)
   temp = parse_services_options(options);
 
   /* apply any valid options to this service */
-  if (temp.timing.min_connection_limit != -1)
+  if (temp.timing.min_connection_limit != -1) {
+    if (temp.timing.min_connection_limit > service->max_connection_limit)
+      service->max_connection_limit = temp.timing.min_connection_limit;
     service->min_connection_limit = temp.timing.min_connection_limit;
-  if (temp.timing.max_connection_limit != -1)
+  } 
+  if (temp.timing.max_connection_limit != -1) {
+    if (temp.timing.max_connection_limit < service->min_connection_limit)
+      service->min_connection_limit = temp.timing.max_connection_limit;    
     service->max_connection_limit = temp.timing.max_connection_limit;
+  }
   if (temp.timing.auth_tries != -1)
     service->auth_tries = temp.timing.auth_tries;
   if (temp.timing.connection_delay != -1)
