@@ -583,6 +583,7 @@ void
 ncrack_module_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   struct timeval now;
@@ -634,6 +635,14 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
  }
 
 
+  /*
+   * Since we possibly updated the ideal_parallelism with a new value, check if
+   * can remove service from 'services_full' list to 'services_active' list.
+   */
+  if (serv->list_full && serv->active_connections < serv->ideal_parallelism)
+    SG->MoveServiceToList(serv, &SG->services_active);
+
+
   /* If login pair was extracted from pool, permanently remove it from it. */
   if (con->from_pool && !serv->isMirrorPoolEmpty()) {
     serv->RemoveFromPool(con->user, con->pass);
@@ -664,7 +673,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     con->check_closed = true;
     nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
   }
-  return;
+
+  ncrack_probes(nsp, SG);
 }
 
 
