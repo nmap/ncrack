@@ -584,6 +584,7 @@ void
 ncrack_module_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   struct timeval now;
@@ -600,13 +601,16 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   serv->auth_rate_meter.update(1, NULL);
 
   gettimeofday(&now, NULL);
-  if (TIMEVAL_MSEC_SUBTRACT(now, serv->last_auth_rate.time) >= 500) {
+  if (!serv->just_started && TIMEVAL_MSEC_SUBTRACT(now, serv->last_auth_rate.time) >= 500) {
     double current_rate = serv->auth_rate_meter.getCurrentRate();
     printf("%s last: %.2f  current %.2f parallelism %ld\n", serv->HostInfo(),
         serv->last_auth_rate.rate, current_rate, serv->ideal_parallelism);
     if (current_rate < serv->last_auth_rate.rate + 3) {
-      //serv->connection_limit++;
-      //printf("%s Increasing connection limit %ld\n", serv->HostInfo(), serv->connection_limit);
+      if (serv->ideal_parallelism + 3 < serv->max_connection_limit)
+        serv->ideal_parallelism += 3;
+      else 
+        serv->ideal_parallelism = serv->max_connection_limit;
+      printf("%s Increasing connection limit %ld\n", serv->HostInfo(), serv->ideal_parallelism);
     }
     serv->last_auth_rate.time = now;
     serv->last_auth_rate.rate = current_rate;
@@ -617,6 +621,15 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     serv->RemoveFromPool(con->user, con->pass);
     con->from_pool = false;
   }
+
+  /*
+   * Check if we had previously surpassed imposed connection limit so that
+   * we remove service from 'services_full' list to 'services_active' list.
+   */
+  if (serv->list_full && serv->active_connections < serv->ideal_parallelism)
+    SG->MoveServiceToList(serv, &SG->services_active);
+
+  ncrack_probes(nsp, SG);
 
   /* 
    * If we need to check whether peer is alive or not we do the following:
@@ -642,7 +655,6 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     con->check_closed = true;
     nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
   }
-
 }
 
 
@@ -678,21 +690,22 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       if (serv->just_started)
         serv->supported_attempts++;
 
-      if (o.debugging > 8)
-        printf("%s Failed %s %s\n", hostinfo, con->user, con->pass);
       serv->total_attempts++;
       serv->finished_attempts++;
 
-    } else if (!con->auth_complete) {
-        serv->AppendToPool(con->user, con->pass);
-        if (serv->list_stalled)
-          SG->MoveServiceToList(serv, &SG->services_active);
+      if (o.debugging > 8)
+        printf("%s Failed %s %s\n", hostinfo, con->user, con->pass);
 
-        /* Now this is strange: peer closed on us in the middle of authentication.
-         * This shouldn't happen, unless extreme network conditions are happening!
-         */
-        if (!serv->just_started && con->login_attempts < serv->supported_attempts)
-          printf("%s closed on us in the middle of authentication!\n", hostinfo);
+    } else if (!con->auth_complete) {
+      serv->AppendToPool(con->user, con->pass);
+      if (serv->list_stalled)
+        SG->MoveServiceToList(serv, &SG->services_active);
+
+      /* Now this is strange: peer closed on us in the middle of authentication.
+       * This shouldn't happen, unless extreme network conditions are happening!
+       */
+      if (!serv->just_started && con->login_attempts < serv->supported_attempts)
+        printf("%s closed on us in the middle of authentication!\n", hostinfo);
     }
     if (o.debugging > 5)
       printf("%s Connection closed by peer\n", hostinfo);
@@ -700,7 +713,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   /* 
    * If we are not the first timing probe and the authentication wasn't
-   * completed (we double check that by seeing if we are inside the allowed -by
+   * completed (we double check that by seeing if we are inside the supported -by
    * the server- threshold of authentication attempts per connection), then we
    * take drastic action and drop the connection limit.
    */
@@ -709,9 +722,13 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     serv->total_attempts++;
     // TODO: perhaps here we might want to differentiate between the two errors:
     // timeout and premature close, giving a unique drop value to each
-    printf("%s Dropping connection limit due to connection error!\n", hostinfo);
-    //if (serv->connection_limit - 5 >= 1)
-    //  serv->connection_limit -= 5;
+    if (serv->ideal_parallelism - 5 >= serv->min_connection_limit)
+      serv->ideal_parallelism -= 5;
+    else 
+      serv->ideal_parallelism = serv->min_connection_limit;
+
+    printf("%s Dropping connection limit due to connection error: %ld\n",
+        hostinfo, serv->ideal_parallelism);
   }
 
 

@@ -159,8 +159,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       /* Now check for banner and login prompt */
       if (datasize > 0) {
         if (o.debugging > 8) {
-          memprint(recvbufptr, datasize);
-          printf("\n");
+          //memprint(recvbufptr, datasize);
+          //printf("\n");
         }
         /* If we see a certain pattern that denotes that we can start
          * authentication then we note that down. */
