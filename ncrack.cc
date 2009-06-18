@@ -665,26 +665,25 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       printf("%s read timeout!\n", hostinfo);
 
   } else if (con->close_reason == READ_EOF) {
-
     /* 
-     * If we are dealing with the first connection for that service, then check
-     * if we are on the point where peer might close any moment (usually we set
-     * 'peer_might_close' after writing the password on the network and before
-     * issuing the next read call), so we can increment the number of maximum
-     * allowed authentication attempts per connection. 
+     * Check if we are on the point where peer might close at any moment (usually
+     * we set 'peer_might_close' after writing the password on the network and
+     * before issuing the next read call), so that this connection ending was
+     * actually expected.
      */
-    if (serv->just_started && con->peer_might_close) {
-      serv->supported_attempts++;
-    }
-
     if (con->peer_might_close) {
+      /* If we the first special timing probe, then increment the number of
+       * server-allowed authentication attempts per connection
+       */
+      if (serv->just_started)
+        serv->supported_attempts++;
+
       if (o.debugging > 8)
         printf("%s Failed %s %s\n", hostinfo, con->user, con->pass);
       serv->total_attempts++;
       serv->finished_attempts++;
-    }
 
-    else if (!con->auth_complete && !con->peer_might_close) {
+    } else if (!con->auth_complete) {
         serv->AppendToPool(con->user, con->pass);
         if (serv->list_stalled)
           SG->MoveServiceToList(serv, &SG->services_active);
@@ -699,10 +698,17 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       printf("%s Connection closed by peer\n", hostinfo);
   }
 
-
+  /* 
+   * If we are not the first timing probe and the authentication wasn't
+   * completed (we double check that by seeing if we are inside the allowed -by
+   * the server- threshold of authentication attempts per connection), then we
+   * take drastic action and drop the connection limit.
+   */
   if (!serv->just_started && !con->auth_complete && !con->peer_might_close 
       && con->login_attempts < serv->supported_attempts) {
     serv->total_attempts++;
+    // TODO: perhaps here we might want to differentiate between the two errors:
+    // timeout and premature close, giving a unique drop value to each
     printf("%s Dropping connection limit due to connection error!\n", hostinfo);
     //if (serv->connection_limit - 5 >= 1)
     //  serv->connection_limit -= 5;
@@ -710,30 +716,27 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
 
   /* 
-   * If that was our first connection and successfully made it up to the point of
-   * completing an authentication, then calculate initial ideal_parallelism (which
+   * If that was our first connection, then calculate initial ideal_parallelism (which
    * was 1 previously) based on the box of min_connection_limit, max_connection_limit
    * and a default desired parallelism for each timing template.
    */
   if (serv->just_started == true) {
     serv->just_started = false;
-    if (con->auth_complete) {
-      long desired_par = 1;
-      if (o.timing_level == 0)
-        desired_par = 1;
-      else if (o.timing_level == 1)
-        desired_par = 1;
-      else if (o.timing_level == 2)
-        desired_par = 4;
-      else if (o.timing_level == 3)
-        desired_par = 10;
-      else if (o.timing_level == 4)
-        desired_par = 30;
-      else if (o.timing_level == 5)
-        desired_par = 50;
+    long desired_par = 1;
+    if (o.timing_level == 0)
+      desired_par = 1;
+    else if (o.timing_level == 1)
+      desired_par = 1;
+    else if (o.timing_level == 2)
+      desired_par = 4;
+    else if (o.timing_level == 3)
+      desired_par = 10;
+    else if (o.timing_level == 4)
+      desired_par = 30;
+    else if (o.timing_level == 5)
+      desired_par = 50;
 
-      serv->ideal_parallelism = box(serv->min_connection_limit, serv->max_connection_limit, desired_par);
-    }
+    serv->ideal_parallelism = box(serv->min_connection_limit, serv->max_connection_limit, desired_par);
   }
 
 
