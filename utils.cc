@@ -153,9 +153,9 @@ optcmp(const char *a, const char *b) {
 u8
 str2proto(char *str)
 {
-  if (!strcmp(str, "tcp"))
+  if (!strcasecmp(str, "tcp"))
     return IPPROTO_TCP;
-  else if (!strcmp(str, "udp"))
+  else if (!strcasecmp(str, "udp"))
     return IPPROTO_UDP;
   else 
     return 0;

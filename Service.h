@@ -53,15 +53,18 @@ class Connection
      * server may close the connection after the maximum allowed auth attempts
      * are reached, but will also print a relative message saying we failed.
      */
-    bool finished_normally;
+    bool finished_normally; /* XXX not currently used anywhere */
 
     bool check_closed;  /* true -> check if peer closed connection on us */
     bool peer_alive;    /* true -> if peer is certain to be alive currently */
     bool auth_complete; /* true -> login pair tested */
     bool from_pool;     /* true -> login pair was extracted from pair_pool */
+    bool closed;        /* true -> connection was closed */
     bool auth_success;  /* true -> we found a valid pair!!! */
 
     void *misc_info;    /* additional state information that might be needed */
+
+    int close_reason;
 
 		int state;          /* module state-machine's current state */
 		char *buf;          /* auxiliary buffer */
@@ -70,6 +73,9 @@ class Connection
 		nsock_iod niod;     /* I/O descriptor for this connection */
 		Service *service;   /* service it belongs to */
 };
+
+enum close_reasons { READ_EOF, READ_TIMEOUT, CON_TIMEOUT };
+
 
 
 typedef struct loginpair

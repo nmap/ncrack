@@ -275,7 +275,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
         con->state = TELNET_AUTH;
         info->userptr = NULL;
         info->passptr = NULL;
-        con->finished_normally = true;
+        con->peer_might_close = false;
         
         /* 
          * If telnetd sent the final answer along with the new login prompt

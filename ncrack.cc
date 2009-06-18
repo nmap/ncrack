@@ -654,6 +654,59 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   nsock_iod nsi = con->niod;
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   list <Connection *>::iterator li;
+  const char *hostinfo = serv->HostInfo();
+
+
+  if (con->close_reason == READ_TIMEOUT) {
+    serv->AppendToPool(con->user, con->pass);
+    if (serv->list_stalled)
+      SG->MoveServiceToList(serv, &SG->services_active);
+    if (o.debugging)
+      printf("%s read timeout!\n", hostinfo);
+
+  } else if (con->close_reason == READ_EOF) {
+
+    /* 
+     * If we are dealing with the first connection for that service, then check
+     * if we are on the point where peer might close any moment (usually we set
+     * 'peer_might_close' after writing the password on the network and before
+     * issuing the next read call), so we can increment the number of maximum
+     * allowed authentication attempts per connection. 
+     */
+    if (serv->just_started && con->peer_might_close) {
+      serv->supported_attempts++;
+    }
+
+    if (con->peer_might_close) {
+      if (o.debugging > 8)
+        printf("%s Failed %s %s\n", hostinfo, con->user, con->pass);
+      serv->total_attempts++;
+      serv->finished_attempts++;
+    }
+
+    else if (!con->auth_complete && !con->peer_might_close) {
+        serv->AppendToPool(con->user, con->pass);
+        if (serv->list_stalled)
+          SG->MoveServiceToList(serv, &SG->services_active);
+
+        /* Now this is strange: peer closed on us in the middle of authentication.
+         * This shouldn't happen, unless extreme network conditions are happening!
+         */
+        if (!serv->just_started && con->login_attempts < serv->supported_attempts)
+          printf("%s closed on us in the middle of authentication!\n", hostinfo);
+    }
+    if (o.debugging > 5)
+      printf("%s Connection closed by peer\n", hostinfo);
+  }
+
+
+  if (!serv->just_started && !con->auth_complete && !con->peer_might_close 
+      && con->login_attempts < serv->supported_attempts) {
+    serv->total_attempts++;
+    printf("%s Dropping connection limit due to connection error!\n", hostinfo);
+    //if (serv->connection_limit - 5 >= 1)
+    //  serv->connection_limit -= 5;
+  }
 
 
   /* 
@@ -683,13 +736,6 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     }
   }
 
-
-  if (!con->auth_complete && !con->peer_might_close) {
-    serv->total_attempts++;
-    printf("%s Dropping connection limit due to connection error!\n", serv->HostInfo());
-    //if (serv->connection_limit - 5 >= 1)
-    //  serv->connection_limit -= 5;
-  }
 
   for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
     if ((*li)->niod == nsi)
@@ -738,6 +784,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   /* see if we can initiate some more connections */
   ncrack_probes(nsp, SG);
+
 }
 
 
@@ -787,41 +834,18 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
         if (pair_ret == 1)
           con->from_pool = true;
         call_module(nsp, con);
-      } else
+      } else {
+        con->close_reason = READ_EOF;
         ncrack_connection_end(nsp, con);
-      /* This is a normal timeout */
+      }
     } else {
-      if (o.debugging)
-        printf("%s read: nse_status_timeout\n", hostinfo);
-      serv->AppendToPool(con->user, con->pass);
-      if (serv->list_stalled)
-        SG->MoveServiceToList(serv, &SG->services_active);
+      /* This is a normal timeout */
+      con->close_reason = READ_TIMEOUT;
       ncrack_connection_end(nsp, con);  // should we always close connection or try to wait?
     }
 
   } else if (status == NSE_STATUS_EOF) {
-
-    /* 
-     * If we are dealing with the first connection for that service, then check
-     * if we are on the point where peer might close any moment (usually we set
-     * 'peer_might_close' after writing the password on the network and before
-     * issuing the next read call), so we can increment the number of maximum
-     * allowed authentication attempts per connection. 
-     */
-    if (serv->just_started && con->peer_might_close && !con->finished_normally) 
-      serv->supported_attempts++;
-
-    /* Now this is strange: peer closed on us in the middle of authentication.
-     * This shouldn't happen, unless extreme network conditions are happening!
-     */
-    else if (!con->auth_complete && !con->peer_might_close && !con->finished_normally) {
-      printf("%s Peer closed on us in the middle of authentication!\n", hostinfo);
-      serv->AppendToPool(con->user, con->pass);
-      if (serv->list_stalled)
-        SG->MoveServiceToList(serv, &SG->services_active);
-    }
-    if (o.debugging > 5)
-      printf("%s Connection closed by peer\n", hostinfo);
+    con->close_reason = READ_EOF;
     ncrack_connection_end(nsp, con);
 
   }  else if (status == NSE_STATUS_ERROR) {
@@ -919,10 +943,10 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     }
     serv->failed_connections++;
     serv->AppendToPool(con->user, con->pass);
+
     /* Failure of connecting on first attempt means we should probably drop
      * the service for good. */
     if (serv->just_started) {
-      // serv->finish_reason = 
       SG->MoveServiceToList(serv, &SG->services_finished);
     }
     if (serv->list_stalled)
