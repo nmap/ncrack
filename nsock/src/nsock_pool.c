@@ -56,7 +56,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_pool.c 12956 2009-04-15 00:37:23Z fyodor $ */
+/* $Id: nsock_pool.c 13069 2009-04-25 03:24:00Z david $ */
 
 #include "nsock_internal.h"
 #include "gh_list.h"
@@ -181,6 +181,10 @@ nsock_pool nsp_new(void *userdata) {
   gh_list_init(&nsp->active_iods);
   nsp->next_event_serial = 1;
 
+#if HAVE_OPENSSL
+  nsp->sslctx = NULL;
+#endif
+
   return (nsock_pool) nsp;
 }
 
@@ -246,6 +250,11 @@ void nsp_delete(nsock_pool ms_pool) {
     gh_list_free(&nsp->evl.free_events);
     gh_list_free(&nsp->active_iods);
     gh_list_free(&nsp->free_iods);
+
+#if HAVE_OPENSSL
+    if (nsp->sslctx != NULL)
+      SSL_CTX_free(nsp->sslctx);
+#endif
 
     free(nsp);
 }

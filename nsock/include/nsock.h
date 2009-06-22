@@ -54,12 +54,12 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock.h 12956 2009-04-15 00:37:23Z fyodor $ */
+/* $Id: nsock.h 13448 2009-05-29 23:19:07Z david $ */
 
 /* Would you like to include pcap support in nsock?
  * Pcap support code is currently unstable, so we give
  * you a choice. In future this #define will be removed.*/
-/* #define HAVE_PCAP 0  -- Ncrack doesn't need pcap */
+//#define HAVE_PCAP 1
 
 #ifndef NSOCK_H
 #define NSOCK_H
@@ -118,6 +118,8 @@ typedef unsigned long nsock_event_id;
 
 /* This is used to save SSL sessionids between SSL connections */
 typedef void *nsock_ssl_session;
+typedef void *nsock_ssl_ctx;
+typedef void *nsock_ssl;
 
 /********************   PROTOTYPES *******************/
 
@@ -141,6 +143,8 @@ int nsp_geterrorcode(nsock_pool nsp);
 
 /* Every nsp has an ID that is unique across the program execution */
 unsigned long nsp_getid(nsock_pool nsp);
+
+nsock_ssl nsi_getssl(nsock_iod nsockiod);
 
 /* Note that nsi_get1_ssl_session will increment the usage count
  * of the SSL_SESSION, since nsock does a free when the nsi is
@@ -168,6 +172,16 @@ void *nsp_getud(nsock_pool nsp);
    the difference between the current time and basetime will be used
    (the time program execution starts would be a good candidate) */
 void nsp_settrace(nsock_pool nsp, int tracelevel, const struct timeval *basetime);
+
+/* Initializes an Nsock pool to create SSL connections. This sets an internal
+   SSL_CTX, which is like a template that sets options for all connections that
+   are made from it. Returns the SSL_CTX so you can set your own options. */
+nsock_ssl_ctx nsp_ssl_init(nsock_pool ms_pool);
+
+/* Initializes an Nsock pool to create SSL connections that emphasize speed over
+   security. Insecure ciphers are used when they are faster and no certificate
+   verification is done. Returns the SSL_CTX so you can set your own options. */
+nsock_ssl_ctx nsp_ssl_init_max_speed(nsock_pool ms_pool);
 
 /* And here is how you create an nsock_pool.  This allocates, initializes,
    and returns an nsock_pool event aggregator.  In the case of error,
@@ -314,6 +328,11 @@ unsigned long nsi_id(nsock_iod nsockiod);
 
   /* Returns 1 if an NSI is communicating via SSL, 0 otherwise */
 int nsi_checkssl(nsock_iod nsockiod);
+
+/* Returns the remote peer port (or -1 if unavailable).  Note the
+   return value is a whole int so that -1 can be distinguished from
+   65535.  Port is returned in host byte order. */
+int nsi_peerport(nsock_iod nsiod);
 
 /* Sets the local address to bind to before connect() */
 int nsi_set_localaddr(nsock_iod nsi, struct sockaddr_storage *ss, size_t sslen);

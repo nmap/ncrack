@@ -153,10 +153,26 @@ static DWORD WINAPI win_stdin_thread_func(void *data) {
     return 0;
 }
 
+/* Get the newline translation mode (_O_TEXT or _O_BINARY) of a file
+   descriptor. _O_TEXT does CRLF-LF translation and _O_BINARY does none.
+   Complementary to _setmode. */
+static int _getmode(int fd)
+{
+    int mode;
+
+    /* There is no standard _getmode function, but _setmode returns the
+       previous value. Set it to a dummy value and set it back. */
+    mode = _setmode(fd, _O_BINARY);
+    _setmode(fd, mode);
+
+    return mode;
+}
+
 /* Start the reader thread and do all the file handle/descriptor redirection.
    Returns nonzero on success, zero on error. */
 int win_stdin_start_thread(void) {
     int stdin_fd;
+    int stdin_fmode;
 
     assert(stdin_thread == NULL);
     assert(stdin_pipe_r == NULL);
@@ -188,7 +204,10 @@ int win_stdin_start_thread(void) {
     }
     /* Need to redirect file descriptor 0 also. _open_osfhandle makes a new file
        descriptor from an existing handle. */
-    stdin_fd = _open_osfhandle((intptr_t) GetStdHandle(STD_INPUT_HANDLE), _O_RDONLY);
+    /* Remember the newline translation mode (_O_TEXT or _O_BINARY), and
+       restore it in the new file descriptor. */
+    stdin_fmode = _getmode(STDIN_FILENO);
+    stdin_fd = _open_osfhandle((intptr_t) GetStdHandle(STD_INPUT_HANDLE), _O_RDONLY | stdin_fmode);
     if (stdin_fd == -1) {
         CloseHandle(stdin_pipe_r);
         CloseHandle(stdin_pipe_w);

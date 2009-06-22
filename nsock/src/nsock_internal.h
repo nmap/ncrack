@@ -55,7 +55,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_internal.h 12956 2009-04-15 00:37:23Z fyodor $ */
+/* $Id: nsock_internal.h 13448 2009-05-29 23:19:07Z david $ */
 
 #ifndef NSOCK_INTERNAL_H
 #define NSOCK_INTERNAL_H
@@ -161,8 +161,6 @@ struct writeinfo {
   int written_so_far; /* Number of bytes successfully written */
 };
 
-/* struct sslinfo defined in nsock_ssl.h */
-
 /* remember that callers of this library should NOT be accessing these 
    fields directly */
 typedef struct  {
@@ -184,6 +182,9 @@ typedef struct  {
 		     stdout */
   /* This time is subtracted from the current time for trace reports */
   struct timeval tracebasetime; 
+#if HAVE_OPENSSL
+  SSL_CTX *sslctx; /* The SSL Context (options and such) */
+#endif
 } mspool;
 
 
@@ -194,6 +195,8 @@ typedef struct msiod msiod;
 enum msiod_state { NSIOD_STATE_DELETED, NSIOD_STATE_INITIAL, 
 		   NSIOD_STATE_UNKNOWN /* sd was provided to us in nsi_new2 */,
 		   NSIOD_STATE_CONNECTED_TCP, NSIOD_STATE_CONNECTED_UDP };
+
+/* struct sslinfo defined in nsock_ssl.h */
 
 /* typedef struct msiod msiod; */
 
@@ -347,11 +350,6 @@ void nsock_trace(mspool *ms, char *fmt, ...)
 /* An event has been completed and the handler is about to be called.  This function
    writes out tracing data about the event if neccessary */
 void nsock_trace_handler_callback(mspool *ms, msevent *nse);
-
-/* Returns the remote peer port (or -1 if unavailable).  Note the
-   return value is a whole int so that -1 can be distinguished from
-   65535.  Port is returned in host byte order. */
-int nsi_peerport(msiod *nsi);
 
 #if HAVE_OPENSSL
 /* sets the ssl session of an nsock_iod, increments usage count.  The

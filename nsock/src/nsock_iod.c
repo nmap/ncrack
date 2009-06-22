@@ -56,7 +56,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_iod.c 12956 2009-04-15 00:37:23Z fyodor $ */
+/* $Id: nsock_iod.c 13448 2009-05-29 23:19:07Z david $ */
 
 #include "nsock.h"
 #include "nsock_internal.h"
@@ -256,6 +256,14 @@ unsigned long nsi_id(nsock_iod nsockiod) {
   return ((msiod *)nsockiod)->id;
 }
 
+/* Returns the SSL object inside an nsock_iod, or NULL if unset. */
+nsock_ssl nsi_getssl(nsock_iod nsockiod) {
+#if HAVE_OPENSSL
+  return ((msiod *)nsockiod)->ssl;
+#else
+  return NULL;
+#endif
+}
 
 /* Returns the SSL_SESSION of an nsock_iod, and increments it's usage count */
 nsock_ssl_session nsi_get1_ssl_session(nsock_iod nsockiod) {
@@ -309,7 +317,8 @@ int nsi_checkssl(nsock_iod nsockiod) {
 /* Returns the remote peer port (or -1 if unavailable).  Note the
    return value is a whole int so that -1 can be distinguished from
    65535.  Port is returned in host byte order. */
-int nsi_peerport(msiod *nsi) {
+int nsi_peerport(nsock_iod nsockiod) {
+  msiod *nsi = (msiod *) nsockiod;
   int fam;
   if (nsi->peerlen <= 0)
     return -1;

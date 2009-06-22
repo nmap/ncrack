@@ -88,7 +88,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nbase_misc.c 12974 2009-04-16 09:38:13Z daniel $ */
+/* $Id: nbase_misc.c 13660 2009-06-10 18:45:47Z david $ */
 
 #include "nbase.h"
 
@@ -244,23 +244,51 @@ long tval2msecs(char *tspec) {
   return -1;
 }
 
-/* A replacement for select on Windows with an additional hack to allow
- * selecting on stdin (file descriptor 0). Windows select doesn't work
- * with stdin. */
+/* A replacement for select on Windows that allows selecting on stdin
+ * (file descriptor 0) and selecting on zero file descriptors (just for
+ * the timeout). Plain Windows select doesn't work on non-sockets like
+ * stdin and returns an error if no file descriptors were given, because
+ * they were NULL or empty.  This only works for sockets and stdin; if
+ * you have a descriptor referring to a normal open file in the set,
+ * Windows will return WSAENOTSOCK. */
 int fselect(int s, fd_set *rmaster, fd_set *wmaster, fd_set *emaster, struct timeval *tv)
 {
 #ifdef WIN32
     static int stdin_thread_started = 0;
     int fds_ready = 0;
-    int iter = -1;
+    int iter = -1, i;
     struct timeval stv;
-    int stdtty = _isatty(STDIN_FILENO);
-    HANDLE stdinhandle = GetStdHandle(STD_INPUT_HANDLE);
     fd_set rset, wset, eset;
 
-    /* Don't do the lame looping if we're not even looking at stdin */
-    if (!FD_ISSET(STDIN_FILENO, rmaster))
-        return select(s, rmaster, wmaster, emaster, tv);
+    /* Figure out whether there are any FDs in the sets, as @$@!$# Windows
+       returns WSAINVAL (10022) if you call a select() with no FDs, even though
+       the Linux man page says that doing so is a good, reasonably portable way
+       to sleep with subsecond precision.  Sigh. */
+    for(i = s; i > STDIN_FILENO; i--) {
+        if ((rmaster != NULL && FD_ISSET(i, rmaster))
+            || (wmaster != NULL && FD_ISSET(i, wmaster))
+            || (emaster != NULL && FD_ISSET(i, emaster)))
+            break;
+        s--;
+    }
+
+    /* Handle the case where stdin is not being read from. */
+    if (rmaster == NULL || !FD_ISSET(STDIN_FILENO, rmaster)) {
+        if (s > 0) {
+            /* Do a normal select. */
+            return select(s, rmaster, wmaster, emaster, tv);
+        } else {
+            /* No file descriptors given. Just sleep. */
+            if (tv == NULL) {
+                /* Sleep forever. */
+                while (1)
+                    sleep(10000);
+            } else {
+                usleep(tv->tv_sec * 1000000UL + tv->tv_usec);
+                return 0;
+            }
+        }
+    }
 
     /* This is a hack for Windows, which doesn't allow select()ing on
      * non-sockets (like stdin).  We remove stdin from the fd_set and
@@ -304,9 +332,12 @@ int fselect(int s, fd_set *rmaster, fd_set *wmaster, fd_set *emaster, struct tim
         if (emaster)
             eset = *emaster;
 
-        fds_ready = select(s, &rset, &wset, &eset, &stv);
+        fds_ready = 0;
+        /* selecting on anything other than stdin? */
+        if (s > 1)
+            fds_ready = select(s, &rset, &wset, &eset, &stv);
 
-        if (win_stdin_ready()) {
+        if (fds_ready > -1 && win_stdin_ready()) {
             FD_SET(STDIN_FILENO, &rset);
             fds_ready++;
         }

@@ -53,7 +53,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_core.c 12956 2009-04-15 00:37:23Z fyodor $ */
+/* $Id: nsock_core.c 13728 2009-06-13 02:13:45Z david $ */
 
 #include "nsock_internal.h"
 #include "gh_list.h"
@@ -100,7 +100,6 @@ static int wait_for_events(mspool *ms, int msec_timeout) {
   int event_msecs; /* Msecs before an event goes off */
   int combined_msecs;
   int sock_err = 0;
-  int socketno = 0;
   struct timeval select_tv;
   struct timeval *select_tv_p;
 
@@ -140,19 +139,6 @@ static int wait_for_events(mspool *ms, int msec_timeout) {
     }
     
     
-    /* Figure out whether there are any FDs in the sets, as @$@!$#
-       Windows returns WSAINVAL (10022) if you call a select() with no
-       FDs, even though the Linux man page says that doing so is a
-       good, reasonably portable way to sleep with subsecond
-       precision.  Sigh */
-    for(socketno = ms->mioi.max_sd; socketno >= 0; socketno--) {
-      if(FD_ISSET(socketno, &ms->mioi.fds_master_r) ||
-	 FD_ISSET(socketno, &ms->mioi.fds_master_w) ||
-	 FD_ISSET(socketno, &ms->mioi.fds_master_x))
-	break;
-      else ms->mioi.max_sd--;
-    }
-
 #if HAVE_PCAP
     /* do non-blocking read on pcap devices that doesn't support select() 
      * If there is anything read, don't do usleep() or select(), just leave this loop */
@@ -160,12 +146,7 @@ static int wait_for_events(mspool *ms, int msec_timeout) {
     	/* okay, something was read. */
     } else 
 #endif
-      if (ms->mioi.max_sd < 0) {
-        ms->mioi.results_left = 0;
-        if (combined_msecs > 0)
-	  usleep(combined_msecs * 1000);
-      } else {
-
+    {
         /* Set up the descriptors for select */
         ms->mioi.fds_results_r = ms->mioi.fds_master_r;
         ms->mioi.fds_results_w = ms->mioi.fds_master_w;
@@ -174,7 +155,7 @@ static int wait_for_events(mspool *ms, int msec_timeout) {
         ms->mioi.results_left = fselect(ms->mioi.max_sd + 1, &ms->mioi.fds_results_r, &ms->mioi.fds_results_w, &ms->mioi.fds_results_x, select_tv_p);
         if (ms->mioi.results_left == -1)
   	  sock_err = socket_errno();
-      }
+    }
 
     gettimeofday(&nsock_tod, NULL); /* Due to usleep or select delay */
   } while (ms->mioi.results_left == -1 && sock_err == EINTR);// repeat only if signal occured
@@ -220,7 +201,6 @@ static int wait_for_events(mspool *ms, int msec_timeout) {
      the handler should be called at all (to save CPU time).
   */
 
-
 /* handle_connect_results assumes that select or poll have already
    shown the descriptor to be active */
 void handle_connect_result(mspool *ms, msevent *nse, 
@@ -231,7 +211,6 @@ void handle_connect_result(mspool *ms, msevent *nse,
   char buf[1024];
   msiod *iod = nse->iod;
 #if HAVE_OPENSSL
-  struct NsockSSLInfo *sslnfo;
   int sslerr;
   int sslconnect_inprogress = nse->type == NSE_TYPE_CONNECT_SSL && iod->ssl;
 #else
@@ -284,6 +263,7 @@ void handle_connect_result(mspool *ms, msevent *nse,
 #endif
 #ifndef WIN32
     case EPIPE: /* Has been seen after connect on Linux. */
+    case ENOPROTOOPT: /* Also seen on Linux, perhaps in response to protocol unreachable. */
 #endif
       nse->status = NSE_STATUS_ERROR;
       nse->errnum = optval;
@@ -300,8 +280,8 @@ void handle_connect_result(mspool *ms, msevent *nse,
     if (nse->type == NSE_TYPE_CONNECT_SSL && 
 	nse->status == NSE_STATUS_SUCCESS) {
 #if HAVE_OPENSSL
-      sslnfo = Nsock_SSLGetInfo();
-      iod->ssl = SSL_new(sslnfo->ctx);
+      assert(ms->sslctx != NULL);
+      iod->ssl = SSL_new(ms->sslctx);
       if (!iod->ssl)
 	fatal("SSL_new failed: %s", ERR_error_string(ERR_get_error(), NULL));
 
@@ -350,7 +330,16 @@ void handle_connect_result(mspool *ms, msevent *nse,
     if (rc == 1) {
       /* Woop!  Connect is done! */
       nse->event_done = 1;
-      nse->status = NSE_STATUS_SUCCESS;
+      /* Check that certificate verification was okay, if requested. */
+      if (nsi_ssl_post_connect_verify(iod)) {
+        nse->status = NSE_STATUS_SUCCESS;
+      } else {
+        if (ms->tracelevel > 0) {
+	  nsock_trace(ms, "certificate verification error for EID %li: %s",
+		      nse->id, ERR_error_string(ERR_get_error(), NULL));
+	}
+        nse->status = NSE_STATUS_ERROR;
+      }
     } else {
       sslerr = SSL_get_error(iod->ssl, rc);
       if (rc == -1 && sslerr == SSL_ERROR_WANT_READ) {
@@ -363,6 +352,8 @@ void handle_connect_result(mspool *ms, msevent *nse,
 	ms->mioi.max_sd = MAX(ms->mioi.max_sd, iod->sd);
       } else {
 	/* Unexpected error */
+        if (ms->tracelevel > 0)
+	  nsock_trace(ms, "EID %li %s", nse->id, ERR_error_string(ERR_get_error(), NULL));
 	nse->event_done = 1;
 	nse->status = NSE_STATUS_ERROR;
 	nse->errnum = EIO;

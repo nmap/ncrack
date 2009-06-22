@@ -53,7 +53,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_connect.c 12956 2009-04-15 00:37:23Z fyodor $ */
+/* $Id: nsock_connect.c 13069 2009-04-25 03:24:00Z david $ */
 
 #include "nsock.h"
 #include "nsock_internal.h"
@@ -197,15 +197,12 @@ nsock_event_id nsock_connect_ssl(nsock_pool nsp, nsock_iod nsiod,
   msiod *nsi = (msiod *) nsiod;
   mspool *ms = (mspool *) nsp;
   msevent *nse;
-  static int ssl_initialized = 0;
 
   /* Just in case someone waits a long time and then does a new connect */
   gettimeofday(&nsock_tod, NULL);
 
-  if (!ssl_initialized) {  
-    Nsock_SSL_Init();
-    ssl_initialized = 1;
-  }
+  if (!ms->sslctx)
+    nsp_ssl_init(ms);
  
   assert(nsi->state == NSIOD_STATE_INITIAL || nsi->state == NSIOD_STATE_UNKNOWN);
   
@@ -244,7 +241,8 @@ nsock_event_id nsock_reconnect_ssl(nsock_pool nsp, nsock_iod nsiod,
   mspool *ms = (mspool *) nsp;
   msevent *nse;
 
-  Nsock_SSL_Init();
+  if (!ms->sslctx)
+    nsp_ssl_init(ms);
 
   nse = msevent_new(ms, NSE_TYPE_CONNECT_SSL, nsi, timeout_msecs, handler, userdata);
   assert(nse);
