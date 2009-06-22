@@ -11,6 +11,10 @@
 #include <time.h>
 #include <vector>
 
+#ifdef WIN32
+#include "winfix.h"
+#endif
+
 #define DEFAULT_CONNECT_TIMEOUT 5000
 #define DEFAULT_USERNAME_FILE "./username.lst"
 #define DEFAULT_PASSWORD_FILE "./password.lst"
@@ -95,7 +99,7 @@ print_usage(void)
       "  -sL or --list: only list hosts and services\n"
       "  -V: Print version number\n"
       "  -h: Print this help summary page.\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
-  exit(EX_USAGE);
+  exit(64);
 }
 
 
@@ -305,6 +309,9 @@ int main(int argc, char **argv)
   /* Initialize available services' lookup table */
   lookup_init("ncrack-services");
 
+#if WIN32
+  win_init();
+#endif
 
   /* Argument parsing */
   optind = 1;
@@ -677,14 +684,14 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       printf("%s read timeout!\n", hostinfo);
 
   } else if (con->close_reason == READ_EOF) {
-    /* 
+  /* 
      * Check if we are on the point where peer might close at any moment (usually
      * we set 'peer_might_close' after writing the password on the network and
      * before issuing the next read call), so that this connection ending was
      * actually expected.
      */
     if (con->peer_might_close) {
-      /* If we the first special timing probe, then increment the number of
+  /* If we the first special timing probe, then increment the number of
        * server-allowed authentication attempts per connection
        */
       if (serv->just_started)
@@ -732,7 +739,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   }
 
 
-  /* 
+ /* 
    * If that was our first connection, then calculate initial ideal_parallelism (which
    * was 1 previously) based on the box of min_connection_limit, max_connection_limit
    * and a default desired parallelism for each timing template.
@@ -1018,6 +1025,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
     li = SG->services_active.begin();
   else 
     li = SG->last_accessed++;
+	
 
   while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
@@ -1119,8 +1127,11 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
 next:
 
     SG->last_accessed = li;
-    if (++li == SG->services_active.end()) 
+    if (li == SG->services_active.end() || ++li == SG->services_active.end())
       li = SG->services_active.begin();
+
+	 
+
 
   }
   return 0;

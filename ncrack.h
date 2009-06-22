@@ -1,18 +1,20 @@
 #ifndef NCRACK_H 
 #define NCRACK_H 1
 
-/* common library requirements and definitions */
+#ifdef WIN32
+#include "mswin32\winclude.h"
+#endif
 
 #ifdef HAVE_CONFIG_H
 #include "ncrack_config.h"
 #else
 #ifdef WIN32
-#include "nmap_winconfig.h"
+#include "ncrack_winconfig.h"
 #endif /* WIN32 */
 #endif /* HAVE_CONFIG_H */
 
 #include <nbase.h>
-#include <sysexits.h>
+//#include <sysexits.h>
 
 #if HAVE_UNISTD_H
 #include <unistd.h>

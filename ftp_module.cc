@@ -28,7 +28,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
   {
     case FTP_INIT:
       con->state = FTP_BANNER;
-      nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
+      nsock_read(nsp, nsi, ncrack_read_handler, 15000, con);
       break;
 
     case FTP_BANNER:
@@ -43,12 +43,12 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
         }
       }
       snprintf(lbuf, sizeof(lbuf), "USER %s\r\n", con->user);
-      nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, -1);
+      nsock_write(nsp, nsi, ncrack_write_handler, 15000, con, lbuf, -1);
       break;
 
     case FTP_USER_R:
       con->state = FTP_USER_W;
-      nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
+      nsock_read(nsp, nsi, ncrack_read_handler, 15000, con);
       break;
 
     case FTP_USER_W:
@@ -61,12 +61,12 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
           printf("%s reply: %s", hostinfo, con->buf);
       }
       snprintf(lbuf, sizeof(lbuf), "PASS %s\r\n", con->pass);
-      nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, -1);
+      nsock_write(nsp, nsi, ncrack_write_handler, 15000, con, lbuf, -1);
       break;
 
     case FTP_PASS:
       con->state = FTP_FINI;
-      nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
+      nsock_read(nsp, nsi, ncrack_read_handler, 15000, con);
       break;
 
     case FTP_FINI:

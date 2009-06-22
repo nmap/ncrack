@@ -7,8 +7,8 @@ extern NcrackOps o;
 /* A connection must *always* belong to one specific Service */
 Connection::Connection(Service *serv)
 {
-	state = 0;
-	service = serv;
+  state = 0;
+  service = serv;
   check_closed = false;
   auth_complete = false;
   auth_success = false;
@@ -35,12 +35,12 @@ Connection::~Connection()
 
 Service::Service()
 {
-	name = NULL;
-	target = NULL;
-	proto = IPPROTO_TCP;
-	portno = 0;
+  name = NULL;
+  target = NULL;
+  proto = IPPROTO_TCP;
+  portno = 0;
 
-	loginlist_fini = false;
+  loginlist_fini = false;
   list_active = true;
   list_full = false;
   list_wait = false;
@@ -55,15 +55,15 @@ Service::Service()
   supported_attempts = 0;
   active_connections = 0;
 
-	min_connection_limit = -1;
+  min_connection_limit = -1;
   max_connection_limit = -1;
   ideal_parallelism = 1;  /* we start with 1 connection exactly */
-	auth_tries = -1;
-	connection_delay = -1;
-	connection_retries = -1;
+  auth_tries = -1;
+  connection_delay = -1;
+  connection_retries = -1;
 
-	ssl = false;
-	module_data = NULL;
+  ssl = false;
+  module_data = NULL;
   memset(&last, 0, sizeof(last));
   UserArray = NULL;
   PassArray = NULL;
@@ -74,26 +74,28 @@ Service::Service()
 /* copy constructor */
 Service::Service(const Service& ref)
 {
-	name = strdup(ref.name);
-	proto = ref.proto;
-	portno = ref.portno;
+  name = strdup(ref.name);
+  proto = ref.proto;
+  portno = ref.portno;
 
-	min_connection_limit = ref.min_connection_limit;
+  min_connection_limit = ref.min_connection_limit;
   max_connection_limit = ref.max_connection_limit;
-	auth_tries = ref.auth_tries;
-	connection_delay = ref.connection_delay;
-	connection_retries = ref.connection_retries;
+  auth_tries = ref.auth_tries;
+  connection_delay = ref.connection_delay;
+  connection_retries = ref.connection_retries;
   ideal_parallelism = 1;  /* we start with 1 connection exactly */
 
-	ssl = ref.ssl;
+  ssl = ref.ssl;
   UserArray = ref.UserArray;
   PassArray = ref.PassArray;
   uservi = UserArray->begin();
   passvi = PassArray->begin();
-  active_connections = 0;
+  
+  failed_connections = 0;
   total_attempts = 0;
   finished_attempts = 0;
-  failed_connections = 0;
+  supported_attempts = 0;
+  active_connections = 0;
 
   loginlist_fini = false;
   list_active = true;
