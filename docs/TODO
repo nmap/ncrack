@@ -1,9 +1,10 @@
 TODO:
 
+* Fix Windows socket issues and test more thoroughly the windows version of
+  ncrack.
 
-* Test telnet module, thoroughly
-
-* Port Ncrack to Windows
+* Handle the case where ftp tells us that it accepts anonymous login only so
+  that we don't waste time cracking it.
 
 * Test buffering cases for all modules, when for example we need to search for certain patterns
   but the pattern is split in 2 separate packets due to a small window.
@@ -46,4 +47,13 @@ TODO:
   the end. Also we can show a sample session, showing the special patterns used
   in the authentication steps. These may also prove useful for user submissions
   of new exotic patterns for modules, like telnet, that need them.
+
+
+
+============================== DONE ==========================================
+
+
+* Test telnet module, thoroughly
+
+* Port Ncrack to Windows
 
