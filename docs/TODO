@@ -36,7 +36,6 @@ TODO:
 * Append Nmap licence headers to each ncrack file for starters and later revisit the
   issue of maybe adapting them for Ncrack specifically.
 
-* Complete ncrack callback handlers documentation.
 
 * For future reference on modules like http: consider saving state information like
   the http parsing that needs to be done only 1 time per host inside the
@@ -57,3 +56,4 @@ TODO:
 
 * Port Ncrack to Windows
 
+* Complete ncrack callback handlers documentation.

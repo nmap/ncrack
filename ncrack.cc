@@ -684,14 +684,14 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       printf("%s read timeout!\n", hostinfo);
 
   } else if (con->close_reason == READ_EOF) {
-  /* 
+    /* 
      * Check if we are on the point where peer might close at any moment (usually
      * we set 'peer_might_close' after writing the password on the network and
      * before issuing the next read call), so that this connection ending was
      * actually expected.
      */
     if (con->peer_might_close) {
-  /* If we the first special timing probe, then increment the number of
+      /* If we are the first special timing probe, then increment the number of
        * server-allowed authentication attempts per connection
        */
       if (serv->just_started)

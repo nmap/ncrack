@@ -70,12 +70,12 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
       break;
 
     case FTP_FINI:
-      if (!con->buf || con->buf[0] != '2') {
-        if (o.debugging > 3)
-          //printf("%s reply: %s", hostinfo, con->buf);
-          printf("%s Login failed: %s %s\n", hostinfo, con->user, con->pass);
-      } else
+      if (memsearch(con->buf, "230", con->bufsize))
         printf("%s Success: %s %s\n", hostinfo, con->user, con->pass);   
+      else {
+        if (o.debugging > 3)
+          printf("%s Login failed: %s %s\n", hostinfo, con->user, con->pass);
+      } 
       con->state = FTP_BANNER;
 
       return ncrack_module_end(nsp, con);
