@@ -636,7 +636,6 @@ int main(int argc, char **argv)
   }
   delete SG;
 
-
   log_write(LOG_STDOUT, "\nNcrack finished.\n");
   exit(EXIT_SUCCESS);
 }
@@ -668,14 +667,17 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   gettimeofday(&now, NULL);
   if (!serv->just_started && TIMEVAL_MSEC_SUBTRACT(now, serv->last_auth_rate.time) >= 500) {
     double current_rate = serv->auth_rate_meter.getCurrentRate();
-    printf("%s last: %.2f  current %.2f parallelism %ld\n", serv->HostInfo(),
-        serv->last_auth_rate.rate, current_rate, serv->ideal_parallelism);
+    if (o.debugging) 
+      log_write(LOG_STDOUT, "%s last: %.2f current %.2f parallelism %ld\n", serv->HostInfo(),
+          serv->last_auth_rate.rate, current_rate, serv->ideal_parallelism);
     if (current_rate < serv->last_auth_rate.rate + 3) {
       if (serv->ideal_parallelism + 3 < serv->max_connection_limit)
         serv->ideal_parallelism += 3;
       else 
         serv->ideal_parallelism = serv->max_connection_limit;
-      printf("%s Increasing connection limit %ld\n", serv->HostInfo(), serv->ideal_parallelism);
+      if (o.debugging)
+        log_write(LOG_STDOUT, "%s Increasing connection limit to: %ld\n", 
+            serv->HostInfo(), serv->ideal_parallelism);
     }
     serv->last_auth_rate.time = now;
     serv->last_auth_rate.rate = current_rate;
@@ -747,7 +749,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     if (serv->list_stalled)
       SG->MoveServiceToList(serv, &SG->services_active);
     if (o.debugging)
-      printf("%s read timeout!\n", hostinfo);
+      error("%s nsock READ timeout!", hostinfo);
 
   } else if (con->close_reason == READ_EOF) {
     /* 
@@ -766,8 +768,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       serv->total_attempts++;
       serv->finished_attempts++;
 
-      if (o.debugging > 8)
-        printf("%s Failed %s %s\n", hostinfo, con->user, con->pass);
+      if (o.debugging > 6)
+        log_write(LOG_STDOUT, "%s Failed %s %s\n", hostinfo, con->user, con->pass);
 
     } else if (!con->auth_complete) {
       serv->appendToPool(con->user, con->pass);
@@ -777,11 +779,13 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       /* Now this is strange: peer closed on us in the middle of authentication.
        * This shouldn't happen, unless extreme network conditions are happening!
        */
-      if (!serv->just_started && con->login_attempts < serv->supported_attempts)
-        printf("%s closed on us in the middle of authentication!\n", hostinfo);
+      if (!serv->just_started && con->login_attempts < serv->supported_attempts) {
+        if (o.debugging > 3)
+          error("%s closed on us in the middle of authentication!", hostinfo);
+      }
     }
     if (o.debugging > 5)
-      printf("%s Connection closed by peer\n", hostinfo);
+      error("%s Connection closed by peer", hostinfo);
   }
 
   /* 
@@ -800,8 +804,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     else 
       serv->ideal_parallelism = serv->min_connection_limit;
 
-    if (o.debugging > 5)
-      log_write(LOG_STDOUT, "%s Dropping connection limit due to connection error: %ld\n",
+    if (o.debugging)
+      log_write(LOG_STDOUT, "%s Dropping connection limit due to connection error to: %ld\n",
           hostinfo, serv->ideal_parallelism);
   }
 
@@ -868,7 +872,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       SG->MoveServiceToList(serv, &SG->services_finished);
   }
 
-  if (o.debugging > 5)
+  if (o.debugging)
     log_write(LOG_STDOUT, "%s Attempts: total %d completed %d supported %d --- rate %.2f \n", 
         serv->HostInfo(), serv->total_attempts, serv->finished_attempts, serv->supported_attempts,
         SG->auth_rate_meter.getCurrentRate());
@@ -893,6 +897,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   Service *serv = con->service;
   int pair_ret;
   int nbytes;
+  int err;
   char *str;
   const char *hostinfo = serv->HostInfo();
 
@@ -945,18 +950,19 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   }  else if (status == NSE_STATUS_ERROR) {
 
-    if (o.debugging)
-      printf("read: nse_status_error\n");
+    err = nse_errorcode(nse);
+    if (o.debugging > 2)
+      error("%s nsock READ error #%d (%s)", hostinfo, err, strerror(err));
     serv->appendToPool(con->user, con->pass);
     if (serv->list_stalled)
       SG->MoveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_KILL) {
-    printf("read: nse_status_kill\n");
+    error("%s nsock READ nse_status_kill", hostinfo);
 
   } else
-    fatal("Unexpected status (%d) in NSE_TYPE_READ callback.", (int) status);
+    error("%s WARNING: nsock READ unexpected status %d", hostinfo, (int) status);
 
   return;
 }
@@ -969,17 +975,21 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
   Connection *con = (Connection *) mydata;
+  Service *serv = con->service;
+  const char *hostinfo = serv->HostInfo();
   int err;
 
   if (status == NSE_STATUS_SUCCESS)
     call_module(nsp, con);
-  else if (status == NSE_STATUS_KILL)
-    printf("write: nse_status_kill\n");
   else if (status == NSE_STATUS_ERROR) {
     err = nse_errorcode(nse);
-    printf("Got nsock WRITE error #%d (%s)", err, strerror(err));
+    if (o.debugging > 2)
+      error("%s nsock WRITE error #%d (%s)", hostinfo, err, strerror(err));
+  } else if (status == NSE_STATUS_KILL) {
+    error("%s nsock WRITE nse_status_kill\n", hostinfo);
   } else
-    printf("Got nsock WRITE response with status %s\n", nse_status2str(status));
+    error("%s WARNING: nsock WRITE unexpected status %d", 
+        hostinfo, (int) (status));
 
   return;
 }
@@ -990,6 +1000,8 @@ ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
   Connection *con = (Connection *) mydata;
+  Service *serv = con->service;
+  const char *hostinfo = serv->HostInfo();
 
   if (status == NSE_STATUS_SUCCESS) {
     if (con->buf) {
@@ -999,7 +1011,7 @@ ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     call_module(nsp, con);
   }
   else 
-    printf("timer handler error!!!!\n");
+    error("%s nsock Timer handler error!", hostinfo);
 
   return;
 }
@@ -1014,6 +1026,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
+  const char *hostinfo = serv->HostInfo();
   int err;
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
@@ -1024,16 +1037,16 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 #if HAVE_OPENSSL
     // TODO: handle ossl
-
 #endif
+
     call_module(nsp, con);
 
   } else if (status == NSE_STATUS_TIMEOUT || status == NSE_STATUS_ERROR) {
 
     /* This is not good. connect() really shouldn't generally be timing out. */
-    if (o.debugging) {
+    if (o.debugging > 2) {
       err = nse_errorcode(nse);
-      printf("%s got nsock CONNECT response with status %s error: %s\n", serv->HostInfo(),
+      error("%s nsock CONNECT response with status %s error: %s", hostinfo,
           nse_status2str(status), strerror(err));
     }
     serv->failed_connections++;
@@ -1050,14 +1063,16 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   } else if (status == NSE_STATUS_KILL) {
 
-    printf("connect: nse_status_kill\n");
+    if (o.debugging)
+      error("%s nsock CONNECT nse_status_kill", hostinfo);
     serv->appendToPool(con->user, con->pass);
     if (serv->list_stalled)
       SG->MoveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
 
   } else
-    fatal("Unexpected nsock status (%d) returned for connection attempt", (int) status);
+    error("%s WARNING: nsock CONNECT unexpected status %d", 
+        hostinfo, (int) status);
 
   return;
 }
@@ -1159,8 +1174,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       goto next;
     }
 
-    if (o.debugging > 4)
-      printf("%s Initiating new Connection\n", hostinfo);
+    if (o.debugging > 8)
+      log_write(LOG_STDOUT, "%s Initiating new Connection\n", hostinfo);
 
     /* Schedule 1 connection for this service */
     con = new Connection(serv);
@@ -1197,9 +1212,6 @@ next:
     SG->last_accessed = li;
     if (li == SG->services_active.end() || ++li == SG->services_active.end())
       li = SG->services_active.begin();
-
-
-
 
   }
   return 0;
@@ -1248,7 +1260,7 @@ ncrack(ServiceGroup *SG)
   } while (SG->services_finished.size() != SG->total_services);
 
   if (o.debugging > 4)
-    printf("nsock_loop returned %d\n", loopret);
+    log_write(LOG_STDOUT, "nsock_loop returned %d\n", loopret);
 
   return 0;
 }

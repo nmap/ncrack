@@ -49,7 +49,7 @@ parse_services_target(char *const exp)
       port_len = h - p - 1;
       temp.portno = Strndup(++p, port_len);
     } else if (s == exp)  /* neither port nor service name! */
-        fatal("You must specify either a service name or a port (or both): %s\n", exp);
+        fatal("You must specify either a service name or a port (or both): %s", exp);
 
     if (p) { /* port has been specified */
       host_len = h - s - port_len - 1;
@@ -149,11 +149,11 @@ parse_module_options(char *const exp)
   vector <global_service>::iterator vi;
 
   if (!(name = strtok(exp, ":"))) {
-    error("No service name specified for option: -m %s . Ignoring...\n", exp);
+    error("No service name specified for option: -m %s . Ignoring...", exp);
     return;
   }
   if (!(options = strtok(NULL, ":"))) {
-    error("No options specified for module: %s . Ignoring...\n", name);
+    error("No options specified for module: %s . Ignoring...", name);
     return;
   }
 
@@ -165,7 +165,7 @@ parse_module_options(char *const exp)
       break;
   }
   if (vi == ServicesTable.end()) {
-    error("Service with name '%s' not supported! Ignoring...\n", name);
+    error("Service with name '%s' not supported! Ignoring...", name);
     return;
   }
 
@@ -228,7 +228,7 @@ apply_service_options(Service *service)
       break;
   }
   if (vi == ServicesTable.end())
-    fatal("Service with name '%s' not supported!\n", service->name);
+    fatal("Service with name '%s' not supported!", service->name);
 
   if (!service->portno)
     service->portno = vi->lookup.portno;
@@ -274,7 +274,7 @@ prepare_timing_template(timing_options *timing)
 { 
   //TODO: select optimal values
   if (!timing)
-    fatal("%s invalid pointer!\n", __func__);
+    fatal("%s invalid pointer!", __func__);
 
   if (o.timing_level == 0) { /* Paranoid */
     timing->min_connection_limit = 1;
@@ -356,7 +356,7 @@ check_duplicate_services(vector <service_lookup *> services, service_lookup *ser
   for (vi = services.begin(); vi != services.end(); vi++) {
     if ((*vi)->portno == serv->portno) {
         error("Ignoring duplicate service: '%s:%hu' . Collides with "
-            "'%s:%hu'\n", serv->name, serv->portno,
+            "'%s:%hu'", serv->name, serv->portno,
             (*vi)->name, (*vi)->portno);
       return -1;
     }
@@ -389,8 +389,8 @@ check_supported_services(service_lookup *serv)
       }
     }
     if (vi == ServicesTable.end()) {
-      error("Service with default port '%hu' not supported! Ignoring...\n"
-          "For non-default ports specify <service-name>:<non-default-port>\n",
+      error("Service with default port '%hu' not supported! Ignoring..."
+          "For non-default ports specify <service-name>:<non-default-port>",
           serv->portno);
       return -1;
     }
@@ -403,12 +403,12 @@ check_supported_services(service_lookup *serv)
       }
     }
     if (vi == ServicesTable.end()) {
-      error("Service with name '%s' not supported! Ignoring...\n",
+      error("Service with name '%s' not supported! Ignoring...",
           serv->name);
       return -1;
     }
   } else 
-    fatal("%s failed due to invalid parsing\n", __func__);
+    fatal("%s failed due to invalid parsing", __func__);
 
   serv->proto = vi->lookup.proto;  // TODO: check for UDP (duplicate etc)
   return 0;
@@ -428,7 +428,7 @@ port2name(char *port)
   char *name = NULL;
 
   if (!port)
-    fatal("%s NULL port given!\n", __func__);
+    fatal("%s NULL port given!", __func__);
 
   portno = str2port(port);
   for (vi = ServicesTable.begin(); vi != ServicesTable.end(); vi++) {
@@ -438,7 +438,7 @@ port2name(char *port)
     }
   }
   if (vi == ServicesTable.end())
-    fatal("Service with default port '%hu' not supported!\n", portno);
+    fatal("Service with default port '%hu' not supported!", portno);
   return name;
 }
 
@@ -454,35 +454,35 @@ check_service_option(global_service *temp, char *argname, char *argval)
   if (!strcmp("cl", argname)) {
     long limit = Strtoul(argval);
     if (limit < 0)
-      fatal("Minimum connection limit (cl) '%ld' cannot be a negative number!\n", limit);
+      fatal("Minimum connection limit (cl) '%ld' cannot be a negative number!", limit);
     if (temp->timing.max_connection_limit != -1 && temp->timing.max_connection_limit < limit)
       fatal("Minimum connection limit (cl) '%ld' cannot be larger than "
-        "maximum connection limit (CL) '%ld'!\n", 
+        "maximum connection limit (CL) '%ld'!", 
         limit, temp->timing.max_connection_limit);
     temp->timing.min_connection_limit = limit;
   } else if (!strcmp("CL", argname)) {
     long limit = Strtoul(argval);
     if (limit < 0)
-      fatal("Maximum connection limit (CL) '%ld' cannot be a negative number!\n", limit);
+      fatal("Maximum connection limit (CL) '%ld' cannot be a negative number!", limit);
     if (temp->timing.min_connection_limit != -1 && temp->timing.min_connection_limit > limit)
       fatal("Maximum connection limit (CL) '%ld' cannot be smaller than "
-          "minimum connection limit (cl) '%ld'!\n",
+          "minimum connection limit (cl) '%ld'!",
           limit, temp->timing.min_connection_limit);
     temp->timing.max_connection_limit = limit;
   } else if (!strcmp("at", argname)) {
     long tries = Strtoul(argval);
     if (tries < 0)
-      fatal("Authentication tries (at) '%ld' cannot be a negative number!\n", tries);
+      fatal("Authentication tries (at) '%ld' cannot be a negative number!", tries);
     temp->timing.auth_tries = tries;
   } else if (!strcmp("cd", argname)) {
     temp->timing.connection_delay = tval2msecs(argval);
   } else if (!strcmp("cr", argname)) {
     long retries = Strtoul(argval);
     if (retries < 0)
-      fatal("Connection retries (cr) '%ld' cannot be a negative number!\n", retries);
+      fatal("Connection retries (cr) '%ld' cannot be a negative number!", retries);
     temp->timing.connection_retries = retries;
   } else //TODO misc options
-    error("Unknown service option: %s\n", argname);
+    error("Unknown service option: %s", argname);
 }
 
 
@@ -544,7 +544,7 @@ parse_service_argument(char *const arg, char **argname, char **argval)
     i++;
   }
   if (i == arg_len) {
-    error("Invalid option argument (missing '='): %s\n", arg);
+    error("Invalid option argument (missing '='): %s", arg);
     return -1;
   }
   argname_len = i;
@@ -557,7 +557,7 @@ parse_service_argument(char *const arg, char **argname, char **argval)
     i++;
   }
   if (i == argname_len + 1) {
-    error("No value specified for option %s\n", *argname);
+    error("No value specified for option %s", *argname);
     free(*argname);
     argname = NULL;
     return -1;

@@ -17,6 +17,7 @@
 
 #define LOG_NAMES {"normal", "machine", "XML"}
 
+void memprint(const char *addr, size_t bytes);
 
 char *logfilename(const char *str, struct tm *tm);
 

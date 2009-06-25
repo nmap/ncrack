@@ -7,6 +7,18 @@ static const char *logtypes[LOG_NUM_FILES]=LOG_NAMES;
 
 
 
+void
+memprint(const char *addr, size_t bytes)
+{
+  size_t i;
+  for (i = 0; i < bytes; i++) {
+    log_write(LOG_STDOUT, "%c", addr[i]);
+  }
+  fflush(stdout);
+}
+
+
+
 /* Write some information (printf style args) to the given log stream(s).
    Remember to watch out for format string bugs.  */
 void

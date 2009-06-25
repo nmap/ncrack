@@ -2,17 +2,6 @@
 #include "Service.h"
 
 
-void
-memprint(const char *addr, size_t bytes)
-{
-  size_t i;
-  for (i = 0; i < bytes; i++) {
-    printf("%c", addr[i]);
-  }
-  fflush(stdout);
-}
-
-
 
 /* 
  * Case insensitive memory search - a combination of memmem and strcasestr
@@ -70,7 +59,7 @@ Strtoul(const char *nptr)
 
   value = strtoul(nptr, &endp, 0);
   if (errno != 0 || *endp != '\0')
-    fatal("Invalid value for number: %s\n", nptr);
+    fatal("Invalid value for number: %s", nptr);
 
   return value;
 }
@@ -101,9 +90,9 @@ str2port(char *exp)
   errno = 0;
   pvalue = strtoul(exp, &endp, 0);
   if (errno != 0 || *endp != '\0') 
-    fatal("Invalid port number: %s\n", exp);
+    fatal("Invalid port number: %s", exp);
   if (pvalue > 65535) 
-    fatal("Port number too large: %s\n", exp);
+    fatal("Port number too large: %s", exp);
 
   return (u16)pvalue;
 }

@@ -35,11 +35,12 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
       con->state = FTP_USER_R;
       if (!con->login_attempts) {
         if (!con->buf || con->buf[0] != '2') {
-          error("%s Not ftp or service was shutdown\n", hostinfo);
+          if (o.debugging > 6)
+            error("%s Not ftp or service was shutdown\n", hostinfo);
           ncrack_module_end(nsp, con);
         } else {
-          if (o.debugging > 8)
-            printf("%s reply: %s", hostinfo, con->buf);
+          if (o.debugging > 9)
+            log_write(LOG_STDOUT, "%s reply: %s", hostinfo, con->buf);
         }
       }
       snprintf(lbuf, sizeof(lbuf), "USER %s\r\n", con->user);
@@ -54,11 +55,11 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
     case FTP_USER_W:
       con->state = FTP_PASS;
       if (!con->buf || con->buf[0] != '3') {
-        if (o.debugging > 8)
-          printf("%s Username failed\n", hostinfo);
+        if (o.debugging > 9)
+          log_write(LOG_STDOUT, "%s Username failed\n", hostinfo);
       } else {
-        if (o.debugging > 8)
-          printf("%s reply: %s", hostinfo, con->buf);
+        if (o.debugging > 9)
+          log_write(LOG_STDOUT, "%s reply: %s", hostinfo, con->buf);
       }
       snprintf(lbuf, sizeof(lbuf), "PASS %s\r\n", con->pass);
       nsock_write(nsp, nsi, ncrack_write_handler, 15000, con, lbuf, -1);
@@ -71,10 +72,10 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
 
     case FTP_FINI:
       if (memsearch(con->buf, "230", con->bufsize))
-        printf("%s Success: %s %s\n", hostinfo, con->user, con->pass);   
+        log_write(LOG_PLAIN, "%s Success: %s %s\n", hostinfo, con->user, con->pass);   
       else {
-        if (o.debugging > 3)
-          printf("%s Login failed: %s %s\n", hostinfo, con->user, con->pass);
+        if (o.debugging > 6)
+          log_write(LOG_STDOUT, "%s Login failed: %s %s\n", hostinfo, con->user, con->pass);
       } 
       con->state = FTP_BANNER;
 

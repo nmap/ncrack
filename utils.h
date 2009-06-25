@@ -47,8 +47,6 @@ template<class T> T box(T bmin, T bmax, T bnum) {
 }
 
 
-void memprint(const char *addr, size_t bytes);
-
 
 /* 
  * Case insensitive memory search - a combination of memmem and strcasestr

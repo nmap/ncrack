@@ -270,8 +270,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
     case TELNET_FINI:
       if (memsearch(con->buf, "incorrect", con->bufsize)
           || memsearch(con->buf, "fail", con->bufsize)) {
-        if (o.debugging > 8)
-          printf("%s Failed %s %s\n", hostinfo, con->user, con->pass);
+        if (o.debugging > 6)
+          log_write(LOG_STDOUT, "%s Failed %s %s\n", hostinfo, con->user, con->pass);
         con->state = TELNET_AUTH;
         info->userptr = NULL;
         info->passptr = NULL;
@@ -290,7 +290,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       } else if (memsearch(con->buf, ">", con->bufsize)
           || memsearch(con->buf, "$", con->bufsize)
           || memsearch(con->buf, "#", con->bufsize)) {
-        printf("%s SUCCESS %s %s\n", hostinfo, con->user, con->pass);
+        log_write(LOG_PLAIN, "%s Success %s %s\n", hostinfo, con->user, con->pass);
         con->auth_success = true;
         return ncrack_module_end(nsp, con);
 
