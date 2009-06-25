@@ -95,7 +95,7 @@ print_usage(void)
       "  -P <filename>: password file\n"
       "  --passwords-first: Iterate password list for each username. Default is opposite.\n"
       "OUTPUT:\n"
-      "  -oN/-oS/-oG <file>: Output scan in normal, XML, and Grepable format,\n"
+      "  -oN/-oX/-oG <file>: Output scan in normal, XML, and Grepable format,\n"
       "  respectively, to the given filename.\n"
       "  -oA <basename>: Output in the three major formats at once\n"
       "  -v: Increase verbosity level (use twice or more for greater effect)\n"
@@ -304,6 +304,11 @@ int main(int argc, char **argv)
     {"excludefile", required_argument, 0, 0},
     {"exclude", required_argument, 0, 0},
     {"iL", required_argument, 0, 'i'},
+    {"oA", required_argument, 0, 0},  
+    {"oN", required_argument, 0, 0},
+    {"oM", required_argument, 0, 0},  
+    {"oG", required_argument, 0, 0},  
+    {"oX", required_argument, 0, 0},  
     {"host_timeout", required_argument, 0, 0},
     {"host-timeout", required_argument, 0, 0},
     {"append_output", no_argument, 0, 0},
@@ -332,7 +337,7 @@ int main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "d:g:hi:U:P:m:p:s:T:vV", long_options,
+  while((arg = getopt_long_only(argc, argv, "d:g:hi:U:P:m:o:p:s:T:vV", long_options,
           &option_index)) != EOF) {
     switch(arg) {
       case 0:
@@ -369,6 +374,21 @@ int main(int argc, char **argv)
           o.log_errors = true;
         } else if (!optcmp(long_options[option_index].name, "append-output")) {
           o.append_output = true;
+        } else if (strcmp(long_options[option_index].name, "oN") == 0) {
+          normalfilename = logfilename(optarg, tm);
+        } else if (strcmp(long_options[option_index].name, "oG") == 0 ||
+            strcmp(long_options[option_index].name, "oM") == 0) {
+          machinefilename = logfilename(optarg, tm);
+        } else if (strcmp(long_options[option_index].name, "oX") == 0) {
+          xmlfilename = logfilename(optarg, tm);
+        } else if (strcmp(long_options[option_index].name, "oA") == 0) {
+          char buf[MAXPATHLEN];
+          Snprintf(buf, sizeof(buf), "%s.ncrack", logfilename(optarg, tm));
+          normalfilename = strdup(buf);
+          Snprintf(buf, sizeof(buf), "%s.gncrack", logfilename(optarg, tm));
+          machinefilename = strdup(buf);
+          Snprintf(buf, sizeof(buf), "%s.xml", logfilename(optarg, tm));
+          xmlfilename = strdup(buf);
         }
         break;
       case 'd': 
@@ -403,6 +423,9 @@ int main(int argc, char **argv)
         break;
       case 'm':
         parse_module_options(optarg);
+        break;
+      case 'o':
+        normalfilename = logfilename(optarg, tm);
         break;
       case 'p':   /* services */
         parse_services(optarg, services_cmd); 
@@ -639,7 +662,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
   if (serv->just_started)
     serv->supported_attempts++;
-  
+
   serv->auth_rate_meter.update(1, NULL);
 
   gettimeofday(&now, NULL);
@@ -660,7 +683,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
   /* If login pair was extracted from pool, permanently remove it from it. */
   if (con->from_pool && !serv->isMirrorPoolEmpty()) {
-    serv->RemoveFromPool(con->user, con->pass);
+    serv->removeFromPool(con->user, con->pass);
     con->from_pool = false;
   }
 
@@ -685,25 +708,25 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
    * authentication attempt), so in that case we need to get the next login pair
    * only and make no additional check.
    */
-    if (con->peer_alive) {
-      if (con->login_attempts < serv->auth_tries
-          && (pair_ret = serv->NextPair(&con->user, &con->pass)) != -1) {
-        if (pair_ret == 1)
-          con->from_pool = true;
-        nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
-      } else
-        ncrack_connection_end(nsp, con);
-    } else {
-      /* We need to check if host is alive only on first timing
-       * probe. Thereafter we can use the 'supported_attempts'.
-       */
-      if (serv->just_started) {
-        con->check_closed = true;
-        nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
-      } else if (con->login_attempts <= serv->auth_tries &&
-          con->login_attempts <= serv->supported_attempts)
-        call_module(nsp, con);
-    }
+  if (con->peer_alive) {
+    if (con->login_attempts < serv->auth_tries
+        && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
+      if (pair_ret == 1)
+        con->from_pool = true;
+      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+    } else
+      ncrack_connection_end(nsp, con);
+  } else {
+    /* We need to check if host is alive only on first timing
+     * probe. Thereafter we can use the 'supported_attempts'.
+     */
+    if (serv->just_started) {
+      con->check_closed = true;
+      nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
+    } else if (con->login_attempts <= serv->auth_tries &&
+        con->login_attempts <= serv->supported_attempts)
+      call_module(nsp, con);
+  }
 
 }
 
@@ -720,7 +743,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
 
   if (con->close_reason == READ_TIMEOUT) {
-    serv->AppendToPool(con->user, con->pass);
+    serv->appendToPool(con->user, con->pass);
     if (serv->list_stalled)
       SG->MoveServiceToList(serv, &SG->services_active);
     if (o.debugging)
@@ -747,7 +770,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
         printf("%s Failed %s %s\n", hostinfo, con->user, con->pass);
 
     } else if (!con->auth_complete) {
-      serv->AppendToPool(con->user, con->pass);
+      serv->appendToPool(con->user, con->pass);
       if (serv->list_stalled)
         SG->MoveServiceToList(serv, &SG->services_active);
 
@@ -776,10 +799,10 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       serv->ideal_parallelism -= 5;
     else 
       serv->ideal_parallelism = serv->min_connection_limit;
-    
+
     if (o.debugging > 5)
       log_write(LOG_STDOUT, "%s Dropping connection limit due to connection error: %ld\n",
-        hostinfo, serv->ideal_parallelism);
+          hostinfo, serv->ideal_parallelism);
   }
 
 
@@ -902,7 +925,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
        * 2. we still have enough login pairs from the pool
        */
       if (con->login_attempts < serv->auth_tries
-          && (pair_ret = serv->NextPair(&con->user, &con->pass)) != -1) {
+          && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
         if (pair_ret == 1)
           con->from_pool = true;
         call_module(nsp, con);
@@ -924,7 +947,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
     if (o.debugging)
       printf("read: nse_status_error\n");
-    serv->AppendToPool(con->user, con->pass);
+    serv->appendToPool(con->user, con->pass);
     if (serv->list_stalled)
       SG->MoveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
@@ -1014,7 +1037,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
           nse_status2str(status), strerror(err));
     }
     serv->failed_connections++;
-    serv->AppendToPool(con->user, con->pass);
+    serv->appendToPool(con->user, con->pass);
 
     /* Failure of connecting on first attempt means we should probably drop
      * the service for good. */
@@ -1028,7 +1051,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   } else if (status == NSE_STATUS_KILL) {
 
     printf("connect: nse_status_kill\n");
-    serv->AppendToPool(con->user, con->pass);
+    serv->appendToPool(con->user, con->pass);
     if (serv->list_stalled)
       SG->MoveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
@@ -1132,7 +1155,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
       goto next;
     }
 
-    if ((pair_ret = serv->NextPair(&login, &pass)) == -1) {
+    if ((pair_ret = serv->getNextPair(&login, &pass)) == -1) {
       goto next;
     }
 

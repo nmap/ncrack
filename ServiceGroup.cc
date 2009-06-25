@@ -108,8 +108,8 @@ ServiceGroup::MoveServiceToList(Service *serv, list <Service *> *dst)
   li = src->erase(li);
   dst->push_back(serv);
 
-  if (o.debugging > 5)
-    printf("%s moved from list %s to %s\n", serv->HostInfo(), srcname, dstname);
+  if (o.debugging > 8)
+    log_write(LOG_STDOUT, "%s moved from list %s to %s\n", serv->HostInfo(), srcname, dstname);
 
   free((char *)srcname);
   free((char *)dstname);

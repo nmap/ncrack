@@ -94,9 +94,9 @@ class Service
 		Service(const Service&); /* copy constructor */
     const char *HostInfo(void);
     
-    int NextPair(char **login, char **pass);
-    void AppendToPool(char *login, char *pass);
-    void RemoveFromPool(char *login, char *pass);
+    int getNextPair(char **login, char **pass);
+    void appendToPool(char *login, char *pass);
+    void removeFromPool(char *login, char *pass);
     bool isMirrorPoolEmpty(void);
     bool isPoolEmpty(void);
 

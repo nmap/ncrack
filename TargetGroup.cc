@@ -241,7 +241,7 @@ int TargetGroup::parse_expr(const char * const target_expr, int af) {
         free(hostexp); 
         return 0; 
       }
-      fprintf(stderr, "Host specification invalid");
+      error("Host specification invalid");
       free(hostexp);
       return 1;
     }
@@ -428,12 +428,11 @@ int TargetGroup::get_next_host(struct sockaddr_storage *ss, size_t *sslen) {
     memset(sin, 0, sizeof(struct sockaddr_in));
     sin->sin_family = AF_INET;
     *sslen = sizeof(struct sockaddr_in);
+
 #if HAVE_SOCKADDR_SA_LEN
     sin->sin_len = *sslen;
 #endif
-    //if (o.debugging > 2) {
-    //  printf("doing %d.%d.%d.%d = %d.%d.%d.%d\n", current[0], current[1], current[2], current[3], addresses[0][current[0]],addresses[1][current[1]],addresses[2][current[2]],addresses[3][current[3]]);
-    //}
+
     /* Set the IP to the current value of everything */
     sin->sin_addr.s_addr = htonl(addresses[0][current[0]] << 24 | 
         addresses[1][current[1]] << 16 |
@@ -478,15 +477,6 @@ int TargetGroup::get_next_host(struct sockaddr_storage *ss, size_t *sslen) {
 #endif // HAVE_IPV6
   }
   ipsleft--;
-
-  /* NCRACK-TODO: use this for restore procedure */
-  /* If we are resuming from a previous scan, we have already finished
-     scans up to o.resume_ip.  */
-  //if (sin->sin_family == AF_INET && o.resume_ip.s_addr) {
-  // if (o.resume_ip.s_addr == sin->sin_addr.s_addr)
-  //   o.resume_ip.s_addr = 0; /* So that we will KEEP the next one */
-  //  goto startover; /* Try again */
-  // }
 
   return 0;
 }
