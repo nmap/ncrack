@@ -109,25 +109,6 @@ str2port(char *exp)
 }
 
 
-void
-fatal(const char *fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  (void) vfprintf(stderr, fmt, ap);
-  va_end(ap);
-  exit(EXIT_FAILURE);
-}
-
-
-void error(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  (void) vfprintf(stderr, fmt, ap);
-  va_end(ap);
-  return;
-}
-
 /* Compare a canonical option name (e.g. "max-scan-delay") with a
    user-generated option such as "max_scan_delay" and returns 0 if the
    two values are considered equivalant (for example, - and _ are

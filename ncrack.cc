@@ -8,6 +8,8 @@
 #include "nsock.h"
 #include "global_structures.h"
 #include "modules.h"
+#include "ncrack_error.h"
+#include "output.h"
 #include <time.h>
 #include <vector>
 
@@ -58,7 +60,7 @@ static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
 static void
 print_usage(void)
 {
-  printf("%s %s ( %s )\n"
+  log_write(LOG_STDOUT, "%s %s ( %s )\n"
       "Usage: ncrack [Options] {target specification}\n"
       "TARGET SPECIFICATION:\n"
       "  Can pass hostnames, IP addresses, networks, etc.\n"
@@ -93,13 +95,18 @@ print_usage(void)
       "  -P <filename>: password file\n"
       "  --passwords-first: Iterate password list for each username. Default is opposite.\n"
       "OUTPUT:\n"
+      "  -oN/-oS/-oG <file>: Output scan in normal, XML, and Grepable format,\n"
+      "  respectively, to the given filename.\n"
+      "  -oA <basename>: Output in the three major formats at once\n"
       "  -v: Increase verbosity level (use twice or more for greater effect)\n"
       "  -d[level]: Set or increase debugging level (Up to 9 is meaningful)\n"
+      "  --log-errors: Log errors/warnings to the normal-format output file\n"
+      "  --append-output: Append to rather than clobber specified output files\n"
       "MISC:\n"
       "  -sL or --list: only list hosts and services\n"
       "  -V: Print version number\n"
       "  -h: Print this help summary page.\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
-  exit(64);
+  exit(EXIT_FAILURE);
 }
 
 
@@ -122,14 +129,14 @@ lookup_init(const char *const filename)
 
   fp = fopen(filename, "r");
   if (!fp) 
-    fatal("%s: failed to open file %s for reading!\n", __func__, filename);
+    fatal("%s: failed to open file %s for reading!", __func__, filename);
 
   while (fgets(line, sizeof(line), fp)) {
     if (*line == '\n' || *line == '#')
       continue;
 
     if (sscanf(line, "%127s %hu/%15s", servicename, &portno, proto) != 3)
-      fatal("invalid ncrack-services file: %s\n", filename);
+      fatal("invalid ncrack-services file: %s", filename);
 
     temp.lookup.portno = portno;
     temp.lookup.proto = str2proto(proto);
@@ -139,7 +146,7 @@ lookup_init(const char *const filename)
       if ((vi->lookup.portno == temp.lookup.portno) && (vi->lookup.proto == temp.lookup.proto)
           && !(strcmp(vi->lookup.name, temp.lookup.name))) {
         if (o.debugging)
-          error("Port %d proto %s is duplicated in services file %s\n", 
+          error("Port %d proto %s is duplicated in services file %s", 
               portno, proto, filename);
         continue;
       }
@@ -174,7 +181,7 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv)
       } else if (host_spec_index < sizeof(host_spec) / sizeof(char) -1) {
         host_spec[host_spec_index++] = (char) ch;
       } else fatal("One of the host_specifications from your input file "
-          "is too long (> %d chars)\n", (int) sizeof(host_spec));
+          "is too long (> %d chars)", (int) sizeof(host_spec));
     }
     host_spec[host_spec_index] = '\0';
   }
@@ -198,7 +205,7 @@ load_login_file(const char *filename, int mode)
   else {    
     fd = fopen(filename, "r");
     if (!fd) 
-      fatal("Failed to open input file %s for reading\n", filename);
+      fatal("Failed to open input file %s for reading!", filename);
   }
 
   if (mode == USER)
@@ -206,7 +213,7 @@ load_login_file(const char *filename, int mode)
   else if (mode == PASS)
     p = &PassArray;
   else 
-    fatal("%s invalid mode specified!\n", __func__);
+    fatal("%s invalid mode specified!", __func__);
 
   while (fgets(line, sizeof(line), fd)) {
     if (*line == '\n')
@@ -236,7 +243,7 @@ call_module(nsock_pool nsp, Connection *con)
   else if (!strcmp(name, "ssh"))
     ;//ncrack_ssh(nsp, nsi, con);
   else
-    fatal("Invalid service module: %s\n", name);
+    fatal("Invalid service module: %s", name);
 }
 
 
@@ -246,25 +253,28 @@ int main(int argc, char **argv)
   ts_spec spec;
 
   FILE *inputfd = NULL;
+  char *machinefilename = NULL;
+  char *normalfilename = NULL;
+  char *xmlfilename = NULL;
   unsigned long l;
 
   char *host_spec = NULL;
   Target *currenths = NULL;
-  vector <Target *> Targets;  /* targets to be ncracked */
+  vector <Target *> Targets;        /* targets to be ncracked */
   vector <Target *>::iterator Tvi;
 
-  ServiceGroup *SG;           /* all services to be cracked */
+  ServiceGroup *SG;                 /* all services to be ncracked */
   list <Service *>::iterator li;
 
-  vector <Service *>Services; /* temporary services vector */
+  vector <Service *>Services;       /* temporary services vector */
   vector <Service *>::iterator Svi; /* iterator for services vector */
   Service *service;
 
   vector <service_lookup *> services_cmd;
   vector <service_lookup *>::iterator SCvi;
 
-  char  *glob_options = NULL;  /* for -g option */
-  timing_options timing; /* for -T option */
+  char *glob_options = NULL;  /* for -g option */
+  timing_options timing;      /* for -T option */
 
   /* time variables */
   struct tm *tm;
@@ -296,6 +306,10 @@ int main(int argc, char **argv)
     {"iL", required_argument, 0, 'i'},
     {"host_timeout", required_argument, 0, 0},
     {"host-timeout", required_argument, 0, 0},
+    {"append_output", no_argument, 0, 0},
+    {"append-output", no_argument, 0, 0},
+    {"log_errors", no_argument, 0, 0},
+    {"log-errors", no_argument, 0, 0},
     {"connection_limit", required_argument, 0, 0},
     {"connection-limit", required_argument, 0, 0},
     {"passwords_first", no_argument, 0, 0},
@@ -312,6 +326,9 @@ int main(int argc, char **argv)
 #if WIN32
   win_init();
 #endif
+
+  now = time(NULL);
+  tm = localtime(&now);
 
   /* Argument parsing */
   optind = 1;
@@ -348,6 +365,10 @@ int main(int argc, char **argv)
           o.connection_limit = atoi(optarg);
         } else if (!optcmp(long_options[option_index].name, "passwords-first")) {
           o.passwords_first = true;
+        } else if (!optcmp(long_options[option_index].name, "log-errors")) {
+          o.log_errors = true;
+        } else if (!optcmp(long_options[option_index].name, "append-output")) {
+          o.append_output = true;
         }
         break;
       case 'd': 
@@ -389,10 +410,8 @@ int main(int argc, char **argv)
       case 's': /* only list hosts */
         if (*optarg == 'L')
           o.list_only = true;
-        else {
-          error("Illegal argument for option '-s' Did you mean -sL?\n");
-          print_usage();
-        }
+        else 
+          fatal("Illegal argument for option '-s' Did you mean -sL?");
         break;
       case 'T': /* timing template */
         if (*optarg == '0' || (strcasecmp(optarg, "Paranoid") == 0)) {
@@ -414,7 +433,8 @@ int main(int argc, char **argv)
         }
         break;
       case 'V': 
-        printf("\n%s version %s ( %s )\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
+        log_write(LOG_STDOUT, "\n%s version %s ( %s )\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
+        exit(EXIT_SUCCESS);
         break;
       case 'v':
         o.verbose++;
@@ -422,6 +442,21 @@ int main(int argc, char **argv)
       case '?':   /* error */
         print_usage();
     }
+  }
+
+  /* Open the log files, now that we know whether the user wants them appended
+     or overwritten */
+  if (normalfilename) {
+    log_open(LOG_NORMAL, normalfilename);
+    free(normalfilename);
+  }
+  if (machinefilename) {
+    log_open(LOG_MACHINE, machinefilename);
+    free(machinefilename);
+  }
+  if (xmlfilename) {
+    log_open(LOG_XML, xmlfilename);
+    free(xmlfilename);
   }
 
   if (UserArray.empty())
@@ -436,10 +471,9 @@ int main(int argc, char **argv)
   tm = localtime(&now);
   if (strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M %Z", tm) <= 0)
     fatal("Unable to properly format time");
-  printf("\nStarting %s %s ( %s ) at %s\n\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL, tbuf);
+  log_write(LOG_STDOUT, "\nStarting %s %s ( %s ) at %s\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL, tbuf);
 
   o.setaf(AF_INET);
-
 
 
   /* lets load our exclude list */
@@ -464,7 +498,8 @@ int main(int argc, char **argv)
     /* preparse and separate host - service */
     spec = parse_services_target(host_spec);
 
-    // printf("%s://%s:%s?%s\n", spec.service_name, spec.host_expr, spec.portno, spec.service_options);
+    // log_write(LOG_STDOUT, "%s://%s:%s?%s\n", spec.service_name, spec.host_expr, 
+    //    spec.portno, spec.service_options);
 
     if (spec.service_name) {
       service = new Service();
@@ -519,7 +554,7 @@ int main(int argc, char **argv)
         for (li = SG->services_active.begin(); li != SG->services_active.end(); li++) {
           if (!strcmp((*li)->target->NameIP(), currenths->NameIP()) &&
               (!strcmp((*li)->name, service->name)) && ((*li)->portno == service->portno))
-            fatal("Duplicate service %s for target %s !\n", service->name, currenths->NameIP());
+            fatal("Duplicate service %s for target %s !", service->name, currenths->NameIP());
         }
         SG->services_active.push_back(service);
         SG->total_services++;
@@ -531,13 +566,13 @@ int main(int argc, char **argv)
 
   if (o.list_only) {
     if (o.debugging > 3) {
-      printf("\n=== Timing Template ===\n");
-      printf("cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", timing.min_connection_limit,
-          timing.max_connection_limit, timing.auth_tries, timing.connection_delay,
-          timing.connection_retries);
-      printf("\n=== ServicesTable ===\n");
+      log_write(LOG_PLAIN, "\n=== Timing Template ===\n");
+      log_write(LOG_PLAIN, "cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n",
+          timing.min_connection_limit, timing.max_connection_limit,
+          timing.auth_tries, timing.connection_delay, timing.connection_retries);
+      log_write(LOG_PLAIN, "\n=== ServicesTable ===\n");
       for (unsigned int i = 0; i < ServicesTable.size(); i++) {
-        printf("%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
+        log_write(LOG_PLAIN, "%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
             ServicesTable[i].lookup.name,
             ServicesTable[i].lookup.portno,
             ServicesTable[i].timing.min_connection_limit,
@@ -547,15 +582,15 @@ int main(int argc, char **argv)
             ServicesTable[i].timing.connection_retries);
       }
     }
-    printf("\n=== Targets ===\n");
+    log_write(LOG_PLAIN, "\n=== Targets ===\n");
     for (unsigned int i = 0; i < Targets.size(); i++) {
-      printf("Host: %s", Targets[i]->NameIP());
+      log_write(LOG_PLAIN, "Host: %s", Targets[i]->NameIP());
       if (Targets[i]->targetname)
-        printf(" ( %s ) ", Targets[i]->targetname);
-      printf("\n");
+        log_write(LOG_PLAIN, " ( %s ) ", Targets[i]->targetname);
+      log_write(LOG_PLAIN, "\n");
       for (li = SG->services_active.begin(); li != SG->services_active.end(); li++) {
         if ((*li)->target == Targets[i]) 
-          printf("  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
+          log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
               (*li)->name, (*li)->portno, (*li)->min_connection_limit,
               (*li)->max_connection_limit, (*li)->auth_tries, 
               (*li)->connection_delay, (*li)->connection_retries);
@@ -563,7 +598,7 @@ int main(int argc, char **argv)
     }
   } else {
     if (!SG->total_services)
-      fatal("No services specified!\n");
+      fatal("No services specified!");
 
     SG->last_accessed = SG->services_active.end();
     /* Ncrack 'em all! */
@@ -579,7 +614,7 @@ int main(int argc, char **argv)
   delete SG;
 
 
-  printf("\nNcrack finished.\n");
+  log_write(LOG_STDOUT, "\nNcrack finished.\n");
   exit(EXIT_SUCCESS);
 }
 
@@ -650,18 +685,26 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
    * authentication attempt), so in that case we need to get the next login pair
    * only and make no additional check.
    */
-  if (con->peer_alive) {
-    if (con->login_attempts < serv->auth_tries
-        && (pair_ret = serv->NextPair(&con->user, &con->pass)) != -1) {
-      if (pair_ret == 1)
-        con->from_pool = true;
-      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
-    } else
-      ncrack_connection_end(nsp, con);
-  } else {
-    con->check_closed = true;
-    nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
-  }
+    if (con->peer_alive) {
+      if (con->login_attempts < serv->auth_tries
+          && (pair_ret = serv->NextPair(&con->user, &con->pass)) != -1) {
+        if (pair_ret == 1)
+          con->from_pool = true;
+        nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+      } else
+        ncrack_connection_end(nsp, con);
+    } else {
+      /* We need to check if host is alive only on first timing
+       * probe. Thereafter we can use the 'supported_attempts'.
+       */
+      if (serv->just_started) {
+        con->check_closed = true;
+        nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
+      } else if (con->login_attempts <= serv->auth_tries &&
+          con->login_attempts <= serv->supported_attempts)
+        call_module(nsp, con);
+    }
+
 }
 
 
@@ -733,13 +776,14 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       serv->ideal_parallelism -= 5;
     else 
       serv->ideal_parallelism = serv->min_connection_limit;
-
-    printf("%s Dropping connection limit due to connection error: %ld\n",
+    
+    if (o.debugging > 5)
+      log_write(LOG_STDOUT, "%s Dropping connection limit due to connection error: %ld\n",
         hostinfo, serv->ideal_parallelism);
   }
 
 
- /* 
+  /* 
    * If that was our first connection, then calculate initial ideal_parallelism (which
    * was 1 previously) based on the box of min_connection_limit, max_connection_limit
    * and a default desired parallelism for each timing template.
@@ -769,7 +813,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       break;
   } 
   if (li == serv->connections.end()) /* this shouldn't happen */
-    fatal("%s: invalid niod!\n", __func__);
+    fatal("%s: invalid niod!", __func__);
 
   SG->auth_rate_meter.update(con->login_attempts, NULL);
 
@@ -801,9 +845,10 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       SG->MoveServiceToList(serv, &SG->services_finished);
   }
 
-  printf("%s Attempts: total %d completed %d supported %d --- rate %.2f \n", 
-      serv->HostInfo(), serv->total_attempts, serv->finished_attempts, serv->supported_attempts,
-      SG->auth_rate_meter.getCurrentRate());
+  if (o.debugging > 5)
+    log_write(LOG_STDOUT, "%s Attempts: total %d completed %d supported %d --- rate %.2f \n", 
+        serv->HostInfo(), serv->total_attempts, serv->finished_attempts, serv->supported_attempts,
+        SG->auth_rate_meter.getCurrentRate());
 
   /* Check if service finished for good. */
   if (serv->loginlist_fini && serv->isMirrorPoolEmpty() && !serv->active_connections && !serv->list_finished)
@@ -1025,7 +1070,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
     li = SG->services_active.begin();
   else 
     li = SG->last_accessed++;
-	
+
 
   while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
@@ -1130,7 +1175,7 @@ next:
     if (li == SG->services_active.end() || ++li == SG->services_active.end())
       li = SG->services_active.begin();
 
-	 
+
 
 
   }
@@ -1154,7 +1199,7 @@ ncrack(ServiceGroup *SG)
 
   /* create nsock p00l */
   if (!(nsp = nsp_new(SG))) 
-    fatal("Can't create nsock pool.\n");
+    fatal("Can't create nsock pool.");
 
   gettimeofday(&now, NULL);
   nsp_settrace(nsp, tracelevel, &now);
@@ -1173,7 +1218,7 @@ ncrack(ServiceGroup *SG)
     loopret = nsock_loop(nsp, (int) SG->min_connection_delay);
     if (loopret == NSOCK_LOOP_ERROR) {
       err = nsp_geterrorcode(nsp);
-      fatal("Unexpected nsock_loop error. Error code %d (%s)\n", err, strerror(err));
+      fatal("Unexpected nsock_loop error. Error code %d (%s)", err, strerror(err));
     }
     ncrack_probes(nsp, SG);
 

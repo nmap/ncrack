@@ -114,7 +114,7 @@ void *realloc();
 
 #define NCRACK_NAME "Ncrack"
 #define NCRACK_URL "http://ncrack.org"
-#define NCRACK_VERSION "0.00001ALPHA"
+#define NCRACK_VERSION "0.01ALPHA"
 
 #ifndef MAXHOSTNAMELEN
 #define MAXHOSTNAMELEN 64

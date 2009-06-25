@@ -12,6 +12,7 @@
 #endif
 
 #include "nbase.h"
+#include "ncrack_error.h"
 
 /* Timeval subtraction in microseconds */
 #define TIMEVAL_SUBTRACT(a,b) (((a).tv_sec - (b).tv_sec) * 1000000 + (a).tv_usec - (b).tv_usec)
@@ -30,20 +31,6 @@
 #define TIMEVAL_BEFORE(a, b) (((a).tv_sec < (b).tv_sec) || ((a).tv_sec == (b).tv_sec && (a).tv_usec < (b).tv_usec))
 #define TIMEVAL_AFTER(a, b) (((a).tv_sec > (b).tv_sec) || ((a).tv_sec == (b).tv_sec && (a).tv_usec > (b).tv_usec))
 
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void fatal(const char *fmt, ...)
-     __attribute__ ((format (printf, 1, 2)));
-void error(const char *fmt, ...)
-     __attribute__ ((format (printf, 1, 2)));
-  
-
-#ifdef __cplusplus
-}
-#endif
 
 
 /* Return num if it is between min and max.  Otherwise return min or
