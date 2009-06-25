@@ -5,6 +5,8 @@
 #include "modules.h"
 #include <list>
 
+#define TIMEOUT 20000
+
 
 extern NcrackOps o;
 
@@ -28,7 +30,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
   {
     case FTP_INIT:
       con->state = FTP_BANNER;
-      nsock_read(nsp, nsi, ncrack_read_handler, 15000, con);
+      nsock_read(nsp, nsi, ncrack_read_handler, TIMEOUT, con);
       break;
 
     case FTP_BANNER:
@@ -43,31 +45,40 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
             log_write(LOG_STDOUT, "%s reply: %s", hostinfo, con->buf);
         }
       }
+      /* Workaround for Filezilla which sends 3 banners in 3 tcp segments */
+      if (memsearch(con->buf, "FileZilla Server", con->bufsize) ||
+          memsearch(con->buf, "Tim Kosse", con->bufsize)) {
+        nsock_read(nsp, nsi, ncrack_read_handler, TIMEOUT, con);
+        con->state = FTP_BANNER;
+        break;
+      }
       snprintf(lbuf, sizeof(lbuf), "USER %s\r\n", con->user);
-      nsock_write(nsp, nsi, ncrack_write_handler, 15000, con, lbuf, -1);
+      nsock_write(nsp, nsi, ncrack_write_handler, TIMEOUT, con, lbuf, -1);
       break;
 
     case FTP_USER_R:
       con->state = FTP_USER_W;
-      nsock_read(nsp, nsi, ncrack_read_handler, 15000, con);
+      nsock_read(nsp, nsi, ncrack_read_handler, TIMEOUT, con);
       break;
 
     case FTP_USER_W:
       con->state = FTP_PASS;
       if (!con->buf || con->buf[0] != '3') {
-        if (o.debugging > 9)
-          log_write(LOG_STDOUT, "%s Username failed\n", hostinfo);
+        if (con->buf[0] != '2') {
+          if (o.debugging > 9)
+            log_write(LOG_STDOUT, "%s Username failed\n", hostinfo);
+        }
       } else {
         if (o.debugging > 9)
           log_write(LOG_STDOUT, "%s reply: %s", hostinfo, con->buf);
       }
       snprintf(lbuf, sizeof(lbuf), "PASS %s\r\n", con->pass);
-      nsock_write(nsp, nsi, ncrack_write_handler, 15000, con, lbuf, -1);
+      nsock_write(nsp, nsi, ncrack_write_handler, TIMEOUT, con, lbuf, -1);
       break;
 
     case FTP_PASS:
       con->state = FTP_FINI;
-      nsock_read(nsp, nsi, ncrack_read_handler, 15000, con);
+      nsock_read(nsp, nsi, ncrack_read_handler, TIMEOUT, con);
       break;
 
     case FTP_FINI:
