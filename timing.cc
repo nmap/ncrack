@@ -1,9 +1,7 @@
 
 /***************************************************************************
- * timing.cc -- Functions related to computing scan timing (such as        *
- * keeping track of and adjusting smoothed round trip times, statistical   *
- * deviations, timeout values, etc.  Various user options (such as the     *
- * timing policy (-T)) also play a role in these calculations              *
+ * timing.cc -- Functions related to computing crack timing and keeping    *
+ * track of rates.                                                         *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *

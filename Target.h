@@ -1,8 +1,8 @@
 
 /***************************************************************************
- * Target.h -- The Target class encapsulates much of the information Nmap  *
- * has about a host.  Results (such as ping, OS scan, etc) are stored in   *
- * this class as they are determined.                                      *
+ * Target.h -- The Target class is a stripped version of the equivalent    *
+ * class of Nmap. It holds information and functions mainly pertaining to  *
+ * hostnames and IP addresses of the targets.                              *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -70,24 +70,24 @@
  * and add new features.  You are highly encouraged to send your changes   *
  * to nmap-dev@insecure.org for possible incorporation into the main       *
  * distribution.  By sending these changes to Fyodor or one of the         *
-* Insecure.Org development mailing lists, it is assumed that you are      *
-* offering the Nmap Project (Insecure.Com LLC) the unlimited,             *
-* non-exclusive right to reuse, modify, and relicense the code.  Nmap     *
-* will always be available Open Source, but this is important because the *
-* inability to relicense code has caused devastating problems for other   *
-* Free Software projects (such as KDE and NASM).  We also occasionally    *
-* relicense the code to third parties as discussed above.  If you wish to *
-* specify special license conditions of your contributions, just say so   *
-* when you send them.                                                     *
-*                                                                         *
-* This program is distributed in the hope that it will be useful, but     *
-* WITHOUT ANY WARRANTY; without even the implied warranty of              *
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
-* General Public License v2.0 for more details at                         *
-* http://www.gnu.org/licenses/gpl-2.0.html , or in the COPYING file       *
-* included with Nmap.                                                     *
-*                                                                         *
-***************************************************************************/
+ * Insecure.Org development mailing lists, it is assumed that you are      *
+ * offering the Nmap Project (Insecure.Com LLC) the unlimited,             *
+ * non-exclusive right to reuse, modify, and relicense the code.  Nmap     *
+ * will always be available Open Source, but this is important because the *
+ * inability to relicense code has caused devastating problems for other   *
+ * Free Software projects (such as KDE and NASM).  We also occasionally    *
+ * relicense the code to third parties as discussed above.  If you wish to *
+ * specify special license conditions of your contributions, just say so   *
+ * when you send them.                                                     *
+ *                                                                         *
+ * This program is distributed in the hope that it will be useful, but     *
+ * WITHOUT ANY WARRANTY; without even the implied warranty of              *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
+ * General Public License v2.0 for more details at                         *
+ * http://www.gnu.org/licenses/gpl-2.0.html , or in the COPYING file       *
+ * included with Nmap.                                                     *
+ *                                                                         *
+ ***************************************************************************/
 
 /* $Id: Target.h 12955 2009-04-15 00:37:03Z fyodor $ */
 

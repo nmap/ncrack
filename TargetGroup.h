@@ -1,9 +1,8 @@
 
 /***************************************************************************
  * TargetGroup.h -- The "TargetGroup" class holds a group of IP addresses, *
- * such as those from a '/16' or '10.*.*.*' specification.  It also has a  *
- * trivial HostGroupState class which handles a bunch of expressions that  *
- * go into TargetGroup classes.                                            *
+ * such as those from a '/16' or '10.*.*.*' specification. It is a         *
+ * stripped version of the equivalent class of Nmap.                       *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *

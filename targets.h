@@ -1,7 +1,9 @@
 
 /***************************************************************************
- * targets.h -- Functions relating to "ping scanning" as well as           *
- * determining the exact IPs to hit based on CIDR and other input formats. * 
+ * targets.h -- Functions related to determining the exact IPs to hit      *
+ * based on CIDR and other input formats and handling the exclude-file     *
+ * option. nexthost function is tailored to Ncrack's needs that avoids     *
+ * using HostGroups.                                                       *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -87,6 +89,7 @@
  * included with Nmap.                                                     *
  *                                                                         *
  ***************************************************************************/
+
 
 /* $Id: targets.h 12955 2009-04-15 00:37:03Z fyodor $ */
 
