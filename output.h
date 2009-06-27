@@ -110,8 +110,6 @@
 
 void memprint(const char *addr, size_t bytes);
 
-char *logfilename(const char *str, struct tm *tm);
-
 /* Write some information (printf style args) to the given log stream(s).
    Remember to watch out for format string bugs. */
 void log_write(int logt, const char *fmt, ...)
@@ -140,5 +138,8 @@ void log_flush_all();
    o.append_output is nonzero, the file will be appended instead of clobbered if
    it already exists.  If the file does not exist, it will be created */
 int log_open(int logt, char *filename);
+
+char *logfilename(const char *str, struct tm *tm);
+
 
 #endif /* OUTPUT_H */

@@ -1,9 +1,6 @@
-
 /***************************************************************************
- * ServiceGroup.h -- The "ServiceGroup" class holds lists for all          *
- * services that are under active cracking or have been stalled for one    *
- * reason or another. Information and options that apply to all services   *
- * as a whole are also kept here.                                          *
+ * ncrack_tty.cc -- Handles runtime interaction with Ncrack, so you can    *
+ * increase verbosity/debugging or obtain a status line upon request.      *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -90,62 +87,203 @@
  *                                                                         *
  ***************************************************************************/
 
-
-#ifndef SERVICE_GROUP_H
-#define SERVICE_GROUP_H
-
-#include "ncrack.h"
-#include "Service.h"
-#include <list>
-
-
-class ServiceGroup {
-	public:
-		ServiceGroup();
-		~ServiceGroup();
-
-    /* Find and set minimum connection delay from all services */
-    void findMinDelay(void);
-
-    /* Moves service into one of the ServiceGroup lists */
-    list <Service *>::iterator moveServiceToList(Service *serv, list <Service *> *dst);
-    
-    /* prints current status */
-    void printStatusMessage(void);
-
-    /* Services finished (successfully or not) */
-		list<Service *> services_finished; 
-
-    list<Service *> services_finishing;
-
-    /* Services that temporarily cannot initiate another
-     * connection due to timing constraints (connection limit)
-     */
-		list<Service *> services_full;
-
-    /* Services that have to wait a time of 'connection_delay'
-     * until initiating another connection */
-    list<Service *> services_wait;
-
-    /* Services that have to wait until our pair pool has at least one element
-     * to grab a login pair from, since the username list has already finished
-     * being iterated through.
-     */
-    list<Service *> services_stalled;
-
-    /* Services that can initiate more connections */
-		list<Service *> services_active;
-
-		unsigned long total_services; /* how many services we need to crack in total */
-
-    long min_connection_delay;    /* minimum connection delay from all services */
-		long active_connections;      /* total number of active connections */
-    long connection_limit;        /* maximum total number of active connections */
-
-		int num_hosts_timedout;       /* # of hosts timed out during (or before) scan */
-		list <Service *>::iterator last_accessed; /* last element accessed */
-
-    RateMeter auth_rate_meter;
-};
-
+#ifndef WIN32
+#include "ncrack_config.h"
 #endif
+
+#include <sys/types.h>
+#if HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+#if HAVE_FCNTL_H
+#include <fcntl.h>
+#endif
+#if HAVE_TERMIOS_H
+#include <termios.h>
+#endif
+#if HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#include <stdlib.h>
+
+#include "ncrack_tty.h"
+#include "utils.h"
+#include "NcrackOps.h"
+
+extern NcrackOps o;
+
+#ifdef WIN32
+#include <conio.h>
+
+// Microsoft's runtime makes this fairly simple. :)
+void tty_init() { return; }
+static int tty_getchar() { return _kbhit() ? _getch() : -1; }
+static void tty_done() { return; }
+
+static void tty_flush(void)
+{
+	static HANDLE stdinput = GetStdHandle(STD_INPUT_HANDLE);
+
+	FlushConsoleInputBuffer(stdinput);
+}
+
+#else
+#if !defined(O_NONBLOCK) && defined(O_NDELAY)
+#define O_NONBLOCK			O_NDELAY
+#endif
+
+#ifdef __CYGWIN32__
+#include <string.h>
+#include <sys/socket.h>
+#ifndef __CYGWIN__
+extern int tcgetattr(int fd, struct termios *termios_p);
+extern int tcsetattr(int fd, int actions, struct termios *termios_p);
+#endif
+#endif
+
+static int tty_fd = 0;
+static struct termios saved_ti;
+
+static int tty_getchar()
+{
+	int c, numChars;
+#ifdef __CYGWIN32__
+	fd_set set;
+	struct timeval tv;
+#endif
+        
+	if (tty_fd && tcgetpgrp(tty_fd) == getpid()) {
+           
+           // This is so that when the terminal has been disconnected, it will be reconnected when possible. If it slows things down, just remove it
+           // tty_init();
+           
+#ifdef __CYGWIN32__
+		FD_ZERO(&set); FD_SET(tty_fd, &set);
+		tv.tv_sec = 0; tv.tv_usec = 0;
+		if (select(tty_fd + 1, &set, NULL, NULL, &tv) <= 0)
+			return -1;
+#endif
+		c = 0;
+                numChars = read(tty_fd, &c, 1);
+		if (numChars > 0) return c;
+	}
+
+	return -1;
+}
+
+static void tty_done()
+{
+	if (!tty_fd) return;
+
+	tcsetattr(tty_fd, TCSANOW, &saved_ti);
+
+	close(tty_fd);
+	tty_fd = 0;
+}
+
+static void tty_flush(void)
+{
+	/* we don't need to test for tty_fd==0 here because
+	 * this isn't called unless we succeeded
+	 */
+
+	tcflush(tty_fd, TCIFLUSH);
+}
+
+/*
+ * Initializes the terminal for unbuffered non-blocking input. Also
+ * registers tty_done() via atexit().  You need to call this before
+ * you ever call keyWasPressed().
+ */
+void tty_init()
+{
+	struct termios ti;
+
+	if (tty_fd)
+		return;
+
+	if ((tty_fd = open("/dev/tty", O_RDONLY | O_NONBLOCK)) < 0) return;
+
+#ifndef __CYGWIN32__
+	if (tcgetpgrp(tty_fd) != getpid()) {
+		close(tty_fd); return;
+	}
+#endif
+
+	tcgetattr(tty_fd, &ti);
+	saved_ti = ti;
+	ti.c_lflag &= ~(ICANON | ECHO);
+	ti.c_cc[VMIN] = 1;
+	ti.c_cc[VTIME] = 0;
+	tcsetattr(tty_fd, TCSANOW, &ti);
+
+	atexit(tty_done);
+}
+
+#endif  //!win32
+
+/* Catches all of the predefined
+   keypresses and interpret them, and it will also tell you if you
+   should print anything. A value of true being returned means a
+   nonstandard key has been pressed and the calling method should
+   print a status message */
+bool keyWasPressed()
+{
+  /* Where we keep the automatic stats printing schedule. */
+  static struct timeval stats_time = { 0, 0 };
+  int c;
+
+  if ((c = tty_getchar()) >= 0) {
+    tty_flush(); /* flush input queue */
+
+    if (c == 'v') {
+      o.verbose++;
+      log_write(LOG_STDOUT, "Verbosity Increased to %d.\n", o.verbose);
+    } else if (c == 'V') {
+      if (o.verbose > 0)
+        o.verbose--;
+      log_write(LOG_STDOUT, "Verbosity Decreased to %d.\n", o.verbose);
+    } else if (c == 'd') {
+      o.debugging++;
+      log_write(LOG_STDOUT, "Debugging Increased to %d.\n", o.debugging);
+    } else if (c == 'D') {
+      if (o.debugging > 0)
+        o.debugging--;
+      log_write(LOG_STDOUT, "Debugging Decreased to %d.\n", o.debugging);
+    } else if (c == '?') {
+      log_write(LOG_STDOUT,
+          "Interactive keyboard commands:\n"
+          "?               Display this information\n"
+          "v/V             Increase/decrease verbosity\n"
+          "d/D             Increase/decrease debugging\n"
+          "anything else   Print status\n");
+    } else {
+      return true;
+    }
+  }
+
+  /* Check if we need to print a status update according to the --stats-every
+     option. */
+  if (o.stats_interval != 0.0) {
+    struct timeval now;
+
+    gettimeofday(&now, NULL);
+    if (stats_time.tv_sec == 0) {
+      /* Initialize the scheduled stats time. */
+      stats_time = *o.getStartTime();
+      TIMEVAL_ADD(stats_time, stats_time, (time_t) (o.stats_interval * 1000000));
+    }
+
+    if (TIMEVAL_AFTER(now, stats_time)) {
+      /* Advance to the next print time. */
+      TIMEVAL_ADD(stats_time, stats_time, (time_t) (o.stats_interval * 1000000));
+      /* If it's still in the past, catch it up to the present. */
+      if (TIMEVAL_AFTER(now, stats_time))
+        stats_time = now;
+      /* Instruct the caller to print status too. */
+      return true;
+    }
+  }
+
+  return false;
+}

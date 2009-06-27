@@ -97,7 +97,6 @@ extern NcrackOps o;
 static const char *logtypes[LOG_NUM_FILES]=LOG_NAMES;
 
 
-
 void
 memprint(const char *addr, size_t bytes)
 {
@@ -139,7 +138,8 @@ log_write(int logt, const char *fmt, ...)
    CAN ONLY CALL THIS WITH ONE LOG TYPE (not a bitmask full of them).
    In addition, YOU MUST SANDWHICH EACH EXECUTION IF THIS CALL BETWEEN
    va_start() AND va_end() calls. */
-void log_vwrite(int logt, const char *fmt, va_list ap) {
+void
+log_vwrite(int logt, const char *fmt, va_list ap) {
   static char *writebuf = NULL;
   static int writebuflen = 8192;
   int rc = 0;
@@ -193,19 +193,21 @@ void log_vwrite(int logt, const char *fmt, va_list ap) {
           writebuf = (char *) safe_realloc(writebuf, writebuflen);
           len = Vsnprintf(writebuf, writebuflen, fmt, apcopy);
           if (len <= 0 || len >= writebuflen) {
-            fatal("%s: vnsprintf failed.  Even after increasing bufferlen to %d, Vsnprintf returned %d (logt == %d).  Please email this message to fyodor@insecure.org.  Quitting.", __func__, writebuflen, len, logt);
+            fatal("%s: vsnprintf failed.  Even after increasing bufferlen to %d, Vsnprintf returned %d (logt == %d). "
+                "Please email this message to fyodor@insecure.org.", __func__, writebuflen, len, logt);
           }
         }
         rc = fwrite(writebuf,len,1,o.logfd[fileidx]);
         if (rc != 1) {
-          fatal("Failed to write %d bytes of data to (logt==%d) stream. fwrite returned %d.  Quitting.", len, logt, rc);
+          fatal("Failed to write %d bytes of data to (logt==%d) stream. fwrite returned %d.", len, logt, rc);
         }
         va_end(apcopy);
       }
       break;
 
     default:
-      fatal("%s(): Passed unknown log type (%d).  Note that this function, unlike log_write, can only handle one log type at a time (no bitmasks)", __func__, logt);
+      fatal("%s(): Passed unknown log type (%d).  Note that this function, unlike log_write, can only "
+          "handle one log type at a time (no bitmasks)", __func__, logt);
   }
 
   return;
@@ -213,7 +215,8 @@ void log_vwrite(int logt, const char *fmt, va_list ap) {
 
 
 /* Close the given log stream(s) */
-void log_close(int logt)
+void
+log_close(int logt)
 {
   int i;
   if (logt<0 || logt>LOG_FILE_MASK) return;
@@ -222,7 +225,8 @@ void log_close(int logt)
 
 /* Flush the given log stream(s).  In other words, all buffered output
    is written to the log immediately */
-void log_flush(int logt) {
+void
+log_flush(int logt) {
   int i;
 
   if (logt & LOG_STDOUT) {
@@ -248,7 +252,8 @@ void log_flush(int logt) {
 
 /* Flush every single log stream -- all buffered output is written to the
    corresponding logs immediately */
-void log_flush_all() {
+void
+log_flush_all() {
   int fileno;
 
   for(fileno = 0; fileno < LOG_NUM_FILES; fileno++) {
@@ -262,7 +267,8 @@ void log_flush_all() {
 /* Open a log descriptor of the type given to the filename given.  If 
    o.append_output is nonzero, the file will be appended instead of clobbered if
    it already exists.  If the file does not exist, it will be created */
-int log_open(int logt, char *filename)
+int
+log_open(int logt, char *filename)
 {
   int i=0;
   if (logt<=0 || logt>LOG_FILE_MASK) return -1;
@@ -288,7 +294,8 @@ int log_open(int logt, char *filename)
 }
 
 
-char *logfilename(const char *str, struct tm *tm)
+char *
+logfilename(const char *str, struct tm *tm)
 {
   char *ret, *end, *p;
   char tbuf[10];
@@ -352,3 +359,6 @@ char *logfilename(const char *str, struct tm *tm)
 
   return (char *) safe_realloc(ret, strlen(ret) + 1);
 }
+
+
+

@@ -103,6 +103,14 @@ class NcrackOps {
     void setaf(int af) { addressfamily = af; }
     int af() { return addressfamily; }
 
+    /* The time this obj. was instantiated */
+    const struct timeval *getStartTime() { return &start_time; }
+
+    /* Number of milliseconds since getStartTime().  The current time is an
+     * optional argument to avoid an extra gettimeofday() call. */
+    int TimeSinceStartMS(struct timeval *now=NULL); 
+
+    float stats_interval; /* The requested auto stats printing interval, or 0.0 if unset. */
     bool log_errors;      /* write errors to log files */
     bool append_output;   /* append output to log files */
     bool passwords_first; /* iterate password list for each username instead of opposite */
@@ -118,6 +126,7 @@ class NcrackOps {
     FILE *ncrack_stdout; /* Ncrack standard output */
 
   private:
+    struct timeval start_time;
     int addressfamily; /* Address family:  AF_INET or AF_INET6 */  
 };
 

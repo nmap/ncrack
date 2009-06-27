@@ -97,27 +97,6 @@
 extern NcrackOps o;
 
 
-/* 
- * Find and set minimum connection delay from all services 
- */
-void
-ServiceGroup::MinDelay(void)
-{
-  list<long> delays;
-  list<Service *>::iterator li;
-
-  for (li = services_active.begin(); li != services_active.end(); li++) {
-    delays.push_back((*li)->connection_delay);
-  }
-
-  delays.sort();
-  min_connection_delay = delays.front();
-  delays.clear();
-}
-
-
-
-
 ServiceGroup::ServiceGroup()
 {
 	struct timeval now;
@@ -137,8 +116,30 @@ ServiceGroup::~ServiceGroup()
 }
 
 
+/* 
+ * Find and set minimum connection delay from all services 
+ */
+void
+ServiceGroup::findMinDelay(void)
+{
+  list<long> delays;
+  list<Service *>::iterator li;
+
+  for (li = services_active.begin(); li != services_active.end(); li++) {
+    delays.push_back((*li)->connection_delay);
+  }
+
+  delays.sort();
+  min_connection_delay = delays.front();
+  delays.clear();
+}
+
+
+/* 
+ * Moves service into one of the ServiceGroup lists 
+ */
 list <Service *>::iterator
-ServiceGroup::MoveServiceToList(Service *serv, list <Service *> *dst)
+ServiceGroup::moveServiceToList(Service *serv, list <Service *> *dst)
 {
   list <Service *>::iterator li;
   list <Service *> *src = NULL;
@@ -209,4 +210,17 @@ ServiceGroup::MoveServiceToList(Service *serv, list <Service *> *dst)
   return li;
 }
 
+
+void
+ServiceGroup::printStatusMessage(void)
+{
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  int time = (int) (o.TimeSinceStartMS(&tv) / 1000.0);
+  
+  log_write(LOG_STDOUT, 
+	    "Stats: %d:%02d:%02d elapsed; %d services completed (%d total)\n", 
+	    time/60/60, time/60 % 60, time % 60, services_finished.size(), 
+      total_services);
+}
 

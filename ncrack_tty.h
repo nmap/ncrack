@@ -1,9 +1,6 @@
-
 /***************************************************************************
- * ServiceGroup.h -- The "ServiceGroup" class holds lists for all          *
- * services that are under active cracking or have been stalled for one    *
- * reason or another. Information and options that apply to all services   *
- * as a whole are also kept here.                                          *
+ * ncrack_tty.h -- Handles runtime interaction with Ncrack, so you can     *
+ * increase verbosity/debugging or obtain a status line upon request.      *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -90,62 +87,16 @@
  *                                                                         *
  ***************************************************************************/
 
+/*
+ * Initializes the terminal for unbuffered non-blocking input. Also
+ * registers tty_done() via atexit().  You need to call this before
+ * you ever call keyWasPressed().
+ */
+void tty_init();
 
-#ifndef SERVICE_GROUP_H
-#define SERVICE_GROUP_H
+/* Catches all of the predefined keypresses and interpret them, and it
+   will also tell you if you should print anything. A value of true
+   being returned means a nonstandard key has been pressed and the
+   calling method should print a status message */
+bool keyWasPressed();
 
-#include "ncrack.h"
-#include "Service.h"
-#include <list>
-
-
-class ServiceGroup {
-	public:
-		ServiceGroup();
-		~ServiceGroup();
-
-    /* Find and set minimum connection delay from all services */
-    void findMinDelay(void);
-
-    /* Moves service into one of the ServiceGroup lists */
-    list <Service *>::iterator moveServiceToList(Service *serv, list <Service *> *dst);
-    
-    /* prints current status */
-    void printStatusMessage(void);
-
-    /* Services finished (successfully or not) */
-		list<Service *> services_finished; 
-
-    list<Service *> services_finishing;
-
-    /* Services that temporarily cannot initiate another
-     * connection due to timing constraints (connection limit)
-     */
-		list<Service *> services_full;
-
-    /* Services that have to wait a time of 'connection_delay'
-     * until initiating another connection */
-    list<Service *> services_wait;
-
-    /* Services that have to wait until our pair pool has at least one element
-     * to grab a login pair from, since the username list has already finished
-     * being iterated through.
-     */
-    list<Service *> services_stalled;
-
-    /* Services that can initiate more connections */
-		list<Service *> services_active;
-
-		unsigned long total_services; /* how many services we need to crack in total */
-
-    long min_connection_delay;    /* minimum connection delay from all services */
-		long active_connections;      /* total number of active connections */
-    long connection_limit;        /* maximum total number of active connections */
-
-		int num_hosts_timedout;       /* # of hosts timed out during (or before) scan */
-		list <Service *>::iterator last_accessed; /* last element accessed */
-
-    RateMeter auth_rate_meter;
-};
-
-#endif

@@ -102,6 +102,7 @@
 #include "modules.h"
 #include "ncrack_error.h"
 #include "output.h"
+#include "ncrack_tty.h"
 #include <time.h>
 #include <vector>
 
@@ -414,6 +415,7 @@ int main(int argc, char **argv)
   win_init();
 #endif
 
+
   now = time(NULL);
   tm = localtime(&now);
 
@@ -548,6 +550,9 @@ int main(int argc, char **argv)
         print_usage();
     }
   }
+  
+  /* Initialize tty for interactive output */
+  tty_init();
 
   /* Open the log files, now that we know whether the user wants them appended
      or overwritten */
@@ -736,6 +741,9 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   struct timeval now;
   int pair_ret;
 
+  if (keyWasPressed())
+    SG->printStatusMessage();
+
   con->login_attempts++;
   con->auth_complete = true;
   serv->total_attempts++;
@@ -776,7 +784,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
    * we remove service from 'services_full' list to 'services_active' list.
    */
   if (serv->list_full && serv->active_connections < serv->ideal_parallelism)
-    SG->MoveServiceToList(serv, &SG->services_active);
+    SG->moveServiceToList(serv, &SG->services_active);
 
   ncrack_probes(nsp, SG);
 
@@ -825,11 +833,13 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   list <Connection *>::iterator li;
   const char *hostinfo = serv->HostInfo();
 
+  if (keyWasPressed())
+    SG->printStatusMessage();
 
   if (con->close_reason == READ_TIMEOUT) {
     serv->appendToPool(con->user, con->pass);
     if (serv->list_stalled)
-      SG->MoveServiceToList(serv, &SG->services_active);
+      SG->moveServiceToList(serv, &SG->services_active);
     if (o.debugging)
       error("%s nsock READ timeout!", hostinfo);
 
@@ -856,7 +866,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     } else if (!con->auth_complete) {
       serv->appendToPool(con->user, con->pass);
       if (serv->list_stalled)
-        SG->MoveServiceToList(serv, &SG->services_active);
+        SG->moveServiceToList(serv, &SG->services_active);
 
       /* Now this is strange: peer closed on us in the middle of authentication.
        * This shouldn't happen, unless extreme network conditions are happening!
@@ -938,7 +948,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
    * we remove service from 'services_full' list to 'services_active' list.
    */
   if (serv->list_full && serv->active_connections < serv->ideal_parallelism)
-    SG->MoveServiceToList(serv, &SG->services_active);
+    SG->moveServiceToList(serv, &SG->services_active);
 
 
   /*
@@ -949,9 +959,9 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
    */
   if (serv->list_finishing) {
     if (!serv->isMirrorPoolEmpty())
-      SG->MoveServiceToList(serv, &SG->services_active);
+      SG->moveServiceToList(serv, &SG->services_active);
     else if (!serv->active_connections)
-      SG->MoveServiceToList(serv, &SG->services_finished);
+      SG->moveServiceToList(serv, &SG->services_finished);
   }
 
   if (o.debugging)
@@ -961,7 +971,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   /* Check if service finished for good. */
   if (serv->loginlist_fini && serv->isMirrorPoolEmpty() && !serv->active_connections && !serv->list_finished)
-    SG->MoveServiceToList(serv, &SG->services_finished);
+    SG->moveServiceToList(serv, &SG->services_finished);
 
   /* see if we can initiate some more connections */
   ncrack_probes(nsp, SG);
@@ -982,6 +992,9 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   int err;
   char *str;
   const char *hostinfo = serv->HostInfo();
+
+  if (keyWasPressed())
+    SG->printStatusMessage();
 
   assert(type == NSE_TYPE_READ);
 
@@ -1037,7 +1050,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       error("%s nsock READ error #%d (%s)", hostinfo, err, strerror(err));
     serv->appendToPool(con->user, con->pass);
     if (serv->list_stalled)
-      SG->MoveServiceToList(serv, &SG->services_active);
+      SG->moveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_KILL) {
@@ -1056,10 +1069,14 @@ void
 ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
   int err;
+
+  if (keyWasPressed())
+    SG->printStatusMessage();
 
   if (status == NSE_STATUS_SUCCESS)
     call_module(nsp, con);
@@ -1081,9 +1098,13 @@ void
 ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
+
+  if (keyWasPressed())
+    SG->printStatusMessage();
 
   if (status == NSE_STATUS_SUCCESS) {
     if (con->buf) {
@@ -1111,6 +1132,9 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   const char *hostinfo = serv->HostInfo();
   int err;
 
+  if (keyWasPressed())
+    SG->printStatusMessage();
+
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
 
   // if (svc->target->timedOut(nsock_gettimeofday())) {
@@ -1137,10 +1161,10 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     /* Failure of connecting on first attempt means we should probably drop
      * the service for good. */
     if (serv->just_started) {
-      SG->MoveServiceToList(serv, &SG->services_finished);
+      SG->moveServiceToList(serv, &SG->services_finished);
     }
     if (serv->list_stalled)
-      SG->MoveServiceToList(serv, &SG->services_active);
+      SG->moveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_KILL) {
@@ -1149,7 +1173,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       error("%s nsock CONNECT nse_status_kill", hostinfo);
     serv->appendToPool(con->user, con->pass);
     if (serv->list_stalled)
-      SG->MoveServiceToList(serv, &SG->services_active);
+      SG->moveServiceToList(serv, &SG->services_active);
     ncrack_connection_end(nsp, con);
 
   } else
@@ -1174,6 +1198,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   char *login, *pass;
   const char *hostinfo;
 
+  if (keyWasPressed())
+    SG->printStatusMessage();
 
   /* First check for every service if connection_delay time has already
    * passed since its last connection and move them back to 'services_active'
@@ -1182,7 +1208,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   gettimeofday(&now, NULL);
   for (li = SG->services_wait.begin(); li != SG->services_wait.end(); li++) {
     if (TIMEVAL_MSEC_SUBTRACT(now, (*li)->last) >= (*li)->connection_delay) {
-      li = SG->MoveServiceToList(*li, &SG->services_active);
+      li = SG->moveServiceToList(*li, &SG->services_active);
     }
   }
 
@@ -1195,6 +1221,9 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
       && SG->services_active.size() != 0) {
+
+    if (keyWasPressed())
+      SG->printStatusMessage();
 
     serv = *li;
     hostinfo = serv->HostInfo();
@@ -1210,7 +1239,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      */
     gettimeofday(&now, NULL);
     if (TIMEVAL_MSEC_SUBTRACT(now, serv->last) < serv->connection_delay) {
-      li = SG->MoveServiceToList(serv, &SG->services_wait);
+      li = SG->moveServiceToList(serv, &SG->services_wait);
       goto next;
     }
 
@@ -1219,7 +1248,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * the services_full list so that it won't be reaccessed in this loop.
      */
     if (serv->active_connections >= serv->ideal_parallelism) {
-      li = SG->MoveServiceToList(serv, &SG->services_full);
+      li = SG->moveServiceToList(serv, &SG->services_full);
       goto next;
     }
 
@@ -1234,10 +1263,10 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      */
     if (serv->loginlist_fini && serv->isMirrorPoolEmpty() && !serv->list_finished) {
       if (!serv->active_connections) {
-        li = SG->MoveServiceToList(serv, &SG->services_finished);
+        li = SG->moveServiceToList(serv, &SG->services_finished);
         goto next;
       } else {
-        li = SG->MoveServiceToList(serv, &SG->services_finishing);
+        li = SG->moveServiceToList(serv, &SG->services_finishing);
         goto next;
       }
     }
@@ -1248,7 +1277,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
      * pair from.
      */
     if (serv->loginlist_fini && serv->isPoolEmpty() && !serv->isMirrorPoolEmpty()) {
-      li = SG->MoveServiceToList(serv, &SG->services_stalled);
+      li = SG->moveServiceToList(serv, &SG->services_stalled);
       goto next;
     }
 
@@ -1301,8 +1330,6 @@ next:
 
 
 
-
-
 static int
 ncrack(ServiceGroup *SG)
 {
@@ -1321,8 +1348,10 @@ ncrack(ServiceGroup *SG)
   gettimeofday(&now, NULL);
   nsp_settrace(nsp, tracelevel, &now);
 
+  /* must always find minimum delay in the beginning that all
+   * services are under the 'services_active' list */
+  SG->findMinDelay();
 
-  SG->MinDelay();
   /* initiate all authentication rate meters */
   SG->auth_rate_meter.start();
   for (li = SG->services_active.begin(); li != SG->services_active.end(); li++)
@@ -1332,6 +1361,9 @@ ncrack(ServiceGroup *SG)
 
   /* nsock loop */
   do {
+    if (keyWasPressed())
+      SG->printStatusMessage();
+
     loopret = nsock_loop(nsp, (int) SG->min_connection_delay);
     if (loopret == NSOCK_LOOP_ERROR) {
       err = nsp_geterrorcode(nsp);
@@ -1346,3 +1378,4 @@ ncrack(ServiceGroup *SG)
 
   return 0;
 }
+
