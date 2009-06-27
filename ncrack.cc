@@ -114,6 +114,9 @@
 #define DEFAULT_USERNAME_FILE "./username.lst"
 #define DEFAULT_PASSWORD_FILE "./password.lst"
 
+/* (in milliseconds) every such interval we poll for interactive user input */
+#define KEYPRESSED_INTERVAL 500 
+
 extern NcrackOps o;
 using namespace std;
 
@@ -128,6 +131,9 @@ vector <char *> PassArray;
 static int ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
 /* ncrack initialization */
 static int ncrack(ServiceGroup *SG);
+/* Poll for interactive user input every time this timer is called. */
+static void status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+
 /* module name demultiplexor */
 static void call_module(nsock_pool nsp, Connection* con);
 
@@ -741,9 +747,6 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   struct timeval now;
   int pair_ret;
 
-  if (keyWasPressed())
-    SG->printStatusMessage();
-
   con->login_attempts++;
   con->auth_complete = true;
   serv->total_attempts++;
@@ -833,8 +836,6 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   list <Connection *>::iterator li;
   const char *hostinfo = serv->HostInfo();
 
-  if (keyWasPressed())
-    SG->printStatusMessage();
 
   if (con->close_reason == READ_TIMEOUT) {
     serv->appendToPool(con->user, con->pass);
@@ -993,8 +994,6 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   char *str;
   const char *hostinfo = serv->HostInfo();
 
-  if (keyWasPressed())
-    SG->printStatusMessage();
 
   assert(type == NSE_TYPE_READ);
 
@@ -1069,14 +1068,10 @@ void
 ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
   int err;
-
-  if (keyWasPressed())
-    SG->printStatusMessage();
 
   if (status == NSE_STATUS_SUCCESS)
     call_module(nsp, con);
@@ -1098,13 +1093,9 @@ void
 ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
-
-  if (keyWasPressed())
-    SG->printStatusMessage();
 
   if (status == NSE_STATUS_SUCCESS) {
     if (con->buf) {
@@ -1121,6 +1112,7 @@ ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
 
+
 void
 ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
@@ -1131,9 +1123,6 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
   int err;
-
-  if (keyWasPressed())
-    SG->printStatusMessage();
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
 
@@ -1184,10 +1173,33 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 }
 
 
+/* 
+ * Poll for interactive user input every time this timer is called.
+ */
+static void
+status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
+{
+  enum nse_status status = nse_status(nse);
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+
+  if (keyWasPressed())
+    SG->printStatusMessage();
+
+  if (status != NSE_STATUS_SUCCESS)
+    error("Nsock status timer handler error!");
+
+  /* Reschedule timer for the next polling. */
+  nsock_timer_create(nsp, status_timer_handler, KEYPRESSED_INTERVAL, NULL);
+
+  return;
+}
+
+
 
 
 static int
-ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
+ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
+{
   Service *serv;
   Connection *con;
   struct sockaddr_storage ss;
@@ -1198,8 +1210,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   char *login, *pass;
   const char *hostinfo;
 
-  if (keyWasPressed())
-    SG->printStatusMessage();
 
   /* First check for every service if connection_delay time has already
    * passed since its last connection and move them back to 'services_active'
@@ -1221,9 +1231,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG) {
   while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
       && SG->services_active.size() != 0) {
-
-    if (keyWasPressed())
-      SG->printStatusMessage();
 
     serv = *li;
     hostinfo = serv->HostInfo();
@@ -1357,12 +1364,19 @@ ncrack(ServiceGroup *SG)
   for (li = SG->services_active.begin(); li != SG->services_active.end(); li++)
     (*li)->auth_rate_meter.start();
 
+  /* 
+   * Since nsock can delay between each event due to the targets being really slow,
+   * we need a way to make sure that we always poll for interactive user input
+   * regardless of the above case. Thus we schedule a special timer event that
+   * happens every KEYPRESSED_INTERVAL milliseconds and which reschedules
+   * itself every time its handler is called.
+   */
+  nsock_timer_create(nsp, status_timer_handler, KEYPRESSED_INTERVAL, NULL);
+
   ncrack_probes(nsp, SG);
 
   /* nsock loop */
   do {
-    if (keyWasPressed())
-      SG->printStatusMessage();
 
     loopret = nsock_loop(nsp, (int) SG->min_connection_delay);
     if (loopret == NSOCK_LOOP_ERROR) {
