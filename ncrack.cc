@@ -128,7 +128,7 @@ vector <char *> PassArray;
 
 
 /* schedule additional connections */
-static int ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
+static void ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
 /* ncrack initialization */
 static int ncrack(ServiceGroup *SG);
 /* Poll for interactive user input every time this timer is called. */
@@ -782,6 +782,11 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     con->from_pool = false;
   }
 
+  if (serv->isMirrorPoolEmpty() && serv->list_finishing) {
+    SG->moveServiceToList(serv, &SG->services_finished);
+    return ncrack_connection_end(nsp, con);
+  }
+
   /*
    * Check if we had previously surpassed imposed connection limit so that
    * we remove service from 'services_full' list to 'services_active' list.
@@ -810,7 +815,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
         con->from_pool = true;
       nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
     } else
-      ncrack_connection_end(nsp, con);
+      return ncrack_connection_end(nsp, con);
   } else {
     /* We need to check if host is alive only on first timing
      * probe. Thereafter we can use the 'supported_attempts'.
@@ -822,7 +827,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
         con->login_attempts <= serv->supported_attempts)
       call_module(nsp, con);
   }
-
+  return;
 }
 
 
@@ -975,7 +980,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     SG->moveServiceToList(serv, &SG->services_finished);
 
   /* see if we can initiate some more connections */
-  ncrack_probes(nsp, SG);
+  return ncrack_probes(nsp, SG);
 
 }
 
@@ -1030,19 +1035,19 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
         call_module(nsp, con);
       } else {
         con->close_reason = READ_EOF;
-        ncrack_connection_end(nsp, con);
+        return ncrack_connection_end(nsp, con);
       }
     } else {
       /* This is a normal timeout */
       con->close_reason = READ_TIMEOUT;
-      ncrack_connection_end(nsp, con);  // should we always close connection or try to wait?
+      return ncrack_connection_end(nsp, con);  // should we always close connection or try to wait?
     }
 
   } else if (status == NSE_STATUS_EOF) {
     con->close_reason = READ_EOF;
-    ncrack_connection_end(nsp, con);
+    return ncrack_connection_end(nsp, con);
 
-  }  else if (status == NSE_STATUS_ERROR) {
+  } else if (status == NSE_STATUS_ERROR) {
 
     err = nse_errorcode(nse);
     if (o.debugging > 2)
@@ -1050,7 +1055,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->appendToPool(con->user, con->pass);
     if (serv->list_stalled)
       SG->moveServiceToList(serv, &SG->services_active);
-    ncrack_connection_end(nsp, con);
+    return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_KILL) {
     error("%s nsock READ nse_status_kill", hostinfo);
@@ -1154,7 +1159,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     }
     if (serv->list_stalled)
       SG->moveServiceToList(serv, &SG->services_active);
-    ncrack_connection_end(nsp, con);
+    return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_KILL) {
 
@@ -1163,7 +1168,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->appendToPool(con->user, con->pass);
     if (serv->list_stalled)
       SG->moveServiceToList(serv, &SG->services_active);
-    ncrack_connection_end(nsp, con);
+    return ncrack_connection_end(nsp, con);
 
   } else
     error("%s WARNING: nsock CONNECT unexpected status %d", 
@@ -1197,7 +1202,7 @@ status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
 
-static int
+static void
 ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
 {
   Service *serv;
@@ -1209,6 +1214,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
   int pair_ret;
   char *login, *pass;
   const char *hostinfo;
+
 
 
   /* First check for every service if connection_delay time has already
@@ -1231,6 +1237,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
   while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
       && SG->services_active.size() != 0) {
+
 
     serv = *li;
     hostinfo = serv->HostInfo();
@@ -1332,7 +1339,7 @@ next:
       li = SG->services_active.begin();
 
   }
-  return 0;
+  return;
 }
 
 

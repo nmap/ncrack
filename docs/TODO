@@ -11,7 +11,6 @@ TODO:
 
 * Implement queueing mechanism for ServiceGroup lists.
 
-* Handle case when connection limit is more than the total passwords/usernames in list
 
 * If a connection times out continuously for 1 service and the rest of the services
   need to poll for new events through nsock_loop, the fact that
@@ -23,11 +22,9 @@ TODO:
   after which the service is marked as finished regardless of the progress
   so far.
 
-* Code output.cc and -oN option.
+* Complete output engine.
 
-* Implement interactive Ncrack output.
-
-* Implement on-the-fly 'Status Report' within interactive Ncrack output.
+* Refine interactive Status Report.
 
 * Complete dynamic timing engine
 
@@ -58,3 +55,10 @@ TODO:
 
 * Appended Nmap license headers to each ncrack file.
 
+* Handle case when connection limit is more than the total passwords/usernames in list
+
+* Implement on-the-fly 'Status Report' within interactive Ncrack output.
+
+* Code output.cc and -oN option.
+
+* Implement interactive Ncrack output.
