@@ -783,7 +783,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     con->from_pool = false;
   }
 
-  if (serv->isMirrorPoolEmpty() && serv->getListFinishing()) {
+  if (serv->isMirrorPoolEmpty() && !serv->active_connections
+      && serv->getListFinishing()) {
     SG->pushServiceToList(serv, &SG->services_finished);
     return ncrack_connection_end(nsp, con);
   }
@@ -899,6 +900,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     if (o.debugging > 5)
       error("%s Connection closed by peer", hostinfo);
   }
+  con->close_reason = -1;
 
   /* 
    * If we are not the first timing probe and the authentication wasn't
@@ -1170,6 +1172,8 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     }
     if (serv->getListPairfini())
       SG->popServiceFromList(serv, &SG->services_pairfini);
+
+    con->close_reason = CON_ERR;
 
   } else if (status == NSE_STATUS_KILL) {
 

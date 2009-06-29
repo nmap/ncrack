@@ -148,6 +148,7 @@ list <Service *>::iterator
 ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
 {
   list <Service *>::iterator li = services_active.end();
+  list <Service *>::iterator templi;
   const char *dstname = NULL;
 
   assert(dst);
@@ -199,10 +200,20 @@ ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
   } else
     fatal("%s destination list invalid!\n", __func__);
 
-  dst->push_back(serv);
-
-  if (o.debugging > 8)
-    log_write(LOG_STDOUT, "%s pushed to list %s\n", serv->HostInfo(), dstname);
+  for (templi = dst->begin(); templi != dst->end(); templi++) {
+    if (((*templi)->portno == serv->portno) && (!strcmp((*templi)->name, serv->name)) 
+        && (!(strcmp((*templi)->target->NameIP(), serv->target->NameIP()))))
+      break;
+  }
+  if (templi != dst->end()) {
+    if (o.debugging > 8)
+      log_write(LOG_STDOUT, "%s already belongs to %s. Will not push again.\n", 
+          serv->HostInfo(), dstname);
+  } else {
+    dst->push_back(serv);
+    if (o.debugging > 8)
+      log_write(LOG_STDOUT, "%s pushed to list %s\n", serv->HostInfo(), dstname);
+  }
 
   free((char *)dstname);
   return li;
@@ -248,7 +259,7 @@ ServiceGroup::popServiceFromList(Service *serv, list <Service *> *src)
   }
   if (li == src->end())
     fatal("%s: %s service was not found in %s and thus cannot be popped!\n",
-          __func__, serv->HostInfo(), srcname);
+        __func__, serv->HostInfo(), srcname);
 
   /* 
    * If service now doesn't belong to any other list other than

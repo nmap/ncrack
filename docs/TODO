@@ -1,5 +1,10 @@
 TODO:
 
+* We may also need to increase the maximum number of half-open connections in
+  Windows: see http://half-open.com/home_en.htm - We could do this by asking the
+  user during Ncrack setup if he wants to update the system's imposed limit - if
+  he doesn't want to accept the change, then he will possibly suffer a performance degradation.
+
 * Refine core engine.
 
 * Await reply from Microsoft for Windows Firewall RFC deviation:
