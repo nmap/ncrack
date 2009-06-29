@@ -108,7 +108,9 @@ class ServiceGroup {
     void findMinDelay(void);
 
     /* Moves service into one of the ServiceGroup lists */
-    list <Service *>::iterator moveServiceToList(Service *serv, list <Service *> *dst);
+    list <Service *>::iterator pushServiceToList(Service *serv, list <Service *> *dst);
+    list <Service *>::iterator popServiceFromList(Service *serv, list <Service *> *src);
+
     
     /* prints current status */
     void printStatusMessage(void);
@@ -118,20 +120,24 @@ class ServiceGroup {
 
     list<Service *> services_finishing;
 
-    /* Services that temporarily cannot initiate another
+    /* 
+     * Services that temporarily cannot initiate another
      * connection due to timing constraints (connection limit)
      */
 		list<Service *> services_full;
 
-    /* Services that have to wait a time of 'connection_delay'
-     * until initiating another connection */
+    /* 
+     * Services that have to wait a time of 'connection_delay'
+     * until initiating another connection
+     */
     list<Service *> services_wait;
 
-    /* Services that have to wait until our pair pool has at least one element
-     * to grab a login pair from, since the username list has already finished
-     * being iterated through.
+    /* 
+     * Services that have to wait until our pair pool has at least one element
+     * to grab a login pair from, since the main credential list (username or password
+     * depending on the mode of iteration) has already finished  being iterated through.
      */
-    list<Service *> services_stalled;
+    list<Service *> services_pairfini;
 
     /* Services that can initiate more connections */
 		list<Service *> services_active;

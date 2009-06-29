@@ -178,6 +178,7 @@ typedef struct loginpair
 } loginpair;
 
 
+
 class Service
 {
 	public:
@@ -193,12 +194,32 @@ class Service
     bool isMirrorPoolEmpty(void);
     bool isPoolEmpty(void);
 
-    void SetListActive(void);
-    void SetListWait(void);
-    void SetListStalled(void);
-    void SetListFull(void);
-    void SetListFinishing(void);
-    void SetListFinished(void);
+    void setListWait(void) { list_wait = true; };
+    void unsetListWait(void) { list_wait = false; };
+    bool getListWait(void) { return list_wait; };
+
+    void setListPairfini(void) { list_pairfini = true; };
+    void unsetListPairfini(void) { list_pairfini = false; };
+    bool getListPairfini(void) { return list_pairfini; };
+
+    void setListFull(void) { list_full = true; };
+    void unsetListFull(void) { list_full = false; };
+    bool getListFull(void) { return list_full; };
+
+    void setListFinishing(void) { list_finishing = true; };
+    void unsetListFinishing(void) { list_finishing = false; };
+    bool getListFinishing(void) { return list_finishing; };
+
+    void setListFinished(void) { list_finished = true; };
+    bool getListFinished(void) { return list_finished; };
+
+    /* service is now on 'services_active' again! */
+    void activate(void) { list_active = true; };
+    /* marks that Service no longer belongs in 'services_active' list */
+    void deactivate(void) { list_active = false; };
+    /* returns true if Service belongs to 'services_active' list */
+    bool isActive(void);
+
 
 		/* members */
 		char *name;
@@ -207,12 +228,6 @@ class Service
 		u16 portno;
   
 		bool loginlist_fini;/* true if login list has been iterated through */ 
-    bool list_active;   /* service is now on 'services_active' list */
-    bool list_wait;     /* service is now on 'services_wait' list */
-    bool list_stalled;  /* service is now on 'services_stalled' list */ 
-    bool list_full;     /* service is now on 'services_full' list */
-    bool list_finishing;/* service is now on 'services_finishing' list */
-    bool list_finished; /* service is now on 'services_finished' list */
 
     vector <char *> *UserArray;
     vector <char *> *PassArray;
@@ -284,6 +299,14 @@ class Service
 
     vector <char *>::iterator uservi;
     vector <char *>::iterator passvi;
+
+    bool list_active;   /* service is now on 'services_active' list */
+    bool list_wait;     /* service appended to 'services_wait' list */
+    bool list_pairfini; /* service appended to 'services_pairfini' list */ 
+    bool list_full;     /* service appended to 'services_full' list */
+    bool list_finishing;/* service appended to 'services_finishing' list */
+    bool list_finished; /* service is now on 'services_finished' list */
+
 };
 
 

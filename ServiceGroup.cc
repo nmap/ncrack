@@ -136,77 +136,136 @@ ServiceGroup::findMinDelay(void)
 
 
 /* 
- * Moves service into one of the ServiceGroup lists 
+ * Pushes service into one of the ServiceGroup lists. A Service might belong:
+ * a) to 'services_active' OR
+ * b) to 'services_finished' OR
+ * c) to any other combination of the rest of the lists
+ * A service might belong to more than one of the lists in case c) when
+ * for example it needs to wait both for the 'connection_delay' and the 
+ * 'connection_limit'.
  */
 list <Service *>::iterator
-ServiceGroup::moveServiceToList(Service *serv, list <Service *> *dst)
+ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
 {
-  list <Service *>::iterator li;
-  list <Service *> *src = NULL;
-  const char *srcname = NULL;
+  list <Service *>::iterator li = services_active.end();
   const char *dstname = NULL;
 
   assert(dst);
-  if (serv->list_active) {
-    src = &services_active;
-    srcname = Strndup("ACTIVE", sizeof("ACTIVE") - 1);
-  } else if (serv->list_wait) {
-    src = &services_wait;
-    srcname = Strndup("WAIT", sizeof("WAIT") - 1);
-  } else if (serv->list_stalled) {
-    src = &services_stalled;
-    srcname = Strndup("STALLED", sizeof("STALLED") - 1);
-  } else if (serv->list_full) {
-    src = &services_full;
-    srcname = Strndup("FULL", sizeof("FULL") - 1);
-  } else if (serv->list_finishing) {
-    src = &services_finishing;
-    srcname = Strndup("FINISHING", sizeof("FINISHING") - 1);
-  } else if (serv->list_finished) {
-    return services_finished.end();
-    //fatal("%s: service %s tried to move from services_finished! "
-    //   "That cannot happen!\n", __func__, serv->HostInfo());
-  } else 
-    fatal("%s: service %s doesn't belong in any list!\n", __func__, serv->HostInfo()); 
- 
-  for (li = src->begin(); li != src->end(); li++) {
-    if (((*li)->portno == serv->portno) && (!strcmp((*li)->name, serv->name)) 
-      && (!(strcmp((*li)->target->NameIP(), serv->target->NameIP()))))
-      break;
-  }
-  if (li == src->end())
-    fatal("%s: no service %s found in list %s as should happen!\n", __func__, 
-        serv->HostInfo(), srcname);
+  assert(serv);
 
-  if (dst == &services_active) {
-    serv->SetListActive();
-    dstname = Strndup("ACTIVE", sizeof("ACTIVE") - 1);
+  /* 
+   * If service belonged to 'services_active' then we also have to remove it
+   * from there. In any other case, we just copy the service to the list
+   * indicated by 'dst'.
+   */
+  if (serv->isActive()) {
+    for (li = services_active.begin(); li != services_active.end(); li++) {
+      if (((*li)->portno == serv->portno) && (!strcmp((*li)->name, serv->name)) 
+          && (!(strcmp((*li)->target->NameIP(), serv->target->NameIP()))))
+        break;
+    }
+    if (li == services_active.end())
+      fatal("%s: %s service not found in 'services_active' as indicated by "
+          "'isActive()'!\n", __func__, serv->HostInfo());
+
+    serv->deactivate();
+    li = services_active.erase(li);
+  }
+
+  /* 
+   * Append service to destination list. The service can still be in other lists
+   * too. However, if we move it to 'services_finished', then no other action can
+   * happen on it.
+   */
+   if (dst == &services_active) {
+    if (o.debugging > 8)
+      error("%s cannot be pushed into 'services_active'. This is not allowed!\n",
+          serv->HostInfo());
   } else if (dst == &services_wait) {
-    serv->SetListWait();
+    serv->setListWait();
     dstname = Strndup("WAIT", sizeof("WAIT") - 1);
-  } else if (dst == &services_stalled) {
-    serv->SetListStalled();
-    dstname = Strndup("STALLED", sizeof("STALLED") - 1);
+  } else if (dst == &services_pairfini) {
+    serv->setListPairfini();
+    dstname = Strndup("PAIRFINI", sizeof("PAIRFINI") - 1);
   } else if (dst == &services_full) {
-    serv->SetListFull();
+    serv->setListFull();
     dstname = Strndup("FULL", sizeof("FULL") - 1);
   } else if (dst == &services_finishing) {
-    serv->SetListFinishing();
+    serv->setListFinishing();
     dstname = Strndup("FINISHING", sizeof("FINISHING") - 1);
   } else if (dst == &services_finished) {
-    serv->SetListFinished();
+    serv->setListFinished();
     dstname = Strndup("FINISHED", sizeof("FINISHED") - 1);
   } else
     fatal("%s destination list invalid!\n", __func__);
 
-  li = src->erase(li);
   dst->push_back(serv);
 
   if (o.debugging > 8)
-    log_write(LOG_STDOUT, "%s moved from list %s to %s\n", serv->HostInfo(), srcname, dstname);
+    log_write(LOG_STDOUT, "%s pushed to list %s\n", serv->HostInfo(), dstname);
+
+  free((char *)dstname);
+  return li;
+}
+
+
+list <Service *>::iterator
+ServiceGroup::popServiceFromList(Service *serv, list <Service *> *src)
+{
+  list <Service *>::iterator li = services_finished.end();
+  const char *srcname = NULL;
+
+  assert(src);
+  assert(serv);
+
+  if (src == &services_active) {
+    if (o.debugging > 8)
+      error("%s cannot be popped from 'services_active'. This is not allowed!\n",
+          serv->HostInfo());
+  } else if (src == &services_wait) {
+    serv->unsetListWait();
+    srcname = Strndup("WAIT", sizeof("WAIT") - 1);
+  } else if (src == &services_pairfini) {
+    serv->unsetListPairfini();
+    srcname = Strndup("PAIRFINI", sizeof("PAIRFINI") - 1);
+  } else if (src == &services_full) {
+    serv->unsetListFull();
+    srcname = Strndup("FULL", sizeof("FULL") - 1);
+  } else if (src == &services_finishing) {
+    serv->unsetListFinishing();
+    srcname = Strndup("FINISHING", sizeof("FINISHING") - 1);
+  } else if (src == &services_finished) {
+    if (o.debugging > 8)
+      error("%s service cannot be popped from 'services_finished'. This is not "
+          "allowed!\n", serv->HostInfo());
+  } else
+    fatal("%s destination list invalid!\n", __func__);
+
+  for (li = src->begin(); li != src->end(); li++) {
+    if (((*li)->portno == serv->portno) && (!strcmp((*li)->name, serv->name)) 
+        && (!(strcmp((*li)->target->NameIP(), serv->target->NameIP()))))
+      break;
+  }
+  if (li == src->end())
+    fatal("%s: %s service was not found in %s and thus cannot be popped!\n",
+          __func__, serv->HostInfo(), srcname);
+
+  /* 
+   * If service now doesn't belong to any other list other than
+   * 'services_active' then we can move them back there!
+   */
+  if (!serv->getListWait() && !serv->getListPairfini() &&
+      !serv->getListFull() && !serv->getListFinishing() &&
+      !serv->getListFinished()) {
+    serv->activate();
+    services_active.push_back(serv);
+  }
+
+  li = src->erase(li);
+  if (o.debugging > 8)
+    log_write(LOG_STDOUT, "%s popped from list %s\n", serv->HostInfo(), srcname);
 
   free((char *)srcname);
-  free((char *)dstname);
   return li;
 }
 
@@ -217,10 +276,10 @@ ServiceGroup::printStatusMessage(void)
   struct timeval tv;
   gettimeofday(&tv, NULL);
   int time = (int) (o.TimeSinceStartMS(&tv) / 1000.0);
-  
+
   log_write(LOG_STDOUT, 
-	    "Stats: %d:%02d:%02d elapsed; %d services completed (%d total)\n", 
-	    time/60/60, time/60 % 60, time % 60, services_finished.size(), 
+      "Stats: %d:%02d:%02d elapsed; %d services completed (%d total)\n", 
+      time/60/60, time/60 % 60, time % 60, services_finished.size(), 
       total_services);
 }
 

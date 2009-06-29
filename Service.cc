@@ -137,7 +137,7 @@ Service::Service()
   list_active = true;
   list_full = false;
   list_wait = false;
-  list_stalled = false;
+  list_pairfini = false;
   list_finishing = false;
   list_finished = false;
   just_started = true;
@@ -194,7 +194,7 @@ Service::Service(const Service& ref)
   list_active = true;
   list_full = false;
   list_wait = false;
-  list_stalled = false;
+  list_pairfini = false;
   list_finishing = false;
   list_finished = false;
   just_started = true;
@@ -221,78 +221,13 @@ Service::HostInfo(void)
 
 
 
-
-void
-Service::SetListActive(void)
+bool
+Service::isActive(void)
 {
-  list_active = true;
-  list_wait = false;
-  list_stalled = false;
-  list_full = false;
-  list_finishing = false;
-  list_finished = false;
+  if (list_active)
+    return true;  
+  return false;
 }
-
-void
-Service::SetListWait(void)
-{
-  list_active = false;
-  list_wait = true;
-  list_stalled = false;
-  list_full = false;
-  list_finishing = false;
-  list_finished = false;
-}
-
-
-void
-Service::SetListStalled(void)
-{
-  list_active = false;
-  list_wait = false;
-  list_stalled = true;
-  list_full = false;
-  list_finishing = false;
-  list_finished = false;
-}
-
-
-void
-Service::SetListFull(void)
-{
-  list_active = false;
-  list_wait = false;
-  list_stalled = false;
-  list_full = true;
-  list_finishing = false;
-  list_finished = false;
-}
-
-
-
-void
-Service::SetListFinishing(void)
-{
-  list_active = false;
-  list_wait = false;
-  list_stalled = false;
-  list_full = false;
-  list_finishing = true;
-  list_finished = false;
-}
-
-
-void
-Service::SetListFinished(void)
-{
-  list_active = false;
-  list_wait = false;
-  list_stalled = false;
-  list_full = false;
-  list_finishing = false;
-  list_finished = true;
-}
-
 
 /* 
  * returns -1 for end of login list and empty pool

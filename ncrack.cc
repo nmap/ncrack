@@ -324,6 +324,7 @@ call_module(nsock_pool nsp, Connection *con)
   con->auth_complete = false;
   con->peer_alive = false;
   con->finished_normally = false;
+  con->close_reason = -1;
 
   if (!strcmp(name, "ftp"))
     ncrack_ftp(nsp, con);
@@ -782,8 +783,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     con->from_pool = false;
   }
 
-  if (serv->isMirrorPoolEmpty() && serv->list_finishing) {
-    SG->moveServiceToList(serv, &SG->services_finished);
+  if (serv->isMirrorPoolEmpty() && serv->getListFinishing()) {
+    SG->pushServiceToList(serv, &SG->services_finished);
     return ncrack_connection_end(nsp, con);
   }
 
@@ -791,8 +792,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
    * Check if we had previously surpassed imposed connection limit so that
    * we remove service from 'services_full' list to 'services_active' list.
    */
-  if (serv->list_full && serv->active_connections < serv->ideal_parallelism)
-    SG->moveServiceToList(serv, &SG->services_active);
+  if (serv->getListFull() && serv->active_connections < serv->ideal_parallelism)
+    SG->popServiceFromList(serv, &SG->services_full);
 
   ncrack_probes(nsp, SG);
 
@@ -844,8 +845,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   if (con->close_reason == READ_TIMEOUT) {
     serv->appendToPool(con->user, con->pass);
-    if (serv->list_stalled)
-      SG->moveServiceToList(serv, &SG->services_active);
+    if (serv->getListPairfini())
+      SG->popServiceFromList(serv, &SG->services_pairfini);
     if (o.debugging)
       error("%s nsock READ timeout!", hostinfo);
 
@@ -871,8 +872,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
     } else if (!con->auth_complete) {
       serv->appendToPool(con->user, con->pass);
-      if (serv->list_stalled)
-        SG->moveServiceToList(serv, &SG->services_active);
+      if (serv->getListPairfini())
+        SG->popServiceFromList(serv, &SG->services_pairfini);
 
       /* Now this is strange: peer closed on us in the middle of authentication.
        * This shouldn't happen, unless extreme network conditions are happening!
@@ -951,23 +952,23 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   /*
    * Check if we had previously surpassed imposed connection limit so that
-   * we remove service from 'services_full' list to 'services_active' list.
+   * we remove service from 'services_full' list
    */
-  if (serv->list_full && serv->active_connections < serv->ideal_parallelism)
-    SG->moveServiceToList(serv, &SG->services_active);
+  if (serv->getListFull() && serv->active_connections < serv->ideal_parallelism)
+    SG->popServiceFromList(serv, &SG->services_full);
 
 
   /*
    * If service was on 'services_finishing' (username list finished, pool empty
    * but still pending connections) then:
-   * - if new pairs arrived into pool, move to 'services_active' again
+   * - if new pairs arrived into pool, remove from 'services_finishing'
    * - else if no more connections are pending, move to 'services_finished'
    */
-  if (serv->list_finishing) {
+  if (serv->getListFinishing()) {
     if (!serv->isMirrorPoolEmpty())
-      SG->moveServiceToList(serv, &SG->services_active);
+      SG->popServiceFromList(serv, &SG->services_finishing);
     else if (!serv->active_connections)
-      SG->moveServiceToList(serv, &SG->services_finished);
+      SG->pushServiceToList(serv, &SG->services_finished);
   }
 
   if (o.debugging)
@@ -976,8 +977,9 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
         SG->auth_rate_meter.getCurrentRate());
 
   /* Check if service finished for good. */
-  if (serv->loginlist_fini && serv->isMirrorPoolEmpty() && !serv->active_connections && !serv->list_finished)
-    SG->moveServiceToList(serv, &SG->services_finished);
+  if (serv->loginlist_fini && serv->isMirrorPoolEmpty()
+      && !serv->active_connections && !serv->getListFinished())
+    SG->pushServiceToList(serv, &SG->services_finished);
 
   /* see if we can initiate some more connections */
   return ncrack_probes(nsp, SG);
@@ -1013,7 +1015,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     con->buf = (char *) safe_zalloc(nbytes + 1);
     memcpy(con->buf, str, nbytes);
     con->bufsize = nbytes;
-    call_module(nsp, con);
+    return call_module(nsp, con);
 
   } else if (status == NSE_STATUS_TIMEOUT) {
 
@@ -1032,7 +1034,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
           && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
         if (pair_ret == 1)
           con->from_pool = true;
-        call_module(nsp, con);
+        return call_module(nsp, con);
       } else {
         con->close_reason = READ_EOF;
         return ncrack_connection_end(nsp, con);
@@ -1045,7 +1047,6 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   } else if (status == NSE_STATUS_EOF) {
     con->close_reason = READ_EOF;
-    return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_ERROR) {
 
@@ -1053,9 +1054,8 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     if (o.debugging > 2)
       error("%s nsock READ error #%d (%s)", hostinfo, err, strerror(err));
     serv->appendToPool(con->user, con->pass);
-    if (serv->list_stalled)
-      SG->moveServiceToList(serv, &SG->services_active);
-    return ncrack_connection_end(nsp, con);
+    if (serv->getListPairfini())
+      SG->popServiceFromList(serv, &SG->services_pairfini);
 
   } else if (status == NSE_STATUS_KILL) {
     error("%s nsock READ nse_status_kill", hostinfo);
@@ -1063,7 +1063,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   } else
     error("%s WARNING: nsock READ unexpected status %d", hostinfo, (int) status);
 
-  return;
+  return ncrack_connection_end(nsp, con);
 }
 
 
@@ -1139,7 +1139,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     // TODO: handle ossl
 #endif
 
-    call_module(nsp, con);
+    return call_module(nsp, con);
 
   } else if (status == NSE_STATUS_TIMEOUT || status == NSE_STATUS_ERROR) {
 
@@ -1155,26 +1155,24 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     /* Failure of connecting on first attempt means we should probably drop
      * the service for good. */
     if (serv->just_started) {
-      SG->moveServiceToList(serv, &SG->services_finished);
+      SG->pushServiceToList(serv, &SG->services_finished);
     }
-    if (serv->list_stalled)
-      SG->moveServiceToList(serv, &SG->services_active);
-    return ncrack_connection_end(nsp, con);
+    if (serv->getListPairfini())
+      SG->popServiceFromList(serv, &SG->services_pairfini);
 
   } else if (status == NSE_STATUS_KILL) {
 
     if (o.debugging)
       error("%s nsock CONNECT nse_status_kill", hostinfo);
     serv->appendToPool(con->user, con->pass);
-    if (serv->list_stalled)
-      SG->moveServiceToList(serv, &SG->services_active);
-    return ncrack_connection_end(nsp, con);
+    if (serv->getListPairfini())
+      SG->popServiceFromList(serv, &SG->services_pairfini);
 
   } else
     error("%s WARNING: nsock CONNECT unexpected status %d", 
         hostinfo, (int) status);
 
-  return;
+  return ncrack_connection_end(nsp, con);
 }
 
 
@@ -1224,7 +1222,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
   gettimeofday(&now, NULL);
   for (li = SG->services_wait.begin(); li != SG->services_wait.end(); li++) {
     if (TIMEVAL_MSEC_SUBTRACT(now, (*li)->last) >= (*li)->connection_delay) {
-      li = SG->moveServiceToList(*li, &SG->services_active);
+      SG->popServiceFromList(*li, &SG->services_wait);
     }
   }
 
@@ -1253,7 +1251,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
      */
     gettimeofday(&now, NULL);
     if (TIMEVAL_MSEC_SUBTRACT(now, serv->last) < serv->connection_delay) {
-      li = SG->moveServiceToList(serv, &SG->services_wait);
+      li = SG->pushServiceToList(serv, &SG->services_wait);
       goto next;
     }
 
@@ -1262,7 +1260,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
      * the services_full list so that it won't be reaccessed in this loop.
      */
     if (serv->active_connections >= serv->ideal_parallelism) {
-      li = SG->moveServiceToList(serv, &SG->services_full);
+      li = SG->pushServiceToList(serv, &SG->services_full);
       goto next;
     }
 
@@ -1275,12 +1273,13 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
      * c) that no pending connections are left
      * d) that the service hasn't already finished 
      */
-    if (serv->loginlist_fini && serv->isMirrorPoolEmpty() && !serv->list_finished) {
+    if (serv->loginlist_fini && serv->isMirrorPoolEmpty()
+        && !serv->getListFinished()) {
       if (!serv->active_connections) {
-        li = SG->moveServiceToList(serv, &SG->services_finished);
+        li = SG->pushServiceToList(serv, &SG->services_finished);
         goto next;
       } else {
-        li = SG->moveServiceToList(serv, &SG->services_finishing);
+        li = SG->pushServiceToList(serv, &SG->services_finishing);
         goto next;
       }
     }
@@ -1291,7 +1290,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
      * pair from.
      */
     if (serv->loginlist_fini && serv->isPoolEmpty() && !serv->isMirrorPoolEmpty()) {
-      li = SG->moveServiceToList(serv, &SG->services_stalled);
+      li = SG->pushServiceToList(serv, &SG->services_pairfini);
       goto next;
     }
 
