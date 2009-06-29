@@ -1305,12 +1305,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
       goto next;
     }
 
-    printf("Next PAIR!!!!!!");
-    if ((pair_ret = serv->getNextPair(&login, &pass)) == -1) {
-      printf("errr\n");
+    if ((pair_ret = serv->getNextPair(&login, &pass)) == -1)
       goto next;
-    }
-    printf(" %s %s \n", login, pass);
 
     if (o.debugging > 8)
       log_write(LOG_STDOUT, "%s Initiating new Connection\n", hostinfo);
