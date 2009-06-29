@@ -14,7 +14,7 @@ LIBS = @LIBNSOCK_LIBS@ @LIBNBASE_LIBS@ @OPENSSL_LIBS@
 
 TARGET = ncrack
 
-export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc services.cc ftp_module.cc telnet_module.cc timing.cc ncrack_error.c output.cc ncrack_tty.cc
+export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc services.cc ftp_module.cc telnet_module.cc timing.cc ncrack_error.cc output.cc ncrack_tty.cc
 
 OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o ServiceGroup.o services.o ftp_module.o telnet_module.o timing.o ncrack_error.o output.o ncrack_tty.o
 
