@@ -818,15 +818,28 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     } else
       return ncrack_connection_end(nsp, con);
   } else {
-    /* We need to check if host is alive only on first timing
+    /* 
+     * We need to check if host is alive only on first timing
      * probe. Thereafter we can use the 'supported_attempts'.
      */
     if (serv->just_started) {
       con->check_closed = true;
       nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
-    } else if (con->login_attempts <= serv->auth_tries &&
-        con->login_attempts <= serv->supported_attempts)
+    } else if (con->login_attempts < serv->auth_tries &&
+        con->login_attempts < serv->supported_attempts &&
+        (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
+      if (pair_ret == 1)
+        con->from_pool = true;
+
       call_module(nsp, con);
+    } else {
+      /* We end the connection if:
+       * (we are not the first timing probe) AND 
+       * (we are either at the server's imposed authentication limit OR
+       * we are at the user's imposed authentication limit) 
+       */
+      ncrack_connection_end(nsp, con);
+    }
   }
   return;
 }
@@ -1037,12 +1050,10 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
         return call_module(nsp, con);
       } else {
         con->close_reason = READ_EOF;
-        return ncrack_connection_end(nsp, con);
       }
     } else {
       /* This is a normal timeout */
       con->close_reason = READ_TIMEOUT;
-      return ncrack_connection_end(nsp, con);  // should we always close connection or try to wait?
     }
 
   } else if (status == NSE_STATUS_EOF) {
@@ -1294,9 +1305,12 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
       goto next;
     }
 
+    printf("Next PAIR!!!!!!");
     if ((pair_ret = serv->getNextPair(&login, &pass)) == -1) {
+      printf("errr\n");
       goto next;
     }
+    printf(" %s %s \n", login, pass);
 
     if (o.debugging > 8)
       log_write(LOG_STDOUT, "%s Initiating new Connection\n", hostinfo);
