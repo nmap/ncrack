@@ -1,16 +1,19 @@
 TODO:
 
-* Fix Windows socket issues and test more thoroughly the windows version of
-  ncrack.
+* Refine core engine.
+
+* Await reply from Microsoft for Windows Firewall RFC deviation:
+  http://seclists.org/nmap-dev/2009/q2/0774.html
+  http://seclists.org/nmap-dev/2009/q2/0780.html
+  https://connect.microsoft.com/WNDP/feedback/ViewFeedback.aspx?FeedbackID=470990
+  
+* Test more thoroughly the windows version of ncrack.
 
 * Handle the case where ftp tells us that it accepts anonymous login only so
   that we don't waste time cracking it.
 
 * Test buffering cases for all modules, when for example we need to search for certain patterns
   but the pattern is split in 2 separate packets due to a small window.
-
-* Implement queueing mechanism for ServiceGroup lists.
-
 
 * If a connection times out continuously for 1 service and the rest of the services
   need to poll for new events through nsock_loop, the fact that
@@ -62,3 +65,8 @@ TODO:
 * Code output.cc and -oN option.
 
 * Implement interactive Ncrack output.
+
+* Implement queueing mechanism for ServiceGroup lists.
+
+* Studied SSH RFCs.
+
