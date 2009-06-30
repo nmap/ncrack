@@ -159,7 +159,7 @@ ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
    * from there. In any other case, we just copy the service to the list
    * indicated by 'dst'.
    */
-  if (serv->isActive()) {
+  if (serv->getListActive()) {
     for (li = services_active.begin(); li != services_active.end(); li++) {
       if (((*li)->portno == serv->portno) && (!strcmp((*li)->name, serv->name)) 
           && (!(strcmp((*li)->target->NameIP(), serv->target->NameIP()))))
@@ -167,38 +167,29 @@ ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
     }
     if (li == services_active.end())
       fatal("%s: %s service not found in 'services_active' as indicated by "
-          "'isActive()'!\n", __func__, serv->HostInfo());
+          "'getListActive()'!\n", __func__, serv->HostInfo());
 
-    serv->deactivate();
+    serv->unsetListActive();
     li = services_active.erase(li);
   }
 
   /* 
-   * Append service to destination list. The service can still be in other lists
-   * too. However, if we move it to 'services_finished', then no other action can
-   * happen on it.
+   * Now append service to destination list. The service can still be in other
+   * lists too. However, if we move it to 'services_finished', then no other
+   * action can happen on it. We also can never move a service to
+   * 'services_active' by  this way. The service must stop being in any other
+   * list before finally being moved back to 'services_active' and this only
+   * happens through 'popServiceFromList()'.
    */
+
    if (dst == &services_active) {
     if (o.debugging > 8)
       error("%s cannot be pushed into 'services_active'. This is not allowed!\n",
           serv->HostInfo());
-  } else if (dst == &services_wait) {
-    serv->setListWait();
-    dstname = Strndup("WAIT", sizeof("WAIT") - 1);
-  } else if (dst == &services_pairfini) {
-    serv->setListPairfini();
-    dstname = Strndup("PAIRFINI", sizeof("PAIRFINI") - 1);
-  } else if (dst == &services_full) {
-    serv->setListFull();
-    dstname = Strndup("FULL", sizeof("FULL") - 1);
-  } else if (dst == &services_finishing) {
-    serv->setListFinishing();
-    dstname = Strndup("FINISHING", sizeof("FINISHING") - 1);
-  } else if (dst == &services_finished) {
-    serv->setListFinished();
-    dstname = Strndup("FINISHED", sizeof("FINISHED") - 1);
-  } else
-    fatal("%s destination list invalid!\n", __func__);
+   }
+
+   if (!set_servlist(serv, dst) || !(dstname = list2name(dst)))
+     return li;
 
   for (templi = dst->begin(); templi != dst->end(); templi++) {
     if (((*templi)->portno == serv->portno) && (!strcmp((*templi)->name, serv->name)) 
@@ -220,6 +211,12 @@ ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
 }
 
 
+/* 
+ * Pops service from one of the ServiceGroup lists. This is the only way for a
+ * service to return back to 'services_active' and this happens if and only if
+ * it stops belonging to any other list (except 'services_finished' from which
+ * you are not allowed to remove a service once it moves there)
+ */
 list <Service *>::iterator
 ServiceGroup::popServiceFromList(Service *serv, list <Service *> *src)
 {
@@ -233,24 +230,12 @@ ServiceGroup::popServiceFromList(Service *serv, list <Service *> *src)
     if (o.debugging > 8)
       error("%s cannot be popped from 'services_active'. This is not allowed!\n",
           serv->HostInfo());
-  } else if (src == &services_wait) {
-    serv->unsetListWait();
-    srcname = Strndup("WAIT", sizeof("WAIT") - 1);
-  } else if (src == &services_pairfini) {
-    serv->unsetListPairfini();
-    srcname = Strndup("PAIRFINI", sizeof("PAIRFINI") - 1);
-  } else if (src == &services_full) {
-    serv->unsetListFull();
-    srcname = Strndup("FULL", sizeof("FULL") - 1);
-  } else if (src == &services_finishing) {
-    serv->unsetListFinishing();
-    srcname = Strndup("FINISHING", sizeof("FINISHING") - 1);
-  } else if (src == &services_finished) {
-    if (o.debugging > 8)
-      error("%s service cannot be popped from 'services_finished'. This is not "
-          "allowed!\n", serv->HostInfo());
-  } else
-    fatal("%s destination list invalid!\n", __func__);
+  }  
+
+  /* unset corresponding boolean for service's list - If operation is invalid
+   * then return immediately (with null iterator) */
+  if (!unset_servlist(serv, src) || !(srcname = list2name(src)))
+    return li;
 
   for (li = src->begin(); li != src->end(); li++) {
     if (((*li)->portno == serv->portno) && (!strcmp((*li)->name, serv->name)) 
@@ -268,7 +253,7 @@ ServiceGroup::popServiceFromList(Service *serv, list <Service *> *src)
   if (!serv->getListWait() && !serv->getListPairfini() &&
       !serv->getListFull() && !serv->getListFinishing() &&
       !serv->getListFinished()) {
-    serv->activate();
+    serv->setListActive();
     services_active.push_back(serv);
   }
 
@@ -276,8 +261,97 @@ ServiceGroup::popServiceFromList(Service *serv, list <Service *> *src)
   if (o.debugging > 8)
     log_write(LOG_STDOUT, "%s popped from list %s\n", serv->HostInfo(), srcname);
 
+
   free((char *)srcname);
   return li;
+}
+
+
+/*
+ * Returns list's equivalent name. e.g for 'services_finished' it will return
+ * a "FINISHED" string. We prefer capitals for debugging purposes. Caller must
+ * free the string after it finishes using it.
+ */
+const char *
+ServiceGroup::list2name(list <Service *> *list)
+{
+  const char *name = NULL;
+
+  if (list == &services_active)
+    name = Strndup("ACTIVE", sizeof("ACTIVE") - 1);
+  else if (list == &services_wait)
+    name = Strndup("WAIT", sizeof("WAIT") - 1);
+  else if (list == &services_pairfini)
+    name = Strndup("PAIRFINI", sizeof("PAIRFINI") - 1);
+  else if (list == &services_full)
+    name = Strndup("FULL", sizeof("FULL") - 1);
+  else if (list == &services_finishing)
+    name = Strndup("FINISHING", sizeof("FINISHING") - 1);
+  else if (list == &services_finished)
+    name = Strndup("FINISHED", sizeof("FINISHED") - 1);
+  else
+    error("%s Invalid list specified!\n", __func__);
+
+  return name;
+}
+
+
+/* 
+ * Set service's corresponding boolean indicating that it now
+ * belongs to the particular list.
+ * Returns true if operation is valid.
+ */
+bool
+ServiceGroup::set_servlist(Service *serv, list <Service *> *list)
+{
+  if (list == &services_active) 
+    serv->setListActive();
+  else if (list == &services_wait)
+    serv->setListWait();
+  else if (list == &services_pairfini)
+    serv->setListPairfini();
+  else if (list == &services_full)
+    serv->setListFull();
+  else if (list == &services_finishing)
+    serv->setListFinishing();
+  else if (list == &services_finished)
+    serv->setListFinished();
+  else {
+    error("%s Invalid list specified!\n", __func__);
+    return false;
+  }
+  return true;
+}
+
+
+/* 
+ * Unset service's corresponding boolean indicating that it stops
+ * belonging to the particular list.
+ * Returns true if operation is valid.
+ */
+bool
+ServiceGroup::unset_servlist(Service *serv, list <Service *> *list)
+{
+  if (list == &services_active)
+    serv->unsetListActive();
+  else if (list == &services_wait)
+    serv->unsetListWait();
+  else if (list == &services_pairfini)
+    serv->unsetListPairfini();
+  else if (list == &services_full)
+    serv->unsetListFull();
+  else if (list == &services_finishing)
+    serv->unsetListFinishing();
+  else if (list == &services_finished) {
+    if (o.debugging > 8)
+      error("%s cannot remove from 'services_finished'. This is not allowed!\n ",
+        __func__);
+    return false;
+  } else {
+    error("%s destination list invalid!\n", __func__);
+    return false;
+  }
+  return true;
 }
 
 

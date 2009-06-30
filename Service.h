@@ -194,6 +194,10 @@ class Service
     bool isMirrorPoolEmpty(void);
     bool isPoolEmpty(void);
 
+    void setListActive(void) { list_active = true; };
+    void unsetListActive(void) { list_active = false; };
+    bool getListActive(void) { return list_active; };
+
     void setListWait(void) { list_wait = true; };
     void unsetListWait(void) { list_wait = false; };
     bool getListWait(void) { return list_wait; };
@@ -213,15 +217,9 @@ class Service
     void setListFinished(void) { list_finished = true; };
     bool getListFinished(void) { return list_finished; };
 
-    /* service is now on 'services_active' again! */
-    void activate(void) { list_active = true; };
-    /* marks that Service no longer belongs in 'services_active' list */
-    void deactivate(void) { list_active = false; };
-    /* returns true if Service belongs to 'services_active' list */
-    bool isActive(void);
 
 
-		/* members */
+		/* *** Members *** */
 		char *name;
 		Target *target; /* service belongs to this host */
 		u8 proto;

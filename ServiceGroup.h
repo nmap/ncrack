@@ -104,27 +104,49 @@ class ServiceGroup {
 		ServiceGroup();
 		~ServiceGroup();
 
+    /* *** Functions *** */
+
     /* Find and set minimum connection delay from all services */
     void findMinDelay(void);
 
-    /* Moves service into one of the ServiceGroup lists */
+    /* 
+     * Pushes service into one of the ServiceGroup lists. A Service might belong:
+     * a) to 'services_active' OR
+     * b) to 'services_finished' OR
+     * c) to any other combination of the rest of the lists
+     * A service might belong to more than one of the lists in case c) when
+     * for example it needs to wait both for the 'connection_delay' and the 
+     * 'connection_limit'.
+     */
     list <Service *>::iterator pushServiceToList(Service *serv, list <Service *> *dst);
+
+    /* 
+     * Pops service from one of the ServiceGroup lists. This is the only way for a
+     * service to return back to 'services_active' and this happens if and only if
+     * it stops belonging to any other list (except 'services_finished' from which
+     * you are not allowed to remove a service once it moves there)
+     */
     list <Service *>::iterator popServiceFromList(Service *serv, list <Service *> *src);
 
-    
     /* prints current status */
     void printStatusMessage(void);
 
-    /* Services finished (successfully or not) */
-		list<Service *> services_finished; 
+    /* *** Members *** */
 
-    list<Service *> services_finishing;
+    /* Services finished (successfully or not) */
+    list<Service *> services_finished; 
 
     /* 
+     * Service has its credential list finished, the pool is empty
+     * but there are pending connections still active 
+     */
+    list<Service *> services_finishing;
+
+    /*
      * Services that temporarily cannot initiate another
      * connection due to timing constraints (connection limit)
      */
-		list<Service *> services_full;
+    list<Service *> services_full;
 
     /* 
      * Services that have to wait a time of 'connection_delay'
@@ -140,18 +162,42 @@ class ServiceGroup {
     list<Service *> services_pairfini;
 
     /* Services that can initiate more connections */
-		list<Service *> services_active;
+    list<Service *> services_active;
 
-		unsigned long total_services; /* how many services we need to crack in total */
+    unsigned long total_services; /* how many services we need to crack in total */
 
     long min_connection_delay;    /* minimum connection delay from all services */
-		long active_connections;      /* total number of active connections */
+    long active_connections;      /* total number of active connections */
     long connection_limit;        /* maximum total number of active connections */
 
-		int num_hosts_timedout;       /* # of hosts timed out during (or before) scan */
-		list <Service *>::iterator last_accessed; /* last element accessed */
+    int num_hosts_timedout;       /* # of hosts timed out during (or before) scan */
+    list <Service *>::iterator last_accessed; /* last element accessed */
 
     RateMeter auth_rate_meter;
+
+  private:
+
+    /*
+     * Returns list's equivalent name. e.g for services_finished it will return
+     * a "FINISHED" string. We prefer capitals for debugging purposes. Caller must
+     * free the string after it finishes using it.
+     */
+    const char *list2name(list <Service *> *list);
+
+    /* 
+     * Set service's corresponding boolean indicating that it now
+     * belongs to the particular list.
+     * Returns true if operation is valid.
+     */
+    bool set_servlist(Service *serv, list <Service *> *list);
+
+    /* 
+     * Unset service's corresponding boolean indicating that it stops
+     * belonging to the particular list.
+     * Returns true if operation is valid.
+     */
+    bool unset_servlist(Service *serv, list <Service *> *list);
+
 };
 
 #endif

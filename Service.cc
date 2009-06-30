@@ -221,14 +221,6 @@ Service::HostInfo(void)
 
 
 
-bool
-Service::isActive(void)
-{
-  if (list_active)
-    return true;  
-  return false;
-}
-
 /* 
  * returns -1 for end of login list and empty pool
  * 0 for successful retrieval through lists
