@@ -668,11 +668,16 @@ int main(int argc, char **argv)
 
         service->target = currenths;
         /* check for duplicates */
-        for (li = SG->services_active.begin(); li != SG->services_active.end(); li++) {
+        for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
           if (!strcmp((*li)->target->NameIP(), currenths->NameIP()) &&
               (!strcmp((*li)->name, service->name)) && ((*li)->portno == service->portno))
             fatal("Duplicate service %s for target %s !", service->name, currenths->NameIP());
         }
+        /* 
+         * Push service to both 'remaining' (every unfinished service resides
+         * there) and to 'active' list (every service starts with 1 connection)
+         */
+        SG->services_remaining.push_back(service);
         SG->services_active.push_back(service);
         SG->total_services++;
       }
@@ -705,7 +710,7 @@ int main(int argc, char **argv)
       if (Targets[i]->targetname)
         log_write(LOG_PLAIN, " ( %s ) ", Targets[i]->targetname);
       log_write(LOG_PLAIN, "\n");
-      for (li = SG->services_active.begin(); li != SG->services_active.end(); li++) {
+      for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
         if ((*li)->target == Targets[i]) 
           log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
               (*li)->name, (*li)->portno, (*li)->min_connection_limit,
@@ -974,7 +979,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
 
   /*
-   * If service was on 'services_finishing' (username list finished, pool empty
+   * If service was on 'services_finishing' (credential list finished, pool empty
    * but still pending connections) then:
    * - if new pairs arrived into pool, remove from 'services_finishing'
    * - else if no more connections are pending, move to 'services_finished'
@@ -1201,7 +1206,7 @@ status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
 
   if (keyWasPressed())
-    SG->printStatusMessage();
+    printStatusMessage(SG);
 
   if (status != NSE_STATUS_SUCCESS)
     error("Nsock status timer handler error!");
@@ -1250,7 +1255,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
   while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
       && SG->services_active.size() != 0) {
-
 
     serv = *li;
     hostinfo = serv->HostInfo();
@@ -1375,13 +1379,11 @@ ncrack(ServiceGroup *SG)
   gettimeofday(&now, NULL);
   nsp_settrace(nsp, tracelevel, &now);
 
-  /* must always find minimum delay in the beginning that all
-   * services are under the 'services_active' list */
   SG->findMinDelay();
 
   /* initiate all authentication rate meters */
   SG->auth_rate_meter.start();
-  for (li = SG->services_active.begin(); li != SG->services_active.end(); li++)
+  for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++)
     (*li)->auth_rate_meter.start();
 
   /* 

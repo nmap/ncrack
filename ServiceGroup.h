@@ -104,7 +104,7 @@ class ServiceGroup {
 		ServiceGroup();
 		~ServiceGroup();
 
-    /* *** Functions *** */
+    /* ********************* Functions ******************* */
 
     /* Find and set minimum connection delay from all services */
     void findMinDelay(void);
@@ -124,14 +124,22 @@ class ServiceGroup {
      * Pops service from one of the ServiceGroup lists. This is the only way for a
      * service to return back to 'services_active' and this happens if and only if
      * it stops belonging to any other list (except 'services_finished' from which
-     * you are not allowed to remove a service once it moves there)
+     * you are not allowed to remove a service once it moves there).
      */
     list <Service *>::iterator popServiceFromList(Service *serv, list <Service *> *src);
 
-    /* prints current status */
-    void printStatusMessage(void);
+    double calculate_total_rate(void);
 
-    /* *** Members *** */
+
+    /* ********************* Members ********************* */
+
+    /* All Services that are not in 'services_finished' list. This includes
+     * all active and inactive services. This list is useful for iterating
+     * through all services in one global place instead of searching for each
+     * one of them in separate lists. This list is *only* touched when you
+     * move a service to 'services_finished' and thus is removed from here.
+     */
+    list<Service *> services_remaining;
 
     /* Services finished (successfully or not) */
     list<Service *> services_finished; 
@@ -197,6 +205,7 @@ class ServiceGroup {
      * Returns true if operation is valid.
      */
     bool unset_servlist(Service *serv, list <Service *> *list);
+
 
 };
 

@@ -125,7 +125,7 @@ ServiceGroup::findMinDelay(void)
   list<long> delays;
   list<Service *>::iterator li;
 
-  for (li = services_active.begin(); li != services_active.end(); li++) {
+  for (li = services_remaining.begin(); li != services_remaining.end(); li++) {
     delays.push_back((*li)->connection_delay);
   }
 
@@ -204,6 +204,25 @@ ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
     dst->push_back(serv);
     if (o.debugging > 8)
       log_write(LOG_STDOUT, "%s pushed to list %s\n", serv->HostInfo(), dstname);
+
+
+    /* Remember to remove from 'services_remaining' in case service has
+     * finished. 
+     */
+    if (dst == &services_finished) {
+
+     // TODO: probably we should also remove from any other list too, if service
+     // is finished.
+      for (templi = services_remaining.begin(); templi != services_remaining.end(); templi++) {
+        if (((*templi)->portno == serv->portno) && (!strcmp((*templi)->name, serv->name)) 
+            && (!(strcmp((*templi)->target->NameIP(), serv->target->NameIP()))))
+          break;
+      }
+      if (templi == dst->end())
+        fatal("%s cannot be found in 'services_remaining!\n", serv->HostInfo());
+      services_remaining.erase(templi);
+    }
+
   }
 
   free((char *)dstname);
@@ -345,7 +364,7 @@ ServiceGroup::unset_servlist(Service *serv, list <Service *> *list)
   else if (list == &services_finished) {
     if (o.debugging > 8)
       error("%s cannot remove from 'services_finished'. This is not allowed!\n ",
-        __func__);
+          __func__);
     return false;
   } else {
     error("%s destination list invalid!\n", __func__);
@@ -355,16 +374,12 @@ ServiceGroup::unset_servlist(Service *serv, list <Service *> *list)
 }
 
 
-void
-ServiceGroup::printStatusMessage(void)
+double
+ServiceGroup::calculate_total_rate(void)
 {
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  int time = (int) (o.TimeSinceStartMS(&tv) / 1000.0);
 
-  log_write(LOG_STDOUT, 
-      "Stats: %d:%02d:%02d elapsed; %d services completed (%d total)\n", 
-      time/60/60, time/60 % 60, time % 60, services_finished.size(), 
-      total_services);
+
+
+
+
 }
-

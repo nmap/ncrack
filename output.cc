@@ -361,4 +361,20 @@ logfilename(const char *str, struct tm *tm)
 }
 
 
+/* prints current status */
+void
+printStatusMessage(ServiceGroup *SG)
+{
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  int time = (int) (o.TimeSinceStartMS(&tv) / 1000.0);
+
+  log_write(LOG_STDOUT, 
+      "Stats: %d:%02d:%02d elapsed; %d services completed (%d total)\n", 
+      time/60/60, time/60 % 60, time % 60, SG->services_finished.size(), 
+      SG->total_services);
+  log_write(LOG_STDOUT, "Authentication rate: %.2f\n",
+      SG->auth_rate_meter.getCurrentRate());
+}
+
 

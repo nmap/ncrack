@@ -94,6 +94,7 @@
 
 #include <stdarg.h>
 #include <time.h>
+#include "ServiceGroup.h"
 
 #define LOG_NUM_FILES 3 /* # of values that actual files (they must come first */
 #define LOG_FILE_MASK 15 /* The mask for log typs in the file array */
@@ -141,5 +142,7 @@ int log_open(int logt, char *filename);
 
 char *logfilename(const char *str, struct tm *tm);
 
+/* prints current status */
+void printStatusMessage(ServiceGroup *SG);
 
 #endif /* OUTPUT_H */
