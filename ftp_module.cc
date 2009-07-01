@@ -173,11 +173,8 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
 
     case FTP_FINI:
       if (memsearch(con->buf, "230", con->bufsize))
-        log_write(LOG_PLAIN, "%s Success: %s %s\n", hostinfo, con->user, con->pass);   
-      else {
-        if (o.debugging > 6)
-          log_write(LOG_STDOUT, "%s Login failed: %s %s\n", hostinfo, con->user, con->pass);
-      } 
+        con->auth_success = true;
+
       con->state = FTP_BANNER;
 
       return ncrack_module_end(nsp, con);

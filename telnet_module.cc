@@ -147,8 +147,6 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
    * (e.g binary transmission option) */
   size_t lbufsize;  
   nsock_iod nsi = con->niod;
-  Service *serv = con->service;
-  const char *hostinfo = serv->HostInfo();
   telnet_info *info = NULL;
   size_t datasize;
 
@@ -360,8 +358,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
     case TELNET_FINI:
       if (memsearch(con->buf, "incorrect", con->bufsize)
           || memsearch(con->buf, "fail", con->bufsize)) {
-        if (o.debugging > 6)
-          log_write(LOG_STDOUT, "%s Failed %s %s\n", hostinfo, con->user, con->pass);
+        con->auth_success = false;
         con->state = TELNET_AUTH;
         info->userptr = NULL;
         info->passptr = NULL;
@@ -380,7 +377,6 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       } else if (memsearch(con->buf, ">", con->bufsize)
           || memsearch(con->buf, "$", con->bufsize)
           || memsearch(con->buf, "#", con->bufsize)) {
-        log_write(LOG_PLAIN, "%s Success %s %s\n", hostinfo, con->user, con->pass);
         con->auth_success = true;
         return ncrack_module_end(nsp, con);
 

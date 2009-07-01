@@ -320,6 +320,7 @@ call_module(nsock_pool nsp, Connection *con)
   char *name = con->service->name;
 
   /* initialize connection state variables */
+  con->auth_success = false;
   con->check_closed = false;
   con->auth_complete = false;
   con->peer_alive = false;
@@ -752,11 +753,23 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   nsock_iod nsi = con->niod;
   struct timeval now;
   int pair_ret;
+  const char *hostinfo = serv->HostInfo();
 
   con->login_attempts++;
   con->auth_complete = true;
   serv->total_attempts++;
   serv->finished_attempts++;
+
+  if (con->auth_success) {
+    if (o.verbose)
+      log_write(LOG_PLAIN, "Discovered credentials on %s %s %s\n",
+          hostinfo, con->user, con->pass);
+  } else {
+    if (o.debugging > 6)
+      log_write(LOG_STDOUT, "%s Login failed: %s %s\n", hostinfo,
+          con->user, con->pass);
+  }
+
 
   if (serv->just_started)
     serv->supported_attempts++;
