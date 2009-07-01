@@ -184,7 +184,7 @@ print_usage(void)
       "  -P <filename>: password file\n"
       "  --passwords-first: Iterate password list for each username. Default is opposite.\n"
       "OUTPUT:\n"
-      "  -oN/-oX/-oG <file>: Output scan in normal, XML, and Grepable format,\n"
+      "  -oN/-oX/ <file>: Output scan in normal and XML format,\n"
       "  respectively, to the given filename.\n"
       "  -oA <basename>: Output in the three major formats at once\n"
       "  -v: Increase verbosity level (use twice or more for greater effect)\n"
@@ -348,6 +348,7 @@ int main(int argc, char **argv)
   char *normalfilename = NULL;
   char *xmlfilename = NULL;
   unsigned long l;
+  unsigned int i; /* iteration var */
 
   char *host_spec = NULL;
   Target *currenths = NULL;
@@ -398,7 +399,6 @@ int main(int argc, char **argv)
     {"oA", required_argument, 0, 0},  
     {"oN", required_argument, 0, 0},
     {"oM", required_argument, 0, 0},  
-    {"oG", required_argument, 0, 0},  
     {"oX", required_argument, 0, 0},  
     {"host_timeout", required_argument, 0, 0},
     {"host-timeout", required_argument, 0, 0},
@@ -468,17 +468,12 @@ int main(int argc, char **argv)
           o.append_output = true;
         } else if (strcmp(long_options[option_index].name, "oN") == 0) {
           normalfilename = logfilename(optarg, tm);
-        } else if (strcmp(long_options[option_index].name, "oG") == 0 ||
-            strcmp(long_options[option_index].name, "oM") == 0) {
-          machinefilename = logfilename(optarg, tm);
         } else if (strcmp(long_options[option_index].name, "oX") == 0) {
           xmlfilename = logfilename(optarg, tm);
         } else if (strcmp(long_options[option_index].name, "oA") == 0) {
           char buf[MAXPATHLEN];
           Snprintf(buf, sizeof(buf), "%s.ncrack", logfilename(optarg, tm));
           normalfilename = strdup(buf);
-          Snprintf(buf, sizeof(buf), "%s.gncrack", logfilename(optarg, tm));
-          machinefilename = strdup(buf);
           Snprintf(buf, sizeof(buf), "%s.xml", logfilename(optarg, tm));
           xmlfilename = strdup(buf);
         }
@@ -567,10 +562,6 @@ int main(int argc, char **argv)
   if (normalfilename) {
     log_open(LOG_NORMAL, normalfilename);
     free(normalfilename);
-  }
-  if (machinefilename) {
-    log_open(LOG_MACHINE, machinefilename);
-    free(machinefilename);
   }
   if (xmlfilename) {
     log_open(LOG_XML, xmlfilename);
@@ -669,16 +660,16 @@ int main(int argc, char **argv)
 
         service->target = currenths;
         /* check for duplicates */
-        for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
+        for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
           if (!strcmp((*li)->target->NameIP(), currenths->NameIP()) &&
               (!strcmp((*li)->name, service->name)) && ((*li)->portno == service->portno))
             fatal("Duplicate service %s for target %s !", service->name, currenths->NameIP());
         }
         /* 
-         * Push service to both 'remaining' (every unfinished service resides
-         * there) and to 'active' list (every service starts with 1 connection)
+         * Push service to both 'services_all' (every service resides there)
+         * and to 'services_active' list (every service starts with 1 connection)
          */
-        SG->services_remaining.push_back(service);
+        SG->services_all.push_back(service);
         SG->services_active.push_back(service);
         SG->total_services++;
       }
@@ -694,7 +685,7 @@ int main(int argc, char **argv)
           timing.min_connection_limit, timing.max_connection_limit,
           timing.auth_tries, timing.connection_delay, timing.connection_retries);
       log_write(LOG_PLAIN, "\n=== ServicesTable ===\n");
-      for (unsigned int i = 0; i < ServicesTable.size(); i++) {
+      for (i = 0; i < ServicesTable.size(); i++) {
         log_write(LOG_PLAIN, "%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
             ServicesTable[i].lookup.name,
             ServicesTable[i].lookup.portno,
@@ -706,12 +697,12 @@ int main(int argc, char **argv)
       }
     }
     log_write(LOG_PLAIN, "\n=== Targets ===\n");
-    for (unsigned int i = 0; i < Targets.size(); i++) {
+    for (i = 0; i < Targets.size(); i++) {
       log_write(LOG_PLAIN, "Host: %s", Targets[i]->NameIP());
       if (Targets[i]->targetname)
         log_write(LOG_PLAIN, " ( %s ) ", Targets[i]->targetname);
       log_write(LOG_PLAIN, "\n");
-      for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++) {
+      for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
         if ((*li)->target == Targets[i]) 
           log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
               (*li)->name, (*li)->portno, (*li)->min_connection_limit,
@@ -726,6 +717,12 @@ int main(int argc, char **argv)
     SG->last_accessed = SG->services_active.end();
     /* Ncrack 'em all! */
     ncrack(SG);
+  }
+
+  /* Now print the final results */
+  for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
+    print_final_output(*li);
+
   }
 
   /* Free all of the Targets */
@@ -761,6 +758,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   serv->finished_attempts++;
 
   if (con->auth_success) {
+    serv->addCredential(con->user, con->pass);
     if (o.verbose)
       log_write(LOG_PLAIN, "Discovered credentials on %s %s %s\n",
           hostinfo, con->user, con->pass);
@@ -1396,7 +1394,7 @@ ncrack(ServiceGroup *SG)
 
   /* initiate all authentication rate meters */
   SG->auth_rate_meter.start();
-  for (li = SG->services_remaining.begin(); li != SG->services_remaining.end(); li++)
+  for (li = SG->services_all.begin(); li != SG->services_all.end(); li++)
     (*li)->auth_rate_meter.start();
 
   /* 

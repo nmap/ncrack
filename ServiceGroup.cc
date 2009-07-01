@@ -117,7 +117,7 @@ ServiceGroup::~ServiceGroup()
 
 
 /* 
- * Find and set minimum connection delay from all services 
+ * Find and set minimum connection delay from all unfinished services 
  */
 void
 ServiceGroup::findMinDelay(void)
@@ -125,8 +125,10 @@ ServiceGroup::findMinDelay(void)
   list<long> delays;
   list<Service *>::iterator li;
 
-  for (li = services_remaining.begin(); li != services_remaining.end(); li++) {
-    delays.push_back((*li)->connection_delay);
+  for (li = services_all.begin(); li != services_all.end(); li++) {
+    /* Append to temporary list only the unfinished services */
+    if (!(*li)->getListFinished())
+      delays.push_back((*li)->connection_delay);
   }
 
   delays.sort();
@@ -205,24 +207,8 @@ ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
     if (o.debugging > 8)
       log_write(LOG_STDOUT, "%s pushed to list %s\n", serv->HostInfo(), dstname);
 
-
-    /* Remember to remove from 'services_remaining' in case service has
-     * finished. 
-     */
-    if (dst == &services_finished) {
-
      // TODO: probably we should also remove from any other list too, if service
      // is finished.
-      for (templi = services_remaining.begin(); templi != services_remaining.end(); templi++) {
-        if (((*templi)->portno == serv->portno) && (!strcmp((*templi)->name, serv->name)) 
-            && (!(strcmp((*templi)->target->NameIP(), serv->target->NameIP()))))
-          break;
-      }
-      if (templi == dst->end())
-        fatal("%s cannot be found in 'services_remaining!\n", serv->HostInfo());
-      services_remaining.erase(templi);
-    }
-
   }
 
   free((char *)dstname);

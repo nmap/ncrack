@@ -133,13 +133,12 @@ class ServiceGroup {
 
     /* ********************* Members ********************* */
 
-    /* All Services that are not in 'services_finished' list. This includes
-     * all active and inactive services. This list is useful for iterating
-     * through all services in one global place instead of searching for each
-     * one of them in separate lists. This list is *only* touched when you
-     * move a service to 'services_finished' and thus is removed from here.
+    /* All Services. This includes all active and inactive services.
+     * This list is useful for iterating through all services in one
+     * global place instead of searching for each one of them in
+     * separate lists. This list is *never* touched except after creation.
      */
-    list<Service *> services_remaining;
+    list<Service *> services_all;
 
     /* Services finished (successfully or not) */
     list<Service *> services_finished; 

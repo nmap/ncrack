@@ -1,7 +1,7 @@
 
 /***************************************************************************
  * output.cc -- Handles the Ncrack output system.  This currently involves *
- * console-style human readable output, XML output and greppable output.   *
+ * console-style human readable output and XML output                      *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -164,7 +164,6 @@ log_vwrite(int logt, const char *fmt, va_list ap) {
       break;
 
     case LOG_NORMAL:
-    case LOG_MACHINE:
     case LOG_XML:
 #ifdef WIN32
       apcopy = ap;
@@ -370,11 +369,32 @@ printStatusMessage(ServiceGroup *SG)
   int time = (int) (o.TimeSinceStartMS(&tv) / 1000.0);
 
   log_write(LOG_STDOUT, 
-      "Stats: %d:%02d:%02d elapsed; %d services completed (%d total)\n", 
-      time/60/60, time/60 % 60, time % 60, SG->services_finished.size(), 
-      SG->total_services);
-  log_write(LOG_STDOUT, "Authentication rate: %.2f\n",
+      "Stats: %d:%02d:%02d elapsed; %lu services completed (%lu total)\n", 
+      time/60/60, time/60 % 60, time % 60,
+      (long unsigned) SG->services_finished.size(), SG->total_services);
+  log_write(LOG_STDOUT, "Auth rate: %.2f\n",
       SG->auth_rate_meter.getCurrentRate());
 }
 
+
+
+void
+print_final_output(Service *serv)
+{
+  vector <loginpair>::iterator vi;
+  const char *ip = serv->target->NameIP();
+
+  log_write(LOG_PLAIN, "Discovered credentials for %s on %s ",
+      serv->name, ip);
+  if (strncmp(serv->target->HostName(), "", 1))
+    log_write(LOG_PLAIN, "(%s) ", serv->target->HostName());
+  log_write(LOG_PLAIN, "%hu/%s:\n", serv->portno, proto2str(serv->proto));
+  for (vi = serv->credentials_found.begin();
+      vi != serv->credentials_found.end(); vi++) {
+    log_write(LOG_PLAIN, "%s %hu/%s %s: %s %s\n",
+        ip, serv->portno, proto2str(serv->proto), serv->name,
+        vi->user, vi->pass);
+  }
+
+}
 

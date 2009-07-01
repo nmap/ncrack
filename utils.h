@@ -156,6 +156,9 @@ int optcmp(const char *a, const char *b);
 /* convert string to protocol number */
 u8 str2proto(char *str);
 
+/* convert protocol number to string */
+char *proto2str(u8 proto);
+
 /* strtoul with error checking */
 unsigned long int Strtoul(const char *nptr);
 

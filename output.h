@@ -96,18 +96,17 @@
 #include <time.h>
 #include "ServiceGroup.h"
 
-#define LOG_NUM_FILES 3 /* # of values that actual files (they must come first */
-#define LOG_FILE_MASK 15 /* The mask for log typs in the file array */
+#define LOG_NUM_FILES 2 /* # of values that actual files (they must come first) */
+#define LOG_FILE_MASK 3 /* The mask for log typs in the file array */
 #define LOG_NORMAL 1
-#define LOG_MACHINE 2
-#define LOG_XML 4
+#define LOG_XML 2
 #define LOG_STDOUT 1024
 #define LOG_STDERR 2048
 #define LOG_MAX LOG_STDERR /* The maximum log type value */
 
 #define LOG_PLAIN LOG_NORMAL|LOG_STDOUT
 
-#define LOG_NAMES {"normal", "machine", "XML"}
+#define LOG_NAMES {"normal", "XML"}
 
 void memprint(const char *addr, size_t bytes);
 
@@ -144,5 +143,8 @@ char *logfilename(const char *str, struct tm *tm);
 
 /* prints current status */
 void printStatusMessage(ServiceGroup *SG);
+
+void print_final_output(Service *serv);
+
 
 #endif /* OUTPUT_H */

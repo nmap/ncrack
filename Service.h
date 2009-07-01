@@ -185,9 +185,14 @@ class Service
 		Service();
 		~Service();
 
+    /* ********************* Functions ******************* */
+
 		Service(const Service&); /* copy constructor */
     const char *HostInfo(void);
-    
+
+    /* Add discovered credential to 'credentials_found' */
+    void addCredential(char *user, char *pass);
+
     int getNextPair(char **login, char **pass);
     void appendToPool(char *login, char *pass);
     void removeFromPool(char *login, char *pass);
@@ -218,12 +223,15 @@ class Service
     bool getListFinished(void) { return list_finished; };
 
 
+    /* ********************* Members ********************* */
 
-		/* *** Members *** */
 		char *name;
 		Target *target; /* service belongs to this host */
 		u8 proto;
 		u16 portno;
+
+    /* list which holds discovered credentials if any */
+    vector <loginpair> credentials_found;
   
 		bool loginlist_fini;/* true if login list has been iterated through */ 
 
@@ -304,6 +312,7 @@ class Service
     bool list_full;     /* service appended to 'services_full' list */
     bool list_finishing;/* service appended to 'services_finishing' list */
     bool list_finished; /* service is now on 'services_finished' list */
+
 
 };
 

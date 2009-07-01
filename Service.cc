@@ -220,6 +220,17 @@ Service::HostInfo(void)
 }
 
 
+/* Add discovered credential to private list */
+void
+Service::addCredential(char *user, char *pass)
+{
+  loginpair tmp;
+  tmp.user = user;
+  tmp.pass = pass;
+  credentials_found.push_back(tmp);
+}
+
+
 
 /* 
  * returns -1 for end of login list and empty pool

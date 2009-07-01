@@ -188,6 +188,7 @@ str2port(char *exp)
 }
 
 
+
 /* Compare a canonical option name (e.g. "max-scan-delay") with a
    user-generated option such as "max_scan_delay" and returns 0 if the
    two values are considered equivalant (for example, - and _ are
@@ -222,4 +223,15 @@ str2proto(char *str)
 }
 
 
+/* convert protocol number to string */
+char *
+proto2str(u8 proto)
+{
+  if (proto == IPPROTO_TCP)
+    return "tcp";
+  else if (proto == IPPROTO_UDP)
+    return "udp";
+  else
+    return NULL;
+}
 
