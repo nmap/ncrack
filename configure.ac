@@ -269,3 +269,8 @@ AC_SUBST(CPPFLAGS)
 AC_SUBST(LDFLAGS)
 
 AC_OUTPUT(Makefile)
+
+if test -f docs/leet-ncrack-ascii-art.txt; then
+	cat docs/leet-ncrack-ascii-art.txt
+fi
+echo "Configuration complete.  Type make (or gmake on some *BSD machines) to compile."

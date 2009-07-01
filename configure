@@ -638,7 +638,6 @@ ac_includes_default="\
 enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-LIBSSL_LIBS
 LIBPCAP_LIBS
 LIBNSOCK_LIBS
 NSOCK_BUILD
@@ -1813,8 +1812,6 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 CXXFLAGS="-O2"
-
-#LIBSSL_LIBS="-lssl"
 
 
 # Check whether --with-localdirs was given.
@@ -6308,7 +6305,6 @@ subdirs="$subdirs nsock/src"
 
 
 
-
 ac_config_files="$ac_config_files Makefile"
 
 cat >confcache <<\_ACEOF
@@ -7743,3 +7739,8 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
 
+
+if test -f docs/leet-ncrack-ascii-art.txt; then
+	cat docs/leet-ncrack-ascii-art.txt
+fi
+echo "Configuration complete.  Type make (or gmake on some *BSD machines) to compile."
