@@ -156,6 +156,11 @@ ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
   assert(dst);
   assert(serv);
 
+  /* Check that destination list is valid and that service doesn't already
+   * belong to it. */
+  if (!set_servlist(serv, dst) || !(dstname = list2name(dst)))
+    return li;
+
   /* 
    * If service belonged to 'services_active' then we also have to remove it
    * from there. In any other case, we just copy the service to the list
@@ -184,32 +189,18 @@ ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
    * happens through 'popServiceFromList()'.
    */
 
-   if (dst == &services_active) {
+  if (dst == &services_active) {
     if (o.debugging > 8)
       error("%s cannot be pushed into 'services_active'. This is not allowed!\n",
           serv->HostInfo());
-   }
-
-   if (!set_servlist(serv, dst) || !(dstname = list2name(dst)))
-     return li;
-
-  for (templi = dst->begin(); templi != dst->end(); templi++) {
-    if (((*templi)->portno == serv->portno) && (!strcmp((*templi)->name, serv->name)) 
-        && (!(strcmp((*templi)->target->NameIP(), serv->target->NameIP()))))
-      break;
   }
-  if (templi != dst->end()) {
-    if (o.debugging > 8)
-      log_write(LOG_STDOUT, "%s already belongs to %s. Will not push again.\n", 
-          serv->HostInfo(), dstname);
-  } else {
-    dst->push_back(serv);
-    if (o.debugging > 8)
-      log_write(LOG_STDOUT, "%s pushed to list %s\n", serv->HostInfo(), dstname);
 
-     // TODO: probably we should also remove from any other list too, if service
-     // is finished.
-  }
+  dst->push_back(serv);
+  if (o.debugging > 8)
+    log_write(LOG_STDOUT, "%s pushed to list %s\n", serv->HostInfo(), dstname);
+
+  // TODO: probably we should also remove from any other list too, if service
+  // is finished.
 
   free((char *)dstname);
   return li;
@@ -303,28 +294,28 @@ ServiceGroup::list2name(list <Service *> *list)
 
 /* 
  * Set service's corresponding boolean indicating that it now
- * belongs to the particular list.
- * Returns true if operation is valid.
+ * belongs to the particular list. If service is already on the list or an
+ * invalid list is specified, then the operation is invalid. 
+ * Returns true if operation is valid and false for invalid.
  */
 bool
 ServiceGroup::set_servlist(Service *serv, list <Service *> *list)
 {
-  if (list == &services_active) 
+  if (list == &services_active && !serv->getListActive())
     serv->setListActive();
-  else if (list == &services_wait)
+  else if (list == &services_wait && !serv->getListWait())
     serv->setListWait();
-  else if (list == &services_pairfini)
+  else if (list == &services_pairfini && !serv->getListPairfini())
     serv->setListPairfini();
-  else if (list == &services_full)
+  else if (list == &services_full && !serv->getListFull())
     serv->setListFull();
-  else if (list == &services_finishing)
+  else if (list == &services_finishing && !serv->getListFinishing())
     serv->setListFinishing();
-  else if (list == &services_finished)
+  else if (list == &services_finished && !serv->getListFinished())
     serv->setListFinished();
-  else {
-    error("%s Invalid list specified!\n", __func__);
+  else
     return false;
-  }
+
   return true;
 }
 

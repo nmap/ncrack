@@ -344,7 +344,6 @@ int main(int argc, char **argv)
   ts_spec spec;
 
   FILE *inputfd = NULL;
-  char *machinefilename = NULL;
   char *normalfilename = NULL;
   char *xmlfilename = NULL;
   unsigned long l;
@@ -721,8 +720,8 @@ int main(int argc, char **argv)
 
   /* Now print the final results */
   for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
-    print_final_output(*li);
-
+    if ((*li)->credentials_found.size() != 0)
+      print_final_output(*li);
   }
 
   /* Free all of the Targets */
@@ -807,12 +806,14 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
   /*
    * Check if we had previously surpassed imposed connection limit so that
-   * we remove service from 'services_full' list to 'services_active' list.
+   * we remove service from 'services_full' list 
    */
   if (serv->getListFull() && serv->active_connections < serv->ideal_parallelism)
     SG->popServiceFromList(serv, &SG->services_full);
 
-  ncrack_probes(nsp, SG);
+  /* Initiate new connections if service gets active again */
+  if (serv->getListActive())
+    ncrack_probes(nsp, SG);
 
   /* 
    * If we need to check whether peer is alive or not we do the following:
@@ -1013,8 +1014,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     SG->pushServiceToList(serv, &SG->services_finished);
 
   /* see if we can initiate some more connections */
-  return ncrack_probes(nsp, SG);
-
+  if (serv->getListActive())
+    return ncrack_probes(nsp, SG);
 }
 
 
@@ -1253,7 +1254,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
   gettimeofday(&now, NULL);
   for (li = SG->services_wait.begin(); li != SG->services_wait.end(); li++) {
     if (TIMEVAL_MSEC_SUBTRACT(now, (*li)->last) >= (*li)->connection_delay) {
-      SG->popServiceFromList(*li, &SG->services_wait);
+      li = SG->popServiceFromList(*li, &SG->services_wait);
     }
   }
 
@@ -1262,7 +1263,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
   else 
     li = SG->last_accessed++;
 
-
+  
   while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
       && SG->services_active.size() != 0) {
@@ -1381,6 +1382,7 @@ ncrack(ServiceGroup *SG)
   list <Service *>::iterator li;
   nsock_pool nsp;
   int tracelevel = 0;
+  int nsock_timeout = 3000;
   int err;
 
   /* create nsock p00l */
@@ -1391,6 +1393,14 @@ ncrack(ServiceGroup *SG)
   nsp_settrace(nsp, tracelevel, &now);
 
   SG->findMinDelay();
+  /* We have to set the nsock_loop timeout to the minimum of the connection
+   * delay, since we have to check every that time period for potential new
+   * connection initiations. If the minimum connection delay is 0 however, we
+   * don't need to do it, since that would make nsock_loop return immediately
+   * and consume a lot of CPU. 
+   */
+  if (SG->min_connection_delay != 0)
+    nsock_timeout = SG->min_connection_delay;
 
   /* initiate all authentication rate meters */
   SG->auth_rate_meter.start();
@@ -1411,7 +1421,7 @@ ncrack(ServiceGroup *SG)
   /* nsock loop */
   do {
 
-    loopret = nsock_loop(nsp, (int) SG->min_connection_delay);
+    loopret = nsock_loop(nsp, nsock_timeout);
     if (loopret == NSOCK_LOOP_ERROR) {
       err = nsp_geterrorcode(nsp);
       fatal("Unexpected nsock_loop error. Error code %d (%s)", err, strerror(err));

@@ -131,8 +131,8 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
             error("%s Not ftp or service was shutdown\n", hostinfo);
           ncrack_module_end(nsp, con);
         } else {
-          if (o.debugging > 9)
-            log_write(LOG_STDOUT, "%s reply: %s", hostinfo, con->buf);
+          //if (o.debugging > 9)
+           // log_write(LOG_STDOUT, "%s reply: %s", hostinfo, con->buf);
         }
       }
       /* Workaround for Filezilla which sends 3 banners in 3 tcp segments */
