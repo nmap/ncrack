@@ -1,7 +1,7 @@
 
 /***************************************************************************
- * utils.h -- Various miscellaneous utility functions which defy           *
- * categorization :)                                                       *
+ * Buffer.cc -- The Buffer class is reponsible for I/O buffer manipulation *
+ * and is based on the buffer code used in OpenSSH.                        *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -88,90 +88,228 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "Buffer.h"
 
-#ifndef UTILS_H
-#define UTILS_H 1
+Buffer::Buffer()
+{
+	const u_int len = 4096;
+
+	alloc = 0;
+	buf = (u_char *)safe_malloc(len);
+	alloc = len;
+	offset = 0;
+	end = 0;
+}
 
 
-#include <stdlib.h>
+/* Frees any memory used for the buffer. */
+Buffer::~Buffer()
+{
+	if (alloc > 0) {
+		memset(buf, 0, alloc);
+		alloc = 0;
+    if (buf) {
+  		free(buf);
+      buf = NULL;
+    }
+	}
+}
 
-#include <stdarg.h>
-#include <stdio.h>
 
-#if HAVE_UNISTD_H
-#include <unistd.h>
-#endif
+/*
+ * Clears any data from the buffer, making it empty.  This does not actually
+ * zero the memory.
+ */
+void
+Buffer::clear(void)
+{
+	offset = 0;
+	end = 0;
+}
 
-#include "nbase.h"
-#include "ncrack_error.h"
 
-/* Timeval subtraction in microseconds */
-#define TIMEVAL_SUBTRACT(a,b) (((a).tv_sec - (b).tv_sec) * 1000000 + (a).tv_usec - (b).tv_usec)
-/* Timeval subtract in milliseconds */
-#define TIMEVAL_MSEC_SUBTRACT(a,b) ((((a).tv_sec - (b).tv_sec) * 1000) + ((a).tv_usec - (b).tv_usec) / 1000)
-/* Timeval subtract in seconds; truncate towards zero */
-#define TIMEVAL_SEC_SUBTRACT(a,b) ((a).tv_sec - (b).tv_sec + (((a).tv_usec < (b).tv_usec) ? - 1 : 0))
+/* Appends data to the buffer, expanding it if necessary. */
+void
+Buffer::append(const void *data, u_int len)
+{
+	void *p;
+	p = append_space(len);
+	memcpy(p, data, len);
+}
 
-/* assign one timeval to another timeval plus some msecs: a = b + msecs */
-#define TIMEVAL_MSEC_ADD(a, b, msecs) { (a).tv_sec = (b).tv_sec + ((msecs) / 1000); (a).tv_usec = (b).tv_usec + ((msecs) % 1000) * 1000; (a).tv_sec += (a).tv_usec / 1000000; (a).tv_usec %= 1000000; }
-#define TIMEVAL_ADD(a, b, usecs) { (a).tv_sec = (b).tv_sec + ((usecs) / 1000000); (a).tv_usec = (b).tv_usec + ((usecs) % 1000000); (a).tv_sec += (a).tv_usec / 1000000; (a).tv_usec %= 1000000; }
 
-/* Find our if one timeval is before or after another, avoiding the integer
-   overflow that can result when doing a TIMEVAL_SUBTRACT on two widely spaced
-   timevals. */
-#define TIMEVAL_BEFORE(a, b) (((a).tv_sec < (b).tv_sec) || ((a).tv_sec == (b).tv_sec && (a).tv_usec < (b).tv_usec))
-#define TIMEVAL_AFTER(a, b) (((a).tv_sec > (b).tv_sec) || ((a).tv_sec == (b).tv_sec && (a).tv_usec > (b).tv_usec))
-
-#ifndef roundup
-  #define roundup(x, y)   ((((x)+((y)-1))/(y))*(y))
-#endif
-
-/* Return num if it is between min and max.  Otherwise return min or
-   max (whichever is closest to num), */
-template<class T> T box(T bmin, T bmax, T bnum) {
-  if (bmin > bmax)
-    fatal("box(%d, %d, %d) called (min,max,num)", (int) bmin, (int) bmax, (int) bnum);
-  //  assert(bmin <= bmax);
-  if (bnum >= bmax)
-    return bmax;
-  if (bnum <= bmin)
-    return bmin;
-  return bnum;
+int
+Buffer::compact(void)
+{
+	/*
+	 * If the buffer is quite empty, but all data is at the end, move the
+	 * data to the beginning.
+	 */
+	if (offset > MIN(alloc, BUFFER_MAX_CHUNK)) {
+		memmove(buf, buf + offset, end - offset);
+		end -= offset;
+		offset = 0;
+		return (1);
+	}
+	return (0);
 }
 
 
 
-/* 
- * Case insensitive memory search - a combination of memmem and strcasestr
- * Will search for a particular string 'pneedle' in the first 'bytes' of
- * memory starting at 'haystack'
+/*
+ * Appends space to the buffer, expanding the buffer if necessary. This does
+ * not actually copy the data into the buffer, but instead returns a pointer
+ * to the allocated region.
  */
-char *memsearch(const char *haystack, const char *pneedle, size_t bytes);
+void *
+Buffer::append_space(u_int len)
+{
+	u_int newlen;
+	void *p;
+
+	if (len > BUFFER_MAX_CHUNK)
+		fatal("buffer_append_space: len %u not supported", len);
+
+	/* If the buffer is empty, start using it from the beginning. */
+	if (offset == end) {
+		offset = 0;
+		end = 0;
+	}
+restart:
+	/* If there is enough space to store all data, store it now. */
+	if (end + len < alloc) {
+		p = buf + end;
+		end += len;
+		return p;
+	}
+
+	/* Compact data back to the start of the buffer if necessary */
+	if (compact())
+		goto restart;
+
+	/* Increase the size of the buffer and retry. */
+	newlen = roundup(alloc + len, BUFFER_ALLOCSZ);
+	if (newlen > BUFFER_MAX_LEN)
+		fatal("buffer_append_space: alloc %u not supported",
+		    newlen);
+	buf = (u_char *)safe_realloc(buf, newlen);
+	alloc = newlen;
+	goto restart;
+	/* NOTREACHED */
+}
 
 
-/* Compare a canonical option name (e.g. "max-scan-delay") with a
-   user-generated option such as "max_scan_delay" and returns 0 if the
-   two values are considered equivalant (for example, - and _ are
-   considered to be the same), nonzero otherwise. */
-int optcmp(const char *a, const char *b);
-
-/* convert string to protocol number */
-u8 str2proto(char *str);
-
-/* convert protocol number to string */
-char *proto2str(u8 proto);
-
-/* strtoul with error checking */
-unsigned long int Strtoul(const char *nptr);
-
-/* 
- * Return a copy of 'size' characters from 'src' string.
- * Will always null terminate by allocating 1 additional char.
+/*
+ * Check whether an allocation of 'len' will fit in the buffer
+ * This must follow the same math as buffer_append_space
  */
-char *Strndup(const char *src, size_t size);
+int
+Buffer::check_alloc(u_int len)
+{
+	if (offset == end) {
+		offset = 0;
+		end = 0;
+	}
+ restart:
+	if (end + len < alloc)
+		return (1);
+	if (compact())
+		goto restart;
+	if (roundup(alloc + len, BUFFER_ALLOCSZ) <= BUFFER_MAX_LEN)
+		return (1);
+	return (0);
+}
 
-/* Convert string to port (in host-byte order) */
-u16 str2port(char *exp);
+
+/* Returns the number of bytes of data in the buffer. */
+u_int
+Buffer::get_len(void)
+{
+	return end - offset;
+}
 
 
-#endif /* UTILS_H */
+/* Gets data from the beginning of the buffer. */
+int
+Buffer::buffer_get(void *bufdst, u_int len)
+{
+	if (len > end - offset) {
+		error("buffer_get_ret: trying to get more bytes %d than in buffer %d",
+		    len, end - offset);
+		return (-1);
+	}
+	memcpy(bufdst, buf + offset, len);
+	offset += len;
+	return (0);
+}
+
+
+/* Consumes the given number of bytes from the beginning of the buffer. */
+
+#if 0
+int
+buffer_consume_ret(Buffer *buffer, u_int bytes)
+{
+	if (bytes > buffer->end - buffer->offset) {
+		error("buffer_consume_ret: trying to get more bytes than in buffer");
+		return (-1);
+	}
+	buffer->offset += bytes;
+	return (0);
+}
+
+void
+buffer_consume(Buffer *buffer, u_int bytes)
+{
+	if (buffer_consume_ret(buffer, bytes) == -1)
+		fatal("buffer_consume: buffer error");
+}
+
+/* Consumes the given number of bytes from the end of the buffer. */
+
+int
+buffer_consume_end_ret(Buffer *buffer, u_int bytes)
+{
+	if (bytes > buffer->end - buffer->offset)
+		return (-1);
+	buffer->end -= bytes;
+	return (0);
+}
+
+void
+buffer_consume_end(Buffer *buffer, u_int bytes)
+{
+	if (buffer_consume_end_ret(buffer, bytes) == -1)
+		fatal("buffer_consume_end: trying to get more bytes than in buffer");
+}
+
+/* Returns a pointer to the first used byte in the buffer. */
+
+void *
+buffer_ptr(Buffer *buffer)
+{
+	return buffer->buf + buffer->offset;
+}
+
+/* Dumps the contents of the buffer to stderr. */
+
+void
+buffer_dump(Buffer *buffer)
+{
+	FILE *fp = fopen("/home/sin/output", "a");
+	if (!fp)
+		return;
+	u_int i;
+	u_char *ucp = buffer->buf;
+
+	for (i = buffer->offset; i < buffer->end; i++) {
+		fprintf(fp, "%02x", ucp[i]);
+		if ((i-buffer->offset)%16==15)
+			fprintf(fp, "\r\n");
+		else if ((i-buffer->offset)%2==1)
+			fprintf(fp, " ");
+	}
+	fprintf(fp, "\r\n");
+	fclose(fp);
+}
+#endif

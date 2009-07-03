@@ -1,7 +1,7 @@
 
 /***************************************************************************
- * utils.h -- Various miscellaneous utility functions which defy           *
- * categorization :)                                                       *
+ * Buffer.h -- The Buffer class is reponsible for I/O buffer manipulation  *
+ * and is based on the buffer code used in OpenSSH.                        *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -89,89 +89,60 @@
  ***************************************************************************/
 
 
-#ifndef UTILS_H
-#define UTILS_H 1
+#ifndef BUFFER_H
+#define BUFFER_H
+
+#include "utils.h"
+
+#define	BUFFER_MAX_CHUNK	0x100000
+#define	BUFFER_MAX_LEN		0xa00000
+#define	BUFFER_ALLOCSZ		0x008000
 
 
-#include <stdlib.h>
+class Buffer {
 
-#include <stdarg.h>
-#include <stdio.h>
+  public:
 
-#if HAVE_UNISTD_H
-#include <unistd.h>
+    Buffer();
+    ~Buffer();
+
+    /* Appends data to the buffer, expanding it if necessary. */
+    void append(const void *, u_int);
+
+    /*
+     * Appends space to the buffer, expanding the buffer if necessary. This does
+     * not actually copy the data into the buffer, but instead returns a pointer
+     * to the allocated region.
+     */
+    void *append_space(u_int);
+
+    /*
+     * Check whether an allocation of 'len' will fit in the buffer
+     * This must follow the same math as buffer_append_space
+     */
+    int	check_alloc(u_int);
+
+    /* Returns the number of bytes of data in the buffer. */
+    u_int get_len(void);
+
+    /* Gets data from the beginning of the buffer. */
+    int buffer_get(void *, u_int);
+
+    /*
+     * Clears any data from the buffer, making it empty.  This does not actually
+     * zero the memory.
+     */
+    void clear(void);
+
+  private:
+
+    int compact();
+
+    u_char *buf;    /* Buffer for data */
+    u_int	 alloc;		/* Number of bytes allocated for data. */
+    u_int	 offset;	/* Offset of first byte containing data. */
+    u_int	 end; 		/* Offset of last byte containing data. */
+};
+
+
 #endif
-
-#include "nbase.h"
-#include "ncrack_error.h"
-
-/* Timeval subtraction in microseconds */
-#define TIMEVAL_SUBTRACT(a,b) (((a).tv_sec - (b).tv_sec) * 1000000 + (a).tv_usec - (b).tv_usec)
-/* Timeval subtract in milliseconds */
-#define TIMEVAL_MSEC_SUBTRACT(a,b) ((((a).tv_sec - (b).tv_sec) * 1000) + ((a).tv_usec - (b).tv_usec) / 1000)
-/* Timeval subtract in seconds; truncate towards zero */
-#define TIMEVAL_SEC_SUBTRACT(a,b) ((a).tv_sec - (b).tv_sec + (((a).tv_usec < (b).tv_usec) ? - 1 : 0))
-
-/* assign one timeval to another timeval plus some msecs: a = b + msecs */
-#define TIMEVAL_MSEC_ADD(a, b, msecs) { (a).tv_sec = (b).tv_sec + ((msecs) / 1000); (a).tv_usec = (b).tv_usec + ((msecs) % 1000) * 1000; (a).tv_sec += (a).tv_usec / 1000000; (a).tv_usec %= 1000000; }
-#define TIMEVAL_ADD(a, b, usecs) { (a).tv_sec = (b).tv_sec + ((usecs) / 1000000); (a).tv_usec = (b).tv_usec + ((usecs) % 1000000); (a).tv_sec += (a).tv_usec / 1000000; (a).tv_usec %= 1000000; }
-
-/* Find our if one timeval is before or after another, avoiding the integer
-   overflow that can result when doing a TIMEVAL_SUBTRACT on two widely spaced
-   timevals. */
-#define TIMEVAL_BEFORE(a, b) (((a).tv_sec < (b).tv_sec) || ((a).tv_sec == (b).tv_sec && (a).tv_usec < (b).tv_usec))
-#define TIMEVAL_AFTER(a, b) (((a).tv_sec > (b).tv_sec) || ((a).tv_sec == (b).tv_sec && (a).tv_usec > (b).tv_usec))
-
-#ifndef roundup
-  #define roundup(x, y)   ((((x)+((y)-1))/(y))*(y))
-#endif
-
-/* Return num if it is between min and max.  Otherwise return min or
-   max (whichever is closest to num), */
-template<class T> T box(T bmin, T bmax, T bnum) {
-  if (bmin > bmax)
-    fatal("box(%d, %d, %d) called (min,max,num)", (int) bmin, (int) bmax, (int) bnum);
-  //  assert(bmin <= bmax);
-  if (bnum >= bmax)
-    return bmax;
-  if (bnum <= bmin)
-    return bmin;
-  return bnum;
-}
-
-
-
-/* 
- * Case insensitive memory search - a combination of memmem and strcasestr
- * Will search for a particular string 'pneedle' in the first 'bytes' of
- * memory starting at 'haystack'
- */
-char *memsearch(const char *haystack, const char *pneedle, size_t bytes);
-
-
-/* Compare a canonical option name (e.g. "max-scan-delay") with a
-   user-generated option such as "max_scan_delay" and returns 0 if the
-   two values are considered equivalant (for example, - and _ are
-   considered to be the same), nonzero otherwise. */
-int optcmp(const char *a, const char *b);
-
-/* convert string to protocol number */
-u8 str2proto(char *str);
-
-/* convert protocol number to string */
-char *proto2str(u8 proto);
-
-/* strtoul with error checking */
-unsigned long int Strtoul(const char *nptr);
-
-/* 
- * Return a copy of 'size' characters from 'src' string.
- * Will always null terminate by allocating 1 additional char.
- */
-char *Strndup(const char *src, size_t size);
-
-/* Convert string to port (in host-byte order) */
-u16 str2port(char *exp);
-
-
-#endif /* UTILS_H */

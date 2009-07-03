@@ -305,7 +305,10 @@ load_login_file(const char *filename, int mode)
     fatal("%s invalid mode specified!", __func__);
 
   while (fgets(line, sizeof(line), fd)) {
-    if (*line == '\n')
+    /* Note that supporting comment lines starting with '#' automatically
+     * entails not being able to get passwords that start with '#'.
+     */
+    if (*line == '\n' || *line == '#')
       continue;
     tmp = Strndup(line, strlen(line) - 1);
     p->push_back(tmp);
@@ -332,7 +335,7 @@ call_module(nsock_pool nsp, Connection *con)
   else if (!strcmp(name, "telnet"))
     ncrack_telnet(nsp, con);
   else if (!strcmp(name, "ssh"))
-    ;//ncrack_ssh(nsp, nsi, con);
+    ncrack_ssh(nsp, con);
   else
     fatal("Invalid service module: %s", name);
 }
