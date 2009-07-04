@@ -1036,12 +1036,18 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   char *str;
   const char *hostinfo = serv->HostInfo();
 
-
   assert(type == NSE_TYPE_READ);
 
   if (status == NSE_STATUS_SUCCESS) {
 
     str = nse_readbuf(nse, &nbytes);
+
+    if (!con->iobuf)
+      con->iobuf = new Buffer();
+    con->iobuf->append(str, nbytes);
+
+
+
     /* don't forget to free possibly previous allocated memory */
     if (con->buf) {
       free(con->buf);

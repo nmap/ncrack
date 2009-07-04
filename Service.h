@@ -97,6 +97,7 @@
 #include "ncrack.h"
 #include "utils.h"
 #include "Target.h"
+#include "Buffer.h"
 #include "timing.h"
 #include <list>
 
@@ -160,6 +161,9 @@ class Connection
     int close_reason;
 
 		int state;          /* module state-machine's current state */
+
+    Buffer *iobuf;
+
 		char *buf;          /* auxiliary buffer */
 		int bufsize;        /* total buffer size in bytes */
 		long login_attempts;/* login attempts up until now */

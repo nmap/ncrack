@@ -111,6 +111,7 @@ Connection::Connection(Service *serv)
   login_attempts = 0;
   buf = NULL;
   misc_info = NULL;
+  iobuf = NULL;
 }
 
 Connection::~Connection()
@@ -123,6 +124,7 @@ Connection::~Connection()
     free(misc_info);
     misc_info = NULL;
   }
+  delete iobuf;
 }
 
 

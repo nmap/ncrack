@@ -638,7 +638,7 @@ ac_includes_default="\
 enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-LIBPCAP_LIBS
+MODULES_BUILD
 LIBNSOCK_LIBS
 NSOCK_BUILD
 NSOCKDIR
@@ -6296,9 +6296,13 @@ LIBNSOCK_LIBS="-lnsock"
 
 
 
+
 subdirs="$subdirs nsock/src"
 
 
+
+# Modules
+MODULES_BUILD="modules_build"
 
 
 

@@ -1,7 +1,6 @@
 
 /***************************************************************************
- * Buffer.cc -- The Buffer class is reponsible for I/O buffer manipulation *
- * and is based on the buffer code used in OpenSSH.                        *
+ * ncrack_ssh.cc -- ncrack module for the SSH protocol                     *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -88,225 +87,73 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "Buffer.h"
 
-Buffer::Buffer()
-{
-	const u_int len = 4096;
+#include "ncrack.h"
+#include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
+#include <list>
 
-	alloc = 0;
-	buf = (u_char *)safe_malloc(len);
-	alloc = len;
-	offset = 0;
-	end = 0;
-}
+#define SSH_TIMEOUT 20000
 
 
-/* Frees any memory used for the buffer. */
-Buffer::~Buffer()
-{
-	if (alloc > 0) {
-    free(buf);
-    buf = NULL;
-	}
-}
+extern NcrackOps o;
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 
-/*
- * Clears any data from the buffer, making it empty.  This does not actually
- * zero the memory.
- */
-void
-Buffer::clear(void)
-{
-	offset = 0;
-	end = 0;
-}
-
-
-/* Appends data to the buffer, expanding it if necessary. */
-void
-Buffer::append(const void *data, u_int len)
-{
-	void *p;
-	p = append_space(len);
-	memcpy(p, data, len);
-}
-
-
-
-/*
- * Appends space to the buffer, expanding the buffer if necessary. This does
- * not actually copy the data into the buffer, but instead returns a pointer
- * to the allocated region.
- */
-void *
-Buffer::append_space(u_int len)
-{
-	u_int newlen;
-	void *p;
-
-	if (len > BUFFER_MAX_CHUNK)
-		fatal("%s: len %u not supported", __func__, len);
-
-	/* If the buffer is empty, start using it from the beginning. */
-	if (offset == end) {
-		offset = 0;
-		end = 0;
-	}
-restart:
-	/* If there is enough space to store all data, store it now. */
-	if (end + len < alloc) {
-		p = buf + end;
-		end += len;
-		return p;
-	}
-
-	/* Compact data back to the start of the buffer if necessary */
-	if (compact())
-		goto restart;
-
-	/* Increase the size of the buffer and retry. */
-	newlen = roundup(alloc + len, BUFFER_ALLOCSZ);
-	if (newlen > BUFFER_MAX_LEN)
-		fatal("%s: alloc %u not supported", __func__, newlen);
-	buf = (u_char *)safe_realloc(buf, newlen);
-	alloc = newlen;
-	goto restart;
-	/* NOTREACHED */
-}
-
-
-/*
- * Check whether an allocation of 'len' will fit in the buffer
- * This must follow the same math as buffer_append_space
- */
-int
-Buffer::check_alloc(u_int len)
-{
-	if (offset == end) {
-		offset = 0;
-		end = 0;
-	}
- restart:
-	if (end + len < alloc)
-		return (1);
-	if (compact())
-		goto restart;
-	if (roundup(alloc + len, BUFFER_ALLOCSZ) <= BUFFER_MAX_LEN)
-		return (1);
-	return (0);
-}
-
-
-/* Returns the number of bytes of data in the buffer. */
-u_int
-Buffer::get_len(void)
-{
-	return end - offset;
-}
-
-
-/* Gets data from the beginning of the buffer. */
-int
-Buffer::get_data(void *dst, u_int len)
-{
-	if (len > end - offset) {
-		error("%s: trying to get more bytes %d than in buffer %d",
-		    __func__, len, end - offset);
-		return (-1);
-	}
-	memcpy(dst, buf + offset, len);
-	offset += len;
-	return (0);
-}
-
-
-int
-Buffer::compact(void)
-{
-	/*
-	 * If the buffer is quite empty, but all data is at the end, move the
-	 * data to the beginning.
-	 */
-	if (offset > MIN(alloc, BUFFER_MAX_CHUNK)) {
-		memmove(buf, buf + offset, end - offset);
-		end -= offset;
-		offset = 0;
-		return (1);
-	}
-	return (0);
-}
-
-
-/* Returns a pointer to the first used byte in the buffer. */
-void *
-Buffer::get_dataptr(void)
-{
-	return buf + offset;
-}
-
-
-
-/* Consumes the given number of bytes from the beginning of the buffer. */
-
-#if 0
-int
-buffer_consume_ret(Buffer *buffer, u_int bytes)
-{
-	if (bytes > buffer->end - buffer->offset) {
-		error("buffer_consume_ret: trying to get more bytes than in buffer");
-		return (-1);
-	}
-	buffer->offset += bytes;
-	return (0);
-}
+enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_FINI };
 
 void
-buffer_consume(Buffer *buffer, u_int bytes)
+ncrack_ssh(nsock_pool nsp, Connection *con)
 {
-	if (buffer_consume_ret(buffer, bytes) == -1)
-		fatal("buffer_consume: buffer error");
+  char lbuf[BUFSIZE]; /* local buffer */
+  nsock_iod nsi = con->niod;
+  Service *serv = con->service;
+  const char *hostinfo = serv->HostInfo();
+  void *ioptr;
+  u_int buflen;
+
+  switch (con->state)
+  {
+    case SSH_INIT:
+      con->state = SSH_ID_EX;
+      nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
+      break;
+
+    case SSH_ID_EX:
+
+      buflen = con->iobuf->get_len();
+      ioptr = con->iobuf->get_dataptr();
+      if (!memsearch((const char *)ioptr, "\n", buflen)) {
+        con->state = SSH_ID_EX;
+        nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
+        break;
+      }
+      if (strncmp((const char *)ioptr, "SSH-", 4)) {
+        con->iobuf->clear();
+        con->state = SSH_ID_EX;
+        nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
+        break;
+      }
+      printf("%s ssh id: %s\n", hostinfo, (char *)ioptr);
+      con->state = SSH_KEY;
+      strncpy(lbuf, "SSH-2.0-OpenSSH 5.1.1p2\n", sizeof(lbuf) - 1); 
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, lbuf, -1);
+      break;
+
+    case SSH_KEY:
+
+      printf("ok\n");
+      break;
+
+
+    case SSH_FINI:
+
+      return ncrack_module_end(nsp, con);
+  }
 }
-
-/* Consumes the given number of bytes from the end of the buffer. */
-
-int
-buffer_consume_end_ret(Buffer *buffer, u_int bytes)
-{
-	if (bytes > buffer->end - buffer->offset)
-		return (-1);
-	buffer->end -= bytes;
-	return (0);
-}
-
-void
-buffer_consume_end(Buffer *buffer, u_int bytes)
-{
-	if (buffer_consume_end_ret(buffer, bytes) == -1)
-		fatal("buffer_consume_end: trying to get more bytes than in buffer");
-}
-
-
-/* Dumps the contents of the buffer to stderr. */
-
-void
-buffer_dump(Buffer *buffer)
-{
-	FILE *fp = fopen("/home/sin/output", "a");
-	if (!fp)
-		return;
-	u_int i;
-	u_char *ucp = buffer->buf;
-
-	for (i = buffer->offset; i < buffer->end; i++) {
-		fprintf(fp, "%02x", ucp[i]);
-		if ((i-buffer->offset)%16==15)
-			fprintf(fp, "\r\n");
-		else if ((i-buffer->offset)%2==1)
-			fprintf(fp, " ");
-	}
-	fprintf(fp, "\r\n");
-	fclose(fp);
-}
-#endif

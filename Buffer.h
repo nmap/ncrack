@@ -107,26 +107,29 @@ class Buffer {
     ~Buffer();
 
     /* Appends data to the buffer, expanding it if necessary. */
-    void append(const void *, u_int);
+    void append(const void *data, u_int len);
 
     /*
      * Appends space to the buffer, expanding the buffer if necessary. This does
      * not actually copy the data into the buffer, but instead returns a pointer
      * to the allocated region.
      */
-    void *append_space(u_int);
+    void *append_space(u_int len);
 
     /*
      * Check whether an allocation of 'len' will fit in the buffer
      * This must follow the same math as buffer_append_space
      */
-    int	check_alloc(u_int);
+    int	check_alloc(u_int len);
 
     /* Returns the number of bytes of data in the buffer. */
     u_int get_len(void);
 
     /* Gets data from the beginning of the buffer. */
-    int buffer_get(void *, u_int);
+    int get_data(void *dst, u_int len);
+
+    /* Returns a pointer to the first used byte in the buffer. */
+    void *get_dataptr(void);
 
     /*
      * Clears any data from the buffer, making it empty.  This does not actually
@@ -136,7 +139,7 @@ class Buffer {
 
   private:
 
-    int compact();
+    int compact(void);
 
     u_char *buf;    /* Buffer for data */
     u_int	 alloc;		/* Number of bytes allocated for data. */
