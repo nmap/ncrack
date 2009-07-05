@@ -1,5 +1,6 @@
 export NBASEDIR=@NBASEDIR@
 export NSOCKDIR=@NSOCKDIR@
+export OPENSSHLIB_DIR = @OPENSSHLIB_DIR@
 
 DEFS = @DEFS@
 DEFS += -D_FORTIFY_SOURCE=2
@@ -10,7 +11,7 @@ STATIC =
 LDFLAGS = @LDFLAGS@ $(DBGFLAGS) $(STATIC)
 
 
-LIBS = @LIBNSOCK_LIBS@ @LIBNBASE_LIBS@ @OPENSSL_LIBS@
+LIBS = @LIBNSOCK_LIBS@ @LIBNBASE_LIBS@ @OPENSSL_LIBS@ @OPENSSH_LIB@ @OPENBSDCOMPAT_LIB@ 
 
 TARGET = ncrack
 
@@ -21,13 +22,14 @@ OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o S
 .cc.o :
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
-all: @NBASE_BUILD@ @NSOCK_BUILD@ @MODULES_BUILD@
+all: @NBASE_BUILD@ @NSOCK_BUILD@ @OPENSSHLIB_BUILD@ @MODULES_BUILD@
 	$(MAKE) $(TARGET)
 
 $(TARGET): $(NSOCKDIR)/src/libnsock.a $(NBASEDIR)/libnbase.a $(OBJS)
 	@echo Compiling Ncrack... 
 	rm -f $@
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	@echo Ncrack compiled successfully!
 
 
 modules_build:
@@ -45,11 +47,14 @@ nsock_build: $(NSOCKDIR)/src/Makefile nbase_build
 	@echo Compiling libnsock;
 	cd $(NSOCKDIR)/src && $(MAKE)
 
+opensshlib_build: $(OPENSSHLIB_DIR)/Makefile
+	@echo Compiling openssh lib;
+	cd $(OPENSSHLIB_DIR) && $(MAKE)
 
 
 # cleaning stuff
 
-clean: nsock_clean nbase_clean my_clean
+clean: nsock_clean nbase_clean opensshlib_clean my_clean
 
 my_clean:
 	rm -f dependencies.mk makefile.dep
@@ -58,6 +63,8 @@ nbase_clean:
 	-cd $(NBASEDIR) && $(MAKE) clean
 nsock_clean:
 	-cd $(NSOCKDIR)/src && $(MAKE) clean
+opensshlib_clean:
+	-cd $(OPENSSHLIB_DIR) && $(MAKE) clean
 
 
 Makefile: Makefile.in config.status

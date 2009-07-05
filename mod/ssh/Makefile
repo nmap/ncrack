@@ -2,7 +2,7 @@
 sources	:= ncrack_ssh.cc
 objects	:= $(subst .cc,.o,$(sources))
 
-include_dirs := ../.. ../../nsock/include ../../nbase
+include_dirs := ../.. ../../nsock/include ../../nbase ../../opensshlib
 CPPFLAGS += $(addprefix -I,$(include_dirs)) -DHAVE_CONFIG_H
 
 vpath %.h $(include_dirs)

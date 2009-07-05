@@ -89,8 +89,8 @@
  ***************************************************************************/
 
 
-#ifndef BUFFER_H
-#define BUFFER_H
+#ifndef BUF_H
+#define BUF_H
 
 #include "utils.h"
 
@@ -99,12 +99,12 @@
 #define	BUFFER_ALLOCSZ		0x008000
 
 
-class Buffer {
+class Buf {
 
   public:
 
-    Buffer();
-    ~Buffer();
+    Buf();
+    ~Buf();
 
     /* Appends data to the buffer, expanding it if necessary. */
     void append(const void *data, u_int len);

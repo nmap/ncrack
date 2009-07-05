@@ -90,7 +90,7 @@
 
 #include "Buffer.h"
 
-Buffer::Buffer()
+Buf::Buf()
 {
 	const u_int len = 4096;
 
@@ -103,7 +103,7 @@ Buffer::Buffer()
 
 
 /* Frees any memory used for the buffer. */
-Buffer::~Buffer()
+Buf::~Buf()
 {
 	if (alloc > 0) {
     free(buf);
@@ -117,7 +117,7 @@ Buffer::~Buffer()
  * zero the memory.
  */
 void
-Buffer::clear(void)
+Buf::clear(void)
 {
 	offset = 0;
 	end = 0;
@@ -126,7 +126,7 @@ Buffer::clear(void)
 
 /* Appends data to the buffer, expanding it if necessary. */
 void
-Buffer::append(const void *data, u_int len)
+Buf::append(const void *data, u_int len)
 {
 	void *p;
 	p = append_space(len);
@@ -141,7 +141,7 @@ Buffer::append(const void *data, u_int len)
  * to the allocated region.
  */
 void *
-Buffer::append_space(u_int len)
+Buf::append_space(u_int len)
 {
 	u_int newlen;
 	void *p;
@@ -182,7 +182,7 @@ restart:
  * This must follow the same math as buffer_append_space
  */
 int
-Buffer::check_alloc(u_int len)
+Buf::check_alloc(u_int len)
 {
 	if (offset == end) {
 		offset = 0;
@@ -201,7 +201,7 @@ Buffer::check_alloc(u_int len)
 
 /* Returns the number of bytes of data in the buffer. */
 u_int
-Buffer::get_len(void)
+Buf::get_len(void)
 {
 	return end - offset;
 }
@@ -209,7 +209,7 @@ Buffer::get_len(void)
 
 /* Gets data from the beginning of the buffer. */
 int
-Buffer::get_data(void *dst, u_int len)
+Buf::get_data(void *dst, u_int len)
 {
 	if (len > end - offset) {
 		error("%s: trying to get more bytes %d than in buffer %d",
@@ -223,7 +223,7 @@ Buffer::get_data(void *dst, u_int len)
 
 
 int
-Buffer::compact(void)
+Buf::compact(void)
 {
 	/*
 	 * If the buffer is quite empty, but all data is at the end, move the
@@ -241,7 +241,7 @@ Buffer::compact(void)
 
 /* Returns a pointer to the first used byte in the buffer. */
 void *
-Buffer::get_dataptr(void)
+Buf::get_dataptr(void)
 {
 	return buf + offset;
 }

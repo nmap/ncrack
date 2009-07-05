@@ -95,6 +95,12 @@
 #include "modules.h"
 #include <list>
 
+/* OpenSSH include-files */
+//#include "openssh.h"
+#include "buffer.h"
+#include "kex.h"
+
+
 #define SSH_TIMEOUT 20000
 
 
@@ -106,7 +112,7 @@ extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 
-enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_FINI };
+enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_KEY2, SSH_FINI };
 
 void
 ncrack_ssh(nsock_pool nsp, Connection *con)
@@ -117,6 +123,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
   const char *hostinfo = serv->HostInfo();
   void *ioptr;
   u_int buflen;
+  Buffer ncrack_buf; /* this is OpenSSH's buffer, not Ncrack's class */
 
   switch (con->state)
   {
@@ -148,7 +155,17 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
     case SSH_KEY:
 
-      printf("ok\n");
+      con->state = SSH_KEY2;
+      //ssh_kex2(ncrack_buf);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
+          (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
+
+      break;
+
+    case SSH_KEY2:
+
+      printf("YEA\n");
       break;
 
 

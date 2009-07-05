@@ -264,6 +264,42 @@ AC_SUBST(LIBNSOCK_LIBS)
 AC_CONFIG_SUBDIRS(nsock/src)
 
 
+
+# OPENSSHLIB
+OPENSSHLIB_DIR="opensshlib"
+OPENSSHLIB_BUILD="opensshlib_build"
+AC_ARG_WITH(libopenssh,
+AC_HELP_STRING([--with-libopenssh=DIR], [Compile and link to libopenssh in DIR]),
+[  case "$with_libopenssh" in
+  yes)
+    ;;
+  *)
+    NSOCKDIR="$with_libopenssh"
+    NSOCK_BUILD=""
+    ;;
+  esac]
+)
+
+LDFLAGS="$LDFLAGS -L$OPENSSHLIB_DIR"
+CPPFLAGS="$CPPFLAGS -I$OPENSSHLIB_DIR"
+OPENSSH_LIB="-lopenssh"
+
+
+AC_SUBST(OPENSSHLIB_DIR)
+AC_SUBST(OPENSSHLIB_BUILD)
+AC_SUBST(OPENSSH_LIB)
+
+AC_CONFIG_SUBDIRS(opensshlib)
+
+
+# OPENBSDCOMPAT_LIB
+OPENBSDCOMPAT_DIR="opensshlib/openbsd-compat"
+OPENBSDCOMPAT_LIB="-lopenbsd-compat"
+LDFLAGS="$LDFLAGS -L$OPENBSDCOMPAT_DIR"
+AC_SUBST(OPENBSDCOMPAT_LIB)
+
+
+
 # Modules
 MODULES_BUILD="modules_build"
 AC_SUBST(MODULES_BUILD)

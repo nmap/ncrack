@@ -1,0 +1,93 @@
+# $Id: Makefile.in,v 1.298 2008/11/05 05:20:46 djm Exp $
+
+# uncomment if you run a non bourne compatable shell. Ie. csh
+#SHELL = @SH@
+
+AUTORECONF=autoreconf
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+sbindir=@sbindir@
+libexecdir=@libexecdir@
+datadir=@datadir@
+datarootdir=@datarootdir@
+mandir=@mandir@
+mansubdir=@mansubdir@
+sysconfdir=@sysconfdir@
+piddir=@piddir@
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+
+DESTDIR=
+VPATH=@srcdir@
+STRIP_OPT=@STRIP_OPT@
+
+CC=@CC@
+LD=@LD@
+CFLAGS=@CFLAGS@
+CPPFLAGS=-I. -I$(srcdir) @CPPFLAGS@ @DEFS@
+#LIBS=@LIBS@
+AR=@AR@
+AWK=@AWK@
+RANLIB=@RANLIB@
+INSTALL=@INSTALL@
+PERL=@PERL@
+SED=@SED@
+ENT=@ENT@
+XAUTH_PATH=@XAUTH_PATH@
+LDFLAGS= @LDFLAGS@ -L. -Lopenbsd-compat/ $(STATIC)
+EXEEXT=@EXEEXT@
+
+
+TARGETS=$(LIBCOMPAT) libopenssh.a
+
+LIBSSH_OBJS=acss.o authfd.o authfile.o bufaux.o bufbn.o buffer.o \
+	canohost.o cipher.o cipher-acss.o cipher-aes.o \
+	cipher-bf1.o cipher-ctr.o cipher-3des1.o cleanup.o \
+	compat.o compress.o crc32.o deattack.o fatal.o hostfile.o \
+	log.o match.o md-sha256.o moduli.o packet.o \
+	rsa.o ttymodes.o xmalloc.o addrmatch.o \
+	atomicio.o key.o kex.o mac.o uidswap.o uuencode.o misc.o \
+	rijndael.o ssh-dss.o ssh-rsa.o dh.o kexdh.o \
+	kexgex.o kexdhc.o kexgexc.o umac.o sshconnect2.o entropy.o
+
+# channels.o nchan.o dispatch.o monitor_fdpass.o
+#progressmeter.o dns.o entropy.o scard-opensc.o 
+#gss-genr.o jpake.o schnorr.o
+
+
+all: $(TARGETS)
+
+$(LIBSSH_OBJS): Makefile.in config.h
+
+.c.o:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+
+LIBCOMPAT=openbsd-compat/libopenbsd-compat.a
+$(LIBCOMPAT): always
+	(cd openbsd-compat && $(MAKE))
+always:
+
+libopenssh.a: $(LIBCOMPAT) $(LIBSSH_OBJS)
+	$(AR) cr $@ $(LIBSSH_OBJS)
+	$(RANLIB) $@
+
+
+# fake rule to stop make trying to compile moduli.o into a binary "moduli.o"
+moduli:
+	echo
+
+clean:
+	rm -f *.o *.a $(TARGETS) config.cache config.log
+	rm -f *.out core
+	(cd openbsd-compat && $(MAKE) clean)
+
+
+veryclean: distclean
+	rm -f configure config.h.in *.0
+
+
+compat-tests: $(LIBCOMPAT)
+	(cd openbsd-compat/regress && $(MAKE))
+

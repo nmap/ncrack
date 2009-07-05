@@ -162,7 +162,7 @@ class Connection
 
 		int state;          /* module state-machine's current state */
 
-    Buffer *iobuf;
+    Buf *iobuf;
 
 		char *buf;          /* auxiliary buffer */
 		int bufsize;        /* total buffer size in bytes */

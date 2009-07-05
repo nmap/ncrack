@@ -639,6 +639,10 @@ enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 MODULES_BUILD
+OPENBSDCOMPAT_LIB
+OPENSSH_LIB
+OPENSSHLIB_BUILD
+OPENSSHLIB_DIR
 LIBNSOCK_LIBS
 NSOCK_BUILD
 NSOCKDIR
@@ -715,6 +719,7 @@ with_localdirs
 with_openssl
 with_libnbase
 with_libnsock
+with_libopenssh
 '
       ac_precious_vars='build_alias
 host_alias
@@ -729,7 +734,8 @@ CXX
 CXXFLAGS
 CCC'
 ac_subdirs_all='nbase
-nsock/src'
+nsock/src
+opensshlib'
 
 # Initialize some variables set by options.
 ac_init_help=
@@ -1357,6 +1363,7 @@ Optional Packages:
                           DIR/lib/ and DIR/include/openssl/)
   --with-libnbase=DIR     Look for nbase include/libs in DIR
   --with-libnsock=DIR     Compile and link to libnsock in DIR
+  --with-libopenssh=DIR   Compile and link to libopenssh in DIR
 
 Some influential environment variables:
   CC          C compiler command
@@ -6298,6 +6305,46 @@ LIBNSOCK_LIBS="-lnsock"
 
 
 subdirs="$subdirs nsock/src"
+
+
+
+
+# OPENSSHLIB
+OPENSSHLIB_DIR="opensshlib"
+OPENSSHLIB_BUILD="opensshlib_build"
+
+# Check whether --with-libopenssh was given.
+if test "${with_libopenssh+set}" = set; then
+  withval=$with_libopenssh;   case "$with_libopenssh" in
+  yes)
+    ;;
+  *)
+    NSOCKDIR="$with_libopenssh"
+    NSOCK_BUILD=""
+    ;;
+  esac
+
+fi
+
+
+LDFLAGS="$LDFLAGS -L$OPENSSHLIB_DIR"
+CPPFLAGS="$CPPFLAGS -I$OPENSSHLIB_DIR"
+OPENSSH_LIB="-lopenssh"
+
+
+
+
+
+
+subdirs="$subdirs opensshlib"
+
+
+
+# OPENBSDCOMPAT_LIB
+OPENBSDCOMPAT_DIR="opensshlib/openbsd-compat"
+OPENBSDCOMPAT_LIB="-lopenbsd-compat"
+LDFLAGS="$LDFLAGS -L$OPENBSDCOMPAT_DIR"
+
 
 
 
