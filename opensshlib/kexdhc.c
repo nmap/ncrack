@@ -43,7 +43,7 @@
 #include "ssh2.h"
 
 void
-kexdh_client(Kex *kex)
+kexdh_client(Kex *kex, Buffer *ncrack_buf)
 {
 	BIGNUM *dh_server_pub = NULL, *shared_secret = NULL;
 	DH *dh;

@@ -4008,7 +4008,7 @@ configure:9859: $? = 0
 configure:9861: result: yes
 configure:9884: checking for yp_match
 configure:9940: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c  >&5
-/tmp/ccqx97rx.o: In function `main':
+/tmp/cck8knfu.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:105: undefined reference to `yp_match'
 collect2: ld returned 1 exit status
 configure:9947: $? = 1
@@ -4388,7 +4388,7 @@ configure:11920: checking for libutil.h
 configure:11929: result: no
 configure:11944: checking for library containing login
 configure:11985: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lz -lnsl  >&5
-/tmp/ccEQIFei.o: In function `main':
+/tmp/ccgwaR9d.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:88: undefined reference to `login'
 collect2: ld returned 1 exit status
 configure:11992: $? = 1
@@ -4489,7 +4489,7 @@ configure:11992: $? = 0
 configure:12023: result: -lutil
 configure:12042: checking for fmt_scaled
 configure:12098: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccY3iEKf.o: In function `main':
+/tmp/ccUFnOYc.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:112: undefined reference to `fmt_scaled'
 collect2: ld returned 1 exit status
 configure:12105: $? = 1
@@ -4743,7 +4743,7 @@ configure:12554: checking for /proc/pid/fd directory
 configure:12562: result: yes
 configure:13545: checking for arc4random
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccOX7tnf.o: In function `main':
+/tmp/ccYlbKie.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:119: undefined reference to `arc4random'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -4873,7 +4873,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for arc4random_buf
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cc0n2xyn.o: In function `main':
+/tmp/ccoZo6wm.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:119: undefined reference to `arc4random_buf'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -5003,7 +5003,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for arc4random_uniform
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccoUClkw.o: In function `main':
+/tmp/ccywv0Cu.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:119: undefined reference to `arc4random_uniform'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -5137,7 +5137,7 @@ configure:13608: $? = 0
 configure:13630: result: yes
 configure:13545: checking for b64_ntop
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccm14w3M.o: In function `main':
+/tmp/cccBD8RM.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:120: undefined reference to `b64_ntop'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -5268,7 +5268,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for __b64_ntop
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccA4oOTV.o: In function `main':
+/tmp/ccYLQ8FX.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:120: undefined reference to `__b64_ntop'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -5399,7 +5399,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for b64_pton
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccOfZhN4.o: In function `main':
+/tmp/ccK24Zr3.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:120: undefined reference to `b64_pton'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -5530,7 +5530,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for __b64_pton
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cc83naPd.o: In function `main':
+/tmp/ccqExYIb.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:120: undefined reference to `__b64_pton'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -5666,7 +5666,7 @@ configure:13608: $? = 0
 configure:13630: result: yes
 configure:13545: checking for bindresvport_sa
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccywwR8b.o: In function `main':
+/tmp/ccfvFFFm.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:121: undefined reference to `bindresvport_sa'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -5802,7 +5802,7 @@ configure:13608: $? = 0
 configure:13630: result: yes
 configure:13545: checking for closefrom
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccOePErs.o: In function `main':
+/tmp/ccGJVbyp.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:122: undefined reference to `closefrom'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -5979,7 +5979,7 @@ configure:13608: $? = 0
 configure:13630: result: yes
 configure:13545: checking for getpeereid
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccMfeqCj.o: In function `main':
+/tmp/ccKnVZta.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:133: undefined reference to `getpeereid'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -6123,7 +6123,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for getpeerucred
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cclZYAkl.o: In function `main':
+/tmp/ccaH4e7i.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:133: undefined reference to `getpeerucred'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -6267,7 +6267,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for _getpty
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cccgQQ8h.o: In function `main':
+/tmp/ccua5Acr.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:133: undefined reference to `_getpty'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -6439,7 +6439,7 @@ configure:13608: $? = 0
 configure:13630: result: yes
 configure:13545: checking for login_getcapbool
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cci8Wxlv.o: In function `main':
+/tmp/ccGNcNWg.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:140: undefined reference to `login_getcapbool'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -6590,7 +6590,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for md5_crypt
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cc4VhWAB.o: In function `main':
+/tmp/cc2Ojdwp.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:140: undefined reference to `md5_crypt'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -6754,7 +6754,7 @@ configure:13608: $? = 0
 configure:13630: result: yes
 configure:13545: checking for ngetaddrinfo
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccYAiGma.o: In function `main':
+/tmp/ccoHYMtY.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:143: undefined reference to `ngetaddrinfo'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -6908,7 +6908,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for nsleep
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccW3T3Ri.o: In function `main':
+/tmp/ccABWkl7.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:143: undefined reference to `nsleep'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -7062,7 +7062,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for ogetaddrinfo
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccUy4ewr.o: In function `main':
+/tmp/ccs7K5Nf.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:143: undefined reference to `ogetaddrinfo'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -7216,7 +7216,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for openlog_r
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cc8cG9Ig.o: In function `main':
+/tmp/ccwPOMbo.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:143: undefined reference to `openlog_r'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -7382,7 +7382,7 @@ configure:13608: $? = 0
 configure:13630: result: yes
 configure:13545: checking for pstat
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccKup0RM.o: In function `main':
+/tmp/ccI4QKaE.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:146: undefined reference to `pstat'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -7539,7 +7539,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for readpassphrase
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccmindSX.o: In function `main':
+/tmp/cck8Uu2M.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:146: undefined reference to `readpassphrase'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -7712,7 +7712,7 @@ configure:13608: $? = 0
 configure:13630: result: yes
 configure:13545: checking for setdtablesize
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccsjaHnC.o: In function `main':
+/tmp/cc62HAkw.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:150: undefined reference to `setdtablesize'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -8052,7 +8052,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for setpcred
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cc2sI1dr.o: In function `main':
+/tmp/ccGiXqJj.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:154: undefined reference to `setpcred'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -8217,7 +8217,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for setproctitle
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cc8unVcg.o: In function `main':
+/tmp/cc475qDi.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:154: undefined reference to `setproctitle'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -8436,7 +8436,7 @@ configure:13608: $? = 0
 configure:13630: result: yes
 configure:13545: checking for strlcat
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccgLd6Ge.o: In function `main':
+/tmp/cc0qaHtq.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:167: undefined reference to `strlcat'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -8614,7 +8614,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for strlcpy
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cc4iaEJm.o: In function `main':
+/tmp/cc2wSNii.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:167: undefined reference to `strlcpy'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -8792,7 +8792,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for strmode
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccaVXdnc.o: In function `main':
+/tmp/ccsYZNvo.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:167: undefined reference to `strmode'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -8970,7 +8970,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for strnvis
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccQsQ8mk.o: In function `main':
+/tmp/cc4BUl6L.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:167: undefined reference to `strnvis'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -9148,7 +9148,7 @@ configure: failed program was:
 configure:13630: result: no
 configure:13545: checking for strtonum
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/cc246aPs.o: In function `main':
+/tmp/ccIS0n00.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:167: undefined reference to `strtonum'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -9334,7 +9334,7 @@ configure:13608: $? = 0
 configure:13630: result: yes
 configure:13545: checking for swap32
 configure:13601: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccGnEQRS.o: In function `main':
+/tmp/cc0xfHys.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:169: undefined reference to `swap32'
 collect2: ld returned 1 exit status
 configure:13608: $? = 1
@@ -9886,7 +9886,7 @@ configure:15639: $? = 0
 configure:15661: result: yes
 configure:15677: checking for getlastlogxbyname
 configure:15733: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lutil -lz -lnsl  >&5
-/tmp/ccEy5odH.o: In function `main':
+/tmp/ccIeFOIo.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:208: undefined reference to `getlastlogxbyname'
 collect2: ld returned 1 exit status
 configure:15740: $? = 1
@@ -14683,7 +14683,7 @@ configure:26168: $? = 0
 configure:26190: result: yes
 configure:26200: checking whether getopt has optreset support
 configure:26229: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lcrypto -lutil -lz -lnsl  -lcrypt >&5
-/tmp/cc8Zhb9e.o: In function `main':
+/tmp/ccmX5Sb0.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:247: undefined reference to `optreset'
 collect2: ld returned 1 exit status
 configure:26236: $? = 1
@@ -14944,7 +14944,7 @@ configure:26295: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -W
 conftest.c: In function 'main':
 conftest.c:245: warning: implicit declaration of function 'printf'
 conftest.c:245: warning: incompatible implicit declaration of built-in function 'printf'
-/tmp/cciNT2Sr.o: In function `main':
+/tmp/ccgQgqLc.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:245: warning: `sys_errlist' is deprecated; use `strerror' or `strerror_r' instead
 configure:26302: $? = 0
 configure:26324: result: yes
@@ -14953,13 +14953,13 @@ configure:26362: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -W
 conftest.c: In function 'main':
 conftest.c:246: warning: implicit declaration of function 'printf'
 conftest.c:246: warning: incompatible implicit declaration of built-in function 'printf'
-/tmp/ccI8Ye9y.o: In function `main':
+/tmp/ccSjdUZj.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:246: warning: `sys_nerr' is deprecated; use `strerror' or `strerror_r' instead
 configure:26369: $? = 0
 configure:26391: result: yes
 configure:26746: checking for library containing getrrsetbyname
 configure:26787: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lcrypto -lutil -lz -lnsl  -lcrypt >&5
-/tmp/ccIIqlwJ.o: In function `main':
+/tmp/ccsAPuYt.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:254: undefined reference to `getrrsetbyname'
 collect2: ld returned 1 exit status
 configure:26794: $? = 1
@@ -15222,7 +15222,7 @@ configure: failed program was:
 |   return 0;
 | }
 configure:26787: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lresolv  -lcrypto -lutil -lz -lnsl  -lcrypt >&5
-/tmp/ccIR7xYS.o: In function `main':
+/tmp/cce213BD.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:254: undefined reference to `getrrsetbyname'
 collect2: ld returned 1 exit status
 configure:26794: $? = 1
@@ -15487,7 +15487,7 @@ configure: failed program was:
 configure:26825: result: no
 configure:26838: checking for library containing res_query
 configure:26879: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lcrypto -lutil -lz -lnsl  -lcrypt >&5
-/tmp/cc43AX60.o: In function `main':
+/tmp/ccAmFECN.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:254: undefined reference to `res_query'
 collect2: ld returned 1 exit status
 configure:26886: $? = 1
@@ -15750,7 +15750,7 @@ configure: failed program was:
 |   return 0;
 | }
 configure:26879: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lresolv  -lcrypto -lutil -lz -lnsl  -lcrypt >&5
-/tmp/ccSqouma.o: In function `main':
+/tmp/ccucOwGW.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:254: undefined reference to `res_query'
 collect2: ld returned 1 exit status
 configure:26886: $? = 1
@@ -16015,7 +16015,7 @@ configure: failed program was:
 configure:26917: result: no
 configure:26925: checking for library containing dn_expand
 configure:26966: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lcrypto -lutil -lz -lnsl  -lcrypt >&5
-/tmp/ccuxQAPm.o: In function `main':
+/tmp/ccoGTf56.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:254: undefined reference to `dn_expand'
 collect2: ld returned 1 exit status
 configure:26973: $? = 1
@@ -16278,7 +16278,7 @@ configure: failed program was:
 |   return 0;
 | }
 configure:26966: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lresolv  -lcrypto -lutil -lz -lnsl  -lcrypt >&5
-/tmp/ccaC4Mjt.o: In function `main':
+/tmp/ccmOULWg.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:254: undefined reference to `dn_expand'
 collect2: ld returned 1 exit status
 configure:26973: $? = 1
@@ -16543,7 +16543,7 @@ configure: failed program was:
 configure:27004: result: no
 configure:27012: checking if res_query will link
 configure:27042: gcc -o conftest -g -O2 -Wall -Wpointer-arith -Wuninitialized -Wsign-compare -Wno-pointer-sign -Wformat-security -fno-builtin-memset -fstack-protector-all   -fstack-protector-all conftest.c -lcrypto -lutil -lz -lnsl  -lcrypt >&5
-/tmp/ccMKjKFF.o: In function `main':
+/tmp/ccCRYFwq.o: In function `main':
 /home/ithilgore/ncrack/opensshlib/conftest.c:254: undefined reference to `res_query'
 collect2: ld returned 1 exit status
 configure:27049: $? = 1

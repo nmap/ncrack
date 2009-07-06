@@ -39,7 +39,9 @@
 #include "match.h"
 
 int compat13 = 0;
-int compat20 = 0;
+
+// NCRACK ---- only ssh2 for now
+int compat20 = 1;
 int datafellows = 0;
 
 void

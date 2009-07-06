@@ -247,6 +247,24 @@ Buf::get_dataptr(void)
 }
 
 
+/* Dumps the contents of the buffer to stderr. */
+void
+Buf::data_dump(void)
+{
+	u_int i;
+	u_char *ucp = buf;
+
+	for (i = offset; i < end; i++) {
+		fprintf(stderr, "%02x", ucp[i]);
+		if ((i-offset)%16==15)
+			fprintf(stderr, "\r\n");
+		else if ((i-offset)%2==1)
+			fprintf(stderr, " ");
+	}
+	fprintf(stderr, "\r\n");
+}
+
+
 
 /* Consumes the given number of bytes from the beginning of the buffer. */
 
@@ -287,26 +305,5 @@ buffer_consume_end(Buffer *buffer, u_int bytes)
 		fatal("buffer_consume_end: trying to get more bytes than in buffer");
 }
 
-
-/* Dumps the contents of the buffer to stderr. */
-
-void
-buffer_dump(Buffer *buffer)
-{
-	FILE *fp = fopen("/home/sin/output", "a");
-	if (!fp)
-		return;
-	u_int i;
-	u_char *ucp = buffer->buf;
-
-	for (i = buffer->offset; i < buffer->end; i++) {
-		fprintf(fp, "%02x", ucp[i]);
-		if ((i-buffer->offset)%16==15)
-			fprintf(fp, "\r\n");
-		else if ((i-buffer->offset)%2==1)
-			fprintf(fp, " ");
-	}
-	fprintf(fp, "\r\n");
-	fclose(fp);
-}
 #endif
+

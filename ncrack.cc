@@ -1046,8 +1046,6 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       con->iobuf = new Buf();
     con->iobuf->append(str, nbytes);
 
-
-
     /* don't forget to free possibly previous allocated memory */
     if (con->buf) {
       free(con->buf);

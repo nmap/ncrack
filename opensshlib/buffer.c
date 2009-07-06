@@ -238,19 +238,15 @@ buffer_ptr(Buffer *buffer)
 void
 buffer_dump(Buffer *buffer)
 {
-	FILE *fp = fopen("/home/sin/output", "a");
-	if (!fp)
-		return;
 	u_int i;
 	u_char *ucp = buffer->buf;
 
 	for (i = buffer->offset; i < buffer->end; i++) {
-		fprintf(fp, "%02x", ucp[i]);
+		fprintf(stderr, "%02x", ucp[i]);
 		if ((i-buffer->offset)%16==15)
-			fprintf(fp, "\r\n");
+			fprintf(stderr, "\r\n");
 		else if ((i-buffer->offset)%2==1)
-			fprintf(fp, " ");
+			fprintf(stderr, " ");
 	}
-	fprintf(fp, "\r\n");
-	fclose(fp);
+	fprintf(stderr, "\r\n");
 }

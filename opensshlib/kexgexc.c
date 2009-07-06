@@ -45,7 +45,7 @@
 #include "compat.h"
 
 void
-kexgex_client(Kex *kex)
+kexgex_client(Kex *kex, Buffer *ncrack_buf)
 {
 	BIGNUM *dh_server_pub = NULL, *shared_secret = NULL;
 	BIGNUM *p = NULL, *g = NULL;
@@ -82,7 +82,27 @@ kexgex_client(Kex *kex)
 	fprintf(stderr, "\nmin = %d, nbits = %d, max = %d\n",
 	    min, nbits, max);
 #endif
-	//TODO: packet_send();
+	packet_send(ncrack_buf);
+
+}
+
+
+
+void
+openssh_kexgex_2(Kex *kex)
+{
+  	BIGNUM *dh_server_pub = NULL, *shared_secret = NULL;
+	BIGNUM *p = NULL, *g = NULL;
+	Key *server_host_key;
+	u_char *kbuf, *hash, *signature = NULL, *server_host_key_blob = NULL;
+	u_int klen, slen, sbloblen, hashlen;
+	int kout;
+	int min, max, nbits;
+	DH *dh;
+
+	nbits = dh_estimate(kex->we_need * 8);
+
+
 
 	debug("expecting SSH2_MSG_KEX_DH_GEX_GROUP");
 	packet_read_expect(SSH2_MSG_KEX_DH_GEX_GROUP);

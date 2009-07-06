@@ -64,10 +64,13 @@ u_char *session_id2 = NULL;
 u_int session_id2_len = 0;
 
 
-void
-ssh_kex2(Buffer ncrack_buf)
+Kex *
+ssh_kex2(Buffer *ncrack_buf)
 {
 	Kex *kex;
+
+  packet_set_connection();
+
 
   myproposal[PROPOSAL_ENC_ALGS_CTOS] =
     compat_cipher_proposal(myproposal[PROPOSAL_ENC_ALGS_CTOS]);
@@ -86,8 +89,10 @@ ssh_kex2(Buffer ncrack_buf)
 //  kex->client_version_string=client_version_string;
 //  kex->server_version_string=server_version_string;
 
-
   //dispatch_run(DISPATCH_BLOCK, &kex->done, kex);
+  //
+
+  return kex;
 
   //session_id2 = kex->session_id;
   //session_id2_len = kex->session_id_len;

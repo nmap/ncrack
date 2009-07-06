@@ -25,21 +25,21 @@
 extern "C" {
 #endif
 
-void     packet_set_connection(int, int);
-void     packet_set_timeout(int, int);
-void     packet_set_nonblocking(void);
-int      packet_get_connection_in(void);
-int      packet_get_connection_out(void);
-void     packet_close(void);
-void	 packet_set_encryption_key(const u_char *, u_int, int);
-u_int	 packet_get_encryption_key(u_char *);
-void     packet_set_protocol_flags(u_int);
-u_int	 packet_get_protocol_flags(void);
-void     packet_start_compression(int);
-void     packet_set_interactive(int);
-int      packet_is_interactive(void);
-void     packet_set_server(void);
-void     packet_set_authenticated(void);
+void    packet_set_connection(void);
+void    packet_set_timeout(int, int);
+void    packet_set_nonblocking(void);
+int     packet_get_connection_in(void);
+int     packet_get_connection_out(void);
+void    packet_close(void);
+void    packet_set_encryption_key(const u_char *, u_int, int);
+u_int	  packet_get_encryption_key(u_char *);
+void    packet_set_protocol_flags(u_int);
+u_int   packet_get_protocol_flags(void);
+void    packet_start_compression(int);
+void    packet_set_interactive(int);
+int     packet_is_interactive(void);
+void    packet_set_server(void);
+void    packet_set_authenticated(void);
 
 void     packet_start(u_char);
 void     packet_put_char(int ch);
@@ -49,13 +49,12 @@ void     packet_put_bignum2(BIGNUM * value);
 void     packet_put_string(const void *buf, u_int len);
 void     packet_put_cstring(const char *str);
 void     packet_put_raw(const void *buf, u_int len);
-void     packet_send(Buffer ncrack_buf);
+void     packet_send(Buffer *ncrack_buf);
 
 int      packet_read(void);
 void     packet_read_expect(int type);
 int      packet_read_poll(void);
 void     packet_process_incoming(const char *buf, u_int len);
-int      packet_read_seqnr(u_int32_t *seqnr_p);
 int      packet_read_poll_seqnr(u_int32_t *seqnr_p);
 
 u_int	 packet_get_char(void);
@@ -112,9 +111,11 @@ int	 packet_need_rekeying(void);
 void	 packet_set_rekey_limit(u_int32_t);
 
 
+int ssh_packet_read(Buffer *ncrack_buf);
 
-void packet_send2(Buffer ncrack_buf);
-void packet_send2_wrapped(Buffer ncrack_buf);
+
+void packet_send2(Buffer *ncrack_buf);
+void packet_send2_wrapped(Buffer *ncrack_buf);
 
 #ifdef __cplusplus
 } /* End of 'extern "C"' */

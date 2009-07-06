@@ -15,9 +15,9 @@ LIBS = @LIBNSOCK_LIBS@ @LIBNBASE_LIBS@ @OPENSSL_LIBS@ @OPENSSH_LIB@ @OPENBSDCOMP
 
 TARGET = ncrack
 
-export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc services.cc timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buffer.cc 
+export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc services.cc timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buffer.cc ncrack_ssh.cc
 
-OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o ServiceGroup.o services.o timing.o ncrack_error.o output.o ncrack_tty.o Buffer.o mod/ftp/ncrack_ftp.o mod/telnet/ncrack_telnet.o mod/ssh/ncrack_ssh.o
+OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o ServiceGroup.o services.o timing.o ncrack_error.o output.o ncrack_tty.o Buffer.o mod/ftp/ncrack_ftp.o mod/telnet/ncrack_telnet.o ncrack_ssh.o
 
 .cc.o :
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
@@ -36,7 +36,6 @@ modules_build:
 	@echo Compiling modules
 	cd mod/ftp && $(MAKE)
 	cd mod/telnet && $(MAKE)
-	cd mod/ssh && $(MAKE)
 
 
 nbase_build: $(NBASEDIR)/Makefile

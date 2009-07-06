@@ -60,7 +60,7 @@ extern const EVP_MD *evp_ssh_sha256(void);
 #endif
 
 /* prototype */
-static void kex_kexinit_finish(Kex *, Buffer ncrack_buf);
+static void kex_kexinit_finish(Kex *, Buffer *ncrack_buf);
 static void kex_choose_conf(Kex *);
 
 /* put algorithm proposal into buffer */
@@ -141,7 +141,7 @@ kex_reset_dispatch(void)
 }
 
 void
-kex_finish(Kex *kex, Buffer ncrack_buf)
+kex_finish(Kex *kex, Buffer *ncrack_buf)
 {
 	kex_reset_dispatch();
 
@@ -165,7 +165,7 @@ kex_finish(Kex *kex, Buffer ncrack_buf)
 }
 
 void
-kex_send_kexinit(Kex *kex, Buffer ncrack_buf)
+kex_send_kexinit(Kex *kex, Buffer *ncrack_buf)
 {
 	u_int32_t rnd = 0;
 	u_char *cookie;
@@ -194,15 +194,13 @@ kex_send_kexinit(Kex *kex, Buffer ncrack_buf)
 	packet_start(SSH2_MSG_KEXINIT);
 	packet_put_raw(buffer_ptr(&kex->my), buffer_len(&kex->my));
 
-  printf("BEFORE PACKET SEND\n");
 	packet_send(ncrack_buf);
-	debug("SSH2_MSG_KEXINIT sent");
 	kex->flags |= KEX_INIT_SENT;
 }
 
 /* ARGSUSED */
 void
-kex_input_kexinit(int type, u_int32_t seq, void *ctxt)
+ssh_kex_input_kexinit(int type, u_int32_t seq, void *ctxt, Buffer *ncrack_buf)
 {
 	char *ptr;
 	u_int i, dlen;
@@ -224,12 +222,11 @@ kex_input_kexinit(int type, u_int32_t seq, void *ctxt)
 	(void) packet_get_int();
 	packet_check_eom();
 
-/* NCRACK TODO */
-	//kex_kexinit_finish(kex);
+	kex_kexinit_finish(kex, ncrack_buf);
 }
 
 Kex *
-kex_setup(char *proposal[PROPOSAL_MAX], Buffer ncrack_buf)
+kex_setup(char *proposal[PROPOSAL_MAX], Buffer *ncrack_buf)
 {
 	Kex *kex;
 
@@ -246,16 +243,16 @@ kex_setup(char *proposal[PROPOSAL_MAX], Buffer ncrack_buf)
 }
 
 static void
-kex_kexinit_finish(Kex *kex, Buffer ncrack_buf)
+kex_kexinit_finish(Kex *kex, Buffer *ncrack_buf)
 {
-	if (!(kex->flags & KEX_INIT_SENT))
-		kex_send_kexinit(kex, ncrack_buf);
+	//if (!(kex->flags & KEX_INIT_SENT))
+	//	kex_send_kexinit(kex, ncrack_buf);
 
 	kex_choose_conf(kex);
 
 	if (kex->kex_type >= 0 && kex->kex_type < KEX_MAX &&
 	    kex->kex[kex->kex_type] != NULL) {
-		(kex->kex[kex->kex_type])(kex);
+		(kex->kex[kex->kex_type])(kex, ncrack_buf);
 	} else {
 		fatal("Unsupported key exchange %d", kex->kex_type);
 	}

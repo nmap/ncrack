@@ -137,6 +137,9 @@ class Buf {
      */
     void clear(void);
 
+    /* Dumps the contents of the buffer to stderr. */
+    void data_dump(void);
+
   private:
 
     int compact(void);
