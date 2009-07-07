@@ -101,10 +101,10 @@ static int connection_out = -1;
 static u_int remote_protocol_flags = 0;
 
 /* Encryption context for receiving data.  This is only used for decryption. */
-static CipherContext receive_context;
+//static CipherContext receive_context;
 
 /* Encryption context for sending data.  This is only used for encryption. */
-static CipherContext send_context;
+//static CipherContext send_context;
 
 /* Buffer for raw input data from the socket. */
 Buffer input;
@@ -180,7 +180,8 @@ struct packet {
  * packet_set_encryption_key is called.
  */
 void
-packet_set_connection(void)
+packet_set_connection(CipherContext *send_context,
+    CipherContext *receive_context, Newkeys *ncrack_keys[MODE_MAX])
 {
 	Cipher *none = cipher_by_name("none");
 
@@ -188,9 +189,9 @@ packet_set_connection(void)
 		fatal("packet_set_connection: cannot load cipher 'none'");
 	//connection_in = fd_in;
 	//connection_out = fd_out;
-	cipher_init(&send_context, none, (const u_char *)"",
+	cipher_init(send_context, none, (const u_char *)"",
 	    0, NULL, 0, CIPHER_ENCRYPT);
-	cipher_init(&receive_context, none, (const u_char *)"",
+	cipher_init(receive_context, none, (const u_char *)"",
 	    0, NULL, 0, CIPHER_DECRYPT);
 	newkeys[MODE_IN] = newkeys[MODE_OUT] = NULL;
 	if (!initialized) {
@@ -273,6 +274,9 @@ packet_connection_is_on_socket(void)
 	return 1;
 }
 
+
+/* UNNEEDED FUNCTIONS */
+#if 0
 /*
  * Exports an IV from the CipherContext required to export the key
  * state back from the unprivileged child to the privileged parent
@@ -401,6 +405,8 @@ packet_connection_is_ipv4(void)
 	return 0;
 }
 
+#endif
+
 /* Sets the connection into non-blocking mode. */
 
 void
@@ -452,8 +458,8 @@ packet_close(void)
 		buffer_free(&compression_buffer);
 		buffer_compress_uninit();
 	}
-	cipher_cleanup(&send_context);
-	cipher_cleanup(&receive_context);
+	//cipher_cleanup(&send_context);
+	//cipher_cleanup(&receive_context);
 }
 
 /* Sets remote side protocol flags. */
@@ -497,6 +503,8 @@ packet_start_compression(int level)
 	buffer_compress_init_recv();
 }
 
+
+#if 0 
 /*
  * Causes any further packets to be encrypted using the given key.  The same
  * key is used for both sending and reception.  However, both directions are
@@ -529,6 +537,7 @@ packet_get_encryption_key(u_char *key)
 	memcpy(key, ssh1_key, ssh1_keylen);
 	return (ssh1_keylen);
 }
+#endif
 
 /* Start constructing a packet to send. */
 void
@@ -590,6 +599,8 @@ packet_put_bignum2(BIGNUM * value)
 	buffer_put_bignum2(&outgoing_packet, value);
 }
 
+
+#if 0
 /*
  * Finalizes and sends the packet.  If the encryption key has been set,
  * encrypts the packet before sending.
@@ -666,9 +677,11 @@ packet_send1(void)
 	 * called.
 	 */
 }
+#endif
 
 void
-set_newkeys(int mode)
+set_newkeys(int mode, Newkeys *ncrack_keys[MODE_MAX],
+    CipherContext *send_context, CipherContext *receive_context)
 {
 	Enc *enc;
 	Mac *mac;
@@ -680,16 +693,18 @@ set_newkeys(int mode)
 	debug2("set_newkeys: mode %d", mode);
 
 	if (mode == MODE_OUT) {
-		cc = &send_context;
+		cc = send_context;
 		crypt_type = CIPHER_ENCRYPT;
 		p_send.packets = p_send.blocks = 0;
 		max_blocks = &max_blocks_out;
 	} else {
-		cc = &receive_context;
+		cc = receive_context;
 		crypt_type = CIPHER_DECRYPT;
 		p_read.packets = p_read.blocks = 0;
 		max_blocks = &max_blocks_in;
 	}
+  /* We won't do any rekeying! */
+#if 0 
 	if (newkeys[mode] != NULL) {
 		debug("set_newkeys: rekeying");
 		cipher_cleanup(cc);
@@ -705,12 +720,14 @@ set_newkeys(int mode)
 		xfree(comp->name);
 		xfree(newkeys[mode]);
 	}
-	newkeys[mode] = kex_get_newkeys(mode);
-	if (newkeys[mode] == NULL)
+#endif
+	//newkeys[mode] = kex_get_newkeys(mode);
+
+	if (ncrack_keys[mode] == NULL)
 		fatal("newkeys: no keys for mode %d", mode);
-	enc  = &newkeys[mode]->enc;
-	mac  = &newkeys[mode]->mac;
-	comp = &newkeys[mode]->comp;
+	enc  = &ncrack_keys[mode]->enc;
+	mac  = &ncrack_keys[mode]->mac;
+	comp = &ncrack_keys[mode]->comp;
 	if (mac_init(mac) == 0)
 		mac->enabled = 1;
 	DBG(debug("cipher_init_context: %d", mode));
@@ -778,7 +795,8 @@ packet_enable_delayed_compress(void)
  * Finalize packet in SSH2 format (compress, mac, encrypt, enqueue)
  */
 void
-packet_send2_wrapped(Buffer *ncrack_buf)
+packet_send2_wrapped(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+    CipherContext *send_context, CipherContext *receive_context)
 {
 	u_char type, *cp, *macbuf = NULL;
 	u_char padlen, pad;
@@ -840,7 +858,7 @@ packet_send2_wrapped(Buffer *ncrack_buf)
 		extra_pad = 0;
 	}
 	cp = buffer_append_space(&outgoing_packet, padlen);
-	if (enc && !send_context.plaintext) {
+	if (enc && !send_context->plaintext) {
 		/* random padding */
 		for (i = 0; i < padlen; i++) {
 			if (i % 4 == 0)
@@ -869,7 +887,7 @@ packet_send2_wrapped(Buffer *ncrack_buf)
 	}
 	/* encrypt packet and append to output buffer. */
 	cp = buffer_append_space(&output, buffer_len(&outgoing_packet));
-	cipher_crypt(&send_context, cp, buffer_ptr(&outgoing_packet),
+	cipher_crypt(send_context, cp, buffer_ptr(&outgoing_packet),
 	    buffer_len(&outgoing_packet));
 
 	/* append unencrypted MAC */
@@ -893,7 +911,7 @@ packet_send2_wrapped(Buffer *ncrack_buf)
 
 
 	if (type == SSH2_MSG_NEWKEYS)
-		set_newkeys(MODE_OUT);
+		set_newkeys(MODE_OUT, ncrack_keys, send_context, receive_context);
 	else if (type == SSH2_MSG_USERAUTH_SUCCESS && server_side)
 		packet_enable_delayed_compress();
 
@@ -906,7 +924,8 @@ packet_send2_wrapped(Buffer *ncrack_buf)
 }
 
 void
-packet_send2(Buffer *ncrack_buf)
+packet_send2(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
 //	static int rekeying = 0;
 	//struct packet *p;
@@ -936,7 +955,7 @@ packet_send2(Buffer *ncrack_buf)
 		rekeying = 1;
 #endif
 
-	packet_send2_wrapped(ncrack_buf);
+	packet_send2_wrapped(ncrack_buf, ncrack_keys, send_context, receive_context);
 
 #if 0
 	/* after a NEWKEYS message we can send the complete queue */
@@ -957,36 +976,39 @@ packet_send2(Buffer *ncrack_buf)
 }
 
 void
-packet_send(Buffer *ncrack_buf)
+packet_send(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
-	if (compat20) {
-		packet_send2(ncrack_buf);
-  }
-	else {
-		packet_send1();
-  }
+	if (compat20)
+		packet_send2(ncrack_buf, ncrack_keys, send_context, receive_context);
+
+	//else
+	//packet_send1();
 	DBG(debug("packet_send done"));
 }
 
 
 
 int
-ssh_packet_read(Buffer *ncrack_buf)
+openssh_packet_read(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
 	int type;
   int *seqnr_p; // unused!!!
 
 	DBG(debug("packet_read()"));
 
-  		buffer_clear(&input);
-		buffer_clear(&output);
-		buffer_clear(&outgoing_packet);
-		buffer_clear(&incoming_packet);
+  buffer_clear(&input);
+  buffer_clear(&output);
+  buffer_clear(&outgoing_packet);
+  buffer_clear(&incoming_packet);
 
   packet_process_incoming(buffer_ptr(ncrack_buf), buffer_len(ncrack_buf));
 
   /* Try to read a packet from the buffer. */
-  type = packet_read_poll_seqnr(seqnr_p);
+  type = packet_read_poll_seqnr(seqnr_p, ncrack_keys,
+    send_context, receive_context);
+
   if (!compat20 && (
         type == SSH_SMSG_SUCCESS
         || type == SSH_SMSG_FAILURE
@@ -996,7 +1018,6 @@ ssh_packet_read(Buffer *ncrack_buf)
   /* If we got a packet, return it. */
   if (type != SSH_MSG_NONE) 
     return type;
-
 
   return type;
 }
@@ -1025,6 +1046,8 @@ packet_read_expect(int expected_type)
         expected_type, type);
 }
 
+
+#if 0
 /* Checks if a full packet is available in the data received so far via
  * packet_process_incoming.  If so, reads the packet; otherwise returns
  * SSH_MSG_NONE.  This does not wait for data from the connection.
@@ -1065,7 +1088,7 @@ packet_read_poll1(void)
    * (C)1998 CORE-SDI, Buenos Aires Argentina
    * Ariel Futoransky(futo@core-sdi.com)
    */
-  if (!receive_context.plaintext) {
+  if (!receive_context->plaintext) {
     switch (detect_attack(buffer_ptr(&input), padded_len)) {
       case DEATTACK_DETECTED:
         packet_disconnect("crc32 compensation attack: "
@@ -1079,7 +1102,7 @@ packet_read_poll1(void)
   /* Decrypt data to incoming_packet. */
   buffer_clear(&incoming_packet);
   cp = buffer_append_space(&incoming_packet, padded_len);
-  cipher_crypt(&receive_context, cp, buffer_ptr(&input), padded_len);
+  cipher_crypt(receive_context, cp, buffer_ptr(&input), padded_len);
 
   buffer_consume(&input, padded_len);
 
@@ -1120,9 +1143,11 @@ packet_read_poll1(void)
     packet_disconnect("Invalid ssh1 packet type: %d", type);
   return type;
 }
+#endif
 
 static int
-packet_read_poll2(u_int32_t *seqnr_p)
+packet_read_poll2(u_int32_t *seqnr_p, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
   static u_int packet_length = 0;
   u_int padlen, need;
@@ -1152,7 +1177,7 @@ packet_read_poll2(u_int32_t *seqnr_p)
       return SSH_MSG_NONE;
     buffer_clear(&incoming_packet);
     cp = buffer_append_space(&incoming_packet, block_size);
-    cipher_crypt(&receive_context, cp, buffer_ptr(&input),
+    cipher_crypt(receive_context, cp, buffer_ptr(&input),
         block_size);
     cp = buffer_ptr(&incoming_packet);
     packet_length = get_u32(cp);
@@ -1190,7 +1215,7 @@ packet_read_poll2(u_int32_t *seqnr_p)
   buffer_dump(&input);
 #endif
   cp = buffer_append_space(&incoming_packet, need);
-  cipher_crypt(&receive_context, cp, buffer_ptr(&input), need);
+  cipher_crypt(receive_context, cp, buffer_ptr(&input), need);
   buffer_consume(&input, need);
   /*
    * compute MAC over seqnr and packet,
@@ -1252,7 +1277,7 @@ packet_read_poll2(u_int32_t *seqnr_p)
   if (type < SSH2_MSG_MIN || type >= SSH2_MSG_LOCAL_MIN)
     packet_disconnect("Invalid ssh2 packet type: %d", type);
   if (type == SSH2_MSG_NEWKEYS)
-    set_newkeys(MODE_IN);
+    set_newkeys(MODE_IN, ncrack_keys, send_context, receive_context);
   else if (type == SSH2_MSG_USERAUTH_SUCCESS && !server_side)
     packet_enable_delayed_compress();
 #ifdef PACKET_DEBUG
@@ -1265,7 +1290,8 @@ packet_read_poll2(u_int32_t *seqnr_p)
 }
 
 int
-packet_read_poll_seqnr(u_int32_t *seqnr_p)
+packet_read_poll_seqnr(u_int32_t *seqnr_p, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
   u_int reason, seqnr;
   u_char type;
@@ -1273,7 +1299,8 @@ packet_read_poll_seqnr(u_int32_t *seqnr_p)
 
   for (;;) {
     if (compat20) {
-      type = packet_read_poll2(seqnr_p);
+      type = packet_read_poll2(seqnr_p, ncrack_keys, send_context,
+          receive_context);
       if (type) {
         keep_alive_timeouts = 0;
         DBG(debug("received packet type %d", type));
@@ -1306,7 +1333,9 @@ packet_read_poll_seqnr(u_int32_t *seqnr_p)
         default:
           return type;
       }
-    } else {
+    } 
+#if 0
+    else {
       type = packet_read_poll1();
       switch (type) {
         case SSH_MSG_IGNORE:
@@ -1328,13 +1357,14 @@ packet_read_poll_seqnr(u_int32_t *seqnr_p)
           return type;
       }
     }
+#endif
   }
 }
 
 int
 packet_read_poll(void)
 {
-  return packet_read_poll_seqnr(NULL);
+ // return packet_read_poll_seqnr(NULL);
 }
 
 /*
@@ -1498,6 +1528,7 @@ packet_not_very_much_data_to_write(void)
 }
 
 
+#if 0
 static void
 packet_set_tos(int interactive)
 {
@@ -1534,6 +1565,7 @@ packet_set_interactive(int interactive)
   set_nodelay(connection_in);
   packet_set_tos(interactive);
 }
+#endif
 
 /* Returns true if the current connection is interactive. */
 

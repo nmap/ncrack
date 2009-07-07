@@ -130,26 +130,21 @@ struct Kex {
 	int	(*verify_host_key)(Key *);
 	Key	*(*load_host_key)(int);
 	int	(*host_key_index)(Key *);
-	void	(*kex[KEX_MAX])(Kex *, Buffer *ncrack_buf);
+	void	(*kex[KEX_MAX])(Kex *, Buffer *ncrack_buf,
+      Newkeys *ncrack_keys[MODE_MAX], CipherContext *send_context,
+      CipherContext *receive_context);
 };
 
-Kex	*kex_setup(char *[PROPOSAL_MAX], Buffer *ncrack_buf);
-void	 kex_finish(Kex *, Buffer *ncrack_buf);
 
-void	 kex_send_kexinit(Kex *, Buffer *ncrack_buf);
-void	 ssh_kex_input_kexinit(int, u_int32_t, void *, Buffer *ncrack_buf);
-void	 kex_derive_keys(Kex *, u_char *, u_int, BIGNUM *);
+void	 kex_derive_keys(Kex *, u_char *, u_int, BIGNUM *,
+    Newkeys *ncrack_keys[MODE_MAX]);
 
 Newkeys *kex_get_newkeys(int);
 
 void	 kexdh_client(Kex *, Buffer *ncrack_buf);
 void	 kexdh_server(Kex *);
-void	 kexgex_client(Kex *, Buffer *ncrack_buf);
 void	 kexgex_server(Kex *);
 
-
-DH *openssh_kexgex_2(Kex *kex, Buffer *ncrack_buf);
-void openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf);
 
 
 
@@ -167,6 +162,37 @@ derive_ssh1_session_id(BIGNUM *, BIGNUM *, u_int8_t[8], u_int8_t[16]);
 #if defined(DEBUG_KEX) || defined(DEBUG_KEXDH)
 void	dump_digest(char *, u_char *, int);
 #endif
+
+
+void
+kexgex_client(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
+
+void
+kex_finish(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
+
+Kex	*kex_setup(char *[PROPOSAL_MAX], Buffer *ncrack_buf,
+  Newkeys *ncrack_keys[MODE_MAX], CipherContext *send_context,
+  CipherContext *receive_context);
+
+void kex_send_kexinit(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
+
+
+void openssh_kex_input_kexinit(int, u_int32_t, void *, Buffer *ncrack_buf,
+  Newkeys *ncrack_keys[MODE_MAX], CipherContext *send_context,
+  CipherContext *receive_context);
+
+DH *openssh_kexgex_2(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
+
+void
+openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
+
+
+
 
 #ifdef __cplusplus
 } /* End of 'extern "C"' */

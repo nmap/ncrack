@@ -153,7 +153,7 @@ kexdh_client(Kex *kex, Buffer *ncrack_buf)
 		memcpy(kex->session_id, hash, kex->session_id_len);
 	}
 
-	kex_derive_keys(kex, hash, hashlen, shared_secret);
+	//TODO: kex_derive_keys(kex, hash, hashlen, shared_secret);
 	BN_clear_free(shared_secret);
 	//TODO: kex_finish(kex);
 }

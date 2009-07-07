@@ -60,13 +60,11 @@ u_int session_id2_len = 0;
 
 
 Kex *
-openssh_ssh_kex2(Buffer *ncrack_buf, char *client_version_string,
-    char *server_version_string)
+openssh_ssh_kex2(char *client_version_string, char *server_version_string,
+  Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
 	Kex *kex;
-
-  packet_set_connection();
-
 
   myproposal[PROPOSAL_ENC_ALGS_CTOS] =
     compat_cipher_proposal(myproposal[PROPOSAL_ENC_ALGS_CTOS]);
@@ -77,7 +75,8 @@ openssh_ssh_kex2(Buffer *ncrack_buf, char *client_version_string,
     myproposal[PROPOSAL_COMP_ALGS_STOC] = "none,zlib@openssh.com,zlib";
 
   /* start key exchange */
-  kex = kex_setup(myproposal, ncrack_buf);
+  kex = kex_setup(myproposal, ncrack_buf, ncrack_keys, send_context,
+      receive_context);
   kex->kex[KEX_DH_GRP1_SHA1] = kexdh_client;
   kex->kex[KEX_DH_GRP14_SHA1] = kexdh_client;
   kex->kex[KEX_DH_GEX_SHA1] = kexgex_client;

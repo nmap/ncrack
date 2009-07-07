@@ -104,6 +104,7 @@
 #include "sshconnect.h"
 #include "packet.h"
 #include "misc.h"
+#include "cipher.h"
 
 
 #define SSH_TIMEOUT 20000
@@ -121,8 +122,13 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 typedef struct ssh_info {
   Kex *kex;
   DH *dh;
+  Newkeys *keys[MODE_MAX];
   char *client_version_string;
   char *server_version_string;
+  /* Encryption context for receiving data. This is only used for decryption. */
+  CipherContext receive_context;
+  /* Encryption context for sending data. This is only used for encryption. */
+  CipherContext send_context;
 
 } ssh_info;
 
@@ -191,8 +197,17 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
       con->state = SSH_KEY2;
       buffer_init(&ncrack_buf); 
-      info->kex = openssh_ssh_kex2(&ncrack_buf, info->client_version_string,
-          info->server_version_string);
+
+      printf("SSH KEY!\n");
+
+      /* Initialize cipher contexts and keys as well as internal opensshlib
+       * buffers (input, output, incoming_packet, outgoing_packet) 
+       */
+      packet_set_connection(&info->send_context, &info->receive_context, info->keys);
+
+      info->kex = openssh_ssh_kex2(info->client_version_string,
+          info->server_version_string, &ncrack_buf, info->keys, &info->send_context,
+          &info->receive_context);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
           (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
@@ -208,16 +223,19 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
     case SSH_KEY3:
 
       con->state = SSH_KEY4;
+      printf("SSH KEY 4\n");
 
       /* convert Ncrack's Buf to ssh's Buffer */
       buffer_init(&ncrack_buf);
       buffer_append(&ncrack_buf, con->iobuf->get_dataptr(), con->iobuf->get_len());
       //buffer_dump(&ncrack_buf);
 
-      type = ssh_packet_read(&ncrack_buf);
+      type = openssh_packet_read(&ncrack_buf, info->keys, &info->send_context,
+          &info->receive_context);
 
       buffer_clear(&ncrack_buf);
-      ssh_kex_input_kexinit(type, 0, info->kex, &ncrack_buf);
+      openssh_kex_input_kexinit(type, 0, info->kex, &ncrack_buf, info->keys,
+          &info->send_context, &info->receive_context);
       
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
           (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
@@ -243,12 +261,14 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       /* convert Ncrack's Buf to ssh's Buffer */
       buffer_init(&ncrack_buf);
       buffer_append(&ncrack_buf, con->iobuf->get_dataptr(), con->iobuf->get_len());
-      buffer_dump(&ncrack_buf);
+      //buffer_dump(&ncrack_buf);
 
-      type = ssh_packet_read(&ncrack_buf);
+      type = openssh_packet_read(&ncrack_buf, info->keys, &info->send_context,
+          &info->receive_context);
       buffer_clear(&ncrack_buf);
 
-      info->dh = openssh_kexgex_2(info->kex, &ncrack_buf);
+      info->dh = openssh_kexgex_2(info->kex, &ncrack_buf, info->keys, &info->send_context,
+          &info->receive_context);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
           (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
@@ -275,10 +295,12 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       buffer_append(&ncrack_buf, con->iobuf->get_dataptr(), con->iobuf->get_len());
       buffer_dump(&ncrack_buf);
 
-      type = ssh_packet_read(&ncrack_buf);
+      type = openssh_packet_read(&ncrack_buf, info->keys, &info->send_context,
+          &info->receive_context);
       buffer_clear(&ncrack_buf);
 
-      openssh_kexgex_3(info->kex, info->dh, &ncrack_buf);
+      openssh_kexgex_3(info->kex, info->dh, &ncrack_buf, info->keys, &info->send_context,
+          &info->receive_context);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
           (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));

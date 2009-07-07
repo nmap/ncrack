@@ -60,7 +60,9 @@ extern const EVP_MD *evp_ssh_sha256(void);
 #endif
 
 /* prototype */
-static void kex_kexinit_finish(Kex *, Buffer *ncrack_buf);
+static void kex_kexinit_finish(Kex *kex, Buffer *ncrack_buf,
+  Newkeys *ncrack_keys[MODE_MAX], CipherContext *send_context,
+  CipherContext *receive_context);
 static void kex_choose_conf(Kex *);
 
 /* put algorithm proposal into buffer */
@@ -141,12 +143,13 @@ kex_reset_dispatch(void)
 }
 
 void
-kex_finish(Kex *kex, Buffer *ncrack_buf)
+kex_finish(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
 	kex_reset_dispatch();
 
 	packet_start(SSH2_MSG_NEWKEYS);
-	packet_send(ncrack_buf);
+	packet_send(ncrack_buf, ncrack_keys, send_context, receive_context);
   
 	/* packet_write_wait(); */
 	debug("SSH2_MSG_NEWKEYS sent");
@@ -165,7 +168,8 @@ kex_finish(Kex *kex, Buffer *ncrack_buf)
 }
 
 void
-kex_send_kexinit(Kex *kex, Buffer *ncrack_buf)
+kex_send_kexinit(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
 	u_int32_t rnd = 0;
 	u_char *cookie;
@@ -194,13 +198,15 @@ kex_send_kexinit(Kex *kex, Buffer *ncrack_buf)
 	packet_start(SSH2_MSG_KEXINIT);
 	packet_put_raw(buffer_ptr(&kex->my), buffer_len(&kex->my));
 
-	packet_send(ncrack_buf);
+	packet_send(ncrack_buf, ncrack_keys, send_context, receive_context);
 	kex->flags |= KEX_INIT_SENT;
 }
 
 /* ARGSUSED */
 void
-ssh_kex_input_kexinit(int type, u_int32_t seq, void *ctxt, Buffer *ncrack_buf)
+openssh_kex_input_kexinit(int type, u_int32_t seq, void *ctxt, Buffer *ncrack_buf,
+  Newkeys *ncrack_keys[MODE_MAX], CipherContext *send_context,
+  CipherContext *receive_context)
 {
 	char *ptr;
 	u_int i, dlen;
@@ -222,11 +228,13 @@ ssh_kex_input_kexinit(int type, u_int32_t seq, void *ctxt, Buffer *ncrack_buf)
 	(void) packet_get_int();
 	packet_check_eom();
 
-	kex_kexinit_finish(kex, ncrack_buf);
+	kex_kexinit_finish(kex, ncrack_buf, ncrack_keys, send_context, receive_context);
 }
 
 Kex *
-kex_setup(char *proposal[PROPOSAL_MAX], Buffer *ncrack_buf)
+kex_setup(char *proposal[PROPOSAL_MAX], Buffer *ncrack_buf,
+  Newkeys *ncrack_keys[MODE_MAX], CipherContext *send_context,
+  CipherContext *receive_context)
 {
 	Kex *kex;
 
@@ -236,14 +244,17 @@ kex_setup(char *proposal[PROPOSAL_MAX], Buffer *ncrack_buf)
 	kex_prop2buf(&kex->my, proposal);
 	kex->done = 0;
 
-	kex_send_kexinit(kex, ncrack_buf);					/* we start */
+	kex_send_kexinit(kex, ncrack_buf, ncrack_keys,
+    send_context, receive_context);					/* we start */
 	//kex_reset_dispatch();
 
 	return kex;
 }
 
 static void
-kex_kexinit_finish(Kex *kex, Buffer *ncrack_buf)
+kex_kexinit_finish(Kex *kex, Buffer *ncrack_buf,
+  Newkeys *ncrack_keys[MODE_MAX], CipherContext *send_context,
+  CipherContext *receive_context)
 {
 	//if (!(kex->flags & KEX_INIT_SENT))
 	//	kex_send_kexinit(kex, ncrack_buf);
@@ -252,7 +263,8 @@ kex_kexinit_finish(Kex *kex, Buffer *ncrack_buf)
 
 	if (kex->kex_type >= 0 && kex->kex_type < KEX_MAX &&
 	    kex->kex[kex->kex_type] != NULL) {
-		(kex->kex[kex->kex_type])(kex, ncrack_buf);
+		(kex->kex[kex->kex_type])(kex, ncrack_buf, ncrack_keys, send_context,
+        receive_context);
 	} else {
 		fatal("Unsupported key exchange %d", kex->kex_type);
 	}
@@ -496,7 +508,8 @@ Newkeys *current_keys[MODE_MAX];
 
 #define NKEYS	6
 void
-kex_derive_keys(Kex *kex, u_char *hash, u_int hashlen, BIGNUM *shared_secret)
+kex_derive_keys(Kex *kex, u_char *hash, u_int hashlen, BIGNUM *shared_secret,
+    Newkeys *ncrack_keys[MODE_MAX])
 {
 	u_char *keys[NKEYS];
 	u_int i, mode, ctos;
@@ -508,13 +521,13 @@ kex_derive_keys(Kex *kex, u_char *hash, u_int hashlen, BIGNUM *shared_secret)
 
 	debug2("kex_derive_keys");
 	for (mode = 0; mode < MODE_MAX; mode++) {
-		current_keys[mode] = kex->newkeys[mode];
+		ncrack_keys[mode] = kex->newkeys[mode];
 		kex->newkeys[mode] = NULL;
 		ctos = (!kex->server && mode == MODE_OUT) ||
 		    (kex->server && mode == MODE_IN);
-		current_keys[mode]->enc.iv  = keys[ctos ? 0 : 1];
-		current_keys[mode]->enc.key = keys[ctos ? 2 : 3];
-		current_keys[mode]->mac.key = keys[ctos ? 4 : 5];
+		ncrack_keys[mode]->enc.iv  = keys[ctos ? 0 : 1];
+		ncrack_keys[mode]->enc.key = keys[ctos ? 2 : 3];
+		ncrack_keys[mode]->mac.key = keys[ctos ? 4 : 5];
 	}
 }
 

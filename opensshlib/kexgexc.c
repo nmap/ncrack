@@ -45,7 +45,8 @@
 #include "compat.h"
 
 void
-kexgex_client(Kex *kex, Buffer *ncrack_buf)
+kexgex_client(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
 	int min, max, nbits;
 
@@ -75,14 +76,15 @@ kexgex_client(Kex *kex, Buffer *ncrack_buf)
 	fprintf(stderr, "\nmin = %d, nbits = %d, max = %d\n",
 	    min, nbits, max);
 #endif
-	packet_send(ncrack_buf);
+	packet_send(ncrack_buf, ncrack_keys, send_context, receive_context);
 
 }
 
 
 
 DH *
-openssh_kexgex_2(Kex *kex, Buffer *ncrack_buf)
+openssh_kexgex_2(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
   BIGNUM *p = NULL, *g = NULL;
   int min, max;
@@ -121,16 +123,17 @@ openssh_kexgex_2(Kex *kex, Buffer *ncrack_buf)
   /* generate and send 'e', client DH public key */
   packet_start(SSH2_MSG_KEX_DH_GEX_INIT);
   packet_put_bignum2(dh->pub_key);
-  packet_send(ncrack_buf);
+  packet_send(ncrack_buf, ncrack_keys, send_context, receive_context);
 
   return dh;
 }
 
 
 void
-openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf)
+openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
 {
-    BIGNUM *dh_server_pub = NULL, *shared_secret = NULL;
+  BIGNUM *dh_server_pub = NULL, *shared_secret = NULL;
   BIGNUM *p = NULL, *g = NULL;
   Key *server_host_key;
   u_char *kbuf, *hash, *signature = NULL, *server_host_key_blob = NULL;
@@ -154,10 +157,14 @@ openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf)
     fatal("cannot decode server_host_key_blob");
   if (server_host_key->type != kex->hostkey_type)
     fatal("type mismatch for decoded server_host_key_blob");
+
+  /* NCRACK: we don't need to verify host key! */
+#if 0
   if (kex->verify_host_key == NULL)
     fatal("cannot verify server_host_key");
   if (kex->verify_host_key(server_host_key) == -1)
     fatal("server_host_key verification failed");
+#endif 
 
   /* DH parameter f, server public DH key */
   if ((dh_server_pub = BN_new()) == NULL)
@@ -227,8 +234,8 @@ openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf)
     kex->session_id = xmalloc(kex->session_id_len);
     memcpy(kex->session_id, hash, kex->session_id_len);
   }
-  kex_derive_keys(kex, hash, hashlen, shared_secret);
+  kex_derive_keys(kex, hash, hashlen, shared_secret, ncrack_keys);
   BN_clear_free(shared_secret);
 
-  kex_finish(kex, ncrack_buf);
+  kex_finish(kex, ncrack_buf, ncrack_keys, send_context, receive_context);
 }

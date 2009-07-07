@@ -18,6 +18,9 @@
 
 #include <termios.h>
 #include "buffer.h"
+#include "cipher.h"
+#include "key.h"
+#include "kex.h"
 
 #include <openssl/bn.h>
 
@@ -25,7 +28,9 @@
 extern "C" {
 #endif
 
-void    packet_set_connection(void);
+void    packet_set_connection(CipherContext *send_context,
+  CipherContext *receive_context, Newkeys *ncrack_keys[MODE_MAX]);
+
 void    packet_set_timeout(int, int);
 void    packet_set_nonblocking(void);
 int     packet_get_connection_in(void);
@@ -49,13 +54,11 @@ void     packet_put_bignum2(BIGNUM * value);
 void     packet_put_string(const void *buf, u_int len);
 void     packet_put_cstring(const char *str);
 void     packet_put_raw(const void *buf, u_int len);
-void     packet_send(Buffer *ncrack_buf);
 
 int      packet_read(void);
 void     packet_read_expect(int type);
 int      packet_read_poll(void);
 void     packet_process_incoming(const char *buf, u_int len);
-int      packet_read_poll_seqnr(u_int32_t *seqnr_p);
 
 u_int	 packet_get_char(void);
 u_int	 packet_get_int(void);
@@ -67,7 +70,7 @@ void	*packet_get_string_ptr(u_int *length_ptr);
 void     packet_disconnect(const char *fmt,...) __attribute__((format(printf, 1, 2)));
 void     packet_send_debug(const char *fmt,...) __attribute__((format(printf, 1, 2)));
 
-void	 set_newkeys(int mode);
+
 int	 packet_get_keyiv_len(int);
 void	 packet_get_keyiv(int, u_char *, u_int);
 int	 packet_get_keycontext(int, u_char *);
@@ -111,11 +114,25 @@ int	 packet_need_rekeying(void);
 void	 packet_set_rekey_limit(u_int32_t);
 
 
-int ssh_packet_read(Buffer *ncrack_buf);
+int openssh_packet_read(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
 
 
-void packet_send2(Buffer *ncrack_buf);
-void packet_send2_wrapped(Buffer *ncrack_buf);
+
+int packet_read_poll_seqnr(u_int32_t *seqnr_p, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
+
+void set_newkeys(int mode, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
+
+void packet_send(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
+
+void packet_send2(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
+
+void packet_send2_wrapped(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
 
 #ifdef __cplusplus
 } /* End of 'extern "C"' */
