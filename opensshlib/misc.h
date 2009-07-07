@@ -17,6 +17,10 @@
 
 /* misc.c */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 char	*chop(char *);
 char	*strdelim(char **);
 int	 set_nonblock(int);
@@ -89,5 +93,9 @@ void		put_u16(void *, u_int16_t)
 char	*read_passphrase(const char *, int);
 int	 ask_permission(const char *, ...) __attribute__((format(printf, 1, 2)));
 int	 read_keyfile_line(FILE *, const char *, char *, size_t, u_long *);
+
+#ifdef __cplusplus
+} /* End of 'extern "C"' */
+#endif
 
 #endif /* _MISC_H */

@@ -147,6 +147,12 @@ void	 kexdh_server(Kex *);
 void	 kexgex_client(Kex *, Buffer *ncrack_buf);
 void	 kexgex_server(Kex *);
 
+
+DH *openssh_kexgex_2(Kex *kex, Buffer *ncrack_buf);
+void openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf);
+
+
+
 void
 kex_dh_hash(char *, char *, char *, int, char *, int, u_char *, int,
     BIGNUM *, BIGNUM *, BIGNUM *, u_char **, u_int *);

@@ -97,13 +97,17 @@
 
 /* OpenSSH include-files */
 //#include "openssh.h"
+
+#include "openssl/dh.h"
 #include "buffer.h"
 #include "kex.h"
 #include "sshconnect.h"
 #include "packet.h"
+#include "misc.h"
 
 
 #define SSH_TIMEOUT 20000
+#define CLIENT_VERSION "SSH-2.0-OpenSSH 5.2\n"
 
 
 extern NcrackOps o;
@@ -116,11 +120,15 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 typedef struct ssh_info {
   Kex *kex;
+  DH *dh;
+  char *client_version_string;
+  char *server_version_string;
 
 } ssh_info;
 
 
-enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_KEY2, SSH_KEY3, SSH_KEY4, SSH_FINI };
+enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_KEY2, SSH_KEY3, SSH_KEY4, SSH_KEY5, SSH_KEY6,
+  SSH_KEY7, SSH_KEY8, SSH_KEY9, SSH_FINI };
 
 void
 ncrack_ssh(nsock_pool nsp, Connection *con)
@@ -141,6 +149,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
   switch (con->state)
   {
     case SSH_INIT:
+
       con->state = SSH_ID_EX;
       con->misc_info = (ssh_info *)safe_zalloc(sizeof(ssh_info));  
       nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
@@ -161,13 +170,20 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
         nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
         break;
       }
+      con->state = SSH_KEY;
+
       printf("%s ssh id: %s\n", hostinfo, (char *)ioptr);
+      info->server_version_string = Strndup((char *)ioptr, buflen);
+      chop(info->server_version_string);
+
       /* NEVER forget to free allocated memory and also NULL-assign ptr */
       delete con->iobuf;
       con->iobuf = NULL;
 
-      con->state = SSH_KEY;
-      strncpy(lbuf, "SSH-2.0-OpenSSH 5.2\n", sizeof(lbuf) - 1); 
+      strncpy(lbuf, CLIENT_VERSION, sizeof(lbuf) - 1); 
+      info->client_version_string = Strndup(lbuf, strlen(lbuf));
+      chop(info->client_version_string);
+
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, lbuf, -1);
       break;
 
@@ -175,7 +191,8 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
       con->state = SSH_KEY2;
       buffer_init(&ncrack_buf); 
-      info->kex = ssh_kex2(&ncrack_buf);
+      info->kex = openssh_ssh_kex2(&ncrack_buf, info->client_version_string,
+          info->server_version_string);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
           (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
@@ -205,14 +222,77 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
           (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
 
+      delete con->iobuf;
+      con->iobuf = NULL;
+      buffer_free(&ncrack_buf);
       break;
 
 
     case SSH_KEY4:
 
       printf("SSH KEY 4\n");
+      con->state = SSH_KEY5;
+      nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
       break;
 
+    case SSH_KEY5:
+
+      printf("SSH KEY 5\n");
+      con->state = SSH_KEY6;
+
+      /* convert Ncrack's Buf to ssh's Buffer */
+      buffer_init(&ncrack_buf);
+      buffer_append(&ncrack_buf, con->iobuf->get_dataptr(), con->iobuf->get_len());
+      buffer_dump(&ncrack_buf);
+
+      type = ssh_packet_read(&ncrack_buf);
+      buffer_clear(&ncrack_buf);
+
+      info->dh = openssh_kexgex_2(info->kex, &ncrack_buf);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
+          (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
+
+      buffer_free(&ncrack_buf);
+      con->iobuf = NULL;
+      buffer_free(&ncrack_buf);
+      break;
+
+    case SSH_KEY6:
+
+      printf("SSH KEY 6\n");
+      con->state = SSH_KEY7;
+      nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
+      break;
+
+    case SSH_KEY7:
+
+      printf("SSH KEY 7\n");
+      con->state = SSH_KEY8;
+
+      /* convert Ncrack's Buf to ssh's Buffer */
+      buffer_init(&ncrack_buf);
+      buffer_append(&ncrack_buf, con->iobuf->get_dataptr(), con->iobuf->get_len());
+      buffer_dump(&ncrack_buf);
+
+      type = ssh_packet_read(&ncrack_buf);
+      buffer_clear(&ncrack_buf);
+
+      openssh_kexgex_3(info->kex, info->dh, &ncrack_buf);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
+          (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
+
+      buffer_free(&ncrack_buf);
+      con->iobuf = NULL;
+      buffer_free(&ncrack_buf);
+      break;
+
+    case SSH_KEY8:
+
+      printf("SSH KEY 8 !!!!!!!!\n");
+
+      break;
 
     case SSH_FINI:
 

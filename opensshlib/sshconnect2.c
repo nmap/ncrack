@@ -51,11 +51,6 @@
 #include "cipher.h"
 
 
-
-/* import */
-extern char *client_version_string;
-extern char *server_version_string;
-
 /*
  * SSH2 key exchange
  */
@@ -65,7 +60,8 @@ u_int session_id2_len = 0;
 
 
 Kex *
-ssh_kex2(Buffer *ncrack_buf)
+openssh_ssh_kex2(Buffer *ncrack_buf, char *client_version_string,
+    char *server_version_string)
 {
 	Kex *kex;
 
@@ -86,8 +82,8 @@ ssh_kex2(Buffer *ncrack_buf)
   kex->kex[KEX_DH_GRP14_SHA1] = kexdh_client;
   kex->kex[KEX_DH_GEX_SHA1] = kexgex_client;
   kex->kex[KEX_DH_GEX_SHA256] = kexgex_client;
-//  kex->client_version_string=client_version_string;
-//  kex->server_version_string=server_version_string;
+  kex->client_version_string=client_version_string;
+  kex->server_version_string=server_version_string;
 
   //dispatch_run(DISPATCH_BLOCK, &kex->done, kex);
   //

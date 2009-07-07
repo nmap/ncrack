@@ -48,7 +48,8 @@ ssh_login(Sensitive *, const char *, struct sockaddr *, struct passwd *, int);
 int	 verify_host_key(char *, struct sockaddr *, Key *);
 
 void	 ssh_kex(char *, struct sockaddr *);
-Kex *	 ssh_kex2(Buffer *ncrack_buf);
+Kex *openssh_ssh_kex2(Buffer *ncrack_buf, char *client_version_string,
+    char *server_version_string);
 
 void	 ssh_userauth1(const char *, const char *, char *, Sensitive *);
 void	 ssh_userauth2(const char *, const char *, char *, Sensitive *);

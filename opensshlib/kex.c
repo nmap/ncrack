@@ -152,8 +152,8 @@ kex_finish(Kex *kex, Buffer *ncrack_buf)
 	debug("SSH2_MSG_NEWKEYS sent");
 
 	debug("expecting SSH2_MSG_NEWKEYS");
-	packet_read_expect(SSH2_MSG_NEWKEYS);
-	packet_check_eom();
+//	packet_read_expect(SSH2_MSG_NEWKEYS);
+//	packet_check_eom();
 	debug("SSH2_MSG_NEWKEYS received");
 
 	kex->done = 1;
