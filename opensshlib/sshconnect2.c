@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "includes.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -40,6 +41,8 @@
 #include <unistd.h>
 
 
+#include "ssh.h"
+#include "ssh2.h"
 #include "xmalloc.h"
 #include "buffer.h"
 #include "packet.h"
@@ -49,6 +52,133 @@
 #include "sshconnect.h"
 #include "compat.h"
 #include "cipher.h"
+#include "misc.h"
+#include "match.h"
+#include "authfile.h"
+#include "dh.h"
+#include "authfd.h"
+#include "log.h"
+//#include "auth.h"
+
+
+
+/*
+ * Authenticate user
+ */
+
+typedef struct Authctxt Authctxt;
+typedef struct Authmethod Authmethod;
+typedef struct identity Identity;
+typedef struct idlist Idlist;
+
+struct identity {
+	//TAILQ_ENTRY(identity) next;
+	AuthenticationConnection *ac;	/* set if agent supports key */
+	Key	*key;			/* public/private key */
+	char	*filename;		/* comment for agent-only keys */
+	int	tried;
+	int	isprivate;		/* key points to the private key */
+};
+//TAILQ_HEAD(idlist, identity);
+
+struct Authctxt {
+	const char *server_user;
+	const char *local_user;
+	const char *host;
+	const char *service;
+	Authmethod *method;
+	int success;
+	char *authlist;
+	/* pubkey */
+	Identity key;
+	AuthenticationConnection *agent;
+	/* hostbased */
+	Sensitive *sensitive;
+	/* kbd-interactive */
+	int info_req_seen;
+	/* generic */
+	void *methoddata;
+};
+struct Authmethod {
+	char	*name;		/* string to compare against server's list */
+	int	(*userauth)(Authctxt *authctxt);
+	//void	(*cleanup)(Authctxt *authctxt);
+	int	*enabled;	/* flag in option struct that enables method */
+	//int	*batch_flag;	/* flag in option struct that disables method */
+};
+
+static Authmethod *authmethod_lookup(const char *name);
+static int userauth_none(Authctxt *authctxt);
+static int userauth_passwd(Authctxt *authctxt);
+
+
+
+/* methods */
+Authmethod method_none = {
+	"none",
+	userauth_none,
+//	&none_enabled
+};
+
+Authmethod method_passwd = {
+	"password",
+	userauth_passwd,
+//	&options.password_authentication
+};
+
+
+static int
+userauth_passwd(Authctxt *authctxt)
+{
+#if 0
+	char *password, *newpass;
+	int authenticated = 0;
+	int change;
+	u_int len, newlen;
+
+	change = packet_get_char();
+	password = packet_get_string(&len);
+	if (change) {
+		/* discard new password from packet */
+		newpass = packet_get_string(&newlen);
+		memset(newpass, 0, newlen);
+		xfree(newpass);
+	}
+	packet_check_eom();
+
+	if (change)
+		logit("password change not supported");
+	else if (PRIVSEP(auth_password(authctxt, password)) == 1)
+		authenticated = 1;
+	memset(password, 0, len);
+	xfree(password);
+	return authenticated;
+#endif
+}
+
+
+static int
+userauth_none(Authctxt *authctxt)
+{
+#if 0
+	none_enabled = 0;
+	packet_check_eom();
+	if (options.password_authentication)
+		return (PRIVSEP(auth_password(authctxt, "")));
+	return (0);
+#endif
+}
+
+
+
+
+Authmethod *authmethods[] = {
+	&method_none,
+	&method_passwd,
+	NULL
+};
+
+
 
 
 /*
@@ -94,4 +224,94 @@ openssh_ssh_kex2(char *client_version_string, char *server_version_string,
 
 }
 
+
+
+void
+openssh_start_userauth2(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context)
+{
+	packet_start(SSH2_MSG_SERVICE_REQUEST);
+	packet_put_cstring("ssh-userauth");
+	packet_send(ncrack_buf, ncrack_keys, send_context, receive_context);
+}
+
+
+
+
+void
+openssh_userauth2(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context,
+  const char *server_user, int type)
+{
+	Authctxt authctxt;
+
+	debug("SSH2_MSG_SERVICE_REQUEST sent");
+	if (type != SSH2_MSG_SERVICE_ACCEPT)
+		fatal("Server denied authentication request: %d", type);
+	if (packet_remaining() > 0) {
+		char *reply = packet_get_string(NULL);
+		debug2("service_accept: %s", reply);
+		xfree(reply);
+	} else {
+		debug2("buggy server: service_accept w/o service");
+	}
+	packet_check_eom();
+	debug("SSH2_MSG_SERVICE_ACCEPT received");
+
+	//if (options.preferred_authentications == NULL)
+	//	options.preferred_authentications = authmethods_get();
+
+	/* setup authentication context */
+	memset(&authctxt, 0, sizeof(authctxt));
+//	pubkey_prepare(&authctxt);
+	authctxt.server_user = server_user;
+//	authctxt.local_user = local_user;
+//	authctxt.host = host;
+	authctxt.service = "ssh-connection";		/* service name */
+	authctxt.success = 0;
+	authctxt.method = authmethod_lookup("none");
+	authctxt.authlist = NULL;
+	authctxt.methoddata = NULL;
+	//authctxt.sensitive = sensitive;
+	authctxt.info_req_seen = 0;
+	if (authctxt.method == NULL)
+		fatal("ssh_userauth2: internal error: cannot send userauth none request");
+
+	/* initial userauth request */
+  packet_start(SSH2_MSG_USERAUTH_REQUEST);
+	packet_put_cstring(authctxt.server_user);
+	packet_put_cstring(authctxt.service);
+	packet_put_cstring(authctxt.method->name);
+	packet_send(ncrack_buf, ncrack_keys, send_context, receive_context);
+	//userauth_none(&authctxt);
+
+#if 0
+	dispatch_init(&input_userauth_error);
+	dispatch_set(SSH2_MSG_USERAUTH_SUCCESS, &input_userauth_success);
+	dispatch_set(SSH2_MSG_USERAUTH_FAILURE, &input_userauth_failure);
+	dispatch_set(SSH2_MSG_USERAUTH_BANNER, &input_userauth_banner);
+	dispatch_run(DISPATCH_BLOCK, &authctxt.success, &authctxt);	/* loop until success */
+#endif
+
+	//pubkey_cleanup(&authctxt);
+	//dispatch_range(SSH2_MSG_USERAUTH_MIN, SSH2_MSG_USERAUTH_MAX, NULL);
+
+	debug("Authentication succeeded (%s).", authctxt.method->name);
+}
+
+static Authmethod *
+authmethod_lookup(const char *name)
+{
+	int i;
+
+	if (name != NULL)
+		for (i = 0; authmethods[i] != NULL; i++)
+			if (authmethods[i]->enabled != NULL &&
+			    *(authmethods[i]->enabled) != 0 &&
+			    strcmp(name, authmethods[i]->name) == 0)
+				return authmethods[i];
+	debug2("Unrecognized authentication method name: %s",
+	    name ? name : "NULL");
+	return NULL;
+}
 

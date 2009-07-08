@@ -223,8 +223,9 @@ openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE
   xfree(server_host_key_blob);
   BN_clear_free(dh_server_pub);
 
-  if (key_verify(server_host_key, signature, slen, hash, hashlen) != 1)
-    fatal("key_verify failed for server_host_key");
+
+  //if (key_verify(server_host_key, signature, slen, hash, hashlen) != 1)
+  //  fatal("key_verify failed for server_host_key");
   key_free(server_host_key);
   xfree(signature);
 

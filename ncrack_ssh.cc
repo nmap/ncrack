@@ -134,7 +134,7 @@ typedef struct ssh_info {
 
 
 enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_KEY2, SSH_KEY3, SSH_KEY4, SSH_KEY5, SSH_KEY6,
-  SSH_KEY7, SSH_KEY8, SSH_KEY9, SSH_FINI };
+  SSH_KEY7, SSH_AUTH, SSH_AUTH2, SSH_AUTH3, SSH_AUTH4, SSH_FINI };
 
 void
 ncrack_ssh(nsock_pool nsp, Connection *con)
@@ -189,6 +189,8 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       strncpy(lbuf, CLIENT_VERSION, sizeof(lbuf) - 1); 
       info->client_version_string = Strndup(lbuf, strlen(lbuf));
       chop(info->client_version_string);
+
+      printf("\n %s\n %s\n", info->server_version_string, info->client_version_string);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, lbuf, -1);
       break;
@@ -273,7 +275,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
           (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
 
-      buffer_free(&ncrack_buf);
+      delete con->iobuf;
       con->iobuf = NULL;
       buffer_free(&ncrack_buf);
       break;
@@ -288,12 +290,12 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
     case SSH_KEY7:
 
       printf("SSH KEY 7\n");
-      con->state = SSH_KEY8;
+      con->state = SSH_AUTH;
 
       /* convert Ncrack's Buf to ssh's Buffer */
       buffer_init(&ncrack_buf);
       buffer_append(&ncrack_buf, con->iobuf->get_dataptr(), con->iobuf->get_len());
-      buffer_dump(&ncrack_buf);
+      //buffer_dump(&ncrack_buf);
 
       type = openssh_packet_read(&ncrack_buf, info->keys, &info->send_context,
           &info->receive_context);
@@ -305,16 +307,63 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
           (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
 
-      buffer_free(&ncrack_buf);
+      delete con->iobuf;
       con->iobuf = NULL;
       buffer_free(&ncrack_buf);
       break;
 
-    case SSH_KEY8:
+    case SSH_AUTH:
 
-      printf("SSH KEY 8 !!!!!!!!\n");
+      printf("SSH AUTH\n");
+      con->state = SSH_AUTH2;
 
+      buffer_init(&ncrack_buf);
+      openssh_start_userauth2(&ncrack_buf, info->keys, &info->send_context,
+          &info->receive_context);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
+          (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
+
+      buffer_free(&ncrack_buf);
       break;
+
+    case SSH_AUTH2:
+
+      printf("SSH AUTH2 !!\n");
+      con->state = SSH_AUTH3;
+      nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
+      break;
+
+    case SSH_AUTH3:
+
+      printf("SSH AUTH3!\n");
+      con->state = SSH_AUTH4;
+
+      /* convert Ncrack's Buf to ssh's Buffer */
+      buffer_init(&ncrack_buf);
+      buffer_append(&ncrack_buf, con->iobuf->get_dataptr(), con->iobuf->get_len());
+      buffer_dump(&ncrack_buf);
+
+      type = openssh_packet_read(&ncrack_buf, info->keys, &info->send_context,
+          &info->receive_context);
+      buffer_clear(&ncrack_buf);
+
+      openssh_userauth2(&ncrack_buf, info->keys, &info->send_context,
+          &info->receive_context, con->user, type);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
+        (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
+
+      delete con->iobuf;
+      con->iobuf = NULL;
+      buffer_free(&ncrack_buf);
+      break;
+
+    case SSH_AUTH4:
+
+      printf("SSH AUTH 4!\n");
+      break;
+
 
     case SSH_FINI:
 

@@ -51,7 +51,6 @@ int	 verify_host_key(char *, struct sockaddr *, Key *);
 void	 ssh_kex(char *, struct sockaddr *);
 
 void	 ssh_userauth1(const char *, const char *, char *, Sensitive *);
-void	 ssh_userauth2(const char *, const char *, char *, Sensitive *);
 
 void	 ssh_put_password(char *);
 int	 ssh_local_cmd(const char *);
@@ -80,6 +79,14 @@ Kex *openssh_ssh_kex2(char *client_version_string, char *server_version_string,
   Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
   CipherContext *send_context, CipherContext *receive_context);
 
+void
+openssh_start_userauth2(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context);
+
+void
+openssh_userauth2(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
+  CipherContext *send_context, CipherContext *receive_context,
+  const char *server_user, int type);
 
 
 #ifdef __cplusplus

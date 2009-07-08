@@ -46,8 +46,8 @@ LIBSSH_OBJS=acss.o authfd.o authfile.o bufaux.o bufbn.o buffer.o \
 	canohost.o cipher.o cipher-acss.o cipher-aes.o \
 	cipher-bf1.o cipher-ctr.o cipher-3des1.o cleanup.o \
 	compat.o compress.o crc32.o deattack.o fatal.o hostfile.o \
-	log.o match.o md-sha256.o moduli.o packet.o \
-	rsa.o ttymodes.o xmalloc.o addrmatch.o \
+	log.o match.o md-sha256.o moduli.o packet.o auth2.o auth2-passwd.o\
+	rsa.o ttymodes.o xmalloc.o addrmatch.o auth2-none.o \
 	atomicio.o key.o kex.o mac.o uidswap.o uuencode.o misc.o \
 	rijndael.o ssh-dss.o ssh-rsa.o dh.o kexdh.o \
 	kexgex.o kexdhc.o kexgexc.o umac.o sshconnect2.o entropy.o

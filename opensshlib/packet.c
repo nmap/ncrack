@@ -193,7 +193,7 @@ packet_set_connection(CipherContext *send_context,
 	    0, NULL, 0, CIPHER_ENCRYPT);
 	cipher_init(receive_context, none, (const u_char *)"",
 	    0, NULL, 0, CIPHER_DECRYPT);
-	newkeys[MODE_IN] = newkeys[MODE_OUT] = NULL;
+	ncrack_keys[MODE_IN] = ncrack_keys[MODE_OUT] = NULL;
 	if (!initialized) {
 		initialized = 1;
 		buffer_init(&input);
@@ -808,10 +808,10 @@ packet_send2_wrapped(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
 	Comp *comp = NULL;
 	int block_size;
 
-	if (newkeys[MODE_OUT] != NULL) {
-		enc  = &newkeys[MODE_OUT]->enc;
-		mac  = &newkeys[MODE_OUT]->mac;
-		comp = &newkeys[MODE_OUT]->comp;
+	if (ncrack_keys[MODE_OUT] != NULL) {
+		enc  = &ncrack_keys[MODE_OUT]->enc;
+		mac  = &ncrack_keys[MODE_OUT]->mac;
+		comp = &ncrack_keys[MODE_OUT]->comp;
 	}
 	block_size = enc ? enc->block_size : 8;
 
@@ -1160,10 +1160,10 @@ packet_read_poll2(u_int32_t *seqnr_p, Newkeys *ncrack_keys[MODE_MAX],
   if (packet_discard)
     return SSH_MSG_NONE;
 
-  if (newkeys[MODE_IN] != NULL) {
-    enc  = &newkeys[MODE_IN]->enc;
-    mac  = &newkeys[MODE_IN]->mac;
-    comp = &newkeys[MODE_IN]->comp;
+  if (ncrack_keys[MODE_IN] != NULL) {
+    enc  = &ncrack_keys[MODE_IN]->enc;
+    mac  = &ncrack_keys[MODE_IN]->mac;
+    comp = &ncrack_keys[MODE_IN]->comp;
   }
   maclen = mac && mac->enabled ? mac->mac_len : 0;
   block_size = enc ? enc->block_size : 8;
@@ -1182,9 +1182,9 @@ packet_read_poll2(u_int32_t *seqnr_p, Newkeys *ncrack_keys[MODE_MAX],
     cp = buffer_ptr(&incoming_packet);
     packet_length = get_u32(cp);
     if (packet_length < 1 + 4 || packet_length > PACKET_MAX_SIZE) {
-#ifdef PACKET_DEBUG
+//#ifdef PACKET_DEBUG
       buffer_dump(&incoming_packet);
-#endif
+//#endif
       logit("Bad packet length %u.", packet_length);
       packet_start_discard(enc, mac, packet_length,
           PACKET_MAX_SIZE);
