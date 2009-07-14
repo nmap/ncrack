@@ -101,7 +101,7 @@ unsigned long nsp_getid(nsock_pool nsp) {
 }
 
 /* This next function returns the errno style error code -- which is only
-   valid if the status NSOCK_LOOP_ERROR was returned by nsock_loop() */
+   valid if the status is NSOCK_LOOP_ERROR was returned by nsock_loop() */
 int nsp_geterrorcode(nsock_pool nsp) {
   mspool *mt = (mspool *) nsp;
   return mt->errnum;

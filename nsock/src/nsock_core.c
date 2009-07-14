@@ -984,7 +984,7 @@ while(1) {
     break;
   }
  
-  if (msec_timeout >= 0) {
+  if (msec_timeout > 0) {
     msecs_left = MAX(0, TIMEVAL_MSEC_SUBTRACT(loop_timeout, nsock_tod));
     if (msecs_left == 0 && loopnum > 0) {
       quitstatus = NSOCK_LOOP_TIMEOUT;
