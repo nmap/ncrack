@@ -303,8 +303,8 @@ AC_HELP_STRING([--with-libopenssh=DIR], [Compile and link to libopenssh in DIR])
   yes)
     ;;
   *)
-    NSOCKDIR="$with_libopenssh"
-    NSOCK_BUILD=""
+    OPENSSHLIB_DIR="$with_libopenssh"
+    OPENSSHLIB_BUILD=""
     ;;
   esac]
 )

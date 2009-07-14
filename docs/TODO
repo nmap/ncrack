@@ -62,7 +62,12 @@ TODO:
   in the authentication steps. These may also prove useful for user submissions
   of new exotic patterns for modules, like telnet, that need them.
 
-
+* On a brand-new checkout, configure seems to be running 2 times for the
+  libraries nbase and nsock - one time in the beginning of calling ./configure
+  and a second time after typing make. Why does this happen? In addition, there
+  seems to be a problem when changing the order of linking - if nbase comes
+  first and nsock comes second, linking problems between the two arise. However,
+  nmap has them in that order without any problems. 
 
 ============================== DONE ==========================================
 
