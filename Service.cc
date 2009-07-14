@@ -144,6 +144,9 @@ Service::Service()
   list_finished = false;
   just_started = true;
 
+  end.orly = false;
+  end.reason = NULL;
+
   failed_connections = 0;
   total_attempts = 0;
   finished_attempts = 0;

@@ -182,6 +182,13 @@ typedef struct loginpair
 } loginpair;
 
 
+struct end_reason
+{
+  bool orly;    /* did it end? */
+  char *reason; /* why did it end */
+};
+
+
 
 class Service
 {
@@ -233,6 +240,8 @@ class Service
 		Target *target; /* service belongs to this host */
 		u8 proto;
 		u16 portno;
+
+    struct end_reason end; /* reason that this service ended */
 
     /* list which holds discovered credentials if any */
     vector <loginpair> credentials_found;

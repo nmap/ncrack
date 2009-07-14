@@ -639,7 +639,6 @@ enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 MODULES_BUILD
-OPENBSDCOMPAT_LIB
 OPENSSH_LIB
 OPENSSHLIB_BUILD
 OPENSSHLIB_DIR
@@ -6337,13 +6336,6 @@ OPENSSH_LIB="-lopenssh"
 
 
 subdirs="$subdirs opensshlib"
-
-
-
-# OPENBSDCOMPAT_LIB
-OPENBSDCOMPAT_DIR="opensshlib/openbsd-compat"
-OPENBSDCOMPAT_LIB="-lopenbsd-compat"
-LDFLAGS="$LDFLAGS -L$OPENBSDCOMPAT_DIR"
 
 
 
