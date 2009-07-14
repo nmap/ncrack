@@ -1386,24 +1386,19 @@ AC_CHECK_FUNCS( \
 	statfs \
 	statvfs \
 	strdup \
-	strerror \
 	strlcat \
 	strlcpy \
 	strmode \
-	strnvis \
-	strtonum \
 	strtoll \
 	strtoul \
 	swap32 \
 	sysconf \
-	tcgetpgrp \
 	truncate \
 	unsetenv \
 	updwtmpx \
 	vasprintf \
 	vhangup \
 	vsnprintf \
-	waitpid \
 )
 
 # IRIX has a const char return value for gai_strerror()
@@ -1435,12 +1430,6 @@ AC_CHECK_DECL(strsep,
 #endif
 	])
 
-dnl tcsendbreak might be a macro
-AC_CHECK_DECL(tcsendbreak,
-	[AC_DEFINE(HAVE_TCSENDBREAK)],
-	[AC_CHECK_FUNCS(tcsendbreak)],
-	[#include <termios.h>]
-)
 
 AC_CHECK_DECLS(h_errno, , ,[#include <netdb.h>])
 
@@ -1461,11 +1450,6 @@ AC_CHECK_DECLS(O_NONBLOCK, , ,
 #endif
 	])
 
-AC_CHECK_DECLS(writev, , , [
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <unistd.h>
-	])
 
 AC_CHECK_DECLS(MAXSYMLINKS, , , [
 #include <sys/param.h>
@@ -1475,39 +1459,6 @@ AC_CHECK_DECLS(offsetof, , , [
 #include <stddef.h>
 	])
 
-AC_CHECK_FUNCS(setresuid, [
-	dnl Some platorms have setresuid that isn't implemented, test for this
-	AC_MSG_CHECKING(if setresuid seems to work)
-	AC_RUN_IFELSE(
-		[AC_LANG_SOURCE([[
-#include <stdlib.h>
-#include <errno.h>
-int main(){errno=0; setresuid(0,0,0); if (errno==ENOSYS) exit(1); else exit(0);}
-		]])],
-		[AC_MSG_RESULT(yes)],
-		[AC_DEFINE(BROKEN_SETRESUID, 1,
-			[Define if your setresuid() is broken])
-		 AC_MSG_RESULT(not implemented)],
-		[AC_MSG_WARN([cross compiling: not checking setresuid])]
-	)
-])
-
-AC_CHECK_FUNCS(setresgid, [
-	dnl Some platorms have setresgid that isn't implemented, test for this
-	AC_MSG_CHECKING(if setresgid seems to work)
-	AC_RUN_IFELSE(
-		[AC_LANG_SOURCE([[
-#include <stdlib.h>
-#include <errno.h>
-int main(){errno=0; setresgid(0,0,0); if (errno==ENOSYS) exit(1); else exit(0);}
-		]])],
-		[AC_MSG_RESULT(yes)],
-		[AC_DEFINE(BROKEN_SETRESGID, 1,
-			[Define if your setresgid() is broken])
-		 AC_MSG_RESULT(not implemented)],
-		[AC_MSG_WARN([cross compiling: not checking setresuid])]
-	)
-])
 
 dnl    Checks for time functions
 AC_CHECK_FUNCS(gettimeofday time)
@@ -1520,18 +1471,6 @@ AC_CHECK_FUNCS(setutxent utmpxname)
 dnl    Checks for lastlog functions
 AC_CHECK_FUNCS(getlastlogxbyname)
 
-AC_CHECK_FUNC(daemon,
-	[AC_DEFINE(HAVE_DAEMON, 1, [Define if your libraries define daemon()])],
-	[AC_CHECK_LIB(bsd, daemon,
-		[LIBS="$LIBS -lbsd"; AC_DEFINE(HAVE_DAEMON)])]
-)
-
-AC_CHECK_FUNC(getpagesize,
-	[AC_DEFINE(HAVE_GETPAGESIZE, 1,
-		[Define if your libraries define getpagesize()])],
-	[AC_CHECK_LIB(ucb, getpagesize,
-		[LIBS="$LIBS -lucb"; AC_DEFINE(HAVE_GETPAGESIZE)])]
-)
 
 # Check for broken snprintf
 if test "x$ac_cv_func_snprintf" = "xyes" ; then
@@ -1616,81 +1555,6 @@ if test "x$ac_cv_func_getpeereid" != "xyes" -a "x$ac_cv_func_getpeerucred" != "x
         )
 fi
 
-dnl see whether mkstemp() requires XXXXXX
-if test "x$ac_cv_func_mkdtemp" = "xyes" ; then
-AC_MSG_CHECKING([for (overly) strict mkstemp])
-AC_RUN_IFELSE(
-	[AC_LANG_SOURCE([[
-#include <stdlib.h>
-main() { char template[]="conftest.mkstemp-test";
-if (mkstemp(template) == -1)
-	exit(1);
-unlink(template); exit(0);
-}
-	]])],
-	[
-		AC_MSG_RESULT(no)
-	],
-	[
-		AC_MSG_RESULT(yes)
-		AC_DEFINE(HAVE_STRICT_MKSTEMP, 1, [Silly mkstemp()])
-	],
-	[
-		AC_MSG_RESULT(yes)
-		AC_DEFINE(HAVE_STRICT_MKSTEMP)
-	]
-)
-fi
-
-dnl make sure that openpty does not reacquire controlling terminal
-if test ! -z "$check_for_openpty_ctty_bug"; then
-	AC_MSG_CHECKING(if openpty correctly handles controlling tty)
-	AC_RUN_IFELSE(
-		[AC_LANG_SOURCE([[
-#include <stdio.h>
-#include <sys/fcntl.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-
-int
-main()
-{
-	pid_t pid;
-	int fd, ptyfd, ttyfd, status;
-
-	pid = fork();
-	if (pid < 0) {		/* failed */
-		exit(1);
-	} else if (pid > 0) {	/* parent */
-		waitpid(pid, &status, 0);
-		if (WIFEXITED(status))
-			exit(WEXITSTATUS(status));
-		else
-			exit(2);
-	} else {		/* child */
-		close(0); close(1); close(2);
-		setsid();
-		openpty(&ptyfd, &ttyfd, NULL, NULL, NULL);
-		fd = open("/dev/tty", O_RDWR | O_NOCTTY);
-		if (fd >= 0)
-			exit(3);	/* Acquired ctty: broken */
-		else
-			exit(0);	/* Did not acquire ctty: OK */
-	}
-}
-		]])],
-		[
-			AC_MSG_RESULT(yes)
-		],
-		[
-			AC_MSG_RESULT(no)
-			AC_DEFINE(SSHD_ACQUIRES_CTTY)
-		],
-		[
-			AC_MSG_RESULT(cross-compiling, assuming yes)
-		]
-	)
-fi
 
 if test "x$ac_cv_func_getaddrinfo" = "xyes" && \
     test "x$check_for_hpux_broken_getaddrinfo" = "x1"; then

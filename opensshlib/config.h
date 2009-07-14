@@ -229,7 +229,7 @@
 /* #undef HAVE_CYGWIN */
 
 /* Define if your libraries define daemon() */
-#define HAVE_DAEMON 1
+/* #undef HAVE_DAEMON */
 
 /* Define to 1 if you have the declaration of `authenticate', and to 0 if you
    don't. */
@@ -281,7 +281,7 @@
 
 /* Define to 1 if you have the declaration of `writev', and to 0 if you don't.
    */
-#define HAVE_DECL_WRITEV 1
+/* #undef HAVE_DECL_WRITEV */
 
 /* Define to 1 if you have the declaration of `_getlong', and to 0 if you
    don't. */
@@ -400,7 +400,7 @@
 /* #undef HAVE_GETOPT_OPTRESET */
 
 /* Define if your libraries define getpagesize() */
-#define HAVE_GETPAGESIZE 1
+/* #undef HAVE_GETPAGESIZE */
 
 /* Define to 1 if you have the `getpeereid' function. */
 /* #undef HAVE_GETPEEREID */
@@ -649,9 +649,6 @@
 /* Define to 1 if you have the `openlog_r' function. */
 /* #undef HAVE_OPENLOG_R */
 
-/* Define to 1 if you have the `openpty' function. */
-#define HAVE_OPENPTY 1
-
 /* Define if your ssl headers are included with #include <openssl/header.h> */
 #define HAVE_OPENSSL 1
 
@@ -776,10 +773,10 @@
 #define HAVE_SETREGID 1
 
 /* Define to 1 if you have the `setresgid' function. */
-#define HAVE_SETRESGID 1
+/* #undef HAVE_SETRESGID */
 
 /* Define to 1 if you have the `setresuid' function. */
-#define HAVE_SETRESUID 1
+/* #undef HAVE_SETRESUID */
 
 /* Define to 1 if you have the `setreuid' function. */
 #define HAVE_SETREUID 1
@@ -857,13 +854,13 @@
 #define HAVE_STRDUP 1
 
 /* Define to 1 if you have the `strerror' function. */
-#define HAVE_STRERROR 1
+/* #undef HAVE_STRERROR */
 
 /* Define to 1 if you have the `strftime' function. */
 #define HAVE_STRFTIME 1
 
 /* Silly mkstemp() */
-#define HAVE_STRICT_MKSTEMP 1
+/* #undef HAVE_STRICT_MKSTEMP */
 
 /* Define to 1 if you have the <strings.h> header file. */
 #define HAVE_STRINGS_H 1
@@ -1007,10 +1004,10 @@
 #define HAVE_SYS_UN_H 1
 
 /* Define to 1 if you have the `tcgetpgrp' function. */
-#define HAVE_TCGETPGRP 1
+/* #undef HAVE_TCGETPGRP */
 
 /* Define to 1 if you have the `tcsendbreak' function. */
-#define HAVE_TCSENDBREAK 1
+/* #undef HAVE_TCSENDBREAK */
 
 /* Define to 1 if you have the `time' function. */
 #define HAVE_TIME 1
@@ -1118,7 +1115,7 @@
 #define HAVE_VSNPRINTF 1
 
 /* Define to 1 if you have the `waitpid' function. */
-#define HAVE_WAITPID 1
+/* #undef HAVE_WAITPID */
 
 /* Define to 1 if you have the `_getlong' function. */
 #define HAVE__GETLONG 1

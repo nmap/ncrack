@@ -831,7 +831,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
    * only and make no additional check.
    */
   if (con->peer_alive) {
-    if (con->login_attempts < serv->auth_tries
+    if (con->login_attempts < (unsigned long)serv->auth_tries
         && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
       if (pair_ret == 1)
         con->from_pool = true;
@@ -846,7 +846,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     if (serv->just_started) {
       con->check_closed = true;
       nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
-    } else if (con->login_attempts < serv->auth_tries &&
+    } else if (con->login_attempts < (unsigned long)serv->auth_tries &&
         con->login_attempts < serv->supported_attempts &&
         (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
       if (pair_ret == 1)
@@ -1007,7 +1007,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   }
 
   if (o.debugging)
-    log_write(LOG_STDOUT, "%s Attempts: total %d completed %d supported %d --- rate %.2f \n", 
+    log_write(LOG_STDOUT, "%s Attempts: total %lu completed %lu supported %lu --- rate %.2f \n", 
         serv->HostInfo(), serv->total_attempts, serv->finished_attempts, serv->supported_attempts,
         SG->auth_rate_meter.getCurrentRate());
 
@@ -1069,7 +1069,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
        * 1. we hanen't surpassed the authentication limit per connection for this service
        * 2. we still have enough login pairs from the pool
        */
-      if (con->login_attempts < serv->auth_tries
+      if (con->login_attempts < (unsigned long)serv->auth_tries
           && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
         if (pair_ret == 1)
           con->from_pool = true;

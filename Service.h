@@ -166,7 +166,7 @@ class Connection
 
 		char *buf;          /* auxiliary buffer */
 		int bufsize;        /* total buffer size in bytes */
-		long login_attempts;/* login attempts up until now */
+		unsigned long login_attempts; /* login attempts up until now */
 		nsock_iod niod;     /* I/O descriptor for this connection */
 		Service *service;   /* service it belongs to */
 };
@@ -263,14 +263,14 @@ class Service
      * (since that probably is the most reliable one, because in the beginning
      * we haven't opened up too many connections yet)
      */
-    unsigned int supported_attempts;
+    unsigned long supported_attempts;
 
     /* total auth attempts, including failed ones */
-    unsigned int total_attempts;
+    unsigned long total_attempts;
     
     /* auth attempts that have finished up to the point of completing
      * all authentication steps and getting the results */
-    unsigned int finished_attempts; 
+    unsigned long finished_attempts; 
 
 		/* timing options that override global ones */
 		long min_connection_limit;  /* minimum number of concurrent parallel connections */

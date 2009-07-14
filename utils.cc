@@ -224,7 +224,7 @@ str2proto(char *str)
 
 
 /* convert protocol number to string */
-char *
+const char *
 proto2str(u8 proto)
 {
   if (proto == IPPROTO_TCP)

@@ -6239,7 +6239,92 @@ _ACEOF
 fi
 done
 
-RECVFROM_ARG6_TYPE
+
+
+
+
+
+   ac_ext=cpp
+ac_cpp='$CXXCPP $CPPFLAGS'
+ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
+
+   { $as_echo "$as_me:$LINENO: checking for type of 6th argument to recvfrom()" >&5
+$as_echo_n "checking for type of 6th argument to recvfrom()... " >&6; }
+   recvfrom6_t=
+   for t in socklen_t int; do
+     cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+int
+main ()
+{
+
+$t arg;
+recvfrom (0, NULL, 0, 0, NULL, &arg);
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+
+      recvfrom6_t="$t"
+      break
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+   done
+
+   if test "x$recvfrom6_t" = x; then
+     { $as_echo "$as_me:$LINENO: WARNING: Cannot find type for 6th argument to recvfrom(). Using socklen_t ptr" >&5
+$as_echo "$as_me: WARNING: Cannot find type for 6th argument to recvfrom(). Using socklen_t ptr" >&2;}
+     recvfrom6_t="socklen_t"
+   fi
+
+   { $as_echo "$as_me:$LINENO: result: $recvfrom6_t" >&5
+$as_echo "$recvfrom6_t" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define recvfrom6_t $recvfrom6_t
+_ACEOF
+
+   ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
 
 
 

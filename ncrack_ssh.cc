@@ -157,10 +157,10 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
   char lbuf[BUFSIZE]; /* local buffer */
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
-  const char *hostinfo = serv->HostInfo();
+  //const char *hostinfo = serv->HostInfo();
   void *ioptr;
   u_int buflen;
-  ncrack_ssh_state *info;
+  ncrack_ssh_state *info = NULL;
 
   if (con->misc_info)
     info = (ncrack_ssh_state *) con->misc_info;

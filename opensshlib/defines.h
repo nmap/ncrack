@@ -607,11 +607,7 @@ struct winsize {
 # define ALIGN(p) (((unsigned)p + ALIGNBYTES) & ~ALIGNBYTES)
   /* Missing prototypes on LynxOS */
   int snprintf (char *, size_t, const char *, ...);
-  int mkstemp (char *);
   char *crypt (const char *, const char *);
-  int seteuid (uid_t);
-  int setegid (gid_t);
-  char *mkdtemp (char *);
   int rresvport_af (int *, sa_family_t);
   int innetgr (const char *, const char *, const char *, const char *);
 #endif

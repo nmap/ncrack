@@ -648,9 +648,6 @@
 /* Define to 1 if you have the `openlog_r' function. */
 #undef HAVE_OPENLOG_R
 
-/* Define to 1 if you have the `openpty' function. */
-#undef HAVE_OPENPTY
-
 /* Define if your ssl headers are included with #include <openssl/header.h> */
 #undef HAVE_OPENSSL
 

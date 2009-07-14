@@ -159,7 +159,7 @@ int optcmp(const char *a, const char *b);
 u8 str2proto(char *str);
 
 /* convert protocol number to string */
-char *proto2str(u8 proto);
+const char *proto2str(u8 proto);
 
 /* strtoul with error checking */
 unsigned long int Strtoul(const char *nptr);
