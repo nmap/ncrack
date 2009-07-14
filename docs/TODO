@@ -1,16 +1,25 @@
 TODO:
 
+* Solve the ssh username/password special iteration challenge as mentioned here:
+  http://seclists.org/nmap-dev/2009/q3/0119.html
+
+* Change Ncrack's build system so that whenever ssl isn't found on the system,
+  the ssh module isn't included/compiled, since it requires (the underlying opensshlib
+  actually does) it in order to work.
+
 * We may also need to increase the maximum number of half-open connections in
   Windows: see http://half-open.com/home_en.htm - We could do this by asking the
   user during Ncrack setup if he wants to update the system's imposed limit - if
   he doesn't want to accept the change, then he will possibly suffer a performance degradation.
 
-* Refine core engine.
-
 * Await reply from Microsoft for Windows Firewall RFC deviation:
   http://seclists.org/nmap-dev/2009/q2/0774.html
   http://seclists.org/nmap-dev/2009/q2/0780.html
   https://connect.microsoft.com/WNDP/feedback/ViewFeedback.aspx?FeedbackID=470990
+  ------> It seems the Microsoft guys found the thing not reproducible but they
+  must have tested it under XP SP2 whereas the behaviour seems to be occuring
+  only in SP3. I have mentioned that in a comment but they probably won't see
+  that again, so perhaps I might have to resubmit the issue.
   
 * Test more thoroughly the windows version of ncrack.
 
@@ -19,6 +28,10 @@ TODO:
 
 * Test buffering cases for all modules, when for example we need to search for certain patterns
   but the pattern is split in 2 separate packets due to a small window.
+  ---> SSH already does that by using the ssh_loop_read function and I have
+  already added the Buf class (derived from buffer.c of OpenSSH) that can be
+  used to append the replies from each protocol. Now I only need to adapt the
+  FTP and TELNET modules to use that instead of the con->buf thing.
 
 * If a connection times out continuously for 1 service and the rest of the services
   need to poll for new events through nsock_loop, the fact that
@@ -30,13 +43,12 @@ TODO:
   after which the service is marked as finished regardless of the progress
   so far.
 
-* Complete output engine.
+* Complete output engine. The main thing left is support for XML output using
+  the option -oX.
 
-* Refine interactive Status Report.
+* Refine interactive Status Report to print an estimate of the time left.
 
-* Complete dynamic timing engine
-
-* Code ssh module
+* Complete dynamic timing engine.
 
 * Possibly adapt Nmap license headers to Ncrack specifically.
 
@@ -54,6 +66,9 @@ TODO:
 
 ============================== DONE ==========================================
 
+* Refine core engine. 
+
+* Code ssh module
 
 * Test telnet module, thoroughly
 
