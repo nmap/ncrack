@@ -40,16 +40,15 @@
 
 int compat13 = 0;
 
-// NCRACK ---- only ssh2 for now
-int compat20 = 1;
-int datafellows = 0;
-
+#if 0
 void
 enable_compat20(void)
 {
 	debug("Enabling compatibility mode for protocol 2.0");
 	compat20 = 1;
 }
+#endif
+
 void
 enable_compat13(void)
 {
@@ -58,7 +57,7 @@ enable_compat13(void)
 }
 /* datafellows bug compatibility */
 void
-compat_datafellows(const char *version)
+openssh_compat_datafellows(ncrack_ssh_state *nstate)
 {
 	int i;
 	static struct {
@@ -168,14 +167,14 @@ compat_datafellows(const char *version)
 
 	/* process table, return first match */
 	for (i = 0; check[i].pat; i++) {
-		if (match_pattern_list(version, check[i].pat,
+		if (match_pattern_list(nstate->server_version_string, check[i].pat,
 		    strlen(check[i].pat), 0) == 1) {
-			debug("match: %s pat %s", version, check[i].pat);
-			datafellows = check[i].bugs;
+			debug("match: %s pat %s", nstate->server_version_string, check[i].pat);
+			nstate->datafellows = check[i].bugs;
 			return;
 		}
 	}
-	debug("no match: %s", version);
+	debug("no match: %s", nstate->server_version_string);
 }
 
 #define	SEP	","
@@ -199,7 +198,7 @@ proto_spec(const char *spec)
 			ret |= SSH_PROTO_2;
 			break;
 		default:
-			logit("ignoring bad proto spec: '%s'.", p);
+			ssherror("ignoring bad proto spec: '%s'.", p);
 			break;
 		}
 	}
@@ -208,13 +207,13 @@ proto_spec(const char *spec)
 }
 
 char *
-compat_cipher_proposal(char *cipher_prop)
+compat_cipher_proposal(ncrack_ssh_state *nstate, char *cipher_prop)
 {
 	Buffer b;
 	char *orig_prop, *fix_ciphers;
 	char *cp, *tmp;
 
-	if (!(datafellows & SSH_BUG_BIGENDIANAES))
+	if (!(nstate->datafellows & SSH_BUG_BIGENDIANAES))
 		return(cipher_prop);
 
 	buffer_init(&b);

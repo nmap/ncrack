@@ -26,7 +26,7 @@
 #include "includes.h"
 
 #include <sys/types.h>
-
+#include <stdio.h>
 #include <stdarg.h>
 
 #include "log.h"
@@ -39,7 +39,7 @@ fatal(const char *fmt,...)
 	va_list args;
 
 	va_start(args, fmt);
-	do_log(SYSLOG_LEVEL_FATAL, fmt, args);
+	vfprintf(stderr, fmt, args);
 	va_end(args);
 	cleanup_exit(255);
 }

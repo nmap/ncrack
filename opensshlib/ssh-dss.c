@@ -43,69 +43,8 @@
 #define SIGBLOB_LEN	(2*INTBLOB_LEN)
 
 int
-ssh_dss_sign(const Key *key, u_char **sigp, u_int *lenp,
-    const u_char *data, u_int datalen)
-{
-	DSA_SIG *sig;
-	const EVP_MD *evp_md = EVP_sha1();
-	EVP_MD_CTX md;
-	u_char digest[EVP_MAX_MD_SIZE], sigblob[SIGBLOB_LEN];
-	u_int rlen, slen, len, dlen;
-	Buffer b;
-
-	if (key == NULL || key->type != KEY_DSA || key->dsa == NULL) {
-		ssherror("ssh_dss_sign: no DSA key");
-		return -1;
-	}
-	EVP_DigestInit(&md, evp_md);
-	EVP_DigestUpdate(&md, data, datalen);
-	EVP_DigestFinal(&md, digest, &dlen);
-
-	sig = DSA_do_sign(digest, dlen, key->dsa);
-	memset(digest, 'd', sizeof(digest));
-
-	if (sig == NULL) {
-		ssherror("ssh_dss_sign: sign failed");
-		return -1;
-	}
-
-	rlen = BN_num_bytes(sig->r);
-	slen = BN_num_bytes(sig->s);
-	if (rlen > INTBLOB_LEN || slen > INTBLOB_LEN) {
-		ssherror("bad sig size %u %u", rlen, slen);
-		DSA_SIG_free(sig);
-		return -1;
-	}
-	memset(sigblob, 0, SIGBLOB_LEN);
-	BN_bn2bin(sig->r, sigblob+ SIGBLOB_LEN - INTBLOB_LEN - rlen);
-	BN_bn2bin(sig->s, sigblob+ SIGBLOB_LEN - slen);
-	DSA_SIG_free(sig);
-
-	if (datafellows & SSH_BUG_SIGBLOB) {
-		if (lenp != NULL)
-			*lenp = SIGBLOB_LEN;
-		if (sigp != NULL) {
-			*sigp = xmalloc(SIGBLOB_LEN);
-			memcpy(*sigp, sigblob, SIGBLOB_LEN);
-		}
-	} else {
-		/* ietf-drafts */
-		buffer_init(&b);
-		buffer_put_cstring(&b, "ssh-dss");
-		buffer_put_string(&b, sigblob, SIGBLOB_LEN);
-		len = buffer_len(&b);
-		if (lenp != NULL)
-			*lenp = len;
-		if (sigp != NULL) {
-			*sigp = xmalloc(len);
-			memcpy(*sigp, buffer_ptr(&b), len);
-		}
-		buffer_free(&b);
-	}
-	return 0;
-}
-int
-ssh_dss_verify(const Key *key, const u_char *signature, u_int signaturelen,
+ssh_dss_verify(ncrack_ssh_state *nstate, const Key *key,
+    const u_char *signature, u_int signaturelen,
     const u_char *data, u_int datalen)
 {
 	DSA_SIG *sig;
@@ -122,7 +61,7 @@ ssh_dss_verify(const Key *key, const u_char *signature, u_int signaturelen,
 	}
 
 	/* fetch signature */
-	if (datafellows & SSH_BUG_SIGBLOB) {
+	if (nstate->datafellows & SSH_BUG_SIGBLOB) {
 		sigblob = xmalloc(signaturelen);
 		memcpy(sigblob, signature, signaturelen);
 		len = signaturelen;

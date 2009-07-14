@@ -132,11 +132,7 @@ int auth_shadow_acctexpired(struct spwd *);
 int auth_shadow_pwexpired(Authctxt *);
 #endif
 
-#include "auth-pam.h"
 #include "audit.h"
-void remove_kbdint_device(const char *);
-
-void disable_forwarding(void);
 
 void	do_authentication(Authctxt *);
 void	do_authentication2(Authctxt *);

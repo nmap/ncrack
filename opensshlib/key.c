@@ -35,12 +35,13 @@
  */
 
 #include "includes.h"
+#include "opensshlib.h"
 
 #include <sys/param.h>
 #include <sys/types.h>
 
 #include <openssl/evp.h>
-#include <openbsd-compat/openssl-compat.h>
+#include <openssl-compat.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -49,9 +50,9 @@
 #include "xmalloc.h"
 #include "key.h"
 #include "rsa.h"
-#include "uuencode.h"
 #include "buffer.h"
 #include "log.h"
+
 
 Key *
 key_new(int type)
@@ -437,209 +438,6 @@ key_fingerprint(const Key *k, enum fp_type dgst_type, enum fp_rep dgst_rep)
 	return retval;
 }
 
-/*
- * Reads a multiple-precision integer in decimal from the buffer, and advances
- * the pointer.  The integer must already be initialized.  This function is
- * permitted to modify the buffer.  This leaves *cpp to point just beyond the
- * last processed (and maybe modified) character.  Note that this may modify
- * the buffer containing the number.
- */
-static int
-read_bignum(char **cpp, BIGNUM * value)
-{
-	char *cp = *cpp;
-	int old;
-
-	/* Skip any leading whitespace. */
-	for (; *cp == ' ' || *cp == '\t'; cp++)
-		;
-
-	/* Check that it begins with a decimal digit. */
-	if (*cp < '0' || *cp > '9')
-		return 0;
-
-	/* Save starting position. */
-	*cpp = cp;
-
-	/* Move forward until all decimal digits skipped. */
-	for (; *cp >= '0' && *cp <= '9'; cp++)
-		;
-
-	/* Save the old terminating character, and replace it by \0. */
-	old = *cp;
-	*cp = 0;
-
-	/* Parse the number. */
-	if (BN_dec2bn(&value, *cpp) == 0)
-		return 0;
-
-	/* Restore old terminating character. */
-	*cp = old;
-
-	/* Move beyond the number and return success. */
-	*cpp = cp;
-	return 1;
-}
-
-static int
-write_bignum(FILE *f, BIGNUM *num)
-{
-	char *buf = BN_bn2dec(num);
-	if (buf == NULL) {
-		ssherror("write_bignum: BN_bn2dec() failed");
-		return 0;
-	}
-	fprintf(f, " %s", buf);
-	OPENSSL_free(buf);
-	return 1;
-}
-
-/* returns 1 ok, -1 error */
-int
-key_read(Key *ret, char **cpp)
-{
-	Key *k;
-	int success = -1;
-	char *cp, *space;
-	int len, n, type;
-	u_int bits;
-	u_char *blob;
-
-	cp = *cpp;
-
-	switch (ret->type) {
-	case KEY_RSA1:
-		/* Get number of bits. */
-		if (*cp < '0' || *cp > '9')
-			return -1;	/* Bad bit count... */
-		for (bits = 0; *cp >= '0' && *cp <= '9'; cp++)
-			bits = 10 * bits + *cp - '0';
-		if (bits == 0)
-			return -1;
-		*cpp = cp;
-		/* Get public exponent, public modulus. */
-		if (!read_bignum(cpp, ret->rsa->e))
-			return -1;
-		if (!read_bignum(cpp, ret->rsa->n))
-			return -1;
-		success = 1;
-		break;
-	case KEY_UNSPEC:
-	case KEY_RSA:
-	case KEY_DSA:
-		space = strchr(cp, ' ');
-		if (space == NULL) {
-			debug3("key_read: missing whitespace");
-			return -1;
-		}
-		*space = '\0';
-		type = key_type_from_name(cp);
-		*space = ' ';
-		if (type == KEY_UNSPEC) {
-			debug3("key_read: missing keytype");
-			return -1;
-		}
-		cp = space+1;
-		if (*cp == '\0') {
-			debug3("key_read: short string");
-			return -1;
-		}
-		if (ret->type == KEY_UNSPEC) {
-			ret->type = type;
-		} else if (ret->type != type) {
-			/* is a key, but different type */
-			debug3("key_read: type mismatch");
-			return -1;
-		}
-		len = 2*strlen(cp);
-		blob = xmalloc(len);
-		n = uudecode(cp, blob, len);
-		if (n < 0) {
-			ssherror("key_read: uudecode %s failed", cp);
-			xfree(blob);
-			return -1;
-		}
-		k = key_from_blob(blob, (u_int)n);
-		xfree(blob);
-		if (k == NULL) {
-			ssherror("key_read: key_from_blob %s failed", cp);
-			return -1;
-		}
-		if (k->type != type) {
-			ssherror("key_read: type mismatch: encoding error");
-			key_free(k);
-			return -1;
-		}
-/*XXXX*/
-		if (ret->type == KEY_RSA) {
-			if (ret->rsa != NULL)
-				RSA_free(ret->rsa);
-			ret->rsa = k->rsa;
-			k->rsa = NULL;
-			success = 1;
-#ifdef DEBUG_PK
-			RSA_print_fp(stderr, ret->rsa, 8);
-#endif
-		} else {
-			if (ret->dsa != NULL)
-				DSA_free(ret->dsa);
-			ret->dsa = k->dsa;
-			k->dsa = NULL;
-			success = 1;
-#ifdef DEBUG_PK
-			DSA_print_fp(stderr, ret->dsa, 8);
-#endif
-		}
-/*XXXX*/
-		key_free(k);
-		if (success != 1)
-			break;
-		/* advance cp: skip whitespace and data */
-		while (*cp == ' ' || *cp == '\t')
-			cp++;
-		while (*cp != '\0' && *cp != ' ' && *cp != '\t')
-			cp++;
-		*cpp = cp;
-		break;
-	default:
-		fatal("key_read: bad key type: %d", ret->type);
-		break;
-	}
-	return success;
-}
-
-int
-key_write(const Key *key, FILE *f)
-{
-	int n, success = 0;
-	u_int len, bits = 0;
-	u_char *blob;
-	char *uu;
-
-	if (key->type == KEY_RSA1 && key->rsa != NULL) {
-		/* size of modulus 'n' */
-		bits = BN_num_bits(key->rsa->n);
-		fprintf(f, "%u", bits);
-		if (write_bignum(f, key->rsa->e) &&
-		    write_bignum(f, key->rsa->n)) {
-			success = 1;
-		} else {
-			ssherror("key_write: failed for RSA key");
-		}
-	} else if ((key->type == KEY_DSA && key->dsa != NULL) ||
-	    (key->type == KEY_RSA && key->rsa != NULL)) {
-		key_to_blob(key, &blob, &len);
-		uu = xmalloc(2*len);
-		n = uuencode(blob, len, uu, 2*len);
-		if (n > 0) {
-			fprintf(f, "%s %s", key_ssh_name(key), uu);
-			success = 1;
-		}
-		xfree(blob);
-		xfree(uu);
-	}
-	return success;
-}
 
 const char *
 key_type(const Key *k)
@@ -857,6 +655,7 @@ key_from_blob(const u_char *blob, u_int blen)
 	return key;
 }
 
+
 int
 key_to_blob(const Key *key, u_char **blobp, u_int *lenp)
 {
@@ -878,18 +677,8 @@ key_to_blob(const Key *key, u_char **blobp, u_int *lenp)
 		break;
 	case KEY_RSA:
 		buffer_put_cstring(&b, key_ssh_name(key));
-
-
-		buffer_put_bignum2(&b, key->rsa->dmq1);
-	  buffer_put_bignum2(&b, key->rsa->p);
-		buffer_put_bignum2(&b, key->rsa->dmp1);
-		buffer_put_bignum2(&b, key->rsa->iqmp);
-  	buffer_put_bignum2(&b, key->rsa->e);
-  	buffer_put_bignum2(&b, key->rsa->n);
-//#if 0
-		buffer_put_bignum2(&b, key->rsa->d);
-		buffer_put_bignum2(&b, key->rsa->q);
-//#endif
+		buffer_put_bignum2(&b, key->rsa->e);
+		buffer_put_bignum2(&b, key->rsa->n);
 		break;
 	default:
 		ssherror("key_to_blob: unsupported key type %d", key->type);
@@ -908,22 +697,6 @@ key_to_blob(const Key *key, u_char **blobp, u_int *lenp)
 	return len;
 }
 
-int
-key_sign(
-		const Key *key,
-		u_char **sigp, u_int *lenp,
-		const u_char *data, u_int datalen)
-{
-	switch (key->type) {
-		case KEY_DSA:
-			return ssh_dss_sign(key, sigp, lenp, data, datalen);
-		case KEY_RSA:
-			return ssh_rsa_sign(key, sigp, lenp, data, datalen);
-		default:
-			ssherror("key_sign: invalid key type %d", key->type);
-			return -1;
-	}
-}
 
 /*
  * key_verify returns 1 for a correct signature, 0 for an incorrect signature
@@ -931,6 +704,7 @@ key_sign(
  */
 int
 key_verify(
+    ncrack_ssh_state *nstate,
 		const Key *key,
 		const u_char *signature, u_int signaturelen,
 		const u_char *data, u_int datalen)
@@ -940,7 +714,8 @@ key_verify(
 
 	switch (key->type) {
 		case KEY_DSA:
-			return ssh_dss_verify(key, signature, signaturelen, data, datalen);
+			return ssh_dss_verify(nstate, key, signature, signaturelen, data,
+          datalen);
 		case KEY_RSA:
 			return ssh_rsa_verify(key, signature, signaturelen, data, datalen);
 		default:

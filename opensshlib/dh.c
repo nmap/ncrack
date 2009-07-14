@@ -36,102 +36,12 @@
 #include <string.h>
 
 #include "dh.h"
-//#include "pathnames.h"
 #include "log.h"
 #include "misc.h"
 
-static int
-parse_prime(int linenum, char *line, struct dhgroup *dhg)
-{
-	char *cp, *arg;
-	char *strsize, *gen, *prime;
-	const char *errstr = NULL;
-	long long n;
 
-	cp = line;
-	if ((arg = strdelim(&cp)) == NULL)
-		return 0;
-	/* Ignore leading whitespace */
-	if (*arg == '\0')
-		arg = strdelim(&cp);
-	if (!arg || !*arg || *arg == '#')
-		return 0;
-
-	/* time */
-	if (cp == NULL || *arg == '\0')
-		goto fail;
-	arg = strsep(&cp, " "); /* type */
-	if (cp == NULL || *arg == '\0')
-		goto fail;
-	/* Ensure this is a safe prime */
-	n = strtonum(arg, 0, 5, &errstr);
-	if (errstr != NULL || n != MODULI_TYPE_SAFE)
-		goto fail;
-	arg = strsep(&cp, " "); /* tests */
-	if (cp == NULL || *arg == '\0')
-		goto fail;
-	/* Ensure prime has been tested and is not composite */
-	n = strtonum(arg, 0, 0x1f, &errstr);
-	if (errstr != NULL ||
-	    (n & MODULI_TESTS_COMPOSITE) || !(n & ~MODULI_TESTS_COMPOSITE))
-		goto fail;
-	arg = strsep(&cp, " "); /* tries */
-	if (cp == NULL || *arg == '\0')
-		goto fail;
-	n = strtonum(arg, 0, 1<<30, &errstr);
-	if (errstr != NULL || n == 0)
-		goto fail;
-	strsize = strsep(&cp, " "); /* size */
-	if (cp == NULL || *strsize == '\0' ||
-	    (dhg->size = (u_int)strtonum(strsize, 0, 64*1024, &errstr)) == 0 ||
-	    errstr)
-		goto fail;
-	/* The whole group is one bit larger */
-	dhg->size++;
-	gen = strsep(&cp, " "); /* gen */
-	if (cp == NULL || *gen == '\0')
-		goto fail;
-	prime = strsep(&cp, " "); /* prime */
-	if (cp != NULL || *prime == '\0')
-		goto fail;
-
-	if ((dhg->g = BN_new()) == NULL)
-		fatal("parse_prime: BN_new failed");
-	if ((dhg->p = BN_new()) == NULL)
-		fatal("parse_prime: BN_new failed");
-	if (BN_hex2bn(&dhg->g, gen) == 0)
-		goto failclean;
-
-	if (BN_hex2bn(&dhg->p, prime) == 0)
-		goto failclean;
-
-	if (BN_num_bits(dhg->p) != dhg->size)
-		goto failclean;
-
-	if (BN_is_zero(dhg->g) || BN_is_one(dhg->g))
-		goto failclean;
-
-	return (1);
-
- failclean:
-	BN_clear_free(dhg->g);
-	BN_clear_free(dhg->p);
- fail:
-	ssherror("Bad prime description in line %d", linenum);
-	return (0);
-}
-
-DH *
-choose_dh(int min, int wantbits, int max)
-{
-  /* NCRACK: return immediately - we don't want to lose cpu on this */
-
-	return (dh_new_group14());
-
-}
 
 /* diffie-hellman-groupN-sha1 */
-
 int
 dh_pub_is_valid(DH *dh, BIGNUM *dh_pub)
 {
@@ -141,11 +51,11 @@ dh_pub_is_valid(DH *dh, BIGNUM *dh_pub)
 	BIGNUM *tmp;
 
 	if (dh_pub->neg) {
-		logit("invalid public DH value: negative");
+		ssherror("invalid public DH value: negative");
 		return 0;
 	}
 	if (BN_cmp(dh_pub, BN_value_one()) != 1) {	/* pub_exp <= 1 */
-		logit("invalid public DH value: <= 1");
+		ssherror("invalid public DH value: <= 1");
 		return 0;
 	}
 
@@ -156,7 +66,7 @@ dh_pub_is_valid(DH *dh, BIGNUM *dh_pub)
 	if (!BN_sub(tmp, dh->p, BN_value_one()) ||
 	    BN_cmp(dh_pub, tmp) != -1) {		/* pub_exp > p-2 */
 		BN_clear_free(tmp);
-		logit("invalid public DH value: >= p-1");
+		ssherror("invalid public DH value: >= p-1");
 		return 0;
 	}
 	BN_clear_free(tmp);
@@ -170,7 +80,7 @@ dh_pub_is_valid(DH *dh, BIGNUM *dh_pub)
 	if (bits_set > 1)
 		return 1;
 
-	logit("invalid public DH value (%d/%d)", bits_set, BN_num_bits(dh->p));
+	ssherror("invalid public DH value (%d/%d)", bits_set, BN_num_bits(dh->p));
 	return 0;
 }
 

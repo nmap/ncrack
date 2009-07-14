@@ -34,72 +34,6 @@
 
 static int openssh_RSA_verify(int, u_char *, u_int, u_char *, u_int, RSA *);
 
-/* RSASSA-PKCS1-v1_5 (PKCS #1 v2.0 signature) with SHA1 */
-int
-ssh_rsa_sign(const Key *key, u_char **sigp, u_int *lenp,
-    const u_char *data, u_int datalen)
-{
-	const EVP_MD *evp_md;
-	EVP_MD_CTX md;
-	u_char digest[EVP_MAX_MD_SIZE], *sig;
-	u_int slen, dlen, len;
-	int ok, nid;
-	Buffer b;
-
-	if (key == NULL || key->type != KEY_RSA || key->rsa == NULL) {
-		ssherror("ssh_rsa_sign: no RSA key");
-		return -1;
-	}
-	nid = (datafellows & SSH_BUG_RSASIGMD5) ? NID_md5 : NID_sha1;
-	if ((evp_md = EVP_get_digestbynid(nid)) == NULL) {
-		ssherror("ssh_rsa_sign: EVP_get_digestbynid %d failed", nid);
-		return -1;
-	}
-	EVP_DigestInit(&md, evp_md);
-	EVP_DigestUpdate(&md, data, datalen);
-	EVP_DigestFinal(&md, digest, &dlen);
-
-	slen = RSA_size(key->rsa);
-	sig = xmalloc(slen);
-
-	ok = RSA_sign(nid, digest, dlen, sig, &len, key->rsa);
-	memset(digest, 'd', sizeof(digest));
-
-	if (ok != 1) {
-		int ecode = ERR_get_error();
-
-		ssherror("ssh_rsa_sign: RSA_sign failed: %s",
-		    ERR_error_string(ecode, NULL));
-		xfree(sig);
-		return -1;
-	}
-	if (len < slen) {
-		u_int diff = slen - len;
-		debug("slen %u > len %u", slen, len);
-		memmove(sig + diff, sig, len);
-		memset(sig, 0, diff);
-	} else if (len > slen) {
-		ssherror("ssh_rsa_sign: slen %u slen2 %u", slen, len);
-		xfree(sig);
-		return -1;
-	}
-	/* encode signature */
-	buffer_init(&b);
-	buffer_put_cstring(&b, "ssh-rsa");
-	buffer_put_string(&b, sig, slen);
-	len = buffer_len(&b);
-	if (lenp != NULL)
-		*lenp = len;
-	if (sigp != NULL) {
-		*sigp = xmalloc(len);
-		memcpy(*sigp, buffer_ptr(&b), len);
-	}
-	buffer_free(&b);
-	memset(sig, 's', slen);
-	xfree(sig);
-
-	return 0;
-}
 
 int
 ssh_rsa_verify(const Key *key, const u_char *signature, u_int signaturelen,
@@ -155,7 +89,8 @@ ssh_rsa_verify(const Key *key, const u_char *signature, u_int signaturelen,
 		memset(sigblob, 0, diff);
 		len = modlen;
 	}
-	nid = (datafellows & SSH_BUG_RSASIGMD5) ? NID_md5 : NID_sha1;
+	//nid = (datafellows & SSH_BUG_RSASIGMD5) ? NID_md5 : NID_sha1;
+  nid = NID_sha1;
 	if ((evp_md = EVP_get_digestbynid(nid)) == NULL) {
 		ssherror("ssh_rsa_verify: EVP_get_digestbynid %d failed", nid);
 		xfree(sigblob);

@@ -27,6 +27,8 @@
 #ifndef COMPAT_H
 #define COMPAT_H
 
+#include "opensshlib.h"
+
 #define	SSH_PROTO_UNKNOWN	0x00
 #define	SSH_PROTO_1		0x01
 #define	SSH_PROTO_1_PREFERRED	0x02
@@ -59,13 +61,20 @@
 #define SSH_BUG_RFWD_ADDR	0x02000000
 #define SSH_NEW_OPENSSH		0x04000000
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void openssh_compat_datafellows(ncrack_ssh_state *nstate);
+
+
+#ifdef __cplusplus
+} /* End of 'extern "C"' */
+#endif
+
 void     enable_compat13(void);
 void     enable_compat20(void);
-void     compat_datafellows(const char *);
 int	 proto_spec(const char *);
-char	*compat_cipher_proposal(char *);
+char	*compat_cipher_proposal(ncrack_ssh_state *nstate, char *);
 
-extern int compat13;
-extern int compat20;
-extern int datafellows;
 #endif

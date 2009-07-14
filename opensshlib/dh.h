@@ -32,7 +32,6 @@ struct dhgroup {
 	BIGNUM *p;
 };
 
-DH	*choose_dh(int, int, int);
 DH	*dh_new_group_asc(const char *, const char *);
 DH	*dh_new_group(BIGNUM *, BIGNUM *);
 DH	*dh_new_group1(void);

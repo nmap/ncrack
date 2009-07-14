@@ -1283,7 +1283,7 @@
 #define SIZEOF_INT 4
 
 /* The size of `long int', as computed by sizeof. */
-#define SIZEOF_LONG_INT 8
+#define SIZEOF_LONG_INT 4
 
 /* The size of `long long int', as computed by sizeof. */
 #define SIZEOF_LONG_LONG_INT 8
@@ -1412,7 +1412,7 @@
 #define XAUTH_PATH "/usr/bin/xauth"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
-/* #undef _FILE_OFFSET_BITS */
+#define _FILE_OFFSET_BITS 64
 
 /* Define for large files, on AIX-style hosts. */
 /* #undef _LARGE_FILES */

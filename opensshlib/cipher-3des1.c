@@ -35,7 +35,7 @@
 #include "xmalloc.h"
 #include "log.h"
 
-#include "openbsd-compat/openssl-compat.h"
+#include "openssl-compat.h"
 
 /*
  * This is used by SSH1:

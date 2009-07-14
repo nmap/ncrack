@@ -165,10 +165,6 @@
 
 #include "defines.h"
 
-//#include "platform.h"
-#include "openbsd-compat/openbsd-compat.h"
-#include "openbsd-compat/bsd-nextstep.h"
-
-//#include "entropy.h"
+#include "openbsd-compat.h"
 
 #endif /* INCLUDES_H */

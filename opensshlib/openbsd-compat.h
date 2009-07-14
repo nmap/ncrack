@@ -1,7 +1,10 @@
+/* $Id: openbsd-compat.h,v 1.46 2008/06/08 17:32:29 dtucker Exp $ */
+
 /*
+ * Copyright (c) 1999-2003 Damien Miller.  All rights reserved.
+ * Copyright (c) 2003 Ben Lindstrom. All rights reserved.
  * Copyright (c) 2002 Tim Rice.  All rights reserved.
- * MAP_FAILED code by Solar Designer.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -23,66 +26,49 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* $Id: xmmap.c,v 1.15 2009/02/16 04:21:40 djm Exp $ */
+#ifndef _OPENBSD_COMPAT_H
+#define _OPENBSD_COMPAT_H
 
 #include "includes.h"
 
 #include <sys/types.h>
-#ifdef HAVE_SYS_MMAN_H
-#include <sys/mman.h>
+
+#ifndef HAVE_STRLCPY
+/* #include <sys/types.h> XXX Still needed? */
+size_t strlcpy(char *dst, const char *src, size_t siz);
 #endif
-#include <sys/stat.h>
 
-#ifdef HAVE_FCNTL_H
-# include <fcntl.h>
+#ifndef HAVE_STRLCAT
+/* #include <sys/types.h> XXX Still needed? */
+size_t strlcat(char *dst, const char *src, size_t siz);
+#endif 
+
+#ifndef HAVE_STRSEP
+char *strsep(char **stringp, const char *delim);
 #endif
-#include <errno.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
-#include "log.h"
 
-void *
-xmmap(size_t size)
-{
-#ifdef HAVE_MMAP
-	void *address;
+#ifndef HAVE_ASPRINTF
+int asprintf(char **, const char *, ...);
+#endif 
 
-# ifdef MAP_ANON
-	address = mmap(NULL, size, PROT_WRITE|PROT_READ, MAP_ANON|MAP_SHARED,
-	    -1, (off_t)0);
-# else
-	address = mmap(NULL, size, PROT_WRITE|PROT_READ, MAP_SHARED,
-	    open("/dev/zero", O_RDWR), (off_t)0);
-# endif
+/* #include <sys/types.h> XXX needed? For size_t */
 
-#define MM_SWAP_TEMPLATE "/var/run/sshd.mm.XXXXXXXX"
-	if (address == (void *)MAP_FAILED) {
-		char tmpname[sizeof(MM_SWAP_TEMPLATE)] = MM_SWAP_TEMPLATE;
-		int tmpfd;
-		mode_t old_umask;
+#ifndef HAVE_SNPRINTF
+int snprintf(char *, size_t, SNPRINTF_CONST char *, ...);
+#endif 
 
-		old_umask = umask(0177);
-		tmpfd = mkstemp(tmpname);
-		umask(old_umask);
-		if (tmpfd == -1)
-			fatal("mkstemp(\"%s\"): %s",
-			    MM_SWAP_TEMPLATE, strerror(errno));
-		unlink(tmpname);
-		if (ftruncate(tmpfd, size) != 0)
-			fatal("%s: ftruncate: %s", __func__, strerror(errno));
-		address = mmap(NULL, size, PROT_WRITE|PROT_READ, MAP_SHARED,
-		    tmpfd, (off_t)0);
-		close(tmpfd);
-	}
+#if !defined(HAVE_VASPRINTF) || !defined(HAVE_VSNPRINTF)
+# include <stdarg.h>
+#endif
 
-	return (address);
-#else
-	fatal("%s: UsePrivilegeSeparation=yes and Compression=yes not supported",
-	    __func__);
-#endif /* HAVE_MMAP */
+#ifndef HAVE_VASPRINTF
+int vasprintf(char **, const char *, va_list);
+#endif
 
-}
+#ifndef HAVE_VSNPRINTF
+int vsnprintf(char *, size_t, const char *, va_list);
+#endif
 
+
+#endif /* _OPENBSD_COMPAT_H */

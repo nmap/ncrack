@@ -35,7 +35,7 @@
 #include "xmalloc.h"
 #include "log.h"
 
-#include "openbsd-compat/openssl-compat.h"
+#include "openssl-compat.h"
 
 /*
  * SSH1 uses a variation on Blowfish, all bytes must be swapped before

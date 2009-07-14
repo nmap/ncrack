@@ -27,7 +27,7 @@
 #include "log.h"
 
 /* compatibility with old or broken OpenSSL versions */
-#include "openbsd-compat/openssl-compat.h"
+#include "openssl-compat.h"
 
 #ifndef USE_BUILTIN_RIJNDAEL
 #include <openssl/aes.h>

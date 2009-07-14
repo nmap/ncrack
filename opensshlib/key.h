@@ -29,6 +29,8 @@
 #include <openssl/rsa.h>
 #include <openssl/dsa.h>
 
+#include "opensshlib.h"
+
 typedef struct Key Key;
 enum types {
 	KEY_RSA1,
@@ -64,8 +66,6 @@ int		 key_equal(const Key *, const Key *);
 char		*key_fingerprint(const Key *, enum fp_type, enum fp_rep);
 u_char		*key_fingerprint_raw(const Key *, enum fp_type, u_int *);
 const char	*key_type(const Key *);
-int		 key_write(const Key *, FILE *);
-int		 key_read(Key *, char **);
 u_int		 key_size(const Key *);
 
 Key	*key_generate(int, u_int);
@@ -77,11 +77,12 @@ int		 key_to_blob(const Key *, u_char **, u_int *);
 const char	*key_ssh_name(const Key *);
 int		 key_names_valid2(const char *);
 
-int	 key_sign(const Key *, u_char **, u_int *, const u_char *, u_int);
-int	 key_verify(const Key *, const u_char *, u_int, const u_char *, u_int);
+int	 key_verify(ncrack_ssh_state *nstate, const Key *, const u_char *, u_int,
+    const u_char *, u_int);
 
 int	 ssh_dss_sign(const Key *, u_char **, u_int *, const u_char *, u_int);
-int	 ssh_dss_verify(const Key *, const u_char *, u_int, const u_char *, u_int);
+int	 ssh_dss_verify(ncrack_ssh_state *nstate, const Key *, const u_char *,
+    u_int, const u_char *, u_int);
 int	 ssh_rsa_sign(const Key *, u_char **, u_int *, const u_char *, u_int);
 int	 ssh_rsa_verify(const Key *, const u_char *, u_int, const u_char *, u_int);
 

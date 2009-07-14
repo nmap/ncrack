@@ -45,30 +45,27 @@
 #include "compat.h"
 
 void
-kexgex_client(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context)
+kexgex_client(ncrack_ssh_state *nstate)
 {
 	int min, max, nbits;
 
-	nbits = dh_estimate(kex->we_need * 8);
+	nbits = dh_estimate(nstate->kex->we_need * 8);
 
-	if (datafellows & SSH_OLD_DHGEX) {
+	if (nstate->datafellows & SSH_OLD_DHGEX) {
 		/* Old GEX request */
-		packet_start(SSH2_MSG_KEX_DH_GEX_REQUEST_OLD);
-		packet_put_int(nbits);
+		packet_start(nstate, SSH2_MSG_KEX_DH_GEX_REQUEST_OLD);
+		packet_put_int(nstate, nbits);
 		min = DH_GRP_MIN;
 		max = DH_GRP_MAX;
-
 		debug("SSH2_MSG_KEX_DH_GEX_REQUEST_OLD(%u) sent", nbits);
 	} else {
 		/* New GEX request */
 		min = DH_GRP_MIN;
 		max = DH_GRP_MAX;
-		packet_start(SSH2_MSG_KEX_DH_GEX_REQUEST);
-		packet_put_int(min);
-		packet_put_int(nbits);
-		packet_put_int(max);
-
+		packet_start(nstate, SSH2_MSG_KEX_DH_GEX_REQUEST);
+		packet_put_int(nstate, min);
+		packet_put_int(nstate, nbits);
+		packet_put_int(nstate, max);
 		debug("SSH2_MSG_KEX_DH_GEX_REQUEST(%u<%u<%u) sent",
 		    min, nbits, max);
 	}
@@ -76,65 +73,58 @@ kexgex_client(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
 	fprintf(stderr, "\nmin = %d, nbits = %d, max = %d\n",
 	    min, nbits, max);
 #endif
-	packet_send(ncrack_buf, ncrack_keys, send_context, receive_context);
+	packet_send(nstate);
 
 }
 
 
-
-DH *
-openssh_kexgex_2(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context)
+void
+openssh_kexgex_2(ncrack_ssh_state *nstate)
 {
   BIGNUM *p = NULL, *g = NULL;
   int min, max;
-  DH *dh;
 
   min = DH_GRP_MIN;
   max = DH_GRP_MAX;
-
 
   debug("expecting SSH2_MSG_KEX_DH_GEX_GROUP");
  // packet_read_expect(SSH2_MSG_KEX_DH_GEX_GROUP);
 
   if ((p = BN_new()) == NULL)
     fatal("BN_new");
-  packet_get_bignum2(p);
+  packet_get_bignum2(nstate, p);
   if ((g = BN_new()) == NULL)
     fatal("BN_new");
-  packet_get_bignum2(g);
-  packet_check_eom();
+  packet_get_bignum2(nstate, g);
+  packet_check_eom(nstate);
 
   if (BN_num_bits(p) < min || BN_num_bits(p) > max)
     fatal("DH_GEX group out of range: %d !< %d !< %d",
         min, BN_num_bits(p), max);
 
-  dh = dh_new_group(g, p);
-  dh_gen_key(dh, kex->we_need * 8);
+  nstate->dh = dh_new_group(g, p);
+  dh_gen_key(nstate->dh, nstate->kex->we_need * 8);
 
 #ifdef DEBUG_KEXDH
-  DHparams_print_fp(stderr, dh);
+  DHparams_print_fp(stderr, nstate->dh);
   fprintf(stderr, "pub= ");
-  BN_print_fp(stderr, dh->pub_key);
+  BN_print_fp(stderr, nstate->dh->pub_key);
   fprintf(stderr, "\n");
 #endif
 
   debug("SSH2_MSG_KEX_DH_GEX_INIT sent");
   /* generate and send 'e', client DH public key */
-  packet_start(SSH2_MSG_KEX_DH_GEX_INIT);
-  packet_put_bignum2(dh->pub_key);
-  packet_send(ncrack_buf, ncrack_keys, send_context, receive_context);
+  packet_start(nstate, SSH2_MSG_KEX_DH_GEX_INIT);
+  packet_put_bignum2(nstate, nstate->dh->pub_key);
+  packet_send(nstate);
 
-  return dh;
 }
 
 
 void
-openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context)
+openssh_kexgex_3(ncrack_ssh_state *nstate)
 {
   BIGNUM *dh_server_pub = NULL, *shared_secret = NULL;
-  BIGNUM *p = NULL, *g = NULL;
   Key *server_host_key;
   u_char *kbuf, *hash, *signature = NULL, *server_host_key_blob = NULL;
   u_int klen, slen, sbloblen, hashlen;
@@ -144,32 +134,25 @@ openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE
   min = DH_GRP_MIN;
   max = DH_GRP_MAX;
 
-  nbits = dh_estimate(kex->we_need * 8);
-
+  nbits = dh_estimate(nstate->kex->we_need * 8);
 
   debug("expecting SSH2_MSG_KEX_DH_GEX_REPLY");
   //packet_read_expect(SSH2_MSG_KEX_DH_GEX_REPLY);
 
   /* key, cert */
-  server_host_key_blob = packet_get_string(&sbloblen);
+  server_host_key_blob = packet_get_string(nstate, &sbloblen);
+
   server_host_key = key_from_blob(server_host_key_blob, sbloblen);
   if (server_host_key == NULL)
     fatal("cannot decode server_host_key_blob");
-  if (server_host_key->type != kex->hostkey_type)
+  if (server_host_key->type != nstate->kex->hostkey_type)
     fatal("type mismatch for decoded server_host_key_blob");
 
-  /* NCRACK: we don't need to verify host key! */
-#if 0
-  if (kex->verify_host_key == NULL)
-    fatal("cannot verify server_host_key");
-  if (kex->verify_host_key(server_host_key) == -1)
-    fatal("server_host_key verification failed");
-#endif 
 
   /* DH parameter f, server public DH key */
   if ((dh_server_pub = BN_new()) == NULL)
     fatal("dh_server_pub == NULL");
-  packet_get_bignum2(dh_server_pub);
+  packet_get_bignum2(nstate, dh_server_pub);
 
 #ifdef DEBUG_KEXDH
   fprintf(stderr, "dh_server_pub= ");
@@ -179,15 +162,15 @@ openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE
 #endif
 
   /* signed H */
-  signature = packet_get_string(&slen);
-  packet_check_eom();
+  signature = packet_get_string(nstate, &slen);
+  packet_check_eom(nstate);
 
-  if (!dh_pub_is_valid(dh, dh_server_pub))
+  if (!dh_pub_is_valid(nstate->dh, dh_server_pub))
     packet_disconnect("bad server public DH value");
 
-  klen = DH_size(dh);
+  klen = DH_size(nstate->dh);
   kbuf = xmalloc(klen);
-  if ((kout = DH_compute_key(kbuf, dh_server_pub, dh)) < 0)
+  if ((kout = DH_compute_key(kbuf, dh_server_pub, nstate->dh)) < 0)
     fatal("DH_compute_key: failed");
 #ifdef DEBUG_KEXDH
   dump_digest("shared secret", kbuf, kout);
@@ -199,44 +182,51 @@ openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE
   memset(kbuf, 0, klen);
   xfree(kbuf);
 
-  if (datafellows & SSH_OLD_DHGEX)
+  if (nstate->datafellows & SSH_OLD_DHGEX)
     min = max = -1;
 
   /* calc and verify H */
   kexgex_hash(
-      kex->evp_md,
-      kex->client_version_string,
-      kex->server_version_string,
-      buffer_ptr(&kex->my), buffer_len(&kex->my),
-      buffer_ptr(&kex->peer), buffer_len(&kex->peer),
+      nstate->kex->evp_md,
+      nstate->kex->client_version_string,
+      nstate->kex->server_version_string,
+      buffer_ptr(&nstate->kex->my), buffer_len(&nstate->kex->my),
+      buffer_ptr(&nstate->kex->peer), buffer_len(&nstate->kex->peer),
       server_host_key_blob, sbloblen,
       min, nbits, max,
-      dh->p, dh->g,
-      dh->pub_key,
+      nstate->dh->p, nstate->dh->g,
+      nstate->dh->pub_key,
       dh_server_pub,
       shared_secret,
       &hash, &hashlen
       );
 
   /* have keys, free DH */
-  DH_free(dh);
+  DH_free(nstate->dh);
   xfree(server_host_key_blob);
   BN_clear_free(dh_server_pub);
 
 
-  //if (key_verify(server_host_key, signature, slen, hash, hashlen) != 1)
-  //  fatal("key_verify failed for server_host_key");
+  /* NCRACK: this is normally called by the ssh client/server
+   * when they begin - we should also do it whenever we invoke
+   * the ssh module for the first time */
+  OpenSSL_add_all_digests();
+  
+  if (key_verify(nstate, server_host_key, signature, slen, hash, hashlen) != 1)
+    fatal("key_verify failed for server_host_key");
+    
   key_free(server_host_key);
   xfree(signature);
 
+
   /* save session id */
-  if (kex->session_id == NULL) {
-    kex->session_id_len = hashlen;
-    kex->session_id = xmalloc(kex->session_id_len);
-    memcpy(kex->session_id, hash, kex->session_id_len);
+  if (nstate->kex->session_id == NULL) {
+    nstate->kex->session_id_len = hashlen;
+    nstate->kex->session_id = xmalloc(nstate->kex->session_id_len);
+    memcpy(nstate->kex->session_id, hash, nstate->kex->session_id_len);
   }
-  kex_derive_keys(kex, hash, hashlen, shared_secret, ncrack_keys);
+  kex_derive_keys(nstate, hash, hashlen, shared_secret);
   BN_clear_free(shared_secret);
 
-  kex_finish(kex, ncrack_buf, ncrack_keys, send_context, receive_context);
+  kex_finish(nstate);
 }

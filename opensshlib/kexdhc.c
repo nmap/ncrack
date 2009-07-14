@@ -43,8 +43,9 @@
 #include "ssh2.h"
 
 void
-kexdh_client(Kex *kex, Buffer *ncrack_buf)
+kexdh_client(ncrack_ssh_state *nstate)
 {
+#if 0
 	BIGNUM *dh_server_pub = NULL, *shared_secret = NULL;
 	DH *dh;
 	Key *server_host_key;
@@ -156,4 +157,5 @@ kexdh_client(Kex *kex, Buffer *ncrack_buf)
 	//TODO: kex_derive_keys(kex, hash, hashlen, shared_secret);
 	BN_clear_free(shared_secret);
 	//TODO: kex_finish(kex);
+#endif
 }

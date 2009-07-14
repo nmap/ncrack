@@ -55,39 +55,16 @@ void	 ssh_userauth1(const char *, const char *, char *, Sensitive *);
 void	 ssh_put_password(char *);
 int	 ssh_local_cmd(const char *);
 
-/*
- * Macros to raise/lower permissions.
- */
-#define PRIV_START do {					\
-	int save_errno = errno;				\
-	if (seteuid(original_effective_uid) != 0)	\
-		fatal("PRIV_START: seteuid: %s",	\
-		    strerror(errno));			\
-	errno = save_errno;				\
-} while (0)
 
-#define PRIV_END do {					\
-	int save_errno = errno;				\
-	if (seteuid(original_real_uid) != 0)		\
-		fatal("PRIV_END: seteuid: %s",		\
-		    strerror(errno));			\
-	errno = save_errno;				\
-} while (0)
+void openssh_ssh_kex2(ncrack_ssh_state *nstate,
+  char *client_version_string, char *server_version_string);
 
+void openssh_userauth2(ncrack_ssh_state *nstate, const char *server_user,
+    const char *password);
 
-Kex *openssh_ssh_kex2(char *client_version_string, char *server_version_string,
-  Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context);
+void openssh_start_userauth2(ncrack_ssh_state *nstate);
 
-void
-openssh_start_userauth2(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context);
-
-void
-openssh_userauth2(Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context,
-  const char *server_user, int type);
-
+int openssh_userauth2_service_rep(ncrack_ssh_state *nstate);
 
 #ifdef __cplusplus
 } /* End of 'extern "C"' */

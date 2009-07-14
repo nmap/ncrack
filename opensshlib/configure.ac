@@ -4131,8 +4131,5 @@ fi
 
 AC_EXEEXT
 ##### NCRACK removed some unneeded things #######
-AC_CONFIG_FILES([Makefile 
-	openbsd-compat/Makefile openbsd-compat/regress/Makefile])
-AC_OUTPUT
-
+AC_OUTPUT(Makefile)
 

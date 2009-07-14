@@ -49,7 +49,7 @@
 #include "cipher.h"
 
 /* compatibility with old or broken OpenSSL versions */
-#include "openbsd-compat/openssl-compat.h"
+#include "openssl-compat.h"
 
 extern const EVP_CIPHER *evp_ssh1_bf(void);
 extern const EVP_CIPHER *evp_ssh1_3des(void);

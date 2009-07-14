@@ -168,7 +168,7 @@ static void STORE_UINT32_REVERSED(void *ptr, UINT32 x)
 #define AES_BLOCK_LEN  16
 
 /* OpenSSL's AES */
-#include "openbsd-compat/openssl-compat.h"
+#include "openssl-compat.h"
 #ifndef USE_BUILTIN_RIJNDAEL
 # include <openssl/aes.h>
 #endif

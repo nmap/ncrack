@@ -30643,7 +30643,7 @@ fi
 
 
 ##### NCRACK removed some unneeded things #######
-ac_config_files="$ac_config_files Makefile openbsd-compat/Makefile openbsd-compat/regress/Makefile"
+ac_config_files="$ac_config_files Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -31243,8 +31243,6 @@ do
   case $ac_config_target in
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
-    "openbsd-compat/Makefile") CONFIG_FILES="$CONFIG_FILES openbsd-compat/Makefile" ;;
-    "openbsd-compat/regress/Makefile") CONFIG_FILES="$CONFIG_FILES openbsd-compat/regress/Makefile" ;;
 
   *) { { $as_echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5
 $as_echo "$as_me: error: invalid argument: $ac_config_target" >&2;}
@@ -31892,6 +31890,5 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:$LINENO: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 
 

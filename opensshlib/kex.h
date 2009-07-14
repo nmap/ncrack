@@ -26,11 +26,16 @@
 #ifndef KEX_H
 #define KEX_H
 
+
+#include "opensshlib.h"
+
 #include <signal.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include "cipher.h"
 #include "key.h"
+#include "buffer.h"
+
 
 #define	KEX_DH1			"diffie-hellman-group1-sha1"
 #define	KEX_DH14		"diffie-hellman-group14-sha1"
@@ -130,68 +135,45 @@ struct Kex {
 	int	(*verify_host_key)(Key *);
 	Key	*(*load_host_key)(int);
 	int	(*host_key_index)(Key *);
-	void	(*kex[KEX_MAX])(Kex *, Buffer *ncrack_buf,
-      Newkeys *ncrack_keys[MODE_MAX], CipherContext *send_context,
-      CipherContext *receive_context);
+	void	(*kex[KEX_MAX])(ncrack_ssh_state *nstate);
 };
 
 
-void	 kex_derive_keys(Kex *, u_char *, u_int, BIGNUM *,
-    Newkeys *ncrack_keys[MODE_MAX]);
-
 Newkeys *kex_get_newkeys(int);
 
-void	 kexdh_client(Kex *, Buffer *ncrack_buf);
-void	 kexdh_server(Kex *);
-void	 kexgex_server(Kex *);
 
-
-
-
-void
-kex_dh_hash(char *, char *, char *, int, char *, int, u_char *, int,
+void kex_dh_hash(char *, char *, char *, int, char *, int, u_char *, int,
     BIGNUM *, BIGNUM *, BIGNUM *, u_char **, u_int *);
-void
-kexgex_hash(const EVP_MD *, char *, char *, char *, int, char *,
+
+void kexgex_hash(const EVP_MD *, char *, char *, char *, int, char *,
     int, u_char *, int, int, int, int, BIGNUM *, BIGNUM *, BIGNUM *,
     BIGNUM *, BIGNUM *, u_char **, u_int *);
 
-void
-derive_ssh1_session_id(BIGNUM *, BIGNUM *, u_int8_t[8], u_int8_t[16]);
+void derive_ssh1_session_id(BIGNUM *, BIGNUM *, u_int8_t[8], u_int8_t[16]);
 
 #if defined(DEBUG_KEX) || defined(DEBUG_KEXDH)
 void	dump_digest(char *, u_char *, int);
 #endif
 
 
-void
-kexgex_client(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context);
+void kex_derive_keys(ncrack_ssh_state *nstate, u_char *hash, u_int hashlen,
+    BIGNUM *shared_secret);
 
-void
-kex_finish(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context);
+void kexdh_client(ncrack_ssh_state *nstate);
 
-Kex	*kex_setup(char *[PROPOSAL_MAX], Buffer *ncrack_buf,
-  Newkeys *ncrack_keys[MODE_MAX], CipherContext *send_context,
-  CipherContext *receive_context);
+void kexgex_client(ncrack_ssh_state *nstate);
 
-void kex_send_kexinit(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context);
+void kex_finish(ncrack_ssh_state *nstate);
 
+void kex_setup(ncrack_ssh_state *nstate, char *[PROPOSAL_MAX]);
 
-void openssh_kex_input_kexinit(int, u_int32_t, void *, Buffer *ncrack_buf,
-  Newkeys *ncrack_keys[MODE_MAX], CipherContext *send_context,
-  CipherContext *receive_context);
+void kex_send_kexinit(ncrack_ssh_state *nstate);
 
-DH *openssh_kexgex_2(Kex *kex, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context);
+void openssh_kex_input_kexinit(ncrack_ssh_state *nstate);
 
-void
-openssh_kexgex_3(Kex *kex, DH *dh, Buffer *ncrack_buf, Newkeys *ncrack_keys[MODE_MAX],
-  CipherContext *send_context, CipherContext *receive_context);
+void openssh_kexgex_2(ncrack_ssh_state *nstate);
 
-
+void openssh_kexgex_3(ncrack_ssh_state *nstate);
 
 
 #ifdef __cplusplus

@@ -276,17 +276,17 @@ gen_candidates(FILE *out, u_int32_t memory, u_int32_t power, BIGNUM *start)
 	 * of it.
 	 */
 	if (largememory > LARGE_MAXIMUM) {
-		logit("Limited memory: %u MB; limit %lu MB",
+		ssherror("Limited memory: %u MB; limit %lu MB",
 		    largememory, LARGE_MAXIMUM);
 		largememory = LARGE_MAXIMUM;
 	}
 
 	if (largewords <= (largememory << SHIFT_MEGAWORD)) {
-		logit("Increased memory: %u MB; need %u bytes",
+		ssherror("Increased memory: %u MB; need %u bytes",
 		    largememory, (largewords << SHIFT_BYTE));
 		largewords = (largememory << SHIFT_MEGAWORD);
 	} else if (largememory > 0) {
-		logit("Decreased memory: %u MB; want %u bytes",
+		ssherror("Decreased memory: %u MB; want %u bytes",
 		    largememory, (largewords << SHIFT_BYTE));
 		largewords = (largememory << SHIFT_MEGAWORD);
 	}
@@ -331,7 +331,7 @@ gen_candidates(FILE *out, u_int32_t memory, u_int32_t power, BIGNUM *start)
 
 	time(&time_start);
 
-	logit("%.24s Sieve next %u plus %u-bit", ctime(&time_start),
+	ssherror("%.24s Sieve next %u plus %u-bit", ctime(&time_start),
 	    largenumbers, power);
 	debug2("start point: 0x%s", BN_bn2hex(largebase));
 
@@ -403,7 +403,7 @@ gen_candidates(FILE *out, u_int32_t memory, u_int32_t power, BIGNUM *start)
 
 	time(&time_stop);
 
-	logit("%.24s Sieved with %u small primes in %ld seconds",
+	ssherror("%.24s Sieved with %u small primes in %ld seconds",
 	    ctime(&time_stop), largetries, (long) (time_stop - time_start));
 
 	for (j = r = 0; j < largebits; j++) {
@@ -431,7 +431,7 @@ gen_candidates(FILE *out, u_int32_t memory, u_int32_t power, BIGNUM *start)
 	xfree(SmallSieve);
 	xfree(TinySieve);
 
-	logit("%.24s Found %u candidates", ctime(&time_stop), r);
+	ssherror("%.24s Found %u candidates", ctime(&time_stop), r);
 
 	return (ret);
 }
@@ -642,7 +642,7 @@ prime_test(FILE *in, FILE *out, u_int32_t trials, u_int32_t generator_wanted)
 	BN_free(q);
 	BN_CTX_free(ctx);
 
-	logit("%.24s Found %u safe primes of %u candidates in %ld seconds",
+	ssherror("%.24s Found %u safe primes of %u candidates in %ld seconds",
 	    ctime(&time_stop), count_out, count_possible,
 	    (long) (time_stop - time_start));
 

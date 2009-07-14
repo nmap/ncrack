@@ -36,25 +36,21 @@ PERL=@PERL@
 SED=@SED@
 ENT=@ENT@
 XAUTH_PATH=@XAUTH_PATH@
-LDFLAGS= @LDFLAGS@ -L. -Lopenbsd-compat/ $(STATIC)
+LDFLAGS= @LDFLAGS@ -L. $(STATIC)
 EXEEXT=@EXEEXT@
 
 
 TARGETS=$(LIBCOMPAT) libopenssh.a
 
-LIBSSH_OBJS=acss.o authfd.o authfile.o bufaux.o bufbn.o buffer.o \
-	canohost.o cipher.o cipher-acss.o cipher-aes.o \
+LIBSSH_OBJS=strlcpy.o strlcat.o bsd-snprintf.o bsd-asprintf.o \
+	acss.o bufaux.o bufbn.o buffer.o \
+	cipher.o cipher-acss.o cipher-aes.o \
 	cipher-bf1.o cipher-ctr.o cipher-3des1.o cleanup.o \
-	compat.o compress.o crc32.o deattack.o fatal.o hostfile.o \
+	compat.o crc32.o deattack.o fatal.o \
 	log.o match.o md-sha256.o moduli.o packet.o \
-	rsa.o ttymodes.o xmalloc.o addrmatch.o \
-	atomicio.o key.o kex.o mac.o uidswap.o uuencode.o misc.o \
+	rsa.o xmalloc.o key.o kex.o mac.o misc.o \
 	rijndael.o ssh-dss.o ssh-rsa.o dh.o kexdh.o \
-	kexgex.o kexdhc.o kexgexc.o umac.o sshconnect2.o entropy.o
-
-# channels.o nchan.o dispatch.o monitor_fdpass.o
-#progressmeter.o dns.o entropy.o scard-opensc.o 
-#gss-genr.o jpake.o schnorr.o
+	kexgex.o kexdhc.o kexgexc.o umac.o sshconnect2.o 
 
 
 all: $(TARGETS)
@@ -64,12 +60,8 @@ $(LIBSSH_OBJS): Makefile.in config.h
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
-LIBCOMPAT=openbsd-compat/libopenbsd-compat.a
-$(LIBCOMPAT): always
-	(cd openbsd-compat && $(MAKE))
-always:
 
-libopenssh.a: $(LIBCOMPAT) $(LIBSSH_OBJS)
+libopenssh.a: $(LIBSSH_OBJS)
 	$(AR) cr $@ $(LIBSSH_OBJS)
 	$(RANLIB) $@
 
@@ -81,13 +73,7 @@ moduli:
 clean:
 	rm -f *.o *.a $(TARGETS) config.cache config.log
 	rm -f *.out core
-	(cd openbsd-compat && $(MAKE) clean)
-
 
 veryclean: distclean
 	rm -f configure config.h.in *.0
-
-
-compat-tests: $(LIBCOMPAT)
-	(cd openbsd-compat/regress && $(MAKE))
 
