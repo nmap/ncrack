@@ -1223,6 +1223,7 @@ status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  mydata = NULL; /* nothing in there */
 
   if (keyWasPressed())
     printStatusMessage(SG);
