@@ -1,5 +1,20 @@
 TODO:
 
+* Write http module (start with basic and then move to form auth).
+
+* Add ssl support (through nsock).
+
+* Make Ncrack packaging - a source tarball for *nix and a Windows installer.
+
+* Add output info when Ncrack finishes, the way Nmap does it.
+  Also -v should print additional info like how many connections were initiated etc
+  Example from Nmap:
+    (verbose)
+    Nmap done: 1 IP address (1 host up) scanned in 0.26 seconds
+    Raw packets sent: 1000 (44.000KB) | Rcvd: 2010 (84.440KB)
+    (normal)
+    Nmap done: 1 IP address (1 host up) scanned in 0.27 seconds
+
 * Solve the ssh username/password special iteration challenge as mentioned here:
   http://seclists.org/nmap-dev/2009/q3/0119.html
 
