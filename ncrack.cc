@@ -764,6 +764,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
   if (con->auth_success) {
     serv->addCredential(con->user, con->pass);
+    SG->credentials_found++;
 
     if (o.verbose)
       log_write(LOG_PLAIN, "Discovered credentials on %s %s %s\n",

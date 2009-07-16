@@ -179,6 +179,7 @@ class ServiceGroup {
     unsigned long connections_total;    /* how many connections have been initiated */
     unsigned long connections_timedout; /* how many connections have failed */
     unsigned long connections_closed;   /* how many connections prematurely closed */
+    unsigned long credentials_found;    /* total credentials found */
 
     int num_hosts_timedout;       /* # of hosts timed out during (or before) scan */
     list <Service *>::iterator last_accessed; /* last element accessed */

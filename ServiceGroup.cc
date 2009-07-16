@@ -106,6 +106,7 @@ ServiceGroup()
   connections_total = 0;
   connections_timedout = 0;
   connections_closed = 0;
+  credentials_found = 0;
 }
 
 

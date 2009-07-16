@@ -372,8 +372,8 @@ printStatusMessage(ServiceGroup *SG)
       "Stats: %lld:%02lld:%02lld elapsed; %lu services completed (%lu total)\n", 
       time/60/60, time/60 % 60, time % 60,
       (long unsigned) SG->services_finished.size(), SG->total_services);
-  log_write(LOG_STDOUT, "Auth rate: %.2f\n",
-      SG->auth_rate_meter.getCurrentRate());
+  log_write(LOG_STDOUT, "Auth-rate: %.2f; Credentials: %lu\n",
+      SG->auth_rate_meter.getCurrentRate(), SG->credentials_found);
 }
 
 
