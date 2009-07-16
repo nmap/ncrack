@@ -6,21 +6,8 @@ TODO:
 
 * Make Ncrack packaging - a source tarball for *nix and a Windows installer.
 
-* Add output info when Ncrack finishes, the way Nmap does it.
-  Also -v should print additional info like how many connections were initiated etc
-  Example from Nmap:
-    (verbose)
-    Nmap done: 1 IP address (1 host up) scanned in 0.26 seconds
-    Raw packets sent: 1000 (44.000KB) | Rcvd: 2010 (84.440KB)
-    (normal)
-    Nmap done: 1 IP address (1 host up) scanned in 0.27 seconds
-
 * Solve the ssh username/password special iteration challenge as mentioned here:
   http://seclists.org/nmap-dev/2009/q3/0119.html
-
-* Change Ncrack's build system so that whenever ssl isn't found on the system,
-  the ssh module isn't included/compiled, since it requires (the underlying opensshlib
-  actually does) it in order to work.
 
 * We may also need to increase the maximum number of half-open connections in
   Windows: see http://half-open.com/home_en.htm - We could do this by asking the
@@ -85,6 +72,19 @@ TODO:
   nmap has them in that order without any problems. 
 
 ============================== DONE ==========================================
+
+* Change Ncrack's build system so that whenever ssl isn't found on the system,
+  the ssh module isn't included/compiled, since it requires (the underlying opensshlib
+  actually does) it in order to work.
+
+* Add output info when Ncrack finishes, the way Nmap does it.
+  Also -v should print additional info like how many connections were initiated etc
+  Example from Nmap:
+    (verbose)
+    Nmap done: 1 IP address (1 host up) scanned in 0.26 seconds
+    Raw packets sent: 1000 (44.000KB) | Rcvd: 2010 (84.440KB)
+    (normal)
+    Nmap done: 1 IP address (1 host up) scanned in 0.27 seconds
 
 * Refine core engine. 
 
