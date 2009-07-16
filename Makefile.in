@@ -10,14 +10,16 @@ export CFLAGS = $(CXXFLAGS)
 STATIC =
 LDFLAGS = @LDFLAGS@ $(DBGFLAGS) $(STATIC)
 
+MOD_OBJS = @MODULES_OBJS@
+MOD_OBJS := $(addprefix mod/,$(MOD_OBJS))
 
 LIBS = @LIBNSOCK_LIBS@ @LIBNBASE_LIBS@ @OPENSSL_LIBS@ @OPENSSH_LIB@ 
 
 TARGET = ncrack
 
-export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc services.cc timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buffer.cc ncrack_ssh.cc
+export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc services.cc timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buffer.cc 
 
-OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o ServiceGroup.o services.o timing.o ncrack_error.o output.o ncrack_tty.o Buffer.o mod/ftp/ncrack_ftp.o mod/telnet/ncrack_telnet.o ncrack_ssh.o
+OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o ServiceGroup.o services.o timing.o ncrack_error.o output.o ncrack_tty.o Buffer.o 
 
 .cc.o :
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
@@ -28,15 +30,13 @@ all: @NBASE_BUILD@ @NSOCK_BUILD@ @OPENSSHLIB_BUILD@ @MODULES_BUILD@
 $(TARGET): $(NSOCKDIR)/src/libnsock.a $(NBASEDIR)/libnbase.a $(OBJS)
 	@echo Compiling Ncrack... 
 	rm -f $@
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(MOD_OBJS) $(LIBS)
 	@echo Ncrack compiled successfully!
 
 
 modules_build:
 	@echo Compiling modules
-	cd mod/ftp && $(MAKE)
-	cd mod/telnet && $(MAKE)
-
+	cd mod && $(MAKE)
 
 nbase_build: $(NBASEDIR)/Makefile
 	@echo Compiling libnbase;

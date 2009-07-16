@@ -1,14 +1,14 @@
 
-sources	:= ncrack_telnet.cc
-objects	:= $(subst .cc,.o,$(sources))
+SRCS = @MODULES_SRCS@
+OBJS = @MODULES_OBJS@
 
-include_dirs := ../.. ../../nsock/include ../../nbase
+include_dirs := .. ../nsock/include ../nbase ../opensshlib
 CPPFLAGS += $(addprefix -I,$(include_dirs)) -DHAVE_CONFIG_H
 
 vpath %.h $(include_dirs)
 
 
-all: $(objects)
+all: $(OBJS)
 
 .cc.o :
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@

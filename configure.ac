@@ -37,66 +37,7 @@ AC_CONFIG_HEADER(ncrack_config.h)
 
 
 
-# We test whether they specified openssl desires explicitly
-use_openssl="yes"
-specialssldir=""
-AC_ARG_WITH(openssl,
-AC_HELP_STRING([--with-openssl=DIR],[Use optional openssl libs and includes from [DIR]/lib/ and [DIR]/include/openssl/)]),
-[  case "$with_openssl" in
-  yes)
-    ;;
-  no)
-    use_openssl="no"
-    ;;
-  *)
-    specialssldir="$with_openssl"
-    CPPFLAGS="$CPPFLAGS -I$with_openssl/include"
-    LDFLAGS="$LDFLAGS -L$with_openssl/lib"
-    ;;
-  esac]
-)
 
-# If they didn't specify it, we try to find it
-if test "$use_openssl" = "yes" -a -z "$specialssldir"; then
-  AC_CHECK_HEADER(openssl/ssl.h,,
-  [ use_openssl="no"
-    if test "$with_openssl" = "yes"; then
-      AC_MSG_ERROR([OpenSSL was explicitly requested but openssl/ssl.h was not found. Try the --with-openssl=DIR argument to give the location of OpenSSL or run configure with --without-openssl.])
-    fi
-    AC_MSG_WARN([Failed to find openssl/ssl.h so OpenSSL will not be used. If it is installed you can try the --with-openssl=DIR argument])
-  ])
-
-# use_openssl="yes" given explicitly in next 2 rules to avoid adding lib to $LIBS
- if test "$use_openssl" = "yes"; then
-   AC_CHECK_LIB(crypto, BIO_int_ctrl,
-    [ use_openssl="yes"],
-    [ use_openssl="no"
-    if test "$with_openssl" = "yes"; then
-      AC_MSG_ERROR([OpenSSL was explicitly requested but libcrypto was not found. Try the --with-openssl=DIR argument to give the location of OpenSSL or run configure with --without-openssl.])
-    fi
-    AC_MSG_WARN([Failed to find libcrypto so OpenSSL will not be used. If it is installed you can try the --with-openssl=DIR argument])
-   ])
- fi
-
- if test "$use_openssl" = "yes"; then
-   AC_CHECK_LIB(ssl, SSL_new,
-    [ use_openssl="yes" ],
-    [ use_openssl="no"
-    if test "$with_openssl" = "yes"; then
-      AC_MSG_ERROR([OpenSSL was explicitly requested but libssl was not found. Try the --with-openssl=DIR argument to give the location of OpenSSL or run configure with --without-openssl.])
-    fi
-    AC_MSG_WARN([Failed to find libssl so OpenSSL will not be used. If it is installed you can try the --with-openssl=DIR argument]) ],
-    [ -lcrypto ])
- fi
-fi
-
-OPENSSL_LIBS=
-if test "$use_openssl" = "yes"; then
-  AC_DEFINE(HAVE_OPENSSL)
-  OPENSSL_LIBS="-lssl -lcrypto"
-fi
-
-AC_SUBST(OPENSSL_LIBS)
 
 
 
@@ -240,6 +181,69 @@ recvfrom (0, NULL, 0, 0, NULL, &arg);],[
 RECVFROM_ARG6_TYPE
 
 
+# We test whether they specified openssl desires explicitly
+use_openssl="yes"
+specialssldir=""
+AC_ARG_WITH(openssl,
+AC_HELP_STRING([--with-openssl=DIR],[Use optional openssl libs and includes from [DIR]/lib/ and [DIR]/include/openssl/)]),
+[  case "$with_openssl" in
+  yes)
+    ;;
+  no)
+    use_openssl="no"
+    ;;
+  *)
+    specialssldir="$with_openssl"
+    CPPFLAGS="$CPPFLAGS -I$with_openssl/include"
+    LDFLAGS="$LDFLAGS -L$with_openssl/lib"
+    ;;
+  esac]
+)
+
+# If they didn't specify it, we try to find it
+if test "$use_openssl" = "yes" -a -z "$specialssldir"; then
+  AC_CHECK_HEADER(openssl/ssl.h,,
+  [ use_openssl="no"
+    if test "$with_openssl" = "yes"; then
+      AC_MSG_ERROR([OpenSSL was explicitly requested but openssl/ssl.h was not found. Try the --with-openssl=DIR argument to give the location of OpenSSL or run configure with --without-openssl.])
+    fi
+    AC_MSG_WARN([Failed to find openssl/ssl.h so OpenSSL will not be used. If it is installed you can try the --with-openssl=DIR argument])
+  ])
+
+# use_openssl="yes" given explicitly in next 2 rules to avoid adding lib to $LIBS
+ if test "$use_openssl" = "yes"; then
+   AC_CHECK_LIB(crypto, BIO_int_ctrl,
+    [ use_openssl="yes"],
+    [ use_openssl="no"
+    if test "$with_openssl" = "yes"; then
+      AC_MSG_ERROR([OpenSSL was explicitly requested but libcrypto was not found. Try the --with-openssl=DIR argument to give the location of OpenSSL or run configure with --without-openssl.])
+    fi
+    AC_MSG_WARN([Failed to find libcrypto so OpenSSL will not be used. If it is installed you can try the --with-openssl=DIR argument])
+   ])
+ fi
+
+ if test "$use_openssl" = "yes"; then
+   AC_CHECK_LIB(ssl, SSL_new,
+    [ use_openssl="yes" ],
+    [ use_openssl="no"
+    if test "$with_openssl" = "yes"; then
+      AC_MSG_ERROR([OpenSSL was explicitly requested but libssl was not found. Try the --with-openssl=DIR argument to give the location of OpenSSL or run configure with --without-openssl.])
+    fi
+    AC_MSG_WARN([Failed to find libssl so OpenSSL will not be used. If it is installed you can try the --with-openssl=DIR argument]) ],
+    [ -lcrypto ])
+ fi
+fi
+
+OPENSSL_LIBS=
+if test "$use_openssl" = "yes"; then
+
+  AC_DEFINE(HAVE_OPENSSL)
+  OPENSSL_LIBS="-lssl -lcrypto"
+fi
+
+AC_SUBST(OPENSSL_LIBS)
+
+
 # NBASE
 AC_ARG_WITH(libnbase,
 AC_HELP_STRING([--with-libnbase=DIR], [Look for nbase include/libs in DIR]),
@@ -293,7 +297,16 @@ AC_SUBST(LIBNSOCK_LIBS)
 AC_CONFIG_SUBDIRS(nsock/src)
 
 
+# Modules
+MODULES_BUILD="modules_build"
+AC_SUBST(MODULES_BUILD)
 
+
+OPENSSHLIB_DIR=
+OPENSSHLIB_BUILD=
+OPENSSH_LIB=
+
+if test "$use_openssl" = "yes"; then
 # OPENSSHLIB
 OPENSSHLIB_DIR="opensshlib"
 OPENSSHLIB_BUILD="opensshlib_build"
@@ -312,19 +325,22 @@ AC_HELP_STRING([--with-libopenssh=DIR], [Compile and link to libopenssh in DIR])
 LDFLAGS="$LDFLAGS -L$OPENSSHLIB_DIR"
 CPPFLAGS="$CPPFLAGS -I$OPENSSHLIB_DIR"
 OPENSSH_LIB="-lopenssh"
+AC_CONFIG_SUBDIRS(opensshlib)
 
+MODULES_SRCS="ncrack_ssh.cc"
+MODULES_OBJS="ncrack_ssh.o"
+
+fi
+
+MODULES_SRCS="$MODULES_SRCS ncrack_ftp.cc ncrack_telnet.cc"
+MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o"
+AC_SUBST(MODULES_SRCS)
+AC_SUBST(MODULES_OBJS)
+AC_OUTPUT(mod/Makefile)
 
 AC_SUBST(OPENSSHLIB_DIR)
 AC_SUBST(OPENSSHLIB_BUILD)
 AC_SUBST(OPENSSH_LIB)
-
-AC_CONFIG_SUBDIRS(opensshlib)
-
-
-
-# Modules
-MODULES_BUILD="modules_build"
-AC_SUBST(MODULES_BUILD)
 
 
 AC_SUBST(CPPFLAGS)

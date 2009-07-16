@@ -96,12 +96,21 @@
 #include <list>
 
 /* OpenSSH include-files */
-//#include "openssh.h"
+#include "opensshlib.h"
+
+#include "ssh2.h"
+#include "openssl/dh.h"
 #include "buffer.h"
 #include "kex.h"
+#include "sshconnect.h"
+#include "packet.h"
+#include "misc.h"
+#include "cipher.h"
+#include "compat.h"
 
 
 #define SSH_TIMEOUT 20000
+#define CLIENT_VERSION "SSH-2.0-OpenSSH_5.2\n"
 
 
 extern NcrackOps o;
@@ -111,8 +120,36 @@ extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
+enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_KEY2, SSH_KEY3, SSH_KEY4, 
+  SSH_AUTH, SSH_AUTH2, SSH_AUTH3, SSH_AUTH4, SSH_FINI };
 
-enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_KEY2, SSH_FINI };
+
+static inline int
+ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
+{
+  int packetlen = 0;
+  
+  /* If we have data in the I/O buffer, which means that we had previously
+   * scheduled an nsock read event, then append the new data we got inside
+   * the 'input' buffer which will be processed by the openssh library
+   */
+  if (con->iobuf != NULL) {
+    packetlen = con->iobuf->get_len();
+    if (packetlen > 0)
+      buffer_append(&info->input, con->iobuf->get_dataptr(), packetlen); 
+  }
+
+  info->type = openssh_packet_read(info);
+  if (info->type == SSH_MSG_NONE) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, SSH_TIMEOUT, con);
+    return -1;
+  }
+  delete con->iobuf;
+  con->iobuf = NULL;
+  return 0;
+}
+
+
 
 void
 ncrack_ssh(nsock_pool nsp, Connection *con)
@@ -120,15 +157,20 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
   char lbuf[BUFSIZE]; /* local buffer */
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
-  const char *hostinfo = serv->HostInfo();
+  //const char *hostinfo = serv->HostInfo();
   void *ioptr;
   u_int buflen;
-  Buffer ncrack_buf; /* this is OpenSSH's buffer, not Ncrack's class */
+  ncrack_ssh_state *info = NULL;
+
+  if (con->misc_info)
+    info = (ncrack_ssh_state *) con->misc_info;
 
   switch (con->state)
   {
     case SSH_INIT:
+
       con->state = SSH_ID_EX;
+      con->misc_info = (ncrack_ssh_state *)safe_zalloc(sizeof(ncrack_ssh_state));  
       nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
       break;
 
@@ -147,29 +189,187 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
         nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
         break;
       }
-      printf("%s ssh id: %s\n", hostinfo, (char *)ioptr);
       con->state = SSH_KEY;
-      strncpy(lbuf, "SSH-2.0-OpenSSH 5.1.1p2\n", sizeof(lbuf) - 1); 
+
+      info->server_version_string = Strndup((char *)ioptr, buflen);
+      openssh_compat_datafellows(info);
+
+      chop(info->server_version_string);
+
+      /* NEVER forget to free allocated memory and also NULL-assign ptr */
+      delete con->iobuf;
+      con->iobuf = NULL;
+
+      strncpy(lbuf, CLIENT_VERSION, sizeof(lbuf) - 1); 
+      info->client_version_string = Strndup(lbuf, strlen(lbuf));
+      chop(info->client_version_string);
+
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, lbuf, -1);
       break;
 
     case SSH_KEY:
 
       con->state = SSH_KEY2;
-      //ssh_kex2(ncrack_buf);
+
+      /* sends "Key Exchange Init" */
+
+      /* Initialize cipher contexts and keys as well as internal opensshlib
+       * buffers (input, output, incoming_packet, outgoing_packet) 
+       */
+      packet_set_connection(info);
+
+      openssh_ssh_kex2(info, info->client_version_string,
+          info->server_version_string);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
-          (const char *)buffer_ptr(&ncrack_buf), buffer_len(&ncrack_buf));
+          (const char *)buffer_ptr(&info->output),
+          buffer_len(&info->output));
+      buffer_consume(&info->output, buffer_len(&info->output));
 
       break;
 
     case SSH_KEY2:
 
-      printf("YEA\n");
+      if (ssh_loop_read(nsp, con, info) < 0)
+        break;
+
+      /* Receives: "Key Exchange Init"
+       * Sends: "Diffie-Hellman GEX Request"
+       */
+
+      con->state = SSH_KEY3;
+
+      openssh_kex_input_kexinit(info);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
+          (const char *)buffer_ptr(&info->output), buffer_len(&info->output));
+      buffer_consume(&info->output, buffer_len(&info->output));
+
       break;
 
+    case SSH_KEY3:
 
+      if (ssh_loop_read(nsp, con, info) < 0)
+        break;
+
+      /* Receives: "Diffie-Hellman Key Exchange Reply" and
+       * Sends: "Diffie-Hellman GEX Init"
+       */
+
+      con->state = SSH_KEY4;
+
+      openssh_kexgex_2(info);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
+          (const char *)buffer_ptr(&info->output), buffer_len(&info->output));
+      buffer_consume(&info->output, buffer_len(&info->output));
+
+      break;
+
+    case SSH_KEY4:
+
+      if (ssh_loop_read(nsp, con, info) < 0)
+        break;
+
+      /* Receives: "Diffie-Hellman GEX Reply" and
+       * Sends: "New keys"
+       */
+
+      con->state = SSH_AUTH;
+
+      openssh_kexgex_3(info);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
+          (const char *)buffer_ptr(&info->output), buffer_len(&info->output));
+      buffer_consume(&info->output, buffer_len(&info->output));
+
+      break;
+
+    case SSH_AUTH:
+
+      //printf("SSH AUTH 1\n");
+
+      if (ssh_loop_read(nsp, con, info) < 0)
+        break;
+
+      /* Receives: "New keys"
+       * Sends "Encrypted Request 1"
+       */
+
+      con->state = SSH_AUTH2;
+
+      openssh_start_userauth2(info);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
+          (const char *)buffer_ptr(&info->output), buffer_len(&info->output));
+      buffer_consume(&info->output, buffer_len(&info->output));
+
+      break;
+
+    case SSH_AUTH2:
+
+      //printf("SSH AUTH 2\n");
+      if (ssh_loop_read(nsp, con, info) < 0)
+        break;
+
+      con->state = SSH_AUTH3;
+      /* 
+       * If server doesn't support "password" authentication method then
+       * there is no point in doing any more attempts, so we can mark the
+       * service as finished.
+       */
+      if (openssh_userauth2_service_rep(info) < 0) {
+        serv->end.orly = true;
+        Snprintf(lbuf, sizeof(lbuf),
+            "Server denied authentication request: %d", info->type);
+        serv->end.reason = Strndup(lbuf, strlen(lbuf));
+        return ncrack_module_end(nsp, con);
+      }
+
+      /* Jump straight to next state */
+      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+      break;
+
+    case SSH_AUTH3:
+
+      /* 
+       * Sends credentials
+       */
+      //printf("SSH AUTH 3\n");
+      con->state = SSH_FINI;
+
+      openssh_userauth2(info, con->user, con->pass);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
+          (const char *)buffer_ptr(&info->output), buffer_len(&info->output));
+      buffer_consume(&info->output, buffer_len(&info->output));
+
+      break;
+      
     case SSH_FINI:
+
+      //printf("SSH FINI\n");
+      if (ssh_loop_read(nsp, con, info) < 0)
+        break;
+
+      /* 
+       * If we get a disconnect message at this stage, then it probably
+       * means that we reached the server's authentication limit per
+       * connection.
+       */
+      if (info->type == SSH2_MSG_DISCONNECT) {
+        return ncrack_module_end(nsp, con);
+      }
+
+      if (info->type == SSH2_MSG_USERAUTH_SUCCESS) {
+        con->auth_success = true;
+        con->state = SSH_AUTH3;
+      } else if (info->type == SSH2_MSG_USERAUTH_FAILURE) {
+        //printf("failed!\n");
+        con->state = SSH_AUTH3;
+      } else if (info->type == SSH2_MSG_USERAUTH_BANNER) {
+        printf("Got banner!\n");
+      }
 
       return ncrack_module_end(nsp, con);
   }
