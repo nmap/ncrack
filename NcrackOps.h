@@ -108,7 +108,7 @@ class NcrackOps {
 
     /* Number of milliseconds since getStartTime().  The current time is an
      * optional argument to avoid an extra gettimeofday() call. */
-    int TimeSinceStartMS(struct timeval *now=NULL); 
+    long long TimeSinceStartMS(struct timeval *now=NULL); 
 
     float stats_interval; /* The requested auto stats printing interval, or 0.0 if unset. */
     bool log_errors;      /* write errors to log files */

@@ -95,7 +95,8 @@
 
 NcrackOps o;
 
-NcrackOps::NcrackOps() {
+NcrackOps::
+NcrackOps() {
 
   stats_interval = 0.0; /* unset */
   log_errors = false;
@@ -114,18 +115,20 @@ NcrackOps::NcrackOps() {
   gettimeofday(&start_time, NULL);
 }
 
-NcrackOps::~NcrackOps() {
+NcrackOps::
+~NcrackOps() {
   ;
 }
 
 
 /* Number of milliseconds since getStartTime().  The current time is an
  * optional argument to avoid an extra gettimeofday() call. */
-int NcrackOps::TimeSinceStartMS(struct timeval *now) {
+long long NcrackOps::
+TimeSinceStartMS(struct timeval *now) {
   struct timeval tv;
   if (!now)
     gettimeofday(&tv, NULL);
   else tv = *now;
 
-  return TIMEVAL_MSEC_SUBTRACT(tv, start_time);
+  return timeval_msec_subtract(tv, start_time);
 }

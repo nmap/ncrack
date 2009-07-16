@@ -289,7 +289,7 @@ void Target::stopTimeOutClock(const struct timeval *now) {
   htn.toclock_running = false;
   if (now) tv = *now;
   else gettimeofday(&tv, NULL);
-  htn.msecs_used += TIMEVAL_MSEC_SUBTRACT(tv, htn.toclock_start);
+  htn.msecs_used += timeval_msec_subtract(tv, htn.toclock_start);
   htn.host_end = tv.tv_sec;
 }
 
@@ -308,7 +308,7 @@ bool Target::timedOut(const struct timeval *now) {
       tv = *now;
     else
       gettimeofday(&tv, NULL);
-    used += TIMEVAL_MSEC_SUBTRACT(tv, htn.toclock_start);
+    used += timeval_msec_subtract(tv, htn.toclock_start);
   }
 
   return (used > o.host_timeout)? true : false;

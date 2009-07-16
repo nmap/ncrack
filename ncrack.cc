@@ -721,11 +721,14 @@ int main(int argc, char **argv)
     ncrack(SG);
   }
 
-  /* Now print the final results */
+  /* Now print the final results for each service */
   for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
     if ((*li)->credentials_found.size() != 0)
-      print_final_output(*li);
+      print_service_output(*li);
   }
+
+  /* Print final output information */
+  print_final_output(SG);
 
   /* Free all of the Targets */
   while(!Targets.empty()) {
@@ -761,6 +764,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
   if (con->auth_success) {
     serv->addCredential(con->user, con->pass);
+
     if (o.verbose)
       log_write(LOG_PLAIN, "Discovered credentials on %s %s %s\n",
           hostinfo, con->user, con->pass);
@@ -777,7 +781,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   serv->auth_rate_meter.update(1, NULL);
 
   gettimeofday(&now, NULL);
-  if (!serv->just_started && TIMEVAL_MSEC_SUBTRACT(now, serv->last_auth_rate.time) >= 500) {
+  if (!serv->just_started && timeval_msec_subtract(now, serv->last_auth_rate.time) >= 500) {
     double current_rate = serv->auth_rate_meter.getCurrentRate();
     if (o.debugging) 
       log_write(LOG_STDOUT, "%s last: %.2f current %.2f parallelism %ld\n", serv->HostInfo(),
@@ -876,6 +880,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   list <Connection *>::iterator li;
   const char *hostinfo = serv->HostInfo();
 
+  if (con->close_reason == CON_ERR)
+    SG->connections_timedout++;
 
   if (con->close_reason == READ_TIMEOUT) {
     serv->appendToPool(con->user, con->pass);
@@ -915,6 +921,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       if (!serv->just_started && con->login_attempts < serv->supported_attempts) {
         if (o.debugging > 3)
           error("%s closed on us in the middle of authentication!", hostinfo);
+        SG->connections_closed++;
       }
     }
     if (o.debugging > 5)
@@ -1261,7 +1268,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
    */
   gettimeofday(&now, NULL);
   for (li = SG->services_wait.begin(); li != SG->services_wait.end(); li++) {
-    if (TIMEVAL_MSEC_SUBTRACT(now, (*li)->last) >= (*li)->connection_delay) {
+    if (timeval_msec_subtract(now, (*li)->last) >= (long long)(*li)->connection_delay) {
       li = SG->popServiceFromList(*li, &SG->services_wait);
     }
   }
@@ -1289,7 +1296,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
      * milliseconds ago, then temporarily move service to 'services_wait' list
      */
     gettimeofday(&now, NULL);
-    if (TIMEVAL_MSEC_SUBTRACT(now, serv->last) < serv->connection_delay) {
+    if (timeval_msec_subtract(now, serv->last) < (long long)serv->connection_delay) {
       li = SG->pushServiceToList(serv, &SG->services_wait);
       goto next;
     }
@@ -1341,6 +1348,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
 
     /* Schedule 1 connection for this service */
     con = new Connection(serv);
+    SG->connections_total++;
 
     if (pair_ret == 1)
       con->from_pool = true;

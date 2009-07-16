@@ -173,5 +173,7 @@ char *Strndup(const char *src, size_t size);
 /* Convert string to port (in host-byte order) */
 u16 str2port(char *exp);
 
+long long timeval_msec_subtract(struct timeval a, struct timeval b);
+
 
 #endif /* UTILS_H */

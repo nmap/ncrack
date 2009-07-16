@@ -366,10 +366,10 @@ printStatusMessage(ServiceGroup *SG)
 {
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  int time = (int) (o.TimeSinceStartMS(&tv) / 1000.0);
+  long long time = (long long) (o.TimeSinceStartMS(&tv) / 1000.0);
 
   log_write(LOG_STDOUT, 
-      "Stats: %d:%02d:%02d elapsed; %lu services completed (%lu total)\n", 
+      "Stats: %lld:%02lld:%02lld elapsed; %lu services completed (%lu total)\n", 
       time/60/60, time/60 % 60, time % 60,
       (long unsigned) SG->services_finished.size(), SG->total_services);
   log_write(LOG_STDOUT, "Auth rate: %.2f\n",
@@ -379,7 +379,7 @@ printStatusMessage(ServiceGroup *SG)
 
 
 void
-print_final_output(Service *serv)
+print_service_output(Service *serv)
 {
   vector <loginpair>::iterator vi;
   const char *ip = serv->target->NameIP();
@@ -395,6 +395,23 @@ print_final_output(Service *serv)
         ip, serv->portno, proto2str(serv->proto), serv->name,
         vi->user, vi->pass);
   }
+}
 
+
+void
+print_final_output(ServiceGroup *SG)
+{
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  
+  //printf("%lld \n", o.TimeSinceStartMS(&tv));
+  log_write(LOG_PLAIN, "\nNcrack done: %lu %s scanned in %.2f seconds\n",
+      SG->total_services, (SG->total_services == 1)? "service" : "services",
+      (float)o.TimeSinceStartMS(&tv) / (float)1000 );
+
+  if (o.verbose)
+    log_write(LOG_PLAIN, "Probes sent: %lu | timed-out: %lu |"
+        " prematurely-closed: %lu\n", SG->connections_total,
+        SG->connections_timedout, SG->connections_closed);
 }
 

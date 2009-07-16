@@ -130,7 +130,6 @@ class ServiceGroup {
 
     double calculate_total_rate(void);
 
-
     /* ********************* Members ********************* */
 
     /* All Services. This includes all active and inactive services.
@@ -177,6 +176,10 @@ class ServiceGroup {
     long active_connections;      /* total number of active connections */
     long connection_limit;        /* maximum total number of active connections */
 
+    unsigned long connections_total;    /* how many connections have been initiated */
+    unsigned long connections_timedout; /* how many connections have failed */
+    unsigned long connections_closed;   /* how many connections prematurely closed */
+
     int num_hosts_timedout;       /* # of hosts timed out during (or before) scan */
     list <Service *>::iterator last_accessed; /* last element accessed */
 
@@ -204,7 +207,6 @@ class ServiceGroup {
      * Returns true if operation is valid.
      */
     bool unset_servlist(Service *serv, list <Service *> *list);
-
 
 };
 

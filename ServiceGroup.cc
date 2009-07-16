@@ -97,20 +97,20 @@
 extern NcrackOps o;
 
 
-ServiceGroup::ServiceGroup()
+ServiceGroup::
+ServiceGroup()
 {
-	struct timeval now;
-
 	/* members initialization */
 	total_services = 0;
 	active_connections = 0;
-
-	gettimeofday(&now, NULL);
-
+  connections_total = 0;
+  connections_timedout = 0;
+  connections_closed = 0;
 }
 
 
-ServiceGroup::~ServiceGroup()
+ServiceGroup::
+~ServiceGroup()
 {
 	// free stuff
 }
@@ -119,8 +119,8 @@ ServiceGroup::~ServiceGroup()
 /* 
  * Find and set minimum connection delay from all unfinished services 
  */
-void
-ServiceGroup::findMinDelay(void)
+void ServiceGroup::
+findMinDelay(void)
 {
   list<long> delays;
   list<Service *>::iterator li;
@@ -146,8 +146,8 @@ ServiceGroup::findMinDelay(void)
  * for example it needs to wait both for the 'connection_delay' and the 
  * 'connection_limit'.
  */
-list <Service *>::iterator
-ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
+list <Service *>::iterator ServiceGroup::
+pushServiceToList(Service *serv, list <Service *> *dst)
 {
   list <Service *>::iterator li = services_active.end();
   list <Service *>::iterator templi;
@@ -213,8 +213,8 @@ ServiceGroup::pushServiceToList(Service *serv, list <Service *> *dst)
  * it stops belonging to any other list (except 'services_finished' from which
  * you are not allowed to remove a service once it moves there)
  */
-list <Service *>::iterator
-ServiceGroup::popServiceFromList(Service *serv, list <Service *> *src)
+list <Service *>::iterator ServiceGroup::
+popServiceFromList(Service *serv, list <Service *> *src)
 {
   list <Service *>::iterator li = services_finished.end();
   const char *srcname = NULL;
@@ -268,8 +268,8 @@ ServiceGroup::popServiceFromList(Service *serv, list <Service *> *src)
  * a "FINISHED" string. We prefer capitals for debugging purposes. Caller must
  * free the string after it finishes using it.
  */
-const char *
-ServiceGroup::list2name(list <Service *> *list)
+const char *ServiceGroup::
+list2name(list <Service *> *list)
 {
   const char *name = NULL;
 
@@ -298,8 +298,8 @@ ServiceGroup::list2name(list <Service *> *list)
  * invalid list is specified, then the operation is invalid. 
  * Returns true if operation is valid and false for invalid.
  */
-bool
-ServiceGroup::set_servlist(Service *serv, list <Service *> *list)
+bool ServiceGroup::
+set_servlist(Service *serv, list <Service *> *list)
 {
   if (list == &services_active && !serv->getListActive())
     serv->setListActive();
@@ -325,8 +325,8 @@ ServiceGroup::set_servlist(Service *serv, list <Service *> *list)
  * belonging to the particular list.
  * Returns true if operation is valid.
  */
-bool
-ServiceGroup::unset_servlist(Service *serv, list <Service *> *list)
+bool ServiceGroup::
+unset_servlist(Service *serv, list <Service *> *list)
 {
   if (list == &services_active)
     serv->unsetListActive();
@@ -351,12 +351,10 @@ ServiceGroup::unset_servlist(Service *serv, list <Service *> *list)
 }
 
 
-double
-ServiceGroup::calculate_total_rate(void)
+double ServiceGroup::
+calculate_total_rate(void)
 {
-
-
-
-
-
+  // empty now
+  double rate = 0;
+  return rate;
 }
