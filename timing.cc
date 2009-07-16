@@ -434,7 +434,6 @@ bool ScanProgressMeter::printStats(double perc_done,
   }
 
   last_print = *now;
-#if 0
   // If we're less than 1% done we probably don't have enough
   // data for decent timing estimates. Also with perc_done == 0
   // these elements will be nonsensical.
@@ -465,7 +464,7 @@ bool ScanProgressMeter::printStats(double perc_done,
       scantypestr, (unsigned long) now->tv_sec,
       perc_done * 100, time_left_s, (unsigned long) last_est.tv_sec);
   log_flush(LOG_STDOUT|LOG_XML);
-#endif
+
   return true;
 }
 
@@ -492,7 +491,7 @@ bool ScanProgressMeter::beginOrEndTask(const struct timeval *now, const char *ad
 
   tv_sec = now->tv_sec;
   tm = localtime(&tv_sec);
-  /*
+  
   if (beginning) {
     log_write(LOG_STDOUT, "Initiating %s at %02d:%02d", scantypestr, tm->tm_hour, tm->tm_min);
     log_write(LOG_XML, "<taskbegin task=\"%s\" time=\"%lu\"", scantypestr, (unsigned long) now->tv_sec);
@@ -513,6 +512,6 @@ bool ScanProgressMeter::beginOrEndTask(const struct timeval *now, const char *ad
     log_write(LOG_XML, " />\n");
   }
   log_flush(LOG_STDOUT|LOG_XML);
-  */
+  
   return true;
 }
