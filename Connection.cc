@@ -1,9 +1,8 @@
 
- /***************************************************************************
- * Service.h -- The "Service" class encapsulates every bit of information  *
- * about the associated target's (Target class) service. Service-specific  *
- * options, statistical and timing information as well as functions for    *
- * handling username/password list iteration all belong to this class.     *
+/***************************************************************************
+ * Connection.cc -- The "Connection" class holds information specifically  *
+ * pertaining to connection probes. Objects of this class must always      *
+ * belong to a certain "Service" object.                                   *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -90,178 +89,36 @@
  *                                                                         *
  ***************************************************************************/
 
-
-#ifndef SERVICE_H
-#define SERVICE_H
-
-#include "ncrack.h"
-#include "utils.h"
-#include "Target.h"
-#include "Buffer.h"
-#include "timing.h"
-#include "Connection.h"
-#include <list>
-
-
-#define BUFSIZE 256
-#define MAX_HOSTINFO_LEN 1024
-
-
-
-typedef struct loginpair
+#include "Service.h"
+ 
+/* A connection must *always* belong to one specific Service */
+Connection::
+Connection(Service *serv)
 {
-  char *user;
-  char *pass;
-} loginpair;
+  state = 0;
+  service = serv;
+  check_closed = false;
+  auth_complete = false;
+  auth_success = false;
+  peer_alive = false;
+  peer_might_close = false;
+  finished_normally = false;
+  login_attempts = 0;
+  buf = NULL;
+  misc_info = NULL;
+  iobuf = NULL;
+}
 
-
-struct end_reason
+Connection::
+~Connection()
 {
-  bool orly;    /* did it end? */
-  char *reason; /* why did it end */
-};
-
-
-
-class Service
-{
-	public:
-		Service();
-		~Service();
-
-    /* ********************* Functions ******************* */
-
-		Service(const Service&); /* copy constructor */
-    const char *HostInfo(void);
-
-    /* Add discovered credential to 'credentials_found' */
-    void addCredential(char *user, char *pass);
-
-    int getNextPair(char **login, char **pass);
-    void appendToPool(char *login, char *pass);
-    void removeFromPool(char *login, char *pass);
-    bool isMirrorPoolEmpty(void);
-    bool isPoolEmpty(void);
-
-    void setListActive(void) { list_active = true; };
-    void unsetListActive(void) { list_active = false; };
-    bool getListActive(void) { return list_active; };
-
-    void setListWait(void) { list_wait = true; };
-    void unsetListWait(void) { list_wait = false; };
-    bool getListWait(void) { return list_wait; };
-
-    void setListPairfini(void) { list_pairfini = true; };
-    void unsetListPairfini(void) { list_pairfini = false; };
-    bool getListPairfini(void) { return list_pairfini; };
-
-    void setListFull(void) { list_full = true; };
-    void unsetListFull(void) { list_full = false; };
-    bool getListFull(void) { return list_full; };
-
-    void setListFinishing(void) { list_finishing = true; };
-    void unsetListFinishing(void) { list_finishing = false; };
-    bool getListFinishing(void) { return list_finishing; };
-
-    void setListFinished(void) { list_finished = true; };
-    bool getListFinished(void) { return list_finished; };
-
-
-    /* ********************* Members ********************* */
-
-		char *name;
-		Target *target; /* service belongs to this host */
-		u8 proto;
-		u16 portno;
-
-    struct end_reason end; /* reason that this service ended */
-
-    /* list which holds discovered credentials if any */
-    vector <loginpair> credentials_found;
-  
-		bool loginlist_fini;/* true if login list has been iterated through */ 
-
-    vector <char *> *UserArray;
-    vector <char *> *PassArray;
-
-    bool just_started;
-    unsigned int failed_connections;
-    long active_connections;
-    struct timeval last; /* time of last activated connection */
-
-    /*
-     * How many attempts the service supports per connection before
-     * closing on us. This is used as a valuable piece of information
-     * for many timing checks, and is gathered during the first connection
-     * (since that probably is the most reliable one, because in the beginning
-     * we haven't opened up too many connections yet)
-     */
-    unsigned long supported_attempts;
-
-    /* total auth attempts, including failed ones */
-    unsigned long total_attempts;
-    
-    /* auth attempts that have finished up to the point of completing
-     * all authentication steps and getting the results */
-    unsigned long finished_attempts; 
-
-		/* timing options that override global ones */
-		long min_connection_limit;  /* minimum number of concurrent parallel connections */
-    long max_connection_limit;  /* maximum number of concurrent parallel connections */
-    long ideal_parallelism;     /* ideal number of concurrent parallel connections */
-		long auth_tries;            /* authentication attempts per connections */
-		long connection_delay;      /* number of milliseconds to wait between each connection */
-		long connection_retries;    /* number of connection retries after connection failure */
-		/* misc options */
-		bool ssl;
-		void *module_data; /* service/module-specific data */
-
-    RateMeter auth_rate_meter;
-    struct last_auth_rate { 
-      double rate;
-      struct timeval time;
-    } last_auth_rate;
-
-		list <Connection *> connections;
-
-  private:
-
-    /* 
-     * hostinfo in form "<service_name>://<ip or hostname>:<port number>"
-     * e.g ftp://scanme.nmap.org:21 - Will be returned by HostInfo()  
-     */
-    char *hostinfo;
-
-    /* 
-     * Login pair pool that holds pairs that didn't manage to be authenticated
-     * due to an error (the host timed out, the connection was forcefully closed
-     * etc). If this pool has elements, then the next returned pair from
-     * NextPair() will come from this pool. NextPair() will remove the
-     * element from the list.
-     */
-    list <loginpair> pair_pool;
-
-    /* 
-     * Mirror login pair pool, that holds pairs from login pair pool but which
-     * aren't removed from the list at the time they are used.
-     * By this way we can determine, if we are currently using pairs from the
-     * pair_pool by checking if the mirror_pair_pool is non-empty.
-     */
-    list <loginpair> mirror_pair_pool;
-
-    vector <char *>::iterator uservi;
-    vector <char *>::iterator passvi;
-
-    bool list_active;   /* service is now on 'services_active' list */
-    bool list_wait;     /* service appended to 'services_wait' list */
-    bool list_pairfini; /* service appended to 'services_pairfini' list */ 
-    bool list_full;     /* service appended to 'services_full' list */
-    bool list_finishing;/* service appended to 'services_finishing' list */
-    bool list_finished; /* service is now on 'services_finished' list */
-
-
-};
-
-
-
-#endif 
+  if (buf) {
+    free(buf);
+    buf = NULL;
+  }
+  if (misc_info) {
+    free(misc_info);
+    misc_info = NULL;
+  }
+  delete iobuf;
+}

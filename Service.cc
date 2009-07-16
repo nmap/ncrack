@@ -97,38 +97,8 @@
 extern NcrackOps o;
 
 
-/* A connection must *always* belong to one specific Service */
-Connection::Connection(Service *serv)
-{
-  state = 0;
-  service = serv;
-  check_closed = false;
-  auth_complete = false;
-  auth_success = false;
-  peer_alive = false;
-  peer_might_close = false;
-  finished_normally = false;
-  login_attempts = 0;
-  buf = NULL;
-  misc_info = NULL;
-  iobuf = NULL;
-}
-
-Connection::~Connection()
-{
-  if (buf) {
-    free(buf);
-    buf = NULL;
-  }
-  if (misc_info) {
-    free(misc_info);
-    misc_info = NULL;
-  }
-  delete iobuf;
-}
-
-
-Service::Service()
+Service::
+Service()
 {
   name = NULL;
   target = NULL;
@@ -170,7 +140,8 @@ Service::Service()
 }
 
 /* copy constructor */
-Service::Service(const Service& ref)
+Service::
+Service(const Service& ref)
 {
   name = strdup(ref.name);
   proto = ref.proto;
@@ -208,9 +179,19 @@ Service::Service(const Service& ref)
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
 }
 
+Service::
+~Service()
+{
+  if (name)
+    free(name);
+  if (module_data)
+    free(module_data);
+  if (hostinfo)
+    free(hostinfo);
+}
 
-const char *
-Service::HostInfo(void)
+const char *Service::
+HostInfo(void)
 {
   if (!hostinfo)
     hostinfo = (char *) safe_malloc(MAX_HOSTINFO_LEN);
@@ -226,8 +207,8 @@ Service::HostInfo(void)
 
 
 /* Add discovered credential to private list */
-void
-Service::addCredential(char *user, char *pass)
+void Service::
+addCredential(char *user, char *pass)
 {
   loginpair tmp;
   tmp.user = user;
@@ -242,8 +223,8 @@ Service::addCredential(char *user, char *pass)
  * 0 for successful retrieval through lists
  * 1 for successful retrieval through pool
  */
-int 
-Service::getNextPair(char **user, char **pass)
+int Service::
+getNextPair(char **user, char **pass)
 {
   if (!UserArray)
     fatal("%s: uninitialized UserArray\n", __func__);
@@ -309,8 +290,8 @@ Service::getNextPair(char **user, char **pass)
 }
 
 
-void
-Service::removeFromPool(char *user, char *pass)
+void Service::
+removeFromPool(char *user, char *pass)
 {
   loginpair tmp;
   list <loginpair>::iterator li;
@@ -334,8 +315,8 @@ Service::removeFromPool(char *user, char *pass)
 
 
 
-void
-Service::appendToPool(char *user, char *pass)
+void Service::
+appendToPool(char *user, char *pass)
 {
   loginpair tmp;
   list <loginpair>::iterator li;
@@ -365,26 +346,16 @@ Service::appendToPool(char *user, char *pass)
 }
 
 
-bool
-Service::isMirrorPoolEmpty(void)
+bool Service::
+isMirrorPoolEmpty(void)
 {
   return mirror_pair_pool.empty();
 }
 
 
-bool
-Service::isPoolEmpty(void)
+bool Service::
+isPoolEmpty(void)
 {
   return pair_pool.empty();
 }
 
-
-Service::~Service()
-{
-  if (name)
-    free(name);
-  if (module_data)
-    free(module_data);
-  if (hostinfo)
-    free(hostinfo);
-}

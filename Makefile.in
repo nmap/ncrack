@@ -17,9 +17,9 @@ LIBS = @LIBNSOCK_LIBS@ @LIBNBASE_LIBS@ @OPENSSL_LIBS@ @OPENSSH_LIB@
 
 TARGET = ncrack
 
-export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc services.cc timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buffer.cc 
+export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc Connection.h services.cc timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buffer.cc 
 
-OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o ServiceGroup.o services.o timing.o ncrack_error.o output.o ncrack_tty.o Buffer.o 
+OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o ServiceGroup.o Connection.o services.o timing.o ncrack_error.o output.o ncrack_tty.o Buffer.o 
 
 .cc.o :
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
