@@ -128,6 +128,8 @@ class ServiceGroup {
      */
     list <Service *>::iterator popServiceFromList(Service *serv, list <Service *> *src);
 
+    double getCompletionFraction(void);
+
     double calculate_total_rate(void);
 
     /* ********************* Members ********************* */
@@ -185,6 +187,7 @@ class ServiceGroup {
     list <Service *>::iterator last_accessed; /* last element accessed */
 
     RateMeter auth_rate_meter;
+    ScanProgressMeter *SPM;
 
   private:
 

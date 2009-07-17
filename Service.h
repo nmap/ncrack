@@ -134,6 +134,8 @@ class Service
 		Service(const Service&); /* copy constructor */
     const char *HostInfo(void);
 
+    double getPercDone(void); 
+
     /* Add discovered credential to 'credentials_found' */
     void addCredential(char *user, char *pass);
 

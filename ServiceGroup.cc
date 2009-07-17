@@ -107,6 +107,7 @@ ServiceGroup()
   connections_timedout = 0;
   connections_closed = 0;
   credentials_found = 0;
+  SPM = new ScanProgressMeter();
 }
 
 
@@ -359,3 +360,27 @@ calculate_total_rate(void)
   double rate = 0;
   return rate;
 }
+
+
+double ServiceGroup::
+getCompletionFraction(void)
+{
+  double total = 0;
+  unsigned int services_left = 0;
+
+  list <Service *>::iterator li;
+
+  for (li = services_all.begin(); li != services_all.end(); li++) {
+    if ((*li)->getListFinished())
+      continue;
+    services_left++;
+    total += (*li)->getPercDone();
+  }
+
+  if (total)
+    total /= (double)services_left;
+  else 
+    total = 0;
+  return total;
+}
+

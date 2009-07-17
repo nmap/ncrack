@@ -298,8 +298,8 @@ unsigned long long PacketRateMeter::getNumBytes(void) const {
   return (unsigned long long) byte_rate_meter.getTotal();
 }
 
-ScanProgressMeter::ScanProgressMeter(const char *stypestr) {
-  scantypestr = strdup(stypestr);
+ScanProgressMeter::ScanProgressMeter()
+{
   gettimeofday(&begin, NULL);
   last_print_test = begin;
   memset(&last_print, 0, sizeof(last_print));
@@ -308,10 +308,7 @@ ScanProgressMeter::ScanProgressMeter(const char *stypestr) {
 }
 
 ScanProgressMeter::~ScanProgressMeter() {
-  if (scantypestr) {
-    free(scantypestr);
-    scantypestr = NULL;
-  }
+  ;
 }
 
 /* Decides whether a timing report is likely to even be
@@ -438,8 +435,8 @@ bool ScanProgressMeter::printStats(double perc_done,
   // data for decent timing estimates. Also with perc_done == 0
   // these elements will be nonsensical.
   if (perc_done < 0.01) {
-    log_write(LOG_STDOUT, "%s Timing: About %.2f%% done\n",
-        scantypestr, perc_done * 100);
+    log_write(LOG_STDOUT, "About %.2f%% done\n",
+        perc_done * 100);
     log_flush(LOG_STDOUT);
     return true;
   }
@@ -455,14 +452,14 @@ bool ScanProgressMeter::printStats(double perc_done,
   ltime = localtime(&timet);
   assert(ltime);
 
-  log_write(LOG_STDOUT, "%s Timing: About %.2f%% done; ETC: %02d:%02d (%.f:%02.f:%02.f remaining)\n",
-      scantypestr, perc_done * 100, ltime->tm_hour, ltime->tm_min,
+  log_write(LOG_STDOUT, "About %.2f%% done; ETC: %02d:%02d (%.f:%02.f:%02.f remaining)\n",
+      perc_done * 100, ltime->tm_hour, ltime->tm_min,
       floor(time_left_s / 60.0 / 60.0),
       floor(fmod(time_left_s / 60.0, 60.0)),
       floor(fmod(time_left_s, 60.0)));
-  log_write(LOG_XML, "<taskprogress task=\"%s\" time=\"%lu\" percent=\"%.2f\" remaining=\"%.f\" etc=\"%lu\" />\n",
+  /*log_write(LOG_XML, "<taskprogress task=\"%s\" time=\"%lu\" percent=\"%.2f\" remaining=\"%.f\" etc=\"%lu\" />\n",
       scantypestr, (unsigned long) now->tv_sec,
-      perc_done * 100, time_left_s, (unsigned long) last_est.tv_sec);
+      perc_done * 100, time_left_s, (unsigned long) last_est.tv_sec); */
   log_flush(LOG_STDOUT|LOG_XML);
 
   return true;
@@ -493,8 +490,8 @@ bool ScanProgressMeter::beginOrEndTask(const struct timeval *now, const char *ad
   tm = localtime(&tv_sec);
   
   if (beginning) {
-    log_write(LOG_STDOUT, "Initiating %s at %02d:%02d", scantypestr, tm->tm_hour, tm->tm_min);
-    log_write(LOG_XML, "<taskbegin task=\"%s\" time=\"%lu\"", scantypestr, (unsigned long) now->tv_sec);
+   // log_write(LOG_STDOUT, "Initiating %s at %02d:%02d", scantypestr, tm->tm_hour, tm->tm_min);
+  //  log_write(LOG_XML, "<taskbegin task=\"%s\" time=\"%lu\"", scantypestr, (unsigned long) now->tv_sec);
     if (additional_info) {
       log_write(LOG_STDOUT, " (%s)", additional_info);
       log_write(LOG_XML, " extrainfo=\"%s\"", additional_info);
@@ -502,8 +499,8 @@ bool ScanProgressMeter::beginOrEndTask(const struct timeval *now, const char *ad
     log_write(LOG_STDOUT, "\n");
     log_write(LOG_XML, " />\n");
   } else {
-    log_write(LOG_STDOUT, "Completed %s at %02d:%02d, %.2fs elapsed", scantypestr, tm->tm_hour, tm->tm_min, TIMEVAL_MSEC_SUBTRACT(*now, begin) / 1000.0);
-    log_write(LOG_XML, "<taskend task=\"%s\" time=\"%lu\"", scantypestr, (unsigned long) now->tv_sec);
+    //log_write(LOG_STDOUT, "Completed %s at %02d:%02d, %.2fs elapsed", scantypestr, tm->tm_hour, tm->tm_min, TIMEVAL_MSEC_SUBTRACT(*now, begin) / 1000.0);
+  //  log_write(LOG_XML, "<taskend task=\"%s\" time=\"%lu\"", scantypestr, (unsigned long) now->tv_sec);
     if (additional_info) {
       log_write(LOG_STDOUT, " (%s)", additional_info);
       log_write(LOG_XML, " extrainfo=\"%s\"", additional_info);

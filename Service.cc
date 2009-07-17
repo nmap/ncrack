@@ -359,3 +359,44 @@ isPoolEmpty(void)
   return pair_pool.empty();
 }
 
+
+double Service::
+getPercDone(void)
+{
+  double ret = 0.0;
+  vector <char *>::iterator usertmp = uservi;
+  vector <char *>::iterator passtmp = passvi;
+
+  if (!o.passwords_first) {
+    if (passtmp != PassArray->begin())
+      passtmp--;
+    if (uservi == UserArray->end()) {
+      ret = distance(PassArray->begin(), passtmp) * UserArray->size();
+    } else {
+      if (usertmp != UserArray->begin())
+        usertmp--;
+      ret = distance(PassArray->begin(), passtmp) * UserArray->size()
+          + distance(UserArray->begin(), usertmp);
+    }
+  } else {
+    if (usertmp != UserArray->begin())
+      usertmp--;
+    if (passvi == PassArray->end()) {
+      ret = distance(UserArray->begin(), usertmp) * PassArray->size();
+    } else {
+      if (passtmp != PassArray->begin())
+        passtmp--;
+      ret = distance(UserArray->begin(), usertmp) * PassArray->size()
+        + distance(PassArray->begin(), passtmp);
+    }
+  }
+
+  if (ret) {
+    ret /= (double) (UserArray->size() * PassArray->size());
+    if (ret >= 0.9999)
+      ret = 0.9999;
+  } else
+    ret = 0.0;
+
+  return ret;
+}
