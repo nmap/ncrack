@@ -28,8 +28,8 @@ TODO:
 * Handle the case where ftp tells us that it accepts anonymous login only so
   that we don't waste time cracking it.
 
-* Test buffering cases for all modules, when for example we need to search for certain patterns
-  but the pattern is split in 2 separate packets due to a small window.
+* Test buffering cases for all modules, when for example we need to search for certain
+  patterns but the pattern is split in 2 separate packets due to a small window.
   ---> SSH already does that by using the ssh_loop_read function and I have
   already added the Buf class (derived from buffer.c of OpenSSH) that can be
   used to append the replies from each protocol. Now I only need to adapt the
@@ -47,8 +47,6 @@ TODO:
 
 * Complete output engine. The main thing left is support for XML output using
   the option -oX.
-
-* Refine interactive Status Report to print an estimate of the time left.
 
 * Complete dynamic timing engine.
 
@@ -71,7 +69,10 @@ TODO:
   first and nsock comes second, linking problems between the two arise. However,
   nmap has them in that order without any problems. 
 
+
 ============================== DONE ==========================================
+
+* Refine interactive Status Report to print an estimate of the time left.
 
 * Change Ncrack's build system so that whenever ssl isn't found on the system,
   the ssh module isn't included/compiled, since it requires (the underlying opensshlib
