@@ -403,12 +403,23 @@ void
 print_final_output(ServiceGroup *SG)
 {
   struct timeval tv;
+  long long whole_t = 0, dec_t = 0;
+
   gettimeofday(&tv, NULL);
+  /* Workaround for default rounding-up that is done when printing a .2f float.
+   * Previously with a variable e.g 20999, printf (".2f", var/1000.0) would
+   * show it as 21.00, something which isn't right. 
+   */
+  dec_t = whole_t = o.TimeSinceStartMS(NULL);
+  if (whole_t)
+    whole_t /= 1000;
+  dec_t %= 1000;
+  if (dec_t)
+    dec_t /= 10;
   
-  //printf("%lld \n", o.TimeSinceStartMS(&tv));
-  log_write(LOG_PLAIN, "\nNcrack done: %lu %s scanned in %.2f seconds\n",
+  log_write(LOG_PLAIN, "\nNcrack done: %lu %s scanned in %lld.%02lld seconds\n",
       SG->total_services, (SG->total_services == 1)? "service" : "services",
-      (float)o.TimeSinceStartMS(&tv) / (float)1000 );
+      whole_t, dec_t);
 
   if (o.verbose)
     log_write(LOG_PLAIN, "Probes sent: %lu | timed-out: %lu |"
