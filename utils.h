@@ -173,7 +173,19 @@ char *Strndup(const char *src, size_t size);
 /* Convert string to port (in host-byte order) */
 u16 str2port(char *exp);
 
+/* 
+ * This is an update from the old macro TIMEVAL_MSEC_SUBTRACT
+ * which now uses a long long variable which can hold all the intermediate
+ * operations. This was made after a wrap-around bug was born due to the
+ * fact that gettimeofday() can return a pretty large number of seconds
+ * and microseconds today and usually one of the two arguments are timeval
+ * structs returned by gettimeofday(). Add to that the fact that we are making
+ * a multiplication with 1000 and the chances of a wrap-around increase.
+ */
 long long timeval_msec_subtract(struct timeval a, struct timeval b);
+
+/* Take in plain text and encode into base64. */
+char *b64enc(const unsigned char *data, int len);
 
 
 #endif /* UTILS_H */
