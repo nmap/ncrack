@@ -683,11 +683,11 @@ int main(int argc, char **argv)
 
   if (o.list_only) {
     if (o.debugging > 3) {
-      log_write(LOG_PLAIN, "\n=== Timing Template ===\n");
+      log_write(LOG_PLAIN, "----- [ Timing Template ] -----\n");
       log_write(LOG_PLAIN, "cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n",
           timing.min_connection_limit, timing.max_connection_limit,
           timing.auth_tries, timing.connection_delay, timing.connection_retries);
-      log_write(LOG_PLAIN, "\n=== ServicesTable ===\n");
+      log_write(LOG_PLAIN, "\n----- [ ServicesTable ] -----\n");
       for (i = 0; i < ServicesTable.size(); i++) {
         log_write(LOG_PLAIN, "%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld, ssl=%s, path=%s\n", 
             ServicesTable[i].lookup.name,
@@ -701,7 +701,7 @@ int main(int argc, char **argv)
             ServicesTable[i].misc.path ? ServicesTable[i].misc.path : "null");
       }
     }
-    log_write(LOG_PLAIN, "\n=== Targets ===\n");
+    log_write(LOG_PLAIN, "\n----- [ Targets ] -----\n");
     for (i = 0; i < Targets.size(); i++) {
       log_write(LOG_PLAIN, "Host: %s", Targets[i]->NameIP());
       if (Targets[i]->targetname)

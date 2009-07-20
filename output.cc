@@ -417,9 +417,13 @@ print_final_output(ServiceGroup *SG)
   if (dec_t)
     dec_t /= 10;
   
-  log_write(LOG_PLAIN, "\nNcrack done: %lu %s scanned in %lld.%02lld seconds\n",
-      SG->total_services, (SG->total_services == 1)? "service" : "services",
-      whole_t, dec_t);
+  if (o.list_only) 
+    log_write(LOG_PLAIN, "\nNcrack done: %lu %s would be scanned.\n",
+        SG->total_services, (SG->total_services == 1)? "service" : "services");
+  else
+    log_write(LOG_PLAIN, "\nNcrack done: %lu %s scanned in %lld.%02lld "
+        "seconds.\n", SG->total_services, (SG->total_services == 1)? "service"
+        : "services", whole_t, dec_t);
 
   if (o.verbose)
     log_write(LOG_PLAIN, "Probes sent: %lu | timed-out: %lu |"
