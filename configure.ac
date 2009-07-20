@@ -332,8 +332,8 @@ MODULES_OBJS="ncrack_ssh.o"
 
 fi
 
-MODULES_SRCS="$MODULES_SRCS ncrack_ftp.cc ncrack_telnet.cc"
-MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o"
+MODULES_SRCS="$MODULES_SRCS ncrack_ftp.cc ncrack_telnet.cc ncrack_http.cc"
+MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o ncrack_http.o"
 AC_SUBST(MODULES_SRCS)
 AC_SUBST(MODULES_OBJS)
 AC_OUTPUT(mod/Makefile)

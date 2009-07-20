@@ -161,21 +161,20 @@ print_usage(void)
       "  Can pass target specific services in <service>://target (standard) notation or\n"
       "  using -p which will be applied to all hosts in non-standard notation.\n"
       "  Service arguments can be specified to be host-specific, type of service-specific\n"
-      "  (-m) or global (-g). Ex: ssh://10.0.0.10,al=10,cl=30 -m ssh:at=50 -g cd=3000\n"
+      "  (-m) or global (-g). Ex: ssh://10.0.0.10,at=10,cl=30 -m ssh:at=50 -g cd=3000\n"
       "  Ex2: ncrack -p ssh,ftp:3500,25 10.0.0.10 scanme.nmap.org\n"
       "  -p <service-list>: services will be applied to all non-standard notation hosts\n"
       "  -m <service>:<options>: options will be applied to all services of this type\n"
       "  -g <options>: options will be applied to every service globally\n"
-      "  Available Options:\n"
-      "   Timing:\n"
+      "TIMING AND PERFORMANCE:\n"
+      "  Options which take <time> are in milliseconds, unless you append 's'\n"
+      "  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).\n"
+      "  Service-specific options:\n"
       "    cl (min connection limit): minimum number of concurrent parallel connections\n"
       "    CL (max connection limit): maximum number of concurrent parallel connections\n"
       "    at (authentication tries): authentication attempts per connection\n"
       "    cd (connection delay): delay between each connection initiation (in milliseconds)\n"
       "    cr (connection retries): caps number of service connection attempts\n"
-      "TIMING AND PERFORMANCE:\n"
-      "  Options which take <time> are in milliseconds, unless you append 's'\n"
-      "  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).\n"
       "  -T<0-5>: Set timing template (higher is faster)\n"
       "  --connection-limit <number>: threshold for total concurrent connections\n"
   //    "  --host-timeout <time>: Give up on target after this long\n"
@@ -336,6 +335,8 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_telnet(nsp, con);
   else if (!strcmp(name, "ssh"))
     ncrack_ssh(nsp, con);
+  else if (!strcmp(name, "http"))
+    ncrack_http(nsp, con);
   else
     fatal("Invalid service module: %s", name);
 }

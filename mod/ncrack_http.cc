@@ -1,7 +1,5 @@
-
 /***************************************************************************
- * utils.cc -- Various miscellaneous utility functions which defy          *
- * categorization :)                                                       *
+ * ncrack_ssh.cc -- ncrack module for the SSH protocol                     *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -89,238 +87,40 @@
  ***************************************************************************/
 
 
-#include "utils.h"
+#include "ncrack.h"
+#include "nsock.h"
+#include "NcrackOps.h"
 #include "Service.h"
+#include "modules.h"
+#include <list>
 
+extern NcrackOps o;
 
-/* 
- * Case insensitive memory search - a combination of memmem and strcasestr
- * Will search for a particular string 'pneedle' in the first 'bytes' of
- * memory starting at 'haystack'
- */
-char *
-memsearch(const char *haystack, const char *pneedle, size_t bytes) {
-  char buf[512];
-  unsigned int needlelen;
-  const char *p;
-  char *needle, *q, *foundto;
-  size_t i;
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
-  /* Should crash if !pneedle -- this is OK */
-  if (!*pneedle) return (char *) haystack;
-  if (!haystack) return NULL;
+enum states { HTTP_INIT, HTTP_FINI };
 
-  needlelen = (unsigned int) strlen(pneedle);
-  if (needlelen >= sizeof(buf)) {
-    needle = (char *) safe_malloc(needlelen + 1);
-  } else needle = buf;
-  p = pneedle; q = needle;
-  while((*q++ = tolower(*p++)))
-    ;
-  p = haystack - 1; foundto = needle;
-
-  i = 0;
-  while(i < bytes) {
-    ++p;
-    if(tolower(*p) == *foundto) {
-      if(!*++foundto) {
-        /* Yeah, we found it */
-        if (needlelen >= sizeof(buf))
-          free(needle);
-        return (char *) (p - needlelen + 1);
-      }
-    } else
-      foundto = needle;
-    i++;
-  }
-  if (needlelen >= sizeof(buf))
-    free(needle);
-  return NULL;
-}
-
-
-
-/* strtoul with error checking */
-unsigned long int
-Strtoul(const char *nptr)
+void
+ncrack_http(nsock_pool nsp, Connection *con)
 {
-  unsigned long value;
-  char *endp = NULL;
+  char lbuf[BUFSIZE]; /* local buffer */
+  nsock_iod nsi = con->niod;
+  Service *serv = con->service;
 
-  value = strtoul(nptr, &endp, 0);
-  if (errno != 0 || *endp != '\0')
-    fatal("Invalid value for number: %s", nptr);
+  switch (con->state)
+  { 
+    case HTTP_INIT:
 
-  return value;
-}
-
-/* 
- * Return a copy of 'size' characters from 'src' string.
- * Will always null terminate by allocating 1 additional char.
- */
-char *
-Strndup(const char *src, size_t size)
-{
-  char *ret;
-  ret = (char *)safe_malloc(size + 1);
-  strncpy(ret, src, size);
-  ret[size] = '\0';
-  return ret;
-}
-
-/* 
- * Convert string to port (in host-byte order)
- */
-u16
-str2port(char *exp)
-{
-  unsigned long pvalue;
-  char *endp = NULL;
-
-  errno = 0;
-  pvalue = strtoul(exp, &endp, 0);
-  if (errno != 0 || *endp != '\0') 
-    fatal("Invalid port number: %s", exp);
-  if (pvalue > 65535) 
-    fatal("Port number too large: %s", exp);
-
-  return (u16)pvalue;
-}
+      printf("HTTP INIT\n");
 
 
 
-/* Compare a canonical option name (e.g. "max-scan-delay") with a
-   user-generated option such as "max_scan_delay" and returns 0 if the
-   two values are considered equivalant (for example, - and _ are
-   considered to be the same), nonzero otherwise. */
-int
-optcmp(const char *a, const char *b) {
-  while(*a && *b) {
-    if (*a == '_' || *a == '-') {
-      if (*b != '_' && *b != '-')
-        return 1;
-    }
-    else if (*a != *b)
-      return 1;
-    a++; b++;
-  }
-  if (*a || *b)
-    return 1;
-  return 0;
-}
-
-
-/* convert string to protocol number */
-u8
-str2proto(char *str)
-{
-  if (!strcasecmp(str, "tcp"))
-    return IPPROTO_TCP;
-  else if (!strcasecmp(str, "udp"))
-    return IPPROTO_UDP;
-  else 
-    return 0;
-}
-
-
-/* convert protocol number to string */
-const char *
-proto2str(u8 proto)
-{
-  if (proto == IPPROTO_TCP)
-    return "tcp";
-  else if (proto == IPPROTO_UDP)
-    return "udp";
-  else
-    return NULL;
-}
-
-
-/* 
- * This is an update from the old macro TIMEVAL_MSEC_SUBTRACT
- * which now uses a long long variable which can hold all the intermediate
- * operations. This was made after a wrap-around bug was born due to the
- * fact that gettimeofday() can return a pretty large number of seconds
- * and microseconds today and usually one of the two arguments are timeval
- * structs returned by gettimeofday(). Add to that the fact that we are making
- * a multiplication with 1000 and the chances of a wrap-around increase.
- */
-long long
-timeval_msec_subtract(struct timeval x, struct timeval y)
-{
-  long long ret;
-  struct timeval result;
-
-  /* Perform the carry for the later subtraction by updating y. */
-  if (x.tv_usec < y.tv_usec) {
-    int nsec = (y.tv_usec - x.tv_usec) / 1000000 + 1;
-    y.tv_usec -= 1000000 * nsec;
-    y.tv_sec += nsec;
-  }
-  if (x.tv_usec - y.tv_usec > 1000000) {
-    int nsec = (x.tv_usec - y.tv_usec) / 1000000;
-    y.tv_usec += 1000000 * nsec;
-    y.tv_sec -= nsec;
   }
 
-  /* Compute the time remaining to wait.
-     tv_usec is certainly positive. */
-  result.tv_sec = x.tv_sec - y.tv_sec;
-  result.tv_usec = x.tv_usec - y.tv_usec;
 
-  ret = (long long)result.tv_sec * 1000;
-  ret += (long long)result.tv_usec / 1000;
-
-  return ret;
 }
 
-
-
-/* Take in plain text and encode into base64. */
-char *
-b64enc(const unsigned char *data, int len)
-{
-    char *dest, *buf;
-    /* base64 alphabet, taken from rfc3548 */
-    const char *b64alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-    /* malloc enough space to do something useful */
-    dest = (char*)safe_malloc(4 * len / 3 + 4);
-    dest[0] = '\0';
-
-    buf = dest;
-
-    /* Encode three bytes per iteration ala rfc3548. */
-    while (len >= 3) {
-        buf[0] = b64alpha[(data[0] >> 2) & 0x3f];
-        buf[1] = b64alpha[((data[0] << 4) & 0x30) | ((data[1] >> 4) & 0xf)];
-        buf[2] = b64alpha[((data[1] << 2) & 0x3c) | ((data[2] >> 6) & 0x3)];
-        buf[3] = b64alpha[data[2] & 0x3f];
-        data += 3;
-        buf += 4;
-        len -= 3;
-    }
-
-    /* Pad the remaining bytes. len is 0, 1, or 2 here. */
-    if (len > 0) {
-        buf[0] = b64alpha[(data[0] >> 2) & 0x3f];
-        if (len > 1) {
-            buf[1] = b64alpha[((data[0] << 4) & 0x30) | ((data[1] >> 4) & 0xf)];
-            buf[2] = b64alpha[(data[1] << 2) & 0x3c];
-        } else {
-            buf[1] = b64alpha[(data[0] << 4) & 0x30];
-            buf[2] = '=';
-        }
-        buf[3] = '=';
-        buf += 4;
-    }
-
-    /*
-     * As mentioned in rfc3548, we need to be careful about
-     * how we null terminate and handle embedded null-termination.
-     */
-    *buf = '\0';
-
-    return (dest);
-}
 
