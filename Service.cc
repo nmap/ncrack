@@ -129,8 +129,9 @@ Service()
   auth_tries = -1;
   connection_delay = -1;
   connection_retries = -1;
-
+  path = Strndup("/", 2); /* path is '/' by default */
   ssl = false;
+
   module_data = NULL;
   memset(&last, 0, sizeof(last));
   UserArray = NULL;
@@ -152,6 +153,11 @@ Service(const Service& ref)
   auth_tries = ref.auth_tries;
   connection_delay = ref.connection_delay;
   connection_retries = ref.connection_retries;
+  ssl = ref.ssl;
+  if (path)
+    free(path);
+  path = Strndup(ref.path, strlen(ref.path));
+
   ideal_parallelism = 1;  /* we start with 1 connection exactly */
 
   ssl = ref.ssl;

@@ -106,7 +106,6 @@ static int parse_service_argument(char *const arg, char **argname, char **argval
 static int check_duplicate_services(vector <service_lookup *> services, service_lookup *serv);
 static global_service parse_services_options(char *const exp);
 static int check_supported_services(service_lookup *serv);
-static global_service parse_services_options(char *const exp);
 static char *port2name(char *portno);
 
 
@@ -270,10 +269,13 @@ parse_module_options(char *const exp)
     vi->timing.connection_delay = temp.timing.connection_delay;
   if (temp.timing.connection_retries)
     vi->timing.connection_retries = temp.timing.connection_retries;
+  if (temp.misc.path) {
+    vi->misc.path = Strndup(temp.misc.path, strlen(temp.misc.path)+1);
+    free(temp.misc.path);
+  }
   if (temp.misc.ssl)
     vi->misc.ssl = temp.misc.ssl;
 }
-
 
 
 
@@ -302,6 +304,12 @@ apply_host_options(Service *service, char *const options)
     service->connection_delay = temp.timing.connection_delay;
   if (temp.timing.connection_retries != -1)
     service->connection_retries = temp.timing.connection_retries;
+  if (temp.misc.path) {
+    if (service->path)
+      free(service->path);
+    service->path = Strndup(temp.misc.path, strlen(temp.misc.path)+1);
+    free(temp.misc.path);
+  }
   if (temp.misc.ssl)
     service->ssl = temp.misc.ssl;
 
@@ -332,6 +340,11 @@ apply_service_options(Service *service)
     service->connection_delay = vi->timing.connection_delay;
   if (vi->timing.connection_retries != -1)
     service->connection_retries = vi->timing.connection_retries;
+  if (vi->misc.path) {
+    if (service->path)
+      free(service->path);
+    service->path = Strndup(vi->misc.path, strlen(vi->misc.path));
+  }
   if (vi->misc.ssl)
     service->ssl = vi->misc.ssl;
 }
@@ -541,6 +554,7 @@ port2name(char *port)
 static void
 check_service_option(global_service *temp, char *argname, char *argval)
 {
+  /* Timing options */
   if (!strcmp("cl", argname)) {
     long limit = Strtoul(argval);
     if (limit < 0)
@@ -571,7 +585,12 @@ check_service_option(global_service *temp, char *argname, char *argval)
     if (retries < 0)
       fatal("Connection retries (cr) '%ld' cannot be a negative number!", retries);
     temp->timing.connection_retries = retries;
-  } else //TODO misc options
+  /* Miscalleneous options */
+  } else if (!strcmp("path", argname)) {
+    temp->misc.path = Strndup(argval, strlen(argval));
+  } else if (!strcmp("ssl", argname)) {
+    temp->misc.ssl = true;
+  } else 
     error("Unknown service option: %s", argname);
 }
 
@@ -596,8 +615,14 @@ parse_services_options(char *const exp)
   if ((arg = strtok(exp, ","))) {
     if (!parse_service_argument(arg, &argname, &argval)) {
       check_service_option(&temp, argname, argval);
-      free(argname); argname = NULL;
-      free(argval); argval = NULL;
+      if (argname) {
+        free(argname);
+        argname = NULL;
+      }
+      if (argval) {
+        free(argval);
+        argval = NULL;
+      }
     }   
   }
 
@@ -607,8 +632,14 @@ parse_services_options(char *const exp)
      */
     if (!parse_service_argument(arg, &argname, &argval)) {
       check_service_option(&temp, argname, argval);
-      free(argname); argname = NULL;
-      free(argval); argval = NULL;
+      if (argname) {
+        free(argname);
+        argname = NULL;
+      }
+      if (argval) {
+        free(argval);
+        argval = NULL;
+      }
     }
   }
   return temp;
@@ -634,6 +665,12 @@ parse_service_argument(char *const arg, char **argname, char **argval)
     i++;
   }
   if (i == arg_len) {
+    /* Special case for ssl */
+    if (!strcmp(arg, "ssl")) {
+      *argname = Strndup(arg, i);
+      *argval = NULL;
+      return 0;
+    }
     error("Invalid option argument (missing '='): %s", arg);
     return -1;
   }

@@ -1,5 +1,5 @@
 /***************************************************************************
- * ncrack_ssh.cc -- ncrack module for the SSH protocol                     *
+ * ncrack_http.cc -- ncrack module for the HTTP protocol                   *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *

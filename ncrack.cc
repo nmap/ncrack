@@ -689,14 +689,16 @@ int main(int argc, char **argv)
           timing.auth_tries, timing.connection_delay, timing.connection_retries);
       log_write(LOG_PLAIN, "\n=== ServicesTable ===\n");
       for (i = 0; i < ServicesTable.size(); i++) {
-        log_write(LOG_PLAIN, "%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
+        log_write(LOG_PLAIN, "%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld, ssl=%s, path=%s\n", 
             ServicesTable[i].lookup.name,
             ServicesTable[i].lookup.portno,
             ServicesTable[i].timing.min_connection_limit,
             ServicesTable[i].timing.max_connection_limit,
             ServicesTable[i].timing.auth_tries,
             ServicesTable[i].timing.connection_delay,
-            ServicesTable[i].timing.connection_retries);
+            ServicesTable[i].timing.connection_retries,
+            ServicesTable[i].misc.ssl ? "yes" : "no",
+            ServicesTable[i].misc.path ? ServicesTable[i].misc.path : "null");
       }
     }
     log_write(LOG_PLAIN, "\n=== Targets ===\n");
@@ -707,10 +709,11 @@ int main(int argc, char **argv)
       log_write(LOG_PLAIN, "\n");
       for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
         if ((*li)->target == Targets[i]) 
-          log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n", 
+          log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld, ssl=%s, path=%s\n", 
               (*li)->name, (*li)->portno, (*li)->min_connection_limit,
               (*li)->max_connection_limit, (*li)->auth_tries, 
-              (*li)->connection_delay, (*li)->connection_retries);
+              (*li)->connection_delay, (*li)->connection_retries,
+              (*li)->ssl ? "yes" : "no", (*li)->path);
       }
     }
   } else {

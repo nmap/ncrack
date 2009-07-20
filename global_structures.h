@@ -116,8 +116,8 @@ typedef struct timing_options {
 
 
 typedef struct misc_options {
-  bool ssl; /* use ssl */
-  // ... more 
+  bool ssl;   /* use ssl */
+  char *path; /* path used in http */
 } misc_options;
 
 

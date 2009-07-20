@@ -216,6 +216,8 @@ class Service
 		long connection_retries;    /* number of connection retries after connection failure */
 		/* misc options */
 		bool ssl;
+    char *path;
+
 		void *module_data; /* service/module-specific data */
 
     RateMeter auth_rate_meter;
