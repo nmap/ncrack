@@ -186,7 +186,16 @@ class Service
     vector <char *> *UserArray;
     vector <char *> *PassArray;
 
+    /* true -> reconnaissance/timing probe */
     bool just_started;
+    
+    /* True if more connections needed for timing probe - usually modules like
+     * HTTP might need this, because they need to also check other variables
+     * like keep-alive values and authentication schemes (in separate
+     * connections)
+     */
+    bool more_rounds;
+
     unsigned int failed_connections;
     long active_connections;
     struct timeval last; /* time of last activated connection */
@@ -208,15 +217,23 @@ class Service
     unsigned long finished_attempts; 
 
 		/* timing options that override global ones */
-		long min_connection_limit;  /* minimum number of concurrent parallel connections */
-    long max_connection_limit;  /* maximum number of concurrent parallel connections */
-    long ideal_parallelism;     /* ideal number of concurrent parallel connections */
-		long auth_tries;            /* authentication attempts per connections */
-		long connection_delay;      /* number of milliseconds to wait between each connection */
-		long connection_retries;    /* number of connection retries after connection failure */
+
+    /* minimum number of concurrent parallel connections */
+		long min_connection_limit;
+    /* maximum number of concurrent parallel connections */
+    long max_connection_limit;
+    /* ideal number of concurrent parallel connections */
+    long ideal_parallelism;
+    /* authentication attempts per connections */
+		long auth_tries; 
+    /* number of milliseconds to wait between each connection */
+		long connection_delay; 
+    /* number of connection retries after connection failure */
+		long connection_retries;  
+
 		/* misc options */
-		bool ssl;
-    char *path;
+		bool ssl;   /* true -> SSL enabled over this service */
+    char *path; /* used for HTTP or other modules that need a path-name */
 
 		void *module_data; /* service/module-specific data */
 
@@ -263,9 +280,7 @@ class Service
     bool list_finishing;/* service appended to 'services_finishing' list */
     bool list_finished; /* service is now on 'services_finished' list */
 
-
 };
-
 
 
 #endif 

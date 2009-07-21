@@ -113,6 +113,7 @@ Service()
   list_finishing = false;
   list_finished = false;
   just_started = true;
+  more_rounds = false;
 
   end.orly = false;
   end.reason = NULL;
@@ -180,6 +181,7 @@ Service(const Service& ref)
   list_finishing = false;
   list_finished = false;
   just_started = true;
+  more_rounds = false;
   
   hostinfo = NULL;
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
@@ -250,7 +252,8 @@ getNextPair(char **user, char **pass)
     *pass = tmp.pass;
     pair_pool.erase(pairli);
     if (o.debugging > 8)
-      log_write(LOG_STDOUT, "%s Pool: extract %s %s\n", HostInfo(), tmp.user, tmp.pass);
+      log_write(LOG_STDOUT, "%s Pool: extract %s %s\n", HostInfo(),
+          tmp.user, tmp.pass);
     return 1;
   }
 
@@ -274,7 +277,8 @@ getNextPair(char **user, char **pass)
     *pass = *passvi;
     *user = *uservi;
     uservi++;
-  } else if (o.passwords_first) { /* Iteration of password list for each username. */
+    /* Iteration of password list for each username. */
+  } else if (o.passwords_first) { 
     /* If password list finished one iteration then reset the password pointer
      * to show at the beginning and get next username from username list. */
     if (passvi == PassArray->end()) {                                          
@@ -314,7 +318,8 @@ removeFromPool(char *user, char *pass)
   }
   if (li != mirror_pair_pool.end()) {
     if (o.debugging > 8)
-      log_write(LOG_STDOUT, "%s Pool: Removed %s %s\n", HostInfo(), tmp.user, tmp.pass);
+      log_write(LOG_STDOUT, "%s Pool: Removed %s %s\n", HostInfo(),
+          tmp.user, tmp.pass);
     mirror_pair_pool.erase(li);
   }
 }
@@ -337,7 +342,8 @@ appendToPool(char *user, char *pass)
   pair_pool.push_back(tmp);
 
   if (o.debugging > 8)
-    log_write(LOG_STDOUT, "%s Pool: Append %s %s \n", HostInfo(), tmp.user, tmp.pass);
+    log_write(LOG_STDOUT, "%s Pool: Append %s %s \n", HostInfo(),
+        tmp.user, tmp.pass);
 
   /* 
    * Try and see if login pair was already in our mirror pool. Only if

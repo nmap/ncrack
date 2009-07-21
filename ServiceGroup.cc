@@ -193,7 +193,7 @@ pushServiceToList(Service *serv, list <Service *> *dst)
 
   if (dst == &services_active) {
     if (o.debugging > 8)
-      error("%s cannot be pushed into 'services_active'. This is not allowed!\n",
+      error("%s cannot be pushed into 'services_active'.This is not allowed!\n",
           serv->HostInfo());
   }
 
@@ -226,7 +226,7 @@ popServiceFromList(Service *serv, list <Service *> *src)
 
   if (src == &services_active) {
     if (o.debugging > 8)
-      error("%s cannot be popped from 'services_active'. This is not allowed!\n",
+      error("%s cannot be popped from 'services_active'.This is not allowed!\n",
           serv->HostInfo());
   }  
 
@@ -257,7 +257,8 @@ popServiceFromList(Service *serv, list <Service *> *src)
 
   li = src->erase(li);
   if (o.debugging > 8)
-    log_write(LOG_STDOUT, "%s popped from list %s\n", serv->HostInfo(), srcname);
+    log_write(LOG_STDOUT, "%s popped from list %s\n",
+        serv->HostInfo(), srcname);
 
 
   free((char *)srcname);
@@ -342,7 +343,7 @@ unset_servlist(Service *serv, list <Service *> *list)
     serv->unsetListFinishing();
   else if (list == &services_finished) {
     if (o.debugging > 8)
-      error("%s cannot remove from 'services_finished'. This is not allowed!\n ",
+      error("%s cannot remove from 'services_finished'.This is not allowed!\n",
           __func__);
     return false;
   } else {

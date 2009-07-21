@@ -110,7 +110,8 @@ class ServiceGroup {
     void findMinDelay(void);
 
     /* 
-     * Pushes service into one of the ServiceGroup lists. A Service might belong:
+     * Pushes service into one of the ServiceGroup lists. 
+     * A Service might belong:
      * a) to 'services_active' OR
      * b) to 'services_finished' OR
      * c) to any other combination of the rest of the lists
@@ -118,15 +119,18 @@ class ServiceGroup {
      * for example it needs to wait both for the 'connection_delay' and the 
      * 'connection_limit'.
      */
-    list <Service *>::iterator pushServiceToList(Service *serv, list <Service *> *dst);
+    list <Service *>::iterator pushServiceToList(Service *serv,
+        list <Service *> *dst);
 
     /* 
-     * Pops service from one of the ServiceGroup lists. This is the only way for a
-     * service to return back to 'services_active' and this happens if and only if
-     * it stops belonging to any other list (except 'services_finished' from which
-     * you are not allowed to remove a service once it moves there).
+     * Pops service from one of the ServiceGroup lists. This is the only way
+     * for a service to return back to 'services_active' and this happens if
+     * and only if it stops belonging to any other list (except
+     * 'services_finished' from which you are not allowed to remove a service
+     * once it moves there).
      */
-    list <Service *>::iterator popServiceFromList(Service *serv, list <Service *> *src);
+    list <Service *>::iterator popServiceFromList(Service *serv,
+        list <Service *> *src);
 
     double getCompletionFraction(void);
 
@@ -164,26 +168,33 @@ class ServiceGroup {
 
     /* 
      * Services that have to wait until our pair pool has at least one element
-     * to grab a login pair from, since the main credential list (username or password
-     * depending on the mode of iteration) has already finished  being iterated through.
+     * to grab a login pair from, since the main credential list (username or
+     * password depending on the mode of iteration) has already finished being
+     * iterated through.
      */
     list<Service *> services_pairfini;
 
     /* Services that can initiate more connections */
     list<Service *> services_active;
 
-    unsigned long total_services; /* how many services we need to crack in total */
+    /* how many services we need to crack in total */
+    unsigned long total_services; 
 
-    long min_connection_delay;    /* minimum connection delay from all services */
-    long active_connections;      /* total number of active connections */
-    long connection_limit;        /* maximum total number of active connections */
+    long min_connection_delay;/* minimum connection delay from all services */
+    long active_connections;  /* total number of active connections */
+    long connection_limit;    /* maximum total number of active connections */
 
-    unsigned long connections_total;    /* how many connections have been initiated */
+    /* how many connections have been initiated */
+    unsigned long connections_total;  
     unsigned long connections_timedout; /* how many connections have failed */
-    unsigned long connections_closed;   /* how many connections prematurely closed */
-    unsigned long credentials_found;    /* total credentials found */
 
-    int num_hosts_timedout;       /* # of hosts timed out during (or before) scan */
+    /* how many connections prematurely closed */
+    unsigned long connections_closed;
+
+    /* total credentials found */
+    unsigned long credentials_found; 
+
+    int num_hosts_timedout;  /* # of hosts timed out during (or before) scan */
     list <Service *>::iterator last_accessed; /* last element accessed */
 
     RateMeter auth_rate_meter;
@@ -193,8 +204,8 @@ class ServiceGroup {
 
     /*
      * Returns list's equivalent name. e.g for services_finished it will return
-     * a "FINISHED" string. We prefer capitals for debugging purposes. Caller must
-     * free the string after it finishes using it.
+     * a "FINISHED" string. We prefer capitals for debugging purposes. Caller
+     * must free the string after it finishes using it.
      */
     const char *list2name(list <Service *> *list);
 
