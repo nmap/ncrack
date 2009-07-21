@@ -154,7 +154,10 @@ static int tty_getchar()
         
 	if (tty_fd && tcgetpgrp(tty_fd) == getpid()) {
            
-           // This is so that when the terminal has been disconnected, it will be reconnected when possible. If it slows things down, just remove it
+  /* This is so that when the terminal has been disconnected,
+   * it will be reconnected when possible. If it slows things down,
+   * just remove it
+   */
            // tty_init();
            
 #ifdef __CYGWIN32__
@@ -271,12 +274,12 @@ bool keyWasPressed()
     if (stats_time.tv_sec == 0) {
       /* Initialize the scheduled stats time. */
       stats_time = *o.getStartTime();
-      TIMEVAL_ADD(stats_time, stats_time, (time_t) (o.stats_interval * 1000000));
+      TIMEVAL_ADD(stats_time, stats_time, (time_t)(o.stats_interval * 1000000));
     }
 
     if (TIMEVAL_AFTER(now, stats_time)) {
       /* Advance to the next print time. */
-      TIMEVAL_ADD(stats_time, stats_time, (time_t) (o.stats_interval * 1000000));
+      TIMEVAL_ADD(stats_time, stats_time, (time_t)(o.stats_interval * 1000000));
       /* If it's still in the past, catch it up to the present. */
       if (TIMEVAL_AFTER(now, stats_time))
         stats_time = now;

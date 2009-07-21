@@ -96,7 +96,7 @@
 #include <time.h>
 #include "ServiceGroup.h"
 
-#define LOG_NUM_FILES 2 /* # of values that actual files (they must come first) */
+#define LOG_NUM_FILES 2 /* # of values that actual files(they must come first)*/
 #define LOG_FILE_MASK 3 /* The mask for log typs in the file array */
 #define LOG_NORMAL 1
 #define LOG_XML 2
