@@ -1,3 +1,4 @@
+
 /***************************************************************************
  * ncrack_http.cc -- ncrack module for the HTTP protocol                   *
  *                                                                         *
@@ -112,7 +113,8 @@ extern NcrackOps o;
 
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
-extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
+    void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 static void http_basic(nsock_pool nsp, Connection *con);
@@ -170,7 +172,8 @@ ncrack_http(nsock_pool nsp, Connection *con)
       lbuf->append(serv->path, strlen(serv->path));
       lbuf->append(" HTTP 1.1\r\nHost: ", sizeof(" HTTP 1.1\r\nHost: ")-1);
       if (serv->target->targetname)
-        lbuf->append(serv->target->targetname, strlen(serv->target->targetname));
+        lbuf->append(serv->target->targetname,
+            strlen(serv->target->targetname));
       else 
         lbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
       lbuf->append("\r\nUser-Agent: ", sizeof("\r\nUser-Agent: ")-1);
@@ -190,7 +193,8 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
     case HTTP_GET_AUTH2:
 
-      //memprint((const char *)con->iobuf->get_dataptr(), con->iobuf->get_len());
+      //memprint((const char *)con->iobuf->get_dataptr(),
+      //con->iobuf->get_len());
       
       /* If target doesn't need authorization for the path selected, then
        * there is no point in trying to crack it. So inform the core engine
@@ -290,7 +294,8 @@ http_basic(nsock_pool nsp, Connection *con)
       auxbuf->append(serv->path, strlen(serv->path));
       auxbuf->append(" HTTP/1.1\r\nHost: ", sizeof(" HTTP/1.1\r\nHost: ") - 1);
       if (serv->target->targetname)
-        auxbuf->append(serv->target->targetname, strlen(serv->target->targetname));
+        auxbuf->append(serv->target->targetname,
+            strlen(serv->target->targetname));
       else 
         auxbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
       auxbuf->append("\r\nUser-Agent: ", sizeof("\r\nUser-Agent: ") - 1);
@@ -339,7 +344,8 @@ http_basic(nsock_pool nsp, Connection *con)
     case BASIC_RESULTS:
 
       info->substate = BASIC_SEND;
-      //memprint((const char *)con->iobuf->get_dataptr(), con->iobuf->get_len());
+      //memprint((const char *)con->iobuf->get_dataptr(),
+      //con->iobuf->get_len());
       if (memsearch((const char *)con->iobuf->get_dataptr(),
             "200 OK", con->iobuf->get_len())) {
         con->auth_success = true;
