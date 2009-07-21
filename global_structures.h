@@ -109,8 +109,10 @@ typedef struct timing_options {
   long min_connection_limit;/* minimum number of parallel connections */
   long max_connection_limit;/* maximum number of parallel connections */
   long auth_tries;          /* authentication attempts per connection */
-  long connection_delay;    /* number of milliseconds to wait between each connection */
-  long connection_retries;  /* number of connection retries after connection failure */
+  /* number of milliseconds to wait between each connection */
+  long connection_delay;    
+  /* number of connection retries after connection failure */
+  long connection_retries;  
 
 } timing_options;
 

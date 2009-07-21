@@ -783,17 +783,19 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   }
 
 
-  if (serv->just_started)
+  if (serv->just_started && !serv->more_rounds)
     serv->supported_attempts++;
 
   serv->auth_rate_meter.update(1, NULL);
 
   gettimeofday(&now, NULL);
-  if (!serv->just_started && timeval_msec_subtract(now, serv->last_auth_rate.time) >= 500) {
+  if (!serv->just_started && !serv->more_rounds
+      && timeval_msec_subtract(now, serv->last_auth_rate.time) >= 500) {
     double current_rate = serv->auth_rate_meter.getCurrentRate();
     if (o.debugging) 
-      log_write(LOG_STDOUT, "%s last: %.2f current %.2f parallelism %ld\n", serv->HostInfo(),
-          serv->last_auth_rate.rate, current_rate, serv->ideal_parallelism);
+      log_write(LOG_STDOUT, "%s last: %.2f current %.2f parallelism %ld\n",
+          serv->HostInfo(), serv->last_auth_rate.rate, current_rate,
+          serv->ideal_parallelism);
     if (current_rate < serv->last_auth_rate.rate + 3) {
       if (serv->ideal_parallelism + 3 < serv->max_connection_limit)
         serv->ideal_parallelism += 3;
@@ -837,10 +839,10 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
    * with a very small timeout and check if nsock timed out (host hasn't closed
    * connection yet) or returned an EOF (host sent FIN making active close)
    * Note, however that the connection might have already indicated that the
-   * peer is alive (for example telnetd sends the next login prompt along with the
-   * authentication results, denoting that it immediately expects another
-   * authentication attempt), so in that case we need to get the next login pair
-   * only and make no additional check.
+   * peer is alive (for example telnetd sends the next login prompt along with
+   * the authentication results, denoting that it immediately expects another
+   * authentication attempt), so in that case we need to get the next login
+   * pair only and make no additional check.
    */
   if (con->peer_alive) {
     if (con->login_attempts < (unsigned long)serv->auth_tries
@@ -855,7 +857,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
      * We need to check if host is alive only on first timing
      * probe. Thereafter we can use the 'supported_attempts'.
      */
-    if (serv->just_started) {
+    if (serv->just_started || serv->more_rounds) {
       con->check_closed = true;
       nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
     } else if (con->login_attempts < (unsigned long)serv->auth_tries &&
@@ -900,14 +902,14 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   } else if (con->close_reason == READ_EOF) {
     /* 
-     * Check if we are on the point where peer might close at any moment (usually
-     * we set 'peer_might_close' after writing the password on the network and
-     * before issuing the next read call), so that this connection ending was
-     * actually expected.
+     * Check if we are on the point where peer might close at any moment
+     * (usually we set 'peer_might_close' after writing the password on the
+     * network and before issuing the next read call), so that this connection
+     * ending was actually expected.
      */
     if (con->peer_might_close) {
       /* If we are the first special timing probe, then increment the number of
-       * server-allowed authentication attempts per connection
+       * server-allowed authentication attempts per connection.
        */
       if (serv->just_started)
         serv->supported_attempts++;
@@ -916,17 +918,23 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       serv->finished_attempts++;
 
       if (o.debugging > 6)
-        log_write(LOG_STDOUT, "%s Failed %s %s\n", hostinfo, con->user, con->pass);
+        log_write(LOG_STDOUT, "%s Failed %s %s\n", hostinfo, con->user,
+            con->pass);
 
+    } else if (serv->more_rounds) {
+      /* We are still checking timing of the host, so don't do anything yet. */
+    
     } else if (!con->auth_complete) {
       serv->appendToPool(con->user, con->pass);
       if (serv->getListPairfini())
         SG->popServiceFromList(serv, &SG->services_pairfini);
 
-      /* Now this is strange: peer closed on us in the middle of authentication.
-       * This shouldn't happen, unless extreme network conditions are happening!
+      /* Now this is strange: peer closed on us in the middle of
+       * authentication. This shouldn't happen, unless extreme network
+       * conditions are happening!
        */
-      if (!serv->just_started && con->login_attempts < serv->supported_attempts) {
+      if (!serv->just_started 
+          && con->login_attempts < serv->supported_attempts) {
         if (o.debugging > 3)
           error("%s closed on us in the middle of authentication!", hostinfo);
         SG->connections_closed++;
@@ -939,11 +947,12 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   /* 
    * If we are not the first timing probe and the authentication wasn't
-   * completed (we double check that by seeing if we are inside the supported -by
-   * the server- threshold of authentication attempts per connection), then we
-   * take drastic action and drop the connection limit.
+   * completed (we double check that by seeing if we are inside the supported
+   * -by the server- threshold of authentication attempts per connection), then
+   *  we take drastic action and drop the connection limit.
    */
-  if (!serv->just_started && !con->auth_complete && !con->peer_might_close 
+  if (!serv->just_started && !serv->more_rounds && !con->auth_complete
+      && !con->peer_might_close
       && con->login_attempts < serv->supported_attempts) {
     serv->total_attempts++;
     // TODO: perhaps here we might want to differentiate between the two errors:
@@ -954,17 +963,18 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       serv->ideal_parallelism = serv->min_connection_limit;
 
     if (o.debugging)
-      log_write(LOG_STDOUT, "%s Dropping connection limit due to connection error to: %ld\n",
-          hostinfo, serv->ideal_parallelism);
+      log_write(LOG_STDOUT, "%s Dropping connection limit due to connection "
+          "error to: %ld\n", hostinfo, serv->ideal_parallelism);
   }
 
 
   /* 
-   * If that was our first connection, then calculate initial ideal_parallelism (which
-   * was 1 previously) based on the box of min_connection_limit, max_connection_limit
-   * and a default desired parallelism for each timing template.
+   * If that was our first connection, then calculate initial ideal_parallelism
+   * (which was 1 previously) based on the box of min_connection_limit,
+   * max_connection_limit and a default desired parallelism for each timing
+   * template.
    */
-  if (serv->just_started == true) {
+  if (serv->just_started == true && !serv->just_started) {
     serv->just_started = false;
     long desired_par = 1;
     if (o.timing_level == 0)
@@ -980,7 +990,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     else if (o.timing_level == 5)
       desired_par = 50;
 
-    serv->ideal_parallelism = box(serv->min_connection_limit, serv->max_connection_limit, desired_par);
+    serv->ideal_parallelism = box(serv->min_connection_limit,
+        serv->max_connection_limit, desired_par);
   }
 
 
@@ -1009,8 +1020,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
 
   /*
-   * If service was on 'services_finishing' (credential list finished, pool empty
-   * but still pending connections) then:
+   * If service was on 'services_finishing' (credential list finished, pool
+   * empty but still pending connections) then:
    * - if new pairs arrived into pool, remove from 'services_finishing'
    * - else if no more connections are pending, move to 'services_finished'
    */
@@ -1022,8 +1033,9 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   }
 
   if (o.debugging)
-    log_write(LOG_STDOUT, "%s Attempts: total %lu completed %lu supported %lu --- rate %.2f \n", 
-        serv->HostInfo(), serv->total_attempts, serv->finished_attempts, serv->supported_attempts,
+    log_write(LOG_STDOUT, "%s Attempts: total %lu completed %lu supported %lu "
+        "--- rate %.2f \n", serv->HostInfo(), serv->total_attempts,
+        serv->finished_attempts, serv->supported_attempts,
         SG->auth_rate_meter.getCurrentRate());
 
   /* Check if service finished for good. */
@@ -1081,7 +1093,8 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
      */
     if (con->check_closed) {
       /* Make another authentication attempt only if:
-       * 1. we hanen't surpassed the authentication limit per connection for this service
+       * 1. we hanen't surpassed the authentication limit per connection for
+       *    this service
        * 2. we still have enough login pairs from the pool
        */
       if (con->login_attempts < (unsigned long)serv->auth_tries
@@ -1114,7 +1127,8 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     error("%s nsock READ nse_status_kill", hostinfo);
 
   } else
-    error("%s WARNING: nsock READ unexpected status %d", hostinfo, (int) status);
+    error("%s WARNING: nsock READ unexpected status %d", hostinfo,
+        (int) status);
 
   return ncrack_connection_end(nsp, con);
 }
@@ -1433,10 +1447,10 @@ ncrack(ServiceGroup *SG)
     (*li)->auth_rate_meter.start();
 
   /* 
-   * Since nsock can delay between each event due to the targets being really slow,
-   * we need a way to make sure that we always poll for interactive user input
-   * regardless of the above case. Thus we schedule a special timer event that
-   * happens every KEYPRESSED_INTERVAL milliseconds and which reschedules
+   * Since nsock can delay between each event due to the targets being really
+   * slow,  we need a way to make sure that we always poll for interactive user
+   * input regardless of the above case. Thus we schedule a special timer event
+   * that happens every KEYPRESSED_INTERVAL milliseconds and which reschedules
    * itself every time its handler is called.
    */
   nsock_timer_create(nsp, status_timer_handler, KEYPRESSED_INTERVAL, NULL);

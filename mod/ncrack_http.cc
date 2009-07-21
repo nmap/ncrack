@@ -118,6 +118,13 @@ typedef struct http_info {
   int substate;
 } http_info;
 
+typedef struct http_state {
+  bool reconnaissance;
+  char *auth_scheme;
+  int state;
+  int keep_alive;
+} http_state;
+
 
 void
 ncrack_http(nsock_pool nsp, Connection *con)
@@ -128,8 +135,15 @@ ncrack_http(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   http_info *info = NULL;
+  http_state *hstate = NULL;
   if (con->misc_info)
     info = (http_info *) con->misc_info;
+
+  if (serv->module_data) {
+    hstate = (http_state *)serv->module_data;
+    con->state = hstate->state;
+    info->auth_scheme = hstate->auth_scheme;
+  }
 
   switch (con->state)
   { 
@@ -164,7 +178,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
     case HTTP_GET_AUTH2:
 
-      memprint((const char *)con->iobuf->get_dataptr(), con->iobuf->get_len());
+      //memprint((const char *)con->iobuf->get_dataptr(), con->iobuf->get_len());
       
       /* If target doesn't need authorization for the path selected, then
        * there is no point in trying to crack it. So inform the core engine
@@ -212,14 +226,23 @@ ncrack_http(nsock_pool nsp, Connection *con)
       info->auth_scheme = Strndup(start, i);
       printf("%s \n", info->auth_scheme);
       if (!strcmp("Basic", info->auth_scheme)) {
-        con->state = HTTP_BASIC_AUTH;
-        info->substate = BASIC_SEND;
-        http_basic(nsp, con);
+        //con->state = HTTP_BASIC_AUTH;
+        //info->substate = BASIC_SEND;
+        serv->module_data = (http_state *)safe_zalloc(sizeof(http_state));
+        hstate = (http_state *)serv->module_data;
+        hstate->auth_scheme = Strndup(info->auth_scheme,
+            strlen(info->auth_scheme));
+        hstate->state = HTTP_BASIC_AUTH;
+        hstate->reconnaissance = true;
+        serv->more_rounds = true;
+
+        delete con->iobuf;
+        con->iobuf = NULL;
+        return ncrack_module_end(nsp, con);
+
       } else {
         fatal("Current authentication can't be handled!\n");
       }
-      delete con->iobuf;
-      con->iobuf = NULL;
       break;
 
     case HTTP_BASIC_AUTH:
@@ -249,17 +272,17 @@ http_basic(nsock_pool nsp, Connection *con)
     case BASIC_SEND:
 
       auxbuf = new Buf();
-      auxbuf->append("GET ", sizeof("GET ")-1);
+      auxbuf->append("GET ", sizeof("GET ") - 1);
       if (serv->path[0] != '/')
         auxbuf->append("/", 1);
       auxbuf->append(serv->path, strlen(serv->path));
-      auxbuf->append(" HTTP 1.1\r\nHost: ", sizeof(" HTTP 1.1\r\nHost: ")-1);
+      auxbuf->append(" HTTP 1.1\r\nHost: ", sizeof(" HTTP 1.1\r\nHost: ") - 1);
       if (serv->target->targetname)
         auxbuf->append(serv->target->targetname, strlen(serv->target->targetname));
       else 
         auxbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
-      auxbuf->append("\r\nUser-Agent: ", sizeof("\r\nUser-Agent: ")-1);
-      auxbuf->append(USER_AGENT, sizeof(USER_AGENT)-1);
+      auxbuf->append("\r\nUser-Agent: ", sizeof("\r\nUser-Agent: ") - 1);
+      auxbuf->append(USER_AGENT, sizeof(USER_AGENT) - 1);
       auxbuf->append("\r\nAuthorization: Basic ",
           sizeof("\r\nAuthorization: Basic ") - 1);
 

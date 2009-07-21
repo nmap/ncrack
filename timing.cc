@@ -278,7 +278,8 @@ double PacketRateMeter::getOverallPacketRate(const struct timeval *now) const {
   return packet_rate_meter.getOverallRate(now);
 }
 
-double PacketRateMeter::getCurrentPacketRate(const struct timeval *now, bool update) {
+double PacketRateMeter::getCurrentPacketRate(const struct timeval *now,
+    bool update) {
   return packet_rate_meter.getCurrentRate(now, update);
 }
 
@@ -286,7 +287,8 @@ double PacketRateMeter::getOverallByteRate(const struct timeval *now) const {
   return byte_rate_meter.getOverallRate(now);
 }
 
-double PacketRateMeter::getCurrentByteRate(const struct timeval *now, bool update) {
+double PacketRateMeter::getCurrentByteRate(const struct timeval *now,
+    bool update) {
   return byte_rate_meter.getCurrentRate(now, update);
 }
 
@@ -405,7 +407,8 @@ bool ScanProgressMeter::printStatsIfNecessary(double perc_done,
     double prev_est_total_time_s = difftime(last_est.tv_sec, begin.tv_sec);
     double prev_est_time_left_s = difftime(last_est.tv_sec, last_print.tv_sec);
     double change_abs_s = ABS(prev_est_time_left_s - time_left_s);
-    if (o.debugging || (change_abs_s > 15 && change_abs_s > .05 * prev_est_total_time_s))
+    if (o.debugging || (change_abs_s > 15 
+          && change_abs_s > .05 * prev_est_total_time_s))
       printit = true;
   }
 
@@ -452,7 +455,8 @@ bool ScanProgressMeter::printStats(double perc_done,
   ltime = localtime(&timet);
   assert(ltime);
 
-  log_write(LOG_STDOUT, "About %.2f%% done; ETC: %02d:%02d (%.f:%02.f:%02.f remaining)\n",
+  log_write(LOG_STDOUT, "About %.2f%% done; ETC: %02d:%02d "
+      "(%.f:%02.f:%02.f remaining)\n",
       perc_done * 100, ltime->tm_hour, ltime->tm_min,
       floor(time_left_s / 60.0 / 60.0),
       floor(fmod(time_left_s / 60.0, 60.0)),
