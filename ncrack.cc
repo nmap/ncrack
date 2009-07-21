@@ -977,7 +977,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
    * max_connection_limit and a default desired parallelism for each timing
    * template.
    */
-  if (serv->just_started == true && !serv->just_started) {
+  if (serv->just_started == true && !serv->more_rounds) {
     serv->just_started = false;
     long desired_par = 1;
     if (o.timing_level == 0)

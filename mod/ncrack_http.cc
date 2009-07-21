@@ -236,7 +236,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
       con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
       info = (http_info *)con->misc_info;
       info->auth_scheme = Strndup(start, i);
-      printf("%s \n", info->auth_scheme);
+      //printf("%s \n", info->auth_scheme);
       if (!strcmp("Basic", info->auth_scheme)) {
         //con->state = HTTP_BASIC_AUTH;
         //info->substate = BASIC_SEND;
@@ -317,7 +317,7 @@ http_basic(nsock_pool nsp, Connection *con)
       tmp = (unsigned char *)safe_malloc(tmplen);
       Snprintf((char *)tmp, tmplen, "%s:%s", con->user, con->pass);
       b64 = b64enc(tmp, tmplen);
-      printf("%s \n", b64);
+      //printf("%s \n", b64);
       auxbuf->append(b64, strlen(b64));
       free(b64);
       free(tmp);
@@ -338,10 +338,16 @@ http_basic(nsock_pool nsp, Connection *con)
 
     case BASIC_RESULTS:
 
-      memprint((const char *)con->iobuf->get_dataptr(), con->iobuf->get_len());
+      info->substate = BASIC_SEND;
+      //memprint((const char *)con->iobuf->get_dataptr(), con->iobuf->get_len());
+      if (memsearch((const char *)con->iobuf->get_dataptr(),
+            "200 OK", con->iobuf->get_len())) {
+        con->auth_success = true;
+      }
+      delete con->iobuf;
+      con->iobuf = NULL;
+      ncrack_module_end(nsp, con);
       break;
-
   }
-
-
 }
+
