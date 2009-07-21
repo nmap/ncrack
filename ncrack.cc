@@ -1098,6 +1098,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     }
 
   } else if (status == NSE_STATUS_EOF) {
+    sleep(10);
     con->close_reason = READ_EOF;
 
   } else if (status == NSE_STATUS_ERROR) {

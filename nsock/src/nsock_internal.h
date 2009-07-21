@@ -55,7 +55,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_internal.h 13448 2009-05-29 23:19:07Z david $ */
+/* $Id: nsock_internal.h 14022 2009-07-03 20:28:06Z david $ */
 
 #ifndef NSOCK_INTERNAL_H
 #define NSOCK_INTERNAL_H
@@ -210,6 +210,7 @@ struct msiod {
      writability. */
   int readsd_count;
   int writesd_count;
+  int readpcapsd_count;
   mspool *nsp; /* The mspool used to create the iod (used for deletion) */
   enum msiod_state state;
   struct sockaddr_storage peer; /* The host and port we are connected to

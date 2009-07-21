@@ -56,7 +56,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_iod.c 13448 2009-05-29 23:19:07Z david $ */
+/* $Id: nsock_iod.c 14022 2009-07-03 20:28:06Z david $ */
 
 #include "nsock.h"
 #include "nsock_internal.h"
@@ -117,6 +117,7 @@ nsock_iod nsi_new2(nsock_pool nsockp, int sd, void *userdata) {
   nsi->events_pending = 0;
   nsi->readsd_count = 0;
   nsi->writesd_count = 0;
+  nsi->readpcapsd_count = 0;
 
   nsi->ipopts = NULL;
   nsi->ipoptslen = 0;

@@ -95,7 +95,9 @@
 #include <list>
 
 #define USER_AGENT "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)"
-#define HTTP_TIMEOUT 5000
+#define HTTP_UNKNOWN "Service might not be HTTP."
+#define HTTP_NOAUTH_SCHEME "Service didn't reply with authentication scheme."
+#define HTTP_TIMEOUT 10000
 
 extern NcrackOps o;
 
@@ -104,14 +106,30 @@ extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
-enum states { HTTP_INIT, HTTP_GET_AUTH1, HTTP_GET_AUTH2, HTTP_FINI };
+static void http_basic(nsock_pool nsp, Connection *con);
+enum states { HTTP_INIT, HTTP_GET_AUTH1, HTTP_GET_AUTH2, HTTP_BASIC_AUTH,
+  HTTP_FINI };
+
+/* Basic Authentication substates */
+enum { BASIC_SEND, BASIC_RECV, BASIC_RESULTS };
+
+typedef struct http_info {
+  char *auth_scheme;
+  int substate;
+} http_info;
+
 
 void
 ncrack_http(nsock_pool nsp, Connection *con)
 {
   Buf *lbuf; /* local buffer */
+  char *start, *end;  /* auxiliary pointers */
+  int i;
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
+  http_info *info = NULL;
+  if (con->misc_info)
+    info = (http_info *) con->misc_info;
 
   switch (con->state)
   { 
@@ -119,10 +137,10 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
       con->state = HTTP_GET_AUTH1;
 
-      printf("HTTP INIT\n");
-
       lbuf = new Buf();
       lbuf->append("GET ", sizeof("GET ")-1);
+      if (serv->path[0] != '/')
+        lbuf->append("/", 1);
       lbuf->append(serv->path, strlen(serv->path));
       lbuf->append(" HTTP 1.1\r\nHost: ", sizeof(" HTTP 1.1\r\nHost: ")-1);
       if (serv->target->targetname)
@@ -146,9 +164,68 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
     case HTTP_GET_AUTH2:
 
-      printf("GET AUTH2\n");
+      memprint((const char *)con->iobuf->get_dataptr(), con->iobuf->get_len());
+      
+      /* If target doesn't need authorization for the path selected, then
+       * there is no point in trying to crack it. So inform the core engine
+       * to mark the service as finished.
+       */
+      if (!memsearch((const char *)con->iobuf->get_dataptr(),
+            "401 Authorization Required", con->iobuf->get_len())) {
+        serv->end.orly = true;
+        start = memsearch((const char *)con->iobuf->get_dataptr(),
+            "HTTP", con->iobuf->get_len());
+        if (!start) {
+          serv->end.reason = Strndup(HTTP_UNKNOWN, sizeof(HTTP_UNKNOWN) - 1);
+          return ncrack_module_end(nsp, con);
+        }
+        i = 0;
+        end = start;
+        while (*end != '\n' && *end != '\r' && i != con->iobuf->get_len()) {
+          end++;
+          i++;
+        }
+        serv->end.reason = Strndup(start, i);
+        return ncrack_module_end(nsp, con);
+      }
 
+      /* Now that we are sure that the service actually needs authentication,
+       * we can move on to parsing the reply to get the exact type of
+       * authentication scheme used.
+       */
+      if (!(start = memsearch((const char *)con->iobuf->get_dataptr(),
+            "WWW-Authenticate:", con->iobuf->get_len()))) {
+        serv->end.orly = true;
+        serv->end.reason = Strndup(HTTP_NOAUTH_SCHEME,
+            sizeof(HTTP_NOAUTH_SCHEME) - 1);
+        return ncrack_module_end(nsp, con);
+      }
+      start += sizeof("WWW-Authenticate: ") - 1;
+      end = start;
+      i = 0;
+      while (*end != ' ' && i != con->iobuf->get_len()) {
+        end++;
+        i++;
+      }
+      con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
+      info = (http_info *)con->misc_info;
+      info->auth_scheme = Strndup(start, i);
+      printf("%s \n", info->auth_scheme);
+      if (!strcmp("Basic", info->auth_scheme)) {
+        con->state = HTTP_BASIC_AUTH;
+        info->substate = BASIC_SEND;
+        http_basic(nsp, con);
+      } else {
+        fatal("Current authentication can't be handled!\n");
+      }
+      delete con->iobuf;
+      con->iobuf = NULL;
+      break;
 
+    case HTTP_BASIC_AUTH:
+
+      http_basic(nsp, con);
+      break;
 
   }
 
@@ -156,3 +233,65 @@ ncrack_http(nsock_pool nsp, Connection *con)
 }
 
 
+
+static void
+http_basic(nsock_pool nsp, Connection *con)
+{
+  Buf *auxbuf;
+  unsigned char *tmp;
+  char *b64;
+  size_t tmplen;
+  Service *serv = con->service;
+  nsock_iod nsi = con->niod;
+  http_info *info = (http_info *)con->misc_info;
+
+  switch (info->substate) {
+    case BASIC_SEND:
+
+      auxbuf = new Buf();
+      auxbuf->append("GET ", sizeof("GET ")-1);
+      if (serv->path[0] != '/')
+        auxbuf->append("/", 1);
+      auxbuf->append(serv->path, strlen(serv->path));
+      auxbuf->append(" HTTP 1.1\r\nHost: ", sizeof(" HTTP 1.1\r\nHost: ")-1);
+      if (serv->target->targetname)
+        auxbuf->append(serv->target->targetname, strlen(serv->target->targetname));
+      else 
+        auxbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
+      auxbuf->append("\r\nUser-Agent: ", sizeof("\r\nUser-Agent: ")-1);
+      auxbuf->append(USER_AGENT, sizeof(USER_AGENT)-1);
+      auxbuf->append("\r\nAuthorization: Basic ",
+          sizeof("\r\nAuthorization: Basic ") - 1);
+
+      tmplen = strlen(con->user) + strlen(con->pass) + 2;
+      tmp = (unsigned char *)safe_malloc(tmplen);
+      Snprintf((char *)tmp, tmplen, "%s:%s", con->user, con->pass);
+      b64 = b64enc(tmp, tmplen);
+      printf("%s \n", b64);
+      auxbuf->append(b64, strlen(b64));
+      free(b64);
+      free(tmp);
+      auxbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, HTTP_TIMEOUT, con,
+        (const char *)auxbuf->get_dataptr(), auxbuf->get_len());
+      
+      info->substate = BASIC_RECV;
+      delete auxbuf;
+      break;
+
+    case BASIC_RECV:
+
+      info->substate = BASIC_RESULTS;
+      nsock_read(nsp, nsi, ncrack_read_handler, HTTP_TIMEOUT, con);
+      break;
+
+    case BASIC_RESULTS:
+
+      memprint((const char *)con->iobuf->get_dataptr(), con->iobuf->get_len());
+      break;
+
+  }
+
+
+}

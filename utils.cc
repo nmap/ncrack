@@ -282,7 +282,8 @@ b64enc(const unsigned char *data, int len)
 {
     char *dest, *buf;
     /* base64 alphabet, taken from rfc3548 */
-    const char *b64alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const char *b64alpha = 
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     /* malloc enough space to do something useful */
     dest = (char*)safe_malloc(4 * len / 3 + 4);

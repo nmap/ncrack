@@ -53,7 +53,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_core.c 13728 2009-06-13 02:13:45Z david $ */
+/* $Id: nsock_core.c 14426 2009-07-19 03:09:24Z david $ */
 
 #include "nsock_internal.h"
 #include "gh_list.h"
@@ -92,6 +92,66 @@ static int pcap_read_on_nonselect(mspool *nsp);
 */
 struct timeval nsock_tod;
 
+/* These macros construct the bodies of the socket_count_*_{inc,dec} functions. */
+#define SOCKET_COUNT_INC(sd, count, fdset, max_sd) \
+do { \
+  assert((count) >= 0); \
+  (count)++; \
+  FD_SET((sd), (fdset)); \
+  (max_sd) = MAX((max_sd), (sd)); \
+  return 1; \
+} while (0)
+
+#define SOCKET_COUNT_DEC(sd, count, fdset, max_sd, iod) \
+do { \
+  assert((count) > 0); \
+  (count)--; \
+  if ((count) == 0) { \
+    FD_CLR((sd), (fdset)); \
+    assert((iod)->events_pending > 0); \
+    if ((iod)->events_pending == 1 && (max_sd) == (sd)) \
+      (max_sd)--; \
+  } \
+  return (count) != 0; \
+} while (0)
+
+/* Each iod has a count of pending socket reads, socket writes, and pcap reads.
+   When a descriptor's count is nonzero, its bit must be set in the appropriate
+   master fd_set, and when the count is zero the bit must be cleared. What we
+   are simulating is an fd_set with a counter for each socket instead of just an
+   on/off switch. The fd_set's bits aren't enough by itself because a descriptor
+   may for example have two reads pending at once, and the bit must not be
+   cleared after the first is completed. The socket_count_* functions take care
+   of keeping the fd_sets in sync when the counts change. */
+
+static int socket_count_read_inc(msiod *iod, mspool *ms)
+{
+  SOCKET_COUNT_INC(iod->sd, iod->readsd_count, &ms->mioi.fds_master_r, ms->mioi.max_sd);
+}
+
+static int socket_count_read_dec(msiod *iod, mspool *ms) {
+  SOCKET_COUNT_DEC(iod->sd, iod->readsd_count, &ms->mioi.fds_master_r, ms->mioi.max_sd, iod);
+}
+
+static int socket_count_write_inc(msiod *iod, mspool *ms)
+{
+  SOCKET_COUNT_INC(iod->sd, iod->writesd_count, &ms->mioi.fds_master_w, ms->mioi.max_sd);
+}
+
+static int socket_count_write_dec(msiod *iod, mspool *ms) {
+  SOCKET_COUNT_DEC(iod->sd, iod->writesd_count, &ms->mioi.fds_master_w, ms->mioi.max_sd, iod);
+}
+
+#if HAVE_PCAP
+static int socket_count_readpcap_inc(msiod *iod, mspool *ms)
+{
+  SOCKET_COUNT_INC(((mspcap *) iod->pcap)->pcap_desc, iod->readpcapsd_count, &ms->mioi.fds_master_r, ms->mioi.max_sd);
+}
+
+static int socket_count_readpcap_dec(msiod *iod, mspool *ms) {
+  SOCKET_COUNT_DEC(((mspcap *) iod->pcap)->pcap_desc, iod->readpcapsd_count, &ms->mioi.fds_master_r, ms->mioi.max_sd, iod);
+}
+#endif
 
 /* Returns -1 (and sets ms->errno if there is an error so severe that
    we might as well quit waiting and have nsock_loop() return an error */
@@ -161,7 +221,7 @@ static int wait_for_events(mspool *ms, int msec_timeout) {
   } while (ms->mioi.results_left == -1 && sock_err == EINTR);// repeat only if signal occured
   
   if (ms->mioi.results_left == -1 && sock_err != EINTR) {
-    nsock_trace(ms, "nsock_loop error %d: %s", sock_err, strerror(sock_err));
+    nsock_trace(ms, "nsock_loop error %d: %s", sock_err, socket_strerror(sock_err));
     ms->errnum = sock_err;
     return -1;
   }
@@ -231,23 +291,7 @@ void handle_connect_result(mspool *ms, msevent *nse,
     
     switch(optval) {
     case 0:
-#ifdef LINUX
-      if (!FD_ISSET(iod->sd, &ms->mioi.fds_results_r)) {
-	/* Linux goofiness -- We need to actually test that it is writeable */
-	rc = send(iod->sd, "", 0, 0);
-	
-	if (rc < 0 ) {
-	  nse->status = NSE_STATUS_ERROR;
-	  nse->errnum = ECONNREFUSED;
-	} else {
-	  nse->status = NSE_STATUS_SUCCESS;
-	}
-      } else {
-	nse->status = NSE_STATUS_SUCCESS;
-      }
-#else
       nse->status = NSE_STATUS_SUCCESS;
-#endif
       break;
     case ECONNREFUSED:
     case EHOSTUNREACH:
@@ -303,18 +347,16 @@ void handle_connect_result(mspool *ms, msevent *nse,
     assert(0); /* Currently we only know about TIMEOUT and SUCCESS callbacks */
   }
 
-  /* Clear the socket descriptors from all the lists -- we might
-     put it back on some of them in the SSL case */
-  if (iod->sd != -1) {  
-    FD_CLR(iod->sd, &ms->mioi.fds_master_r);
-    FD_CLR(iod->sd, &ms->mioi.fds_master_w);
+  /* At this point the TCP connection is done, whether successful or not.
+     Therefore decrease the read/write listen counts that were incremented in
+     nsp_add_event. In the SSL case, we may increase one of the counts depending
+     on whether SSL_connect returns an error of SSL_ERROR_WANT_READ or
+     SSL_ERROR_WANT_WRITE. In that case we will re-enter this function, but we
+     don't want to execute this block again. */
+  if (iod->sd != -1 && !sslconnect_inprogress) {
+    socket_count_read_dec(iod, ms);
+    socket_count_write_dec(iod, ms);
     FD_CLR(iod->sd, &ms->mioi.fds_master_x);
-    FD_CLR(iod->sd, &ms->mioi.fds_results_r);
-    FD_CLR(iod->sd, &ms->mioi.fds_results_w);
-    FD_CLR(iod->sd, &ms->mioi.fds_results_x);
-    
-    if (ms->mioi.max_sd == iod->sd)
-      ms->mioi.max_sd--;
   }
 
 #if HAVE_OPENSSL
@@ -325,6 +367,18 @@ void handle_connect_result(mspool *ms, msevent *nse,
      if (rc == 0) { printf("Uh-oh: SSL_set_session() failed - please tell Fyodor\n"); }
      iod->ssl_session = NULL; /* No need for this any more */
     }
+
+    /* If this is a reinvocation of handle_connect_result, clear out the listen
+       bits that caused it, based on the previous SSL desire. */
+    if (sslconnect_inprogress) {
+      assert(nse->sslinfo.ssl_desire == SSL_ERROR_WANT_READ
+             || nse->sslinfo.ssl_desire == SSL_ERROR_WANT_WRITE);
+      if (nse->sslinfo.ssl_desire == SSL_ERROR_WANT_READ)
+        socket_count_read_dec(iod, ms);
+      else if (nse->sslinfo.ssl_desire == SSL_ERROR_WANT_WRITE)
+        socket_count_write_dec(iod, ms);
+    }
+
     rc = SSL_connect(iod->ssl);
     /* printf("DBG: SSL_connect()=%d", rc); */
     if (rc == 1) {
@@ -344,12 +398,10 @@ void handle_connect_result(mspool *ms, msevent *nse,
       sslerr = SSL_get_error(iod->ssl, rc);
       if (rc == -1 && sslerr == SSL_ERROR_WANT_READ) {
 	nse->sslinfo.ssl_desire = sslerr;
-	FD_SET(iod->sd, &ms->mioi.fds_master_r);
-	ms->mioi.max_sd = MAX(ms->mioi.max_sd, iod->sd);
+	socket_count_read_inc(iod, ms);
       } else if  (rc == -1 && sslerr == SSL_ERROR_WANT_WRITE) {
 	nse->sslinfo.ssl_desire = sslerr;
-	FD_SET(iod->sd, &ms->mioi.fds_master_w);
-	ms->mioi.max_sd = MAX(ms->mioi.max_sd, iod->sd);
+	socket_count_write_inc(iod, ms);
       } else {
 	/* Unexpected error */
         if (ms->tracelevel > 0)
@@ -397,7 +449,11 @@ void handle_write_result(mspool *ms, msevent *nse,
       if (iod->ssl) {
 #if HAVE_OPENSSL
 	err = SSL_get_error(iod->ssl, res);
-	if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE ) {
+	if (err == SSL_ERROR_WANT_READ) {
+	  nse->sslinfo.ssl_desire = err;
+	  socket_count_write_dec(iod, ms);
+	  socket_count_read_inc(iod, ms);
+        } else if (err == SSL_ERROR_WANT_WRITE) {
 	  nse->sslinfo.ssl_desire = err;
 	} else {
 	  /* Unexpected error */
@@ -421,30 +477,8 @@ void handle_write_result(mspool *ms, msevent *nse,
     }
   }
 
-  if (nse->event_done && nse->iod->sd != -1) {
-    /* Decrement the count of waiting writes on this IOD. When it hits 0 we
-       remove it from the descriptor lists. */
-    iod->writesd_count--;
-    assert(iod->writesd_count >= 0);
-    if (!iod->ssl && iod->writesd_count == 0) {
-      FD_CLR(iod->sd, &ms->mioi.fds_master_w);
-      FD_CLR(iod->sd, &ms->mioi.fds_results_w);
-    } else if (iod->ssl && iod->events_pending <= 1) {
-    /* Exception: If this is an SSL socket and there is another
-       pending event (such as a read), it might actually be waiting
-       on a write so we can't clear in that case */
-      FD_CLR(iod->sd, &ms->mioi.fds_master_r);
-      FD_CLR(iod->sd, &ms->mioi.fds_results_r);
-      FD_CLR(iod->sd, &ms->mioi.fds_master_w);
-      FD_CLR(iod->sd, &ms->mioi.fds_results_w);
-    }
-
-    /* Note -- I only want to decrement IOD if there are no other
-       events hinging on it.  For example, there could be a READ and
-       WRITE outstanding at once */
-    if (nse->iod->events_pending <= 1 && ms->mioi.max_sd == nse->iod->sd)
-      ms->mioi.max_sd--;
-  }
+  if (nse->event_done && nse->iod->sd != -1)
+    socket_count_write_dec(nse->iod, ms);
 
   return;
 }
@@ -535,8 +569,12 @@ static int do_actual_read(mspool *ms, msevent *nse) {
 
     if (buflen == -1) {
       err = SSL_get_error(iod->ssl, buflen);
-      if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE ) {
+      if (err == SSL_ERROR_WANT_READ) {
 	nse->sslinfo.ssl_desire = err;
+      } else if (err == SSL_ERROR_WANT_WRITE ) {
+	nse->sslinfo.ssl_desire = err;
+	socket_count_read_dec(iod, ms);
+	socket_count_write_inc(iod, ms);
       } else {
 	/* Unexpected error */
 	nse->event_done = 1;
@@ -632,46 +670,9 @@ void handle_read_result(mspool *ms, msevent *nse,
 
   /* If there are no more reads for this IOD, we are done reading on the socket
      so we can take it off the descriptor list ... */
-  if (nse->event_done && iod->sd >= 0) {
-    /* Decrement the count of waiting reads on this IOD. When it hits 0 we
-       remove it from the descriptor lists. */
-    iod->readsd_count--;
-    assert(iod->readsd_count >= 0);
-    if (!iod->ssl && iod->readsd_count == 0) {    
-      FD_CLR(iod->sd, &ms->mioi.fds_master_r);
-      FD_CLR(iod->sd, &ms->mioi.fds_results_r);
-    } else if (iod->ssl && iod->events_pending <= 1) {
-    /* Exception: If this is an SSL socket and there is another
-       pending event (such as a write), it might actually be waiting
-       on a read so we can't clear in that case */
-      FD_CLR(iod->sd, &ms->mioi.fds_master_r);
-      FD_CLR(iod->sd, &ms->mioi.fds_results_r);
-      FD_CLR(iod->sd, &ms->mioi.fds_master_w);
-      FD_CLR(iod->sd, &ms->mioi.fds_results_w);
-    }
+  if (nse->event_done && iod->sd >= 0)
+    socket_count_read_dec(iod, ms);
 
-    /* Note -- I only want to decrement IOD if there are no other events hinging on it. 
-     * For example, there could be a READ and WRITE outstanding at once
-     */
-    if (iod->events_pending <= 1 && ms->mioi.max_sd == iod->sd)
-      ms->mioi.max_sd--;
-  }
-
-#if HAVE_OPENSSL
-  /* For SSL the type of listening we have to do varies.  I can't
-     clear the other type due to the possibility of a pending event
-     needing it */
-  if (iod->ssl && nse->event_done == 0) {  
-    if (nse->sslinfo.ssl_desire == SSL_ERROR_WANT_READ) {
-      FD_SET(iod->sd, &ms->mioi.fds_master_r);
-      ms->mioi.max_sd = MAX(ms->mioi.max_sd, iod->sd);
-    } else if (nse->sslinfo.ssl_desire == SSL_ERROR_WANT_WRITE) {
-      FD_SET(iod->sd, &ms->mioi.fds_master_w);
-      ms->mioi.max_sd = MAX(ms->mioi.max_sd, iod->sd);
-    }
-  }
-#endif /* HAVE_OPENSSL */
- 
   return;
 }
 
@@ -704,16 +705,9 @@ void handle_pcap_read_result(mspool *ms, msevent *nse,
   
   /* If there are no more read events, we are done reading on the socket so 
      we can take it off the descriptor list ... */
-  if (nse->event_done && mp->pcap_desc >= 0) {
-    /* Decrement the count of waiting reads on this pcap descriptor. When it
-       hits 0 we remove it from the descriptor lists. */
-    mp->readsd_count--;
-    assert(mp->readsd_count >= 0);
-    if (mp->readsd_count == 0) {
-      FD_CLR(mp->pcap_desc, &ms->mioi.fds_master_r);
-      FD_CLR(mp->pcap_desc, &ms->mioi.fds_results_r);
-    }
-  }
+  if (nse->event_done && mp->pcap_desc >= 0)
+    socket_count_readpcap_dec(iod, ms);
+
   return;
 }
 
@@ -920,6 +914,11 @@ static void iterate_through_event_lists(mspool *nsp) {
 	}
 
 	if (nse->event_done) {
+          /* Security sanity check: don't return a functional SSL iod without
+             setting an SSL data structure. */
+	  if (nse->type == NSE_TYPE_CONNECT_SSL && nse->status == NSE_STATUS_SUCCESS)
+            assert(nse->iod->ssl != NULL);
+
           if (nsp->tracelevel > 8)
             nsock_trace(nsp, "NSE #%lu: Removing event from event_lists[%i]", nse->id, current_list_idx);
 
@@ -984,7 +983,7 @@ while(1) {
     break;
   }
  
-  if (msec_timeout > 0) {
+  if (msec_timeout >= 0) {
     msecs_left = MAX(0, TIMEVAL_MSEC_SUBTRACT(loop_timeout, nsock_tod));
     if (msecs_left == 0 && loopnum > 0) {
       quitstatus = NSOCK_LOOP_TIMEOUT;
@@ -1052,8 +1051,8 @@ void nsp_add_event(mspool *nsp, msevent *nse) {
   case NSE_TYPE_CONNECT_SSL:
     if (!nse->event_done) {
       assert(nse->iod->sd >= 0);
-      FD_SET( nse->iod->sd, &nsp->mioi.fds_master_r);
-      FD_SET( nse->iod->sd, &nsp->mioi.fds_master_w);
+      socket_count_read_inc(nse->iod, nsp);
+      socket_count_write_inc(nse->iod, nsp);
       FD_SET( nse->iod->sd, &nsp->mioi.fds_master_x);
       nsp->mioi.max_sd = MAX(nsp->mioi.max_sd, nse->iod->sd);
     }
@@ -1063,9 +1062,7 @@ void nsp_add_event(mspool *nsp, msevent *nse) {
   case NSE_TYPE_READ:
     if (!nse->event_done) {
       assert(nse->iod->sd >= 0);
-      FD_SET( nse->iod->sd, &nsp->mioi.fds_master_r);
-      nse->iod->readsd_count++;
-      nsp->mioi.max_sd = MAX(nsp->mioi.max_sd, nse->iod->sd);
+      socket_count_read_inc(nse->iod, nsp);
 #if HAVE_OPENSSL
       if (nse->iod->ssl) nse->sslinfo.ssl_desire = SSL_ERROR_WANT_READ;
 #endif
@@ -1076,9 +1073,7 @@ void nsp_add_event(mspool *nsp, msevent *nse) {
   case NSE_TYPE_WRITE:
     if (!nse->event_done) {
       assert(nse->iod->sd >= 0);
-      FD_SET( nse->iod->sd, &nsp->mioi.fds_master_w);
-      nse->iod->writesd_count++;
-      nsp->mioi.max_sd = MAX(nsp->mioi.max_sd, nse->iod->sd);
+      socket_count_write_inc(nse->iod, nsp);
 #if HAVE_OPENSSL
       if (nse->iod->ssl) nse->sslinfo.ssl_desire = SSL_ERROR_WANT_WRITE;
 #endif
@@ -1095,11 +1090,8 @@ void nsp_add_event(mspool *nsp, msevent *nse) {
     mspcap *mp = (mspcap *) nse->iod->pcap;
     assert(mp);
     if(mp->pcap_desc >= 0){ /* pcap descriptor present */
-      if(!nse->event_done){
-        FD_SET(mp->pcap_desc, &nsp->mioi.fds_master_r);
-        mp->readsd_count++;
-        nsp->mioi.max_sd = MAX(nsp->mioi.max_sd, mp->pcap_desc);
-      }
+      if(!nse->event_done)
+        socket_count_readpcap_inc(nse->iod, nsp);
       if (nsp->tracelevel > 8)
           nsock_trace(nsp, "PCAP NSE #%lu: Adding event to READ_EVENTS", nse->id);
       gh_list_append(&nsp->evl.read_events, nse);

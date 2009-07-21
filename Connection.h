@@ -117,10 +117,10 @@ class Connection
      * maximum attempts the peer lets us do (stored in 'supported_attempts'
      * inside the Service class). A module should probably set it to true
      * after writing the password on the wire and before issuing the next
-     * read call. Also if you use it, don't forget to set it to false, in the first
-     * state of your module, because we might need it to differentiate between
-     * normal server FINs and FINs/RSTs sent in the middle of an authentication
-     * due to strange network conditions.
+     * read call. Also if you use it, don't forget to set it to false, in the
+     * first state of your module, because we might need it to differentiate
+     * between normal server FINs and FINs/RSTs sent in the middle of an
+     * authentication due to strange network conditions.
      */
     bool peer_might_close; 
 

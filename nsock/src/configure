@@ -1909,10 +1909,6 @@ case $host_os in *\ *) host_os=`echo "$host_os" | sed 's/ /-/g'`;; esac
 
 
 
-linux=no
-macosx=no
-needs_cpp_precomp=no
-
 case "$host" in
   *alpha-dec-osf*)
     cat >>confdefs.h <<\_ACEOF
@@ -1952,10 +1948,6 @@ _ACEOF
     ;;
   *-solaris2.0*)
     cat >>confdefs.h <<\_ACEOF
-#define STUPID_SOLARIS_CHECKSUM_BUG 1
-_ACEOF
-
-    cat >>confdefs.h <<\_ACEOF
 #define SOLARIS 1
 _ACEOF
 
@@ -1968,19 +1960,11 @@ _ACEOF
     ;;
   *-solaris2.1*)
     cat >>confdefs.h <<\_ACEOF
-#define STUPID_SOLARIS_CHECKSUM_BUG 1
-_ACEOF
-
-    cat >>confdefs.h <<\_ACEOF
 #define SOLARIS 1
 _ACEOF
 
     ;;
   *-solaris2.2*)
-    cat >>confdefs.h <<\_ACEOF
-#define STUPID_SOLARIS_CHECKSUM_BUG 1
-_ACEOF
-
     cat >>confdefs.h <<\_ACEOF
 #define SOLARIS 1
 _ACEOF
@@ -1988,29 +1972,17 @@ _ACEOF
     ;;
   *-solaris2.3*)
     cat >>confdefs.h <<\_ACEOF
-#define STUPID_SOLARIS_CHECKSUM_BUG 1
-_ACEOF
-
-    cat >>confdefs.h <<\_ACEOF
 #define SOLARIS 1
 _ACEOF
 
     ;;
   *-solaris2.4*)
     cat >>confdefs.h <<\_ACEOF
-#define STUPID_SOLARIS_CHECKSUM_BUG 1
-_ACEOF
-
-    cat >>confdefs.h <<\_ACEOF
 #define SOLARIS 1
 _ACEOF
 
     ;;
   *-solaris2.5.1)
-    cat >>confdefs.h <<\_ACEOF
-#define STUPID_SOLARIS_CHECKSUM_BUG 1
-_ACEOF
-
     cat >>confdefs.h <<\_ACEOF
 #define SOLARIS 1
 _ACEOF
@@ -2027,22 +1999,12 @@ _ACEOF
 #define SUNOS 1
 _ACEOF
 
-    cat >>confdefs.h <<\_ACEOF
-#define SPRINTF_RETURNS_STRING 1
-_ACEOF
-
     ;;
   *-linux*)
-    linux=yes
     cat >>confdefs.h <<\_ACEOF
 #define LINUX 1
 _ACEOF
 
-    cat >>confdefs.h <<\_ACEOF
-#define PCAP_TIMEOUT_IGNORED 1
-_ACEOF
-  # libpcap doesn't even LOOK at
-                                     # the timeout you give it under Linux
     ;;
   *-freebsd* | *-kfreebsd*-gnu | *-dragonfly*)
     cat >>confdefs.h <<\_ACEOF
@@ -2057,7 +2019,6 @@ _ACEOF
 
     ;;
   *-apple-darwin*)
-    macosx=yes
     cat >>confdefs.h <<\_ACEOF
 #define MACOSX 1
 _ACEOF
@@ -4702,433 +4663,7 @@ LIBNBASE_LIBS="$LIBS -lnbase"
 
 
 
-{ $as_echo "$as_me:$LINENO: checking struct ip" >&5
-$as_echo_n "checking struct ip... " >&6; }
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netinet/in_systm.h>
-#include <netinet/ip.h>
-int
-main ()
-{
-struct ip ip;
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  { $as_echo "$as_me:$LINENO: result: yes" >&5
-$as_echo "yes" >&6; }; bsd_networking=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
 
-	{ $as_echo "$as_me:$LINENO: result: no" >&5
-$as_echo "no" >&6; }; bsd_networking=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext;
-if test $bsd_networking = yes; then
-
-  cat >>confdefs.h <<\_ACEOF
-#define BSD_NETWORKING 1
-_ACEOF
-
-  { $as_echo "$as_me:$LINENO: checking ip_v in struct ip" >&5
-$as_echo_n "checking ip_v in struct ip... " >&6; }
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netinet/in_systm.h>
-#include <netinet/ip.h>
-int
-main ()
-{
-struct ip ip; ip.ip_v;
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  { $as_echo "$as_me:$LINENO: result: yes" >&5
-$as_echo "yes" >&6; }; has_bitfields=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	{ $as_echo "$as_me:$LINENO: result: no" >&5
-$as_echo "no" >&6; }; has_bitfields=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-  if test $has_bitfields = no; then
-    SAVE_CFLAGS="$CFLAGS"
-    CFLAGS="-D__STDC__=2"
-
-    { $as_echo "$as_me:$LINENO: checking if setting __STDC__=2 gives ip_v" >&5
-$as_echo_n "checking if setting __STDC__=2 gives ip_v... " >&6; }
-    cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netinet/in_systm.h>
-#include <netinet/ip.h>
-int
-main ()
-{
-struct ip ip; ip.ip_v;
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  { $as_echo "$as_me:$LINENO: result: yes" >&5
-$as_echo "yes" >&6; }; setting_stdc_helps=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	{ $as_echo "$as_me:$LINENO: result: no" >&5
-$as_echo "no" >&6; }; setting_stdc_helps=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
-    CFLAGS="$SAVE_CFLAGS"
-    if test $setting_stdc_helps = yes; then
-      CFLAGS="$CFLAGS -D__STDC__=2"
-    else
-      { $as_echo "$as_me:$LINENO: result: Can't figure out how to get bitfields - configure failed" >&5
-$as_echo "Can't figure out how to get bitfields - configure failed" >&6; }
-      exit 1
-    fi
-  fi
-fi
-
-
-
-{ $as_echo "$as_me:$LINENO: checking if sockaddr{} has sa_len member" >&5
-$as_echo_n "checking if sockaddr{} has sa_len member... " >&6; }
-if test "${ac_cv_sockaddr_has_sa_len+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-#               include <sys/types.h>
-#               include <sys/socket.h>
-int
-main ()
-{
-unsigned int i = sizeof(((struct sockaddr *)0)->sa_len)
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_cv_sockaddr_has_sa_len=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_sockaddr_has_sa_len=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_sockaddr_has_sa_len" >&5
-$as_echo "$ac_cv_sockaddr_has_sa_len" >&6; }
-if test $ac_cv_sockaddr_has_sa_len = yes ; then
-        cat >>confdefs.h <<\_ACEOF
-#define HAVE_SOCKADDR_SA_LEN 1
-_ACEOF
-
-fi
-
-{ $as_echo "$as_me:$LINENO: checking if struct icmp exists" >&5
-$as_echo_n "checking if struct icmp exists... " >&6; }
-if test "${ac_cv_struct_icmp_exists+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-#               include <sys/types.h>
-#               include <sys/param.h>
-#               include <netinet/in_systm.h>
-#               include <netinet/in.h>
-#               define __USE_BSD
-#               define __FAVOR_BSD
-#               define _BSD_SOURCE
-#               include <netinet/ip.h>
-#               include <netinet/ip_icmp.h>
-int
-main ()
-{
-unsigned int i = sizeof(struct icmp)
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_cv_struct_icmp_exists=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_struct_icmp_exists=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_struct_icmp_exists" >&5
-$as_echo "$ac_cv_struct_icmp_exists" >&6; }
-if test $ac_cv_struct_icmp_exists = yes ; then
-        cat >>confdefs.h <<\_ACEOF
-#define HAVE_STRUCT_ICMP 1
-_ACEOF
-
-fi
-
-{ $as_echo "$as_me:$LINENO: checking if struct ip exists" >&5
-$as_echo_n "checking if struct ip exists... " >&6; }
-if test "${ac_cv_struct_ip_exists+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-#               include <sys/types.h>
-#               include <sys/param.h>
-#               include <netinet/in_systm.h>
-#               include <netinet/in.h>
-#               define __USE_BSD
-#               define __FAVOR_BSD
-#               define _BSD_SOURCE
-#               include <netinet/ip.h>
-int
-main ()
-{
-unsigned int i = sizeof(struct ip)
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_cv_struct_ip_exists=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_struct_ip_exists=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_struct_ip_exists" >&5
-$as_echo "$ac_cv_struct_ip_exists" >&6; }
-if test $ac_cv_struct_ip_exists = yes ; then
-        cat >>confdefs.h <<\_ACEOF
-#define HAVE_STRUCT_IP 1
-_ACEOF
-
-fi
-
-{ $as_echo "$as_me:$LINENO: checking if struct ip has ip_sum member" >&5
-$as_echo_n "checking if struct ip has ip_sum member... " >&6; }
-if test "${ac_cv_ip_has_ip_sum+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-#               include <sys/types.h>
-#               include <sys/param.h>
-#               include <netinet/in_systm.h>
-#               include <netinet/in.h>
-#               define __USE_BSD
-#               define __FAVOR_BSD
-#               define _BSD_SOURCE
-#               include <netinet/ip.h>
-#               include <netinet/ip_icmp.h>
-int
-main ()
-{
-unsigned int i = sizeof(((struct ip *)0)->ip_sum)
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_cv_ip_has_ip_sum=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_ip_has_ip_sum=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_ip_has_ip_sum" >&5
-$as_echo "$ac_cv_ip_has_ip_sum" >&6; }
-if test $ac_cv_ip_has_ip_sum = yes ; then
-        cat >>confdefs.h <<\_ACEOF
-#define HAVE_IP_IP_SUM 1
-_ACEOF
-
-fi
 
 ac_config_files="$ac_config_files Makefile"
 

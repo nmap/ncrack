@@ -55,13 +55,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_config.h.in 12956 2009-04-15 00:37:23Z fyodor $ */
-
-#undef HAVE_STRUCT_IP
-
-#undef IN_ADDR_DEEPSTRUCT
-
-#undef SPRINTF_RETURNS_STRING
+/* $Id: nsock_config.h.in 13977 2009-06-29 23:49:57Z fyodor $ */
 
 #undef DEC
 #undef LINUX

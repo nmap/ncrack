@@ -202,7 +202,8 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
       lbuf = new Buf();
       lbuf->append(CLIENT_VERSION, sizeof(CLIENT_VERSION)-1);
-      info->client_version_string = Strndup((const char *)lbuf->get_dataptr(), lbuf->get_len());
+      info->client_version_string = Strndup((const char *)lbuf->get_dataptr(),
+          lbuf->get_len());
       chop(info->client_version_string);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,

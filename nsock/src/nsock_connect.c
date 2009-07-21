@@ -53,7 +53,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_connect.c 13069 2009-04-25 03:24:00Z david $ */
+/* $Id: nsock_connect.c 14215 2009-07-13 00:01:33Z david $ */
 
 #include "nsock.h"
 #include "nsock_internal.h"
@@ -71,8 +71,6 @@ static void nsock_connect_internal(mspool *ms, msevent *nse, int proto,
 				   struct sockaddr_storage *ss, size_t sslen,
 				   unsigned short port)
 {
-
-  int res;
   struct sockaddr_in *sin = (struct sockaddr_in *) ss;
 #if HAVE_IPV6
   struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) ss;
@@ -122,11 +120,7 @@ static void nsock_connect_internal(mspool *ms, msevent *nse, int proto,
       }
     }
 
-    if ((res = connect(iod->sd, (struct sockaddr *) ss, sslen)) != -1) {
-      nse->event_done = 1;
-      nse->status = NSE_STATUS_SUCCESS;
-    }
-    else {
+    if (connect(iod->sd, (struct sockaddr *) ss, sslen) == -1) {
       int err = socket_errno();
 
       if (proto != IPPROTO_TCP || (err != EINPROGRESS && err != EAGAIN)) {
@@ -135,6 +129,8 @@ static void nsock_connect_internal(mspool *ms, msevent *nse, int proto,
         nse->errnum = err;
       }
     }
+    /* The callback handle_connect_result handles the connection once it
+       completes. */
   }
 }
 
