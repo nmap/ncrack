@@ -777,16 +777,19 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       log_write(LOG_PLAIN, "Discovered credentials on %s %s %s\n",
           hostinfo, con->user, con->pass);
   } else {
-    if (o.debugging > 6)
-      log_write(LOG_STDOUT, "%s Login failed: %s %s\n", hostinfo,
-          con->user, con->pass);
+    if (!serv->more_rounds) {
+      if (o.debugging > 6)
+        log_write(LOG_STDOUT, "%s Login failed: %s %s\n", hostinfo,
+            con->user, con->pass);
+    } else {
+      serv->appendToPool(con->user, con->pass);
+    }
   }
 
-
-  if (serv->just_started && !serv->more_rounds)
+  if (serv->just_started && !serv->more_rounds) {
     serv->supported_attempts++;
-
-  serv->auth_rate_meter.update(1, NULL);
+    serv->auth_rate_meter.update(1, NULL);
+  }
 
   gettimeofday(&now, NULL);
   if (!serv->just_started && !serv->more_rounds
@@ -923,7 +926,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
     } else if (serv->more_rounds) {
       /* We are still checking timing of the host, so don't do anything yet. */
-    
+
     } else if (!con->auth_complete) {
       serv->appendToPool(con->user, con->pass);
       if (serv->getListPairfini())
@@ -1111,7 +1114,6 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     }
 
   } else if (status == NSE_STATUS_EOF) {
-    sleep(10);
     con->close_reason = READ_EOF;
 
   } else if (status == NSE_STATUS_ERROR) {
@@ -1301,7 +1303,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
   else 
     li = SG->last_accessed++;
 
-  
+
   while (SG->active_connections < SG->connection_limit
       && SG->services_finished.size() != SG->total_services
       && SG->services_active.size() != 0) {

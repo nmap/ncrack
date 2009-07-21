@@ -183,6 +183,7 @@ Service(const Service& ref)
   just_started = true;
   more_rounds = false;
   
+  module_data = NULL;
   hostinfo = NULL;
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
 }

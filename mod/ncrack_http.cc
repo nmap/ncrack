@@ -94,7 +94,16 @@
 #include "modules.h"
 #include <list>
 
-#define USER_AGENT "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)"
+
+
+#define USER_AGENT "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1) Gecko/20090703 Shiretoko/3.5\r\n"
+#define HTTP_LANG "Accept-Language: en-us,en;q=0.5\r\n"
+#define HTTP_ENCODING "Accept-Encoding: gzip,deflate\r\n"
+#define HTTP_CHARSET "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7\r\n"
+#define HTTP_ACCEPT "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
+#define HTTP_CACHE "Cache-Control: max-age=0, max-age=0, max-age=0, max-age=0\r\n"
+
+//#define USER_AGENT "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)"
 #define HTTP_UNKNOWN "Service might not be HTTP."
 #define HTTP_NOAUTH_SCHEME "Service didn't reply with authentication scheme."
 #define HTTP_TIMEOUT 10000
@@ -139,10 +148,13 @@ ncrack_http(nsock_pool nsp, Connection *con)
   if (con->misc_info)
     info = (http_info *) con->misc_info;
 
-  if (serv->module_data) {
+  if (serv->module_data && !con->misc_info) {
     hstate = (http_state *)serv->module_data;
     con->state = hstate->state;
+    con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
+    info = (http_info *)con->misc_info;
     info->auth_scheme = hstate->auth_scheme;
+    serv->more_rounds = false;
   }
 
   switch (con->state)
@@ -276,15 +288,30 @@ http_basic(nsock_pool nsp, Connection *con)
       if (serv->path[0] != '/')
         auxbuf->append("/", 1);
       auxbuf->append(serv->path, strlen(serv->path));
-      auxbuf->append(" HTTP 1.1\r\nHost: ", sizeof(" HTTP 1.1\r\nHost: ") - 1);
+      auxbuf->append(" HTTP/1.1\r\nHost: ", sizeof(" HTTP/1.1\r\nHost: ") - 1);
       if (serv->target->targetname)
         auxbuf->append(serv->target->targetname, strlen(serv->target->targetname));
       else 
         auxbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
       auxbuf->append("\r\nUser-Agent: ", sizeof("\r\nUser-Agent: ") - 1);
       auxbuf->append(USER_AGENT, sizeof(USER_AGENT) - 1);
-      auxbuf->append("\r\nAuthorization: Basic ",
-          sizeof("\r\nAuthorization: Basic ") - 1);
+#if 0
+      auxbuf->append(HTTP_ACCEPT, sizeof(HTTP_ACCEPT) - 1);
+      auxbuf->append(HTTP_LANG, sizeof(HTTP_LANG) - 1);
+      auxbuf->append(HTTP_ENCODING, sizeof(HTTP_ENCODING) - 1);
+      auxbuf->append(HTTP_CHARSET, sizeof(HTTP_CHARSET) - 1);
+#endif
+
+      /* Try sending keep-alive values and see how much authentication attempts
+       * we can do in that time-period.
+       */
+      auxbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n",
+          sizeof("Keep-Alive: 300\r\nConnection: keep-alive\r\n") - 1);
+
+      //auxbuf->append(HTTP_CACHE, sizeof(HTTP_CACHE) - 1);
+
+      auxbuf->append("Authorization: Basic ",
+          sizeof("Authorization: Basic ") - 1);
 
       tmplen = strlen(con->user) + strlen(con->pass) + 2;
       tmp = (unsigned char *)safe_malloc(tmplen);
