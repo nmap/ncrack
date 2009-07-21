@@ -355,15 +355,6 @@ unset_servlist(Service *serv, list <Service *> *list)
 
 
 double ServiceGroup::
-calculate_total_rate(void)
-{
-  // empty now
-  double rate = 0;
-  return rate;
-}
-
-
-double ServiceGroup::
 getCompletionFraction(void)
 {
   double total = 0;

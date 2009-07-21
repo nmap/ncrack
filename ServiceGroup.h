@@ -134,8 +134,6 @@ class ServiceGroup {
 
     double getCompletionFraction(void);
 
-    double calculate_total_rate(void);
-
     /* ********************* Members ********************* */
 
     /* All Services. This includes all active and inactive services.

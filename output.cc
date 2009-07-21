@@ -192,20 +192,24 @@ log_vwrite(int logt, const char *fmt, va_list ap) {
           writebuf = (char *) safe_realloc(writebuf, writebuflen);
           len = Vsnprintf(writebuf, writebuflen, fmt, apcopy);
           if (len <= 0 || len >= writebuflen) {
-            fatal("%s: vsnprintf failed.  Even after increasing bufferlen to %d, Vsnprintf returned %d (logt == %d). "
-                "Please email this message to fyodor@insecure.org.", __func__, writebuflen, len, logt);
+            fatal("%s: vsnprintf failed.  Even after increasing bufferlen "
+                "to %d, Vsnprintf returned %d (logt == %d). "
+                "Please email this message to fyodor@insecure.org.",
+                __func__, writebuflen, len, logt);
           }
         }
         rc = fwrite(writebuf,len,1,o.logfd[fileidx]);
         if (rc != 1) {
-          fatal("Failed to write %d bytes of data to (logt==%d) stream. fwrite returned %d.", len, logt, rc);
+          fatal("Failed to write %d bytes of data to (logt==%d) stream. "
+              "fwrite returned %d.", len, logt, rc);
         }
         va_end(apcopy);
       }
       break;
 
     default:
-      fatal("%s(): Passed unknown log type (%d).  Note that this function, unlike log_write, can only "
+      fatal("%s(): Passed unknown log type (%d).  Note that this function, "
+          "unlike log_write, can only "
           "handle one log type at a time (no bitmasks)", __func__, logt);
   }
 
@@ -287,7 +291,8 @@ log_open(int logt, char *filename)
     else
       o.logfd[i] = fopen(filename, "w");
     if (!o.logfd[i])
-      fatal("Failed to open %s output file %s for writing", logtypes[i], filename);
+      fatal("Failed to open %s output file %s for writing", logtypes[i],
+          filename);
   }
   return 1;
 }
@@ -369,7 +374,8 @@ printStatusMessage(ServiceGroup *SG)
   long long time = (long long) (o.TimeSinceStartMS(&tv) / 1000.0);
 
   log_write(LOG_STDOUT, 
-      "Stats: %lld:%02lld:%02lld elapsed; %lu services completed (%lu total)\n", 
+      "Stats: %lld:%02lld:%02lld elapsed; %lu services completed "
+      "(%lu total)\n", 
       time/60/60, time/60 % 60, time % 60,
       (long unsigned) SG->services_finished.size(), SG->total_services);
   log_write(LOG_STDOUT, "Rate: %.2f; Found: %lu; ",

@@ -109,11 +109,14 @@ class NcrackOps {
     /* Number of milliseconds since getStartTime().  The current time is an
      * optional argument to avoid an extra gettimeofday() call. */
     long long TimeSinceStartMS(struct timeval *now=NULL); 
-
-    float stats_interval; /* The requested auto stats printing interval, or 0.0 if unset. */
+    
+    /* The requested auto stats printing interval, or 0.0 if unset. */
+    float stats_interval; 
     bool log_errors;      /* write errors to log files */
     bool append_output;   /* append output to log files */
-    bool passwords_first; /* iterate password list for each username instead of opposite */
+
+    /* iterate password list for each username instead of opposite */
+    bool passwords_first; 
     bool global_options;  /* true if -g has been specified */
     bool list_only;       /* only list hosts and exit */
     int timing_level;     /* timing template number: T(0-5) */
