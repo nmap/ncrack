@@ -95,7 +95,7 @@
 #include "modules.h"
 #include <list>
 
-#define FTP_FTP_TIMEOUT 20000
+#define FTP_TIMEOUT 20000
 
 
 extern NcrackOps o;

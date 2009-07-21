@@ -132,7 +132,8 @@ static void ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
 /* ncrack initialization */
 static int ncrack(ServiceGroup *SG);
 /* Poll for interactive user input every time this timer is called. */
-static void status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+static void status_timer_handler(nsock_pool nsp, nsock_event nse,
+    void *mydata);
 
 /* module name demultiplexor */
 static void call_module(nsock_pool nsp, Connection* con);
@@ -234,7 +235,8 @@ lookup_init(const char *const filename)
     temp.lookup.name = strdup(servicename);
 
     for (vi = ServicesTable.begin(); vi != ServicesTable.end(); vi++) {
-      if ((vi->lookup.portno == temp.lookup.portno) && (vi->lookup.proto == temp.lookup.proto)
+      if ((vi->lookup.portno == temp.lookup.portno) 
+          && (vi->lookup.proto == temp.lookup.proto)
           && !(strcmp(vi->lookup.name, temp.lookup.name))) {
         if (o.debugging)
           error("Port %d proto %s is duplicated in services file %s", 
@@ -435,38 +437,43 @@ int main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "d:g:hi:U:P:m:o:p:s:T:vV", long_options,
-          &option_index)) != EOF) {
+  while((arg = getopt_long_only(argc, argv, "d:g:hi:U:P:m:o:p:s:T:vV",
+          long_options, &option_index)) != EOF) {
     switch(arg) {
       case 0:
         if (!strcmp(long_options[option_index].name, "excludefile")) {
           if (exclude_spec)
-            fatal("--excludefile and --exclude options are mutually exclusive.");
+            fatal("--excludefile and --exclude options are mutually "
+                "exclusive.");
           excludefd = fopen(optarg, "r");
           if (!excludefd)
             fatal("Failed to open exclude file %s for reading", optarg);
         } else if (!strcmp(long_options[option_index].name, "exclude")) {
           if (excludefd)
-            fatal("--excludefile and --exclude options are mutually exclusive.");
+            fatal("--excludefile and --exclude options are mutually "
+                "exclusive.");
           exclude_spec = strdup(optarg);
 
         } else if (!optcmp(long_options[option_index].name, "host-timeout")) {
           l = tval2msecs(optarg);
           if (l <= 1500)
             fatal("--host-timeout is specified in milliseconds unless you "
-                "qualify it by appending 's', 'm', or 'h'. The value must be greater "
-                "than 1500 milliseconds");
+                "qualify it by appending 's', 'm', or 'h'. The value must "
+                "be greater than 1500 milliseconds");
           o.host_timeout = l;
           if (l < 30000) 
-            error("host-timeout is given in milliseconds, so you specified less "
-                "than 30 seconds (%lims). This is allowed but not recommended.", l);
+            error("host-timeout is given in milliseconds, so you specified "
+                "less than 30 seconds (%lims). This is allowed but not "
+                "recommended.", l);
         } else if (!strcmp(long_options[option_index].name, "services")) {
           parse_services(optarg, services_cmd);
         } else if (!strcmp(long_options[option_index].name, "list")) {
           o.list_only++;
-        } else if (!optcmp(long_options[option_index].name, "connection-limit")) {
+        } else if (!optcmp(long_options[option_index].name,
+              "connection-limit")) {
           o.connection_limit = atoi(optarg);
-        } else if (!optcmp(long_options[option_index].name, "passwords-first")) {
+        } else if (!optcmp(long_options[option_index].name,
+              "passwords-first")) {
           o.passwords_first = true;
         } else if (!optcmp(long_options[option_index].name, "log-errors")) {
           o.log_errors = true;
@@ -543,13 +550,14 @@ int main(int argc, char **argv)
         } else if (*optarg == '5' || (strcasecmp(optarg, "Insane") == 0)) {
           o.timing_level = 5;
         } else {
-          fatal("Unknown timing mode (-T argument).  Use either \"Paranoid\", \"Sneaky\", "
-              "\"Polite\", \"Normal\", \"Aggressive\", \"Insane\" or a number from 0 "
-              " (Paranoid) to 5 (Insane)");
+          fatal("Unknown timing mode (-T argument). Use either \"Paranoid\", "
+              "\"Sneaky\", \"Polite\", \"Normal\", \"Aggressive\", "
+              "\"Insane\" or a number from 0 (Paranoid) to 5 (Insane)");
         }
         break;
       case 'V': 
-        log_write(LOG_STDOUT, "\n%s version %s ( %s )\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
+        log_write(LOG_STDOUT, "\n%s version %s ( %s )\n",
+            NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
         exit(EXIT_SUCCESS);
         break;
       case 'v':
@@ -586,7 +594,8 @@ int main(int argc, char **argv)
   tm = localtime(&now);
   if (strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M %Z", tm) <= 0)
     fatal("Unable to properly format time");
-  log_write(LOG_STDOUT, "\nStarting %s %s ( %s ) at %s\n", NCRACK_NAME, NCRACK_VERSION, NCRACK_URL, tbuf);
+  log_write(LOG_STDOUT, "\nStarting %s %s ( %s ) at %s\n",
+      NCRACK_NAME, NCRACK_VERSION, NCRACK_URL, tbuf);
 
   o.setaf(AF_INET);
 
@@ -613,8 +622,8 @@ int main(int argc, char **argv)
     /* preparse and separate host - service */
     spec = parse_services_target(host_spec);
 
-    // log_write(LOG_STDOUT, "%s://%s:%s?%s\n", spec.service_name, spec.host_expr, 
-    //    spec.portno, spec.service_options);
+    // log_write(LOG_STDOUT,"%s://%s:%s?%s\n",spec.service_name,
+    // spec.host_expr, spec.portno, spec.service_options);
 
     if (spec.service_name) {
       service = new Service();
@@ -666,14 +675,18 @@ int main(int argc, char **argv)
 
         service->target = currenths;
         /* check for duplicates */
-        for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
+        for (li = SG->services_all.begin(); li != SG->services_all.end();
+            li++) {
           if (!strcmp((*li)->target->NameIP(), currenths->NameIP()) &&
-              (!strcmp((*li)->name, service->name)) && ((*li)->portno == service->portno))
-            fatal("Duplicate service %s for target %s !", service->name, currenths->NameIP());
+              (!strcmp((*li)->name, service->name))
+              && ((*li)->portno == service->portno))
+            fatal("Duplicate service %s for target %s !",
+                service->name, currenths->NameIP());
         }
         /* 
          * Push service to both 'services_all' (every service resides there)
-         * and to 'services_active' list (every service starts with 1 connection)
+         * and to 'services_active' list (every service starts with
+         * 1 connection)
          */
         SG->services_all.push_back(service);
         SG->services_active.push_back(service);
@@ -689,10 +702,12 @@ int main(int argc, char **argv)
       log_write(LOG_PLAIN, "----- [ Timing Template ] -----\n");
       log_write(LOG_PLAIN, "cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n",
           timing.min_connection_limit, timing.max_connection_limit,
-          timing.auth_tries, timing.connection_delay, timing.connection_retries);
+          timing.auth_tries, timing.connection_delay,
+          timing.connection_retries);
       log_write(LOG_PLAIN, "\n----- [ ServicesTable ] -----\n");
       for (i = 0; i < ServicesTable.size(); i++) {
-        log_write(LOG_PLAIN, "%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld, ssl=%s, path=%s\n", 
+        log_write(LOG_PLAIN, "%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, "
+            "cr=%ld, ssl=%s, path=%s\n", 
             ServicesTable[i].lookup.name,
             ServicesTable[i].lookup.portno,
             ServicesTable[i].timing.min_connection_limit,
@@ -712,7 +727,8 @@ int main(int argc, char **argv)
       log_write(LOG_PLAIN, "\n");
       for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
         if ((*li)->target == Targets[i]) 
-          log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld, ssl=%s, path=%s\n", 
+          log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, "
+              "cr=%ld, ssl=%s, path=%s\n", 
               (*li)->name, (*li)->portno, (*li)->min_connection_limit,
               (*li)->max_connection_limit, (*li)->auth_tries, 
               (*li)->connection_delay, (*li)->connection_retries,
@@ -828,7 +844,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
    * Check if we had previously surpassed imposed connection limit so that
    * we remove service from 'services_full' list 
    */
-  if (serv->getListFull() && serv->active_connections < serv->ideal_parallelism)
+  if (serv->getListFull() 
+      && serv->active_connections < serv->ideal_parallelism)
     SG->popServiceFromList(serv, &SG->services_full);
 
   /* Initiate new connections if service gets active again */
@@ -958,7 +975,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       && !con->peer_might_close
       && con->login_attempts < serv->supported_attempts) {
     serv->total_attempts++;
-    // TODO: perhaps here we might want to differentiate between the two errors:
+    // TODO:perhaps here we might want to differentiate between the two errors:
     // timeout and premature close, giving a unique drop value to each
     if (serv->ideal_parallelism - 5 >= serv->min_connection_limit)
       serv->ideal_parallelism -= 5;
@@ -1018,7 +1035,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
    * Check if we had previously surpassed imposed connection limit so that
    * we remove service from 'services_full' list
    */
-  if (serv->getListFull() && serv->active_connections < serv->ideal_parallelism)
+  if (serv->getListFull() 
+      && serv->active_connections < serv->ideal_parallelism)
     SG->popServiceFromList(serv, &SG->services_full);
 
 
@@ -1293,7 +1311,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
    */
   gettimeofday(&now, NULL);
   for (li = SG->services_wait.begin(); li != SG->services_wait.end(); li++) {
-    if (timeval_msec_subtract(now, (*li)->last) >= (long long)(*li)->connection_delay) {
+    if (timeval_msec_subtract(now, (*li)->last) 
+        >= (long long)(*li)->connection_delay) {
       li = SG->popServiceFromList(*li, &SG->services_wait);
     }
   }
@@ -1321,7 +1340,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
      * milliseconds ago, then temporarily move service to 'services_wait' list
      */
     gettimeofday(&now, NULL);
-    if (timeval_msec_subtract(now, serv->last) < (long long)serv->connection_delay) {
+    if (timeval_msec_subtract(now, serv->last) 
+        < (long long)serv->connection_delay) {
       li = SG->pushServiceToList(serv, &SG->services_wait);
       goto next;
     }
@@ -1360,7 +1380,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
      * connection until our pair_pool has at least one element to grab another
      * pair from.
      */
-    if (serv->loginlist_fini && serv->isPoolEmpty() && !serv->isMirrorPoolEmpty()) {
+    if (serv->loginlist_fini && serv->isPoolEmpty()
+        && !serv->isMirrorPoolEmpty()) {
       li = SG->pushServiceToList(serv, &SG->services_pairfini);
       goto next;
     }
@@ -1465,7 +1486,8 @@ ncrack(ServiceGroup *SG)
     loopret = nsock_loop(nsp, nsock_timeout);
     if (loopret == NSOCK_LOOP_ERROR) {
       err = nsp_geterrorcode(nsp);
-      fatal("Unexpected nsock_loop error. Error code %d (%s)", err, strerror(err));
+      fatal("Unexpected nsock_loop error. Error code %d (%s)",
+          err, strerror(err));
     }
     ncrack_probes(nsp, SG);
 
