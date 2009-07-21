@@ -94,6 +94,9 @@
 #include "modules.h"
 #include <list>
 
+#define USER_AGENT "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)"
+#define HTTP_TIMEOUT 5000
+
 extern NcrackOps o;
 
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
@@ -101,12 +104,12 @@ extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
-enum states { HTTP_INIT, HTTP_FINI };
+enum states { HTTP_INIT, HTTP_GET_AUTH1, HTTP_GET_AUTH2, HTTP_FINI };
 
 void
 ncrack_http(nsock_pool nsp, Connection *con)
 {
-  char lbuf[BUFSIZE]; /* local buffer */
+  Buf *lbuf; /* local buffer */
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
 
@@ -114,7 +117,36 @@ ncrack_http(nsock_pool nsp, Connection *con)
   { 
     case HTTP_INIT:
 
+      con->state = HTTP_GET_AUTH1;
+
       printf("HTTP INIT\n");
+
+      lbuf = new Buf();
+      lbuf->append("GET ", sizeof("GET ")-1);
+      lbuf->append(serv->path, strlen(serv->path));
+      lbuf->append(" HTTP 1.1\r\nHost: ", sizeof(" HTTP 1.1\r\nHost: ")-1);
+      if (serv->target->targetname)
+        lbuf->append(serv->target->targetname, strlen(serv->target->targetname));
+      else 
+        lbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
+      lbuf->append("\r\nUser-Agent: ", sizeof("\r\nUser-Agent: ")-1);
+      lbuf->append(USER_AGENT, sizeof(USER_AGENT)-1);
+      lbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, HTTP_TIMEOUT, con,
+        (const char *)lbuf->get_dataptr(), lbuf->get_len());
+      delete lbuf;
+      break;
+
+    case HTTP_GET_AUTH1:
+
+      con->state = HTTP_GET_AUTH2;
+      nsock_read(nsp, nsi, ncrack_read_handler, HTTP_TIMEOUT, con);
+      break;
+
+    case HTTP_GET_AUTH2:
+
+      printf("GET AUTH2\n");
 
 
 

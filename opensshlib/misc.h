@@ -36,6 +36,14 @@ struct passwd *pwcopy(struct passwd *);
 
 
 /* Functions to extract or store big-endian words of various sizes */
+#if !defined(HAVE_ATTRIBUTE__BOUNDED__)
+u_int64_t	get_u64(const void *);
+u_int32_t	get_u32(const void *);
+u_int16_t	get_u16(const void *);
+void put_u64(void *, u_int64_t);
+void put_u32(void *, u_int32_t);
+void put_u16(void *, u_int16_t);
+#else 
 u_int64_t	get_u64(const void *)
     __attribute__((__bounded__( __minbytes__, 1, 8)));
 u_int32_t	get_u32(const void *)
@@ -48,7 +56,7 @@ void		put_u32(void *, u_int32_t)
     __attribute__((__bounded__( __minbytes__, 1, 4)));
 void		put_u16(void *, u_int16_t)
     __attribute__((__bounded__( __minbytes__, 1, 2)));
-
+#endif
 
 
 #ifdef __cplusplus

@@ -1,6 +1,6 @@
 
 /***************************************************************************
- * Buffer.h -- The Buffer class is reponsible for I/O buffer manipulation  *
+ * Buf.h -- The Buf class is reponsible for I/O buffer manipulation        *
  * and is based on the buffer code used in OpenSSH.                        *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
@@ -97,7 +97,7 @@
 #define	BUFFER_MAX_CHUNK	0x100000
 #define	BUFFER_MAX_LEN		0xa00000
 #define	BUFFER_ALLOCSZ		0x008000
-
+#define DEFAULT_BUF_SIZE  4096
 
 class Buf {
 

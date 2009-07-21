@@ -12,14 +12,16 @@ LDFLAGS = @LDFLAGS@ $(DBGFLAGS) $(STATIC)
 
 MOD_OBJS = @MODULES_OBJS@
 MOD_OBJS := $(addprefix mod/,$(MOD_OBJS))
+MOD_SRCS = @MODULES_SRCS@
+MOD_SRCS := $(addprefix mod/,$(MOD_SRCS))
 
 LIBS = @LIBNSOCK_LIBS@ @LIBNBASE_LIBS@ @OPENSSL_LIBS@ @OPENSSH_LIB@ 
 
 TARGET = ncrack
 
-export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc Connection.h services.cc timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buffer.cc 
+export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc Connection.h services.cc timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buf.cc 
 
-OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o ServiceGroup.o Connection.o services.o timing.o ncrack_error.o output.o ncrack_tty.o Buffer.o 
+OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o ServiceGroup.o Connection.o services.o timing.o ncrack_error.o output.o ncrack_tty.o Buf.o 
 
 .cc.o :
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
@@ -27,7 +29,7 @@ OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o S
 all: @NBASE_BUILD@ @NSOCK_BUILD@ @OPENSSHLIB_BUILD@ @MODULES_BUILD@
 	$(MAKE) $(TARGET)
 
-$(TARGET): $(NSOCKDIR)/src/libnsock.a $(NBASEDIR)/libnbase.a $(OBJS)
+$(TARGET): $(NSOCKDIR)/src/libnsock.a $(NBASEDIR)/libnbase.a $(OBJS) $(MOD_OBJS)
 	@echo Compiling Ncrack... 
 	rm -f $@
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(MOD_OBJS) $(LIBS)
@@ -53,7 +55,7 @@ opensshlib_build: $(OPENSSHLIB_DIR)/Makefile
 
 # cleaning stuff
 
-clean: nsock_clean nbase_clean opensshlib_clean my_clean
+clean: nsock_clean nbase_clean opensshlib_clean modules_clean my_clean 
 
 my_clean:
 	rm -f dependencies.mk makefile.dep
@@ -64,7 +66,8 @@ nsock_clean:
 	-cd $(NSOCKDIR)/src && $(MAKE) clean
 opensshlib_clean:
 	-cd $(OPENSSHLIB_DIR) && $(MAKE) clean
-
+modules_clean:
+	-cd mod && $(MAKE) clean
 
 Makefile: Makefile.in config.status
 	./config.status

@@ -154,7 +154,7 @@ ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
 void
 ncrack_ssh(nsock_pool nsp, Connection *con)
 {
-  char lbuf[BUFSIZE]; /* local buffer */
+  Buf *lbuf; /* local buffer */
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   //const char *hostinfo = serv->HostInfo();
@@ -200,11 +200,15 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       delete con->iobuf;
       con->iobuf = NULL;
 
-      strncpy(lbuf, CLIENT_VERSION, sizeof(lbuf) - 1); 
-      info->client_version_string = Strndup(lbuf, strlen(lbuf));
+      lbuf = new Buf();
+      lbuf->append(CLIENT_VERSION, sizeof(CLIENT_VERSION)-1);
+      info->client_version_string = Strndup((const char *)lbuf->get_dataptr(), lbuf->get_len());
       chop(info->client_version_string);
 
-      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, lbuf, -1);
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
+          (const char *)lbuf->get_dataptr(), lbuf->get_len());
+      delete lbuf;
+
       break;
 
     case SSH_KEY:
@@ -320,9 +324,12 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
        */
       if (openssh_userauth2_service_rep(info) < 0) {
         serv->end.orly = true;
-        Snprintf(lbuf, sizeof(lbuf),
+        lbuf = new Buf();
+        Snprintf((char *)lbuf->get_dataptr(), DEFAULT_BUF_SIZE,
             "Server denied authentication request: %d", info->type);
-        serv->end.reason = Strndup(lbuf, strlen(lbuf));
+        serv->end.reason = Strndup((const char *)lbuf->get_dataptr(),
+            (size_t)strlen((const char *)lbuf->get_dataptr()));
+        delete lbuf;
         return ncrack_module_end(nsp, con);
       }
 

@@ -1,6 +1,6 @@
 
 /***************************************************************************
- * Buffer.cc -- The Buffer class is reponsible for I/O buffer manipulation *
+ * Buf.cc -- The Buf class is reponsible for I/O buffer manipulation       *
  * and is based on the buffer code used in OpenSSH.                        *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
@@ -88,11 +88,11 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "Buffer.h"
+#include "Buf.h"
 
 Buf::Buf()
 {
-	const u_int len = 4096;
+	const u_int len = DEFAULT_BUF_SIZE;
 
 	alloc = 0;
 	buf = (u_char *)safe_malloc(len);

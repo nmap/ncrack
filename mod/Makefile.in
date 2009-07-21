@@ -13,3 +13,7 @@ all: $(OBJS)
 .cc.o :
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
+clean :
+	rm -f $(OBJS) 
+
+

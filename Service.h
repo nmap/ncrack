@@ -97,7 +97,7 @@
 #include "ncrack.h"
 #include "utils.h"
 #include "Target.h"
-#include "Buffer.h"
+#include "Buf.h"
 #include "timing.h"
 #include "Connection.h"
 #include <list>
