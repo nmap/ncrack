@@ -170,7 +170,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
       if (serv->path[0] != '/')
         lbuf->append("/", 1);
       lbuf->append(serv->path, strlen(serv->path));
-      lbuf->append(" HTTP 1.1\r\nHost: ", sizeof(" HTTP 1.1\r\nHost: ")-1);
+      lbuf->append(" HTTP/1.1\r\nHost: ", sizeof(" HTTP/1.1\r\nHost: ")-1);
       if (serv->target->targetname)
         lbuf->append(serv->target->targetname,
             strlen(serv->target->targetname));
@@ -178,7 +178,8 @@ ncrack_http(nsock_pool nsp, Connection *con)
         lbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
       lbuf->append("\r\nUser-Agent: ", sizeof("\r\nUser-Agent: ")-1);
       lbuf->append(USER_AGENT, sizeof(USER_AGENT)-1);
-      lbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+      lbuf->append("Connection: close\r\n", sizeof("Connection: close\r\n")-1);
+      lbuf->append("\r\n", sizeof("\r\n")-1);
 
       nsock_write(nsp, nsi, ncrack_write_handler, HTTP_TIMEOUT, con,
         (const char *)lbuf->get_dataptr(), lbuf->get_len());
@@ -345,9 +346,16 @@ http_basic(nsock_pool nsp, Connection *con)
 
       info->substate = BASIC_SEND;
       //memprint((const char *)con->iobuf->get_dataptr(),
-      //con->iobuf->get_len());
+      //  con->iobuf->get_len());
+
+      /* If we get a "200 OK" HTTP response OR a "301 Moved Permanently" which
+       * happpens when we request access to a directory without an ending '/'
+       * then it means our credentials were correct.
+       */
       if (memsearch((const char *)con->iobuf->get_dataptr(),
-            "200 OK", con->iobuf->get_len())) {
+            "200 OK", con->iobuf->get_len()) 
+          || memsearch((const char *)con->iobuf->get_dataptr(),
+            "301 Moved Permanently", con->iobuf->get_len())) {
         con->auth_success = true;
       }
       delete con->iobuf;
