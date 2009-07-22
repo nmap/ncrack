@@ -1,10 +1,26 @@
 TODO:
 
 * Write http module (start with basic and then move to form auth).
+  * Fix the false positives/false negative issues we've been seeing
+    when scanning over the Internet.
+
+* Search for good username and password lists, or find ways to
+  generate them (e.g. web scraping for email addresses or account
+  names or whatever).  Usernames seems like a relatively easy problem,
+  while password lists are more difficult to come by.
+
+* Documentation: write the man page (in Docbook XML, at least for the
+  final version)
 
 * Add ssl support (through nsock).
 
 * Make Ncrack packaging - a source tarball for *nix and a Windows installer.
+
+* Test more thoroughly the windows version of ncrack.
+
+* Implement Service timeout, where the user imposes a certain timeout
+  after which the service is marked as finished regardless of the progress
+  so far.
 
 * Solve the ssh username/password special iteration challenge as mentioned here:
   http://seclists.org/nmap-dev/2009/q3/0119.html
@@ -14,6 +30,9 @@ TODO:
   user during Ncrack setup if he wants to update the system's imposed limit - if
   he doesn't want to accept the change, then he will possibly suffer a performance degradation.
 
+* Complete output engine. The main thing left is support for XML output using
+  the option -oX.
+
 * Await reply from Microsoft for Windows Firewall RFC deviation:
   http://seclists.org/nmap-dev/2009/q2/0774.html
   http://seclists.org/nmap-dev/2009/q2/0780.html
@@ -22,9 +41,11 @@ TODO:
   must have tested it under XP SP2 whereas the behaviour seems to be occuring
   only in SP3. I have mentioned that in a comment but they probably won't see
   that again, so perhaps I might have to resubmit the issue.
-  
-* Test more thoroughly the windows version of ncrack.
 
+* Add --resume support
+
+* Add IPv6 support
+  
 * Handle the case where ftp tells us that it accepts anonymous login only so
   that we don't waste time cracking it.
 
@@ -40,13 +61,6 @@ TODO:
   ncrack_connection_end calls ncrack_probes again won't let that happen
   So for many errors of 1 connection perhaps just toss service into a special list so
   that we can move on for the time being.
-
-* Implement Service timeout, where the user imposes a certain timeout
-  after which the service is marked as finished regardless of the progress
-  so far.
-
-* Complete output engine. The main thing left is support for XML output using
-  the option -oX.
 
 * Complete dynamic timing engine.
 
