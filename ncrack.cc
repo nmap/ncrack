@@ -895,7 +895,9 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
      * We need to check if host is alive only on first timing
      * probe. Thereafter we can use the 'supported_attempts'.
      */
-    if (serv->just_started || serv->more_rounds) {
+    if (serv->just_started && serv->more_rounds) {
+      ncrack_connection_end(nsp, con);
+    } else if (serv->just_started) {
       con->check_closed = true;
       nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
     } else if (con->login_attempts < (unsigned long)serv->auth_tries &&

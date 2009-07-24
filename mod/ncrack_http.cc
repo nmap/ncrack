@@ -118,7 +118,7 @@ extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 static void http_basic(nsock_pool nsp, Connection *con);
-enum states { HTTP_INIT, HTTP_GET_AUTH1, HTTP_GET_AUTH2, HTTP_BASIC_AUTH,
+enum states { HTTP_INIT, HTTP_GET_AUTH, HTTP_BASIC_AUTH,
   HTTP_FINI };
 
 /* Basic Authentication substates */
@@ -136,6 +136,7 @@ typedef struct http_state {
   int keep_alive;
 } http_state;
 
+static inline int http_loop_read(nsock_pool nsp, Connection *con);
 
 void
 ncrack_http(nsock_pool nsp, Connection *con)
@@ -163,7 +164,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
   { 
     case HTTP_INIT:
 
-      con->state = HTTP_GET_AUTH1;
+      con->state = HTTP_GET_AUTH;
 
       lbuf = new Buf();
       lbuf->append("GET ", sizeof("GET ")-1);
@@ -186,13 +187,10 @@ ncrack_http(nsock_pool nsp, Connection *con)
       delete lbuf;
       break;
 
-    case HTTP_GET_AUTH1:
+    case HTTP_GET_AUTH:
 
-      con->state = HTTP_GET_AUTH2;
-      nsock_read(nsp, nsi, ncrack_read_handler, HTTP_TIMEOUT, con);
-      break;
-
-    case HTTP_GET_AUTH2:
+      if (http_loop_read(nsp, con) < 0)
+        break;
 
       //memprint((const char *)con->iobuf->get_dataptr(),
       //con->iobuf->get_len());
@@ -255,7 +253,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
         delete con->iobuf;
         con->iobuf = NULL;
-        return ncrack_module_end(nsp, con);
+        return ncrack_connection_end(nsp, con);
 
       } else {
         fatal("Current authentication can't be handled!\n");
@@ -273,12 +271,31 @@ ncrack_http(nsock_pool nsp, Connection *con)
 }
 
 
+static inline int
+http_loop_read(nsock_pool nsp, Connection *con)
+{
+
+  if (con->iobuf == NULL) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, HTTP_TIMEOUT, con);
+    return -1;
+  }
+
+  if (!memsearch((const char *)con->iobuf->get_dataptr(), "\r\n\r\n",
+        con->iobuf->get_len())) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, HTTP_TIMEOUT, con);
+    return -1;
+  }
+
+  return 0;
+}
+
+
 
 static void
 http_basic(nsock_pool nsp, Connection *con)
 {
   Buf *auxbuf;
-  unsigned char *tmp;
+  char *tmp;
   char *b64;
   size_t tmplen;
   Service *serv = con->service;
@@ -319,11 +336,15 @@ http_basic(nsock_pool nsp, Connection *con)
       auxbuf->append("Authorization: Basic ",
           sizeof("Authorization: Basic ") - 1);
 
-      tmplen = strlen(con->user) + strlen(con->pass) + 2;
-      tmp = (unsigned char *)safe_malloc(tmplen);
-      Snprintf((char *)tmp, tmplen, "%s:%s", con->user, con->pass);
-      b64 = b64enc(tmp, tmplen);
-      //printf("%s \n", b64);
+      tmplen = strlen(con->user) + strlen(con->pass) + 1;
+      tmp = (char *)safe_malloc(tmplen + 1);
+      sprintf(tmp, "%s:%s", con->user, con->pass);
+
+      b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen) + 1);
+      base64_encode(tmp, tmplen, b64);
+
+      //b64 = b64enc(tmp, tmplen - 1);
+      printf("%s %s %s \n", con->user, con->pass, b64);
       auxbuf->append(b64, strlen(b64));
       free(b64);
       free(tmp);
@@ -332,30 +353,26 @@ http_basic(nsock_pool nsp, Connection *con)
       nsock_write(nsp, nsi, ncrack_write_handler, HTTP_TIMEOUT, con,
         (const char *)auxbuf->get_dataptr(), auxbuf->get_len());
       
-      info->substate = BASIC_RECV;
+      info->substate = BASIC_RESULTS;
       delete auxbuf;
       break;
 
-    case BASIC_RECV:
-
-      info->substate = BASIC_RESULTS;
-      nsock_read(nsp, nsi, ncrack_read_handler, HTTP_TIMEOUT, con);
-      break;
-
     case BASIC_RESULTS:
+      if (http_loop_read(nsp, con) < 0)
+        break;
 
       info->substate = BASIC_SEND;
       //memprint((const char *)con->iobuf->get_dataptr(),
       //  con->iobuf->get_len());
 
       /* If we get a "200 OK" HTTP response OR a "301 Moved Permanently" which
-       * happpens when we request access to a directory without an ending '/'
+       * happpens when we request access to a directory without an ending '/',
        * then it means our credentials were correct.
        */
       if (memsearch((const char *)con->iobuf->get_dataptr(),
-            "200 OK", con->iobuf->get_len()) 
-          || memsearch((const char *)con->iobuf->get_dataptr(),
-            "301 Moved Permanently", con->iobuf->get_len())) {
+            "200 OK", con->iobuf->get_len())) {
+        //  || memsearch((const char *)con->iobuf->get_dataptr(),
+        //    "301 Moved Permanently", con->iobuf->get_len())) {
         con->auth_success = true;
       }
       delete con->iobuf;
