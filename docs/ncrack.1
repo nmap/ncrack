@@ -1,0 +1,159 @@
+'\" t
+.\"     Title: ncrack
+.\"    Author: [see the "Authors" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
+.\"      Date: 07/25/2009
+.\"    Manual: Ncrack Reference Guide
+.\"    Source: Ncrack
+.\"  Language: English
+.\"
+.TH "NCRACK" "1" "07/25/2009" "Ncrack" "Ncrack Reference Guide"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ncrack \- Network authentication cracking tool
+.SH "SYNOPSIS"
+.HP \w'\fBncrack\fR\ 'u
+\fBncrack\fR [\fIOptions\fR] {\fItarget\ specification\fR}
+.SH "DESCRIPTION"
+.\" Ncrack: description of
+.PP
+Ncrack is an open source tool for network authentication cracking\&. It was designed for high\-speed parallel cracking using a dynamic engine that can adapt to different network situations\&. Ncrack can also be extensively fine\-tuned for special cases, though the default parameters are generic enough to cover almost every situation\&. It is built on a modular architecture that allows for easy extension to support additional protocols\&. While Ncrack\'s main purpose is to audit the security of large networks for default, weak passwords in a rapid, yet reliable way, it can also be used to conduct some fairly sophisticated bruteforcing attacks\&.
+.PP
+The output from Ncrack is a list of found credentials, if any, for each of the targets specified\&. Ncrack can also print an interactive status report of progress so far and possibly additional debugging information that can help track problems, if the user selected that option\&.
+.PP
+A typical Ncrack scan is shown in
+Example\ \&1\&. The only Ncrack arguments used in this example are the two target IP addresses along with the the corresponding ports for each of them\&. The two example ports 21 and 22 are automatically resolved to the default services listening on them: ftp and ssh\&.
+.PP
+\fBExample\ \&1.\ \&A representative Ncrack scan\fR
+.\" -v: example of
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+
+$ ncrack 10\&.0\&.0\&.130:21 192\&.168\&.1\&.2:22
+
+Starting Ncrack 0\&.01ALPHA ( http://ncrack\&.org ) at 2009\-07\-24 23:05 EEST
+
+Discovered credentials for ftp on 10\&.0\&.0\&.130 21/tcp:
+10\&.0\&.0\&.130 21/tcp ftp: admin hello1
+Discovered credentials for ssh on 192\&.168\&.1\&.2 22/tcp:
+192\&.168\&.1\&.2 22/tcp ssh: guest 12345
+192\&.168\&.1\&.2 22/tcp ssh: admin money$
+
+Ncrack done: 2 services scanned in 156\&.03 seconds\&.
+
+Ncrack finished\&.
+
+    
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+The latest version of Ncrack can be obtained from
+\m[blue]\fB\%http://ncrack.org\fR\m[]\&. The latest version of this man page is available at http://ncrack\&.org/boman\&.html \&.
+.SH "OPTIONS SUMMARY"
+.PP
+This options summary is printed when Ncrack is run with no arguments\&. It helps people remember the most common options, but is no substitute for the in\-depth documentation in the rest of this manual\&.
+.\" summary of options
+.\" command-line options: of Ncrack
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+Ncrack 0\&.01ALPHA ( http://ncrack\&.org )
+Usage: ncrack [Options] {target specification}
+TARGET SPECIFICATION:                         
+  Can pass hostnames, IP addresses, networks, etc\&.
+  Ex: scanme\&.nmap\&.org, microsoft\&.com/24, 192\&.168\&.0\&.1; 10\&.0\&.0\-255\&.1\-254
+  \-iL <inputfilename>: Input from list of hosts/networks              
+  \-\-exclude <host1[,host2][,host3],\&.\&.\&.>: Exclude hosts/networks
+  \-\-excludefile <exclude_file>: Exclude list from file
+SERVICE SPECIFICATION:
+  Can pass target specific services in <service>://target (standard) notation or
+  using \-p which will be applied to all hosts in non\-standard notation\&.
+  Service arguments can be specified to be host\-specific, type of service\-specific
+  (\-m) or global (\-g)\&. Ex: ssh://10\&.0\&.0\&.10,at=10,cl=30 \-m ssh:at=50 \-g cd=3000
+  Ex2: ncrack \-p ssh,ftp:3500,25 10\&.0\&.0\&.10 scanme\&.nmap\&.org google\&.com:80,ssl
+  \-p <service\-list>: services will be applied to all non\-standard notation hosts
+  \-m <service>:<options>: options will be applied to all services of this type
+  \-g <options>: options will be applied to every service globally
+  Misc options:
+    ssl: enable SSL over this service
+    path: path\-name used in modules like HTTP (\'=\' needs escaping if used)
+TIMING AND PERFORMANCE:
+  Options which take <time> are in milliseconds, unless you append \'s\'
+  (seconds), \'m\' (minutes), or \'h\' (hours) to the value (e\&.g\&. 30m)\&.
+  Service\-specific options:
+    cl (min connection limit): minimum number of concurrent parallel connections
+    CL (max connection limit): maximum number of concurrent parallel connections
+    at (authentication tries): authentication attempts per connection
+    cd (connection delay): delay between each connection initiation (in milliseconds)
+    cr (connection retries): caps number of service connection attempts
+  \-T<0\-5>: Set timing template (higher is faster)
+  \-\-connection\-limit <number>: threshold for total concurrent connections
+AUTHENTICATION:
+  \-U <filename>: username file
+  \-P <filename>: password file
+  \-\-passwords\-first: Iterate password list for each username\&. Default is opposite\&.
+OUTPUT:
+  \-oN/\-oX <file>: Output scan in normal and XML format,
+  respectively, to the given filename\&.
+  \-oA <basename>: Output in the three major formats at once
+  \-v: Increase verbosity level (use twice or more for greater effect)
+  \-d[level]: Set or increase debugging level (Up to 10 is meaningful)
+  \-\-log\-errors: Log errors/warnings to the normal\-format output file
+  \-\-append\-output: Append to rather than clobber specified output files
+MISC:
+  \-sL or \-\-list: only list hosts and services
+  \-V: Print version number
+  \-h: Print this help summary page\&.
+
+.fi
+.if n \{\
+.RE
+.\}
+.\" 
+.\" 
+.SH "AUTHORS"
+.PP
+ithilgore
+ithilgore\&.ryu\&.l@gmail\&.com
+(\m[blue]\fB\%http://sock-raw.org\fR\m[])
+.PP
+Fyodor
+fyodor@insecure\&.org
+(\m[blue]\fB\%http://insecure.org\fR\m[])
+.SH "BUGS"
+.\" bugs, reporting
+.PP
+Like its authors, Ncrack isn\'t perfect\&. But you can help make it better by sending bug reports or even writing patches\&. If Ncrack doesn\'t behave the way you expect, first upgrade to the latest version available from
+\m[blue]\fB\%http://ncrack.org\fR\m[]\&. If the problem persists, do some research to determine whether it has already been discovered and addressed\&. Try searching for the error message on our search page at
+\m[blue]\fB\%http://insecure.org/search.html\fR\m[]
+or at Google\&. Also try browsing the
+nmap\-dev
+archives at
+\m[blue]\fB\%http://seclists.org/\fR\m[]\&.
+.\" nmap-dev mailing list
+Read this full manual page as well\&. If nothing comes of this, mail a bug report to
+nmap\-dev@insecure\&.org\&. Please include everything you have learned about the problem, as well as what version of Nmap you are running and what operating system version it is running on\&. Problem reports and Ncrack usage questions sent to
+nmap\-dev@insecure\&.org
+are far more likely to be answered than those sent to Fyodor directly\&. If you subscribe to the nmap\-dev list before posting, your message will bypass moderation and get through more quickly\&. Subscribe at
+\m[blue]\fB\%http://cgi.insecure.org/mailman/listinfo/nmap-dev\fR\m[]\&.
+.PP
+Code patches to fix bugs are even better than bug reports\&. Basic instructions for creating patch files with your changes are available at
+\m[blue]\fB\%http://nmap.org/data/HACKING\fR\m[]\&. Patches may be sent to
+nmap\-dev
+(recommended) or to Fyodor directly\&.

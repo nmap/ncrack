@@ -1,0 +1,48 @@
+Ncrack 0.01ALPHA ( http://ncrack.org )
+Usage: ncrack [Options] {target specification}
+TARGET SPECIFICATION:                         
+  Can pass hostnames, IP addresses, networks, etc.
+  Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254
+  -iL <inputfilename>: Input from list of hosts/networks              
+  --exclude <host1[,host2][,host3],...>: Exclude hosts/networks
+  --excludefile <exclude_file>: Exclude list from file
+SERVICE SPECIFICATION:
+  Can pass target specific services in <service>://target (standard) notation or
+  using -p which will be applied to all hosts in non-standard notation.
+  Service arguments can be specified to be host-specific, type of service-specific
+  (-m) or global (-g). Ex: ssh://10.0.0.10,at=10,cl=30 -m ssh:at=50 -g cd=3000
+  Ex2: ncrack -p ssh,ftp:3500,25 10.0.0.10 scanme.nmap.org google.com:80,ssl
+  -p <service-list>: services will be applied to all non-standard notation hosts
+  -m <service>:<options>: options will be applied to all services of this type
+  -g <options>: options will be applied to every service globally
+  Misc options:
+    ssl: enable SSL over this service
+    path: path-name used in modules like HTTP ('=' needs escaping if used)
+TIMING AND PERFORMANCE:
+  Options which take <time> are in milliseconds, unless you append 's'
+  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).
+  Service-specific options:
+    cl (min connection limit): minimum number of concurrent parallel connections
+    CL (max connection limit): maximum number of concurrent parallel connections
+    at (authentication tries): authentication attempts per connection
+    cd (connection delay): delay between each connection initiation (in milliseconds)
+    cr (connection retries): caps number of service connection attempts
+  -T<0-5>: Set timing template (higher is faster)
+  --connection-limit <number>: threshold for total concurrent connections
+AUTHENTICATION:
+  -U <filename>: username file
+  -P <filename>: password file
+  --passwords-first: Iterate password list for each username. Default is opposite.
+OUTPUT:
+  -oN/-oX <file>: Output scan in normal and XML format,
+  respectively, to the given filename.
+  -oA <basename>: Output in the three major formats at once
+  -v: Increase verbosity level (use twice or more for greater effect)
+  -d[level]: Set or increase debugging level (Up to 10 is meaningful)
+  --log-errors: Log errors/warnings to the normal-format output file
+  --append-output: Append to rather than clobber specified output files
+MISC:
+  -sL or --list: only list hosts and services
+  -V: Print version number
+  -h: Print this help summary page.
+

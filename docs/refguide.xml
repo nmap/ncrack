@@ -1,0 +1,171 @@
+<indexterm><primary>man page</primary><see>reference guide</see></indexterm>
+<indexterm class="startofrange" id="man-ncrack1-indexterm">
+  <primary>reference guide (man page)</primary>
+</indexterm>
+<refentry id='man-ncrack1'>
+  <refmeta>
+    <refentrytitle>ncrack</refentrytitle>
+    <manvolnum>1</manvolnum>
+    <refmiscinfo class="source">Ncrack</refmiscinfo>
+    <refmiscinfo class="manual">Ncrack Reference Guide</refmiscinfo>
+  </refmeta>
+  <refnamediv id='man-name'>
+    <refname>ncrack</refname>
+    <refpurpose>Network authentication cracking tool</refpurpose>
+  </refnamediv>
+  <!-- body begins here -->
+  <refsynopsisdiv id="man-synopsis">
+    <cmdsynopsis sepchar=" ">
+      <command moreinfo="none">ncrack</command>
+      <arg choice="opt" rep="norepeat">
+        <replaceable>Options</replaceable>
+      </arg>
+      <arg choice="req" rep="norepeat">
+        <replaceable>target specification</replaceable>
+      </arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+  <refsect1 id="man-description">
+    <title>Description</title>
+    <indexterm significance="normal"><primary>Ncrack</primary><secondary>
+        description of</secondary>
+    </indexterm>
+    <web>
+    <note>
+    <para>
+    This document describes the very latest version of
+    Ncrack available from <ulink url="http://ncrack.org/download.html"/> Please
+    ensure you are using the latest version before reporting that a
+    feature doesn't work as described.
+    </para>
+    </note>
+    </web>
+    <para>
+      Ncrack is an open source tool for network authentication cracking. 
+      It was designed for high-speed parallel cracking using a dynamic engine
+      that can adapt to different network situations. Ncrack can also be
+      extensively fine-tuned for special cases, though the default parameters
+      are generic enough to cover almost every situation. It is built on a
+      modular architecture that allows for easy extension to support additional
+      protocols. While Ncrack's main purpose is to audit the security of large
+      networks for default, weak passwords in a rapid, yet reliable way, it can
+      also be used to conduct some fairly sophisticated bruteforcing attacks.
+    </para>
+
+    <para>
+      The output from Ncrack is a list of found credentials, if any, for each
+      of the targets specified. Ncrack can also print an interactive status
+      report of progress so far and possibly additional debugging information
+      that can help track problems, if the user selected that option.
+    </para>
+
+    <para>
+      A typical Ncrack scan is shown in
+      <xref linkend="man-ex-repscan" xrefstyle="select: label nopage" />. 
+      The only Ncrack arguments used in this example are the two target IP
+      addresses along with the the corresponding ports for each of them. The
+      two example ports 21 and 22 are automatically resolved to the default
+      services listening on them: ftp and ssh.
+    </para>
+
+    <example id="man-ex-repscan"><title>A representative Ncrack scan</title>
+      <indexterm><primary><option>-v</option></primary><secondary>example of
+      </secondary></indexterm>
+    <screen>
+
+$ ncrack 10.0.0.130:21 192.168.1.2:22
+
+Starting Ncrack 0.01ALPHA ( http://ncrack.org ) at 2009-07-24 23:05 EEST
+
+Discovered credentials for ftp on 10.0.0.130 21/tcp:
+10.0.0.130 21/tcp ftp: admin hello1
+Discovered credentials for ssh on 192.168.1.2 22/tcp:
+192.168.1.2 22/tcp ssh: guest 12345
+192.168.1.2 22/tcp ssh: admin money$
+
+Ncrack done: 2 services scanned in 156.03 seconds.
+
+Ncrack finished.
+
+    </screen>
+    </example>
+
+  </refsect1>
+
+  <para>
+    The latest version of Ncrack can be obtained from
+    <ulink url="http://ncrack.org" />. The latest version of this man page is
+    available at http://ncrack.org/boman.html .
+  </para>
+  
+  <refsect1 id='man-briefoptions'>
+    <title>Options Summary</title>
+
+    <para>
+      This options summary is printed when Ncrack is run with no arguments.
+      It helps people remember the most common options, but is no substitute
+      for the in-depth documentation in the rest of this manual.
+    </para>
+     <indexterm class="startofrange" id="ncrack-usage-indexterm">
+       <primary sortas="#">summary of options</primary>
+     </indexterm>
+     <indexterm class="startofrange" id="ncrack-usage-ncrack-indexterm">
+       <primary>command-line options</primary>
+       <secondary>of Ncrack</secondary>
+     </indexterm>
+      &ncrack-usage;
+      <indexterm class="endofrange" startref="ncrack-usage-ncrack-indexterm"/>
+      <indexterm class="endofrange" startref="ncrack-usage-indexterm"/>
+  </refsect1>
+
+  <refsect1 id="man-author">
+    <title>Authors</title>
+    <para>ithilgore <email>ithilgore.ryu.l@gmail.com</email>
+      (<ulink url="http://sock-raw.org" />)</para>
+    <para>Fyodor <email>fyodor@insecure.org</email>
+      (<ulink url="http://insecure.org" />)</para>
+  </refsect1>
+
+
+  <refsect1 id='man-bugs'>
+   <title>Bugs</title>
+   <indexterm><primary>bugs, reporting</primary></indexterm>
+
+  <para>
+    Like its authors, Ncrack isn't perfect. But you can help make
+    it better by sending bug reports or even writing patches. If Ncrack
+    doesn't behave the way you expect, first upgrade to the latest
+    version available from <ulink url="http://ncrack.org"/>. If the
+    problem persists, do some research to determine whether it has already
+    been discovered and addressed. Try searching for the error message on our
+    search page at <ulink url="http://insecure.org/search.html"/> or at
+    Google. Also try browsing the <citetitle>nmap-dev</citetitle> archives
+    at <ulink url="http://seclists.org/" />.
+    <indexterm><primary><citetitle>nmap-dev</citetitle> mailing list
+    </primary></indexterm>
+    Read this full manual page as well. If nothing comes of this, mail a
+    bug report to <email>nmap-dev@insecure.org</email>. Please include
+    everything you have learned about the problem, as well as what version of
+    Nmap you are running and what operating system version it is running on.
+    Problem reports and Ncrack usage questions sent to
+    <email>nmap-dev@insecure.org</email> are far more likely to be answered
+    than those sent to Fyodor directly.  If you subscribe to the nmap-dev
+    list before posting, your message will bypass moderation and get through
+    more quickly. Subscribe at 
+    <ulink url="http://cgi.insecure.org/mailman/listinfo/nmap-dev"/>.
+  </para>
+
+  <para>
+    Code patches to fix bugs are even better than bug reports.
+    Basic instructions for creating patch files with your changes are
+    available at <ulink url="http://nmap.org/data/HACKING" />. Patches may
+    be sent to <citetitle>nmap-dev</citetitle> (recommended) or to Fyodor
+    directly.
+  </para>
+
+  </refsect1>
+
+</refentry>
+
+<indexterm class="endofrange" startref="man-ncrack-indexterm"
+  significance="normal"/>
