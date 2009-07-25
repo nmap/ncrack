@@ -1,6 +1,6 @@
 TODO:
 
-* Write http module (start with basic and then move to form auth).
+* Write form auth http module.
   * Fix the false positives/false negative issues we've been seeing
     when scanning over the Internet.
 
@@ -18,17 +18,14 @@ TODO:
 
 * Test more thoroughly the windows version of ncrack.
 
-* Implement Service timeout, where the user imposes a certain timeout
-  after which the service is marked as finished regardless of the progress
-  so far.
-
 * Solve the ssh username/password special iteration challenge as mentioned here:
   http://seclists.org/nmap-dev/2009/q3/0119.html
 
 * We may also need to increase the maximum number of half-open connections in
   Windows: see http://half-open.com/home_en.htm - We could do this by asking the
   user during Ncrack setup if he wants to update the system's imposed limit - if
-  he doesn't want to accept the change, then he will possibly suffer a performance degradation.
+  he doesn't want to accept the change, then he will possibly suffer a
+  performance degradation.
 
 * Complete output engine. The main thing left is support for XML output using
   the option -oX.
@@ -49,25 +46,26 @@ TODO:
 * Handle the case where ftp tells us that it accepts anonymous login only so
   that we don't waste time cracking it.
 
-* Test buffering cases for all modules, when for example we need to search for certain
-  patterns but the pattern is split in 2 separate packets due to a small window.
+* Test buffering cases for all modules, when for example we need to search for
+  certain patterns but the pattern is split in 2 separate packets due to a
+  small window.
   ---> SSH already does that by using the ssh_loop_read function and I have
   already added the Buf class (derived from buffer.c of OpenSSH) that can be
   used to append the replies from each protocol. Now I only need to adapt the
   FTP and TELNET modules to use that instead of the con->buf thing.
 
-* If a connection times out continuously for 1 service and the rest of the services
-  need to poll for new events through nsock_loop, the fact that
+* If a connection times out continuously for 1 service and the rest of the
+  services need to poll for new events through nsock_loop, the fact that
   ncrack_connection_end calls ncrack_probes again won't let that happen
-  So for many errors of 1 connection perhaps just toss service into a special list so
-  that we can move on for the time being.
+  So for many errors of 1 connection perhaps just toss service into a special
+  list so that we can move on for the time being.
 
 * Complete dynamic timing engine.
 
 * Possibly adapt Nmap license headers to Ncrack specifically.
 
-* For future reference on modules like http: consider saving state information like
-  the http parsing that needs to be done only 1 time per host inside the
+* For future reference on modules like http: consider saving state information
+  like the http parsing that needs to be done only 1 time per host inside the
   service, so that future connections can refer to that instead of having to
   redo that work. That will probably add to the speed.
 
@@ -86,14 +84,19 @@ TODO:
 
 ============================== DONE ==========================================
 
+* Implement Service timeout, where the user imposes a certain timeout
+  after which the service is marked as finished regardless of the progress
+  so far.
+
 * Refine interactive Status Report to print an estimate of the time left.
 
 * Change Ncrack's build system so that whenever ssl isn't found on the system,
-  the ssh module isn't included/compiled, since it requires (the underlying opensshlib
-  actually does) it in order to work.
+  the ssh module isn't included/compiled, since it requires (the underlying
+  opensshlib actually does) it in order to work.
 
 * Add output info when Ncrack finishes, the way Nmap does it.
-  Also -v should print additional info like how many connections were initiated etc
+  Also -v should print additional info like how many connections were
+  initiated etc 
   Example from Nmap:
     (verbose)
     Nmap done: 1 IP address (1 host up) scanned in 0.26 seconds
@@ -113,7 +116,8 @@ TODO:
 
 * Appended Nmap license headers to each ncrack file.
 
-* Handle case when connection limit is more than the total passwords/usernames in list
+* Handle case when connection limit is more than the total passwords/usernames
+  in list
 
 * Implement on-the-fly 'Status Report' within interactive Ncrack output.
 

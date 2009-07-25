@@ -104,13 +104,6 @@
 using namespace std;
 
 
-struct host_timeout_nfo {
-  unsigned long msecs_used; /* How many msecs has this Target used? */
-  bool toclock_running; /* Is the clock running right now? */
-  struct timeval toclock_start; /* When did the clock start? */
-  time_t host_start, host_end; /* The absolute start and end for this host */
-};
-
 class Target {
   public: /* For now ... a lot of the data members should be made private */
     Target();
@@ -159,29 +152,13 @@ class Target {
     /* You can set to NULL to erase a name.  The targetname is blown
        away when you setTargetSockAddr(), so make sure you do these in proper
        order
-       */
+     */
     void setTargetName(const char *name);
 
-    /* Starts the timeout clock for the host running (e.g. you are
-       beginning a scan).  If you do not have the current time handy,
-       you can pass in NULL.  When done, call stopTimeOutClock (it will
-       also automatically be stopped of timedOut() returns true) */
-    void startTimeOutClock(const struct timeval *now);
-    /* The complement to startTimeOutClock. */
-    void stopTimeOutClock(const struct timeval *now);
-    /* Is the timeout clock currently running? */
-    bool timeOutClockRunning() { return htn.toclock_running; }
-    /* Returns whether the host is timedout.  If the timeoutclock is
-       running, counts elapsed time for that.  Pass NULL if you don't have the
-       current time handy.  You might as well also pass NULL if the
-       clock is not running, as the func won't need the time. */
-    bool timedOut(const struct timeval *now);
-    /* Return time_t for the start and end time of this host */
-    time_t StartTime() { return htn.host_start; }
-    time_t EndTime() { return htn.host_end; }
-
     char *hostname; // Null if unable to resolve or unset
-    char *targetname; // The name of the target host given on the commmand line if it is a named host
+    /* The name of the target host given on the commmand line if it is a
+     * named host */
+    char *targetname;
 
   private:
     void Initialize();
@@ -192,7 +169,7 @@ class Target {
     size_t targetsocklen;
     char targetipstring[INET6_ADDRSTRLEN];
     char *nameIPBuf; /* for the NameIP(void) function to return */
-    struct host_timeout_nfo htn;
+
 };
 
 #endif /* TARGET_H */

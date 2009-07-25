@@ -150,6 +150,13 @@ class Connection
 		int bufsize;        /* total buffer size in bytes */
 		unsigned long login_attempts; /* login attempts up until now */
 		nsock_iod niod;     /* I/O descriptor for this connection */
+
+    /* This stores our SSL session id, which will help speed up subsequent
+     * SSL connections.  It's overwritten each time.  void* is used so we don't
+     * need to #ifdef HAVE_OPENSSL all over.  We'll cast later as needed.
+     */
+     void *ssl_session;    
+
 		Service *service;   /* service it belongs to */
 };
 

@@ -130,6 +130,7 @@ Service()
   auth_tries = -1;
   connection_delay = -1;
   connection_retries = -1;
+  timeout = -1;
   path = Strndup("/", 2); /* path is '/' by default */
   ssl = false;
 
@@ -139,6 +140,9 @@ Service()
   PassArray = NULL;
   hostinfo = NULL;
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
+
+  htn.toclock_running = false;
+  htn.host_start = htn.host_end = 0;
 }
 
 /* copy constructor */
@@ -154,6 +158,7 @@ Service(const Service& ref)
   auth_tries = ref.auth_tries;
   connection_delay = ref.connection_delay;
   connection_retries = ref.connection_retries;
+  timeout = ref.timeout;
   ssl = ref.ssl;
   if (path)
     free(path);
@@ -413,3 +418,54 @@ getPercDone(void)
 
   return ret;
 }
+
+
+/* Starts the timeout clock for the host running (e.g. you are
+   beginning a scan).  If you do not have the current time handy,
+   you can pass in NULL.  When done, call stopTimeOutClock (it will
+   also automatically be stopped of timedOut() returns true) */
+void Service::
+startTimeOutClock(const struct timeval *now) {
+  assert(htn.toclock_running == false);
+  htn.toclock_running = true;
+  if (now) htn.toclock_start = *now;
+  else gettimeofday(&htn.toclock_start, NULL);
+  if (!htn.host_start) htn.host_start = htn.toclock_start.tv_sec;
+}
+
+
+/* The complement to startTimeOutClock. */
+void Service::
+stopTimeOutClock(const struct timeval *now) {
+  struct timeval tv;
+  assert(htn.toclock_running == true);
+  htn.toclock_running = false;
+  if (now) tv = *now;
+  else gettimeofday(&tv, NULL);
+  htn.msecs_used += timeval_msec_subtract(tv, htn.toclock_start);
+  htn.host_end = tv.tv_sec;
+}
+
+/* Returns whether the host is timedout.  If the timeoutclock is
+   running, counts elapsed time for that.  Pass NULL if you don't have the
+   current time handy.  You might as well also pass NULL if the
+   clock is not running, as the func won't need the time. */
+bool Service::
+timedOut(const struct timeval *now) {
+  unsigned long used = htn.msecs_used;
+  struct timeval tv;
+
+  if (!timeout)
+    return false;
+  if (htn.toclock_running) {
+    if (now)
+      tv = *now;
+    else
+      gettimeofday(&tv, NULL);
+    used += TIMEVAL_MSEC_SUBTRACT(tv, htn.toclock_start);
+  }
+
+  return (used > (unsigned long)timeout)? true : false;
+}
+
+

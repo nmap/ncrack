@@ -139,7 +139,7 @@ class ServiceGroup {
     /* All Services. This includes all active and inactive services.
      * This list is useful for iterating through all services in one
      * global place instead of searching for each one of them in
-     * separate lists. This list is *never* touched except after creation.
+     * separate lists. This list is *never* touched except at creation.
      */
     list<Service *> services_all;
 

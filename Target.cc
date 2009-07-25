@@ -111,8 +111,6 @@ void Target::Initialize() {
   targetsocklen = 0;
   targetipstring[0] = '\0';
   nameIPBuf = NULL;
-  htn.toclock_running = false;
-  htn.host_start = htn.host_end = 0;
 }
 
 
@@ -229,7 +227,8 @@ void Target::setHostName(char *name) {
       // I think only a-z A-Z 0-9 . and - are allowed, but I'll be a little more
       // generous.
       if (!isalnum(*p) && !strchr(".-+=:_~*", *p)) {
-        //log_write(LOG_STDOUT, "Illegal character(s) in hostname -- replacing with '*'\n");
+        //log_write(LOG_STDOUT, "Illegal character(s) in hostname -- "
+        //"replacing with '*'\n");
         *p = '*';
       }
       p++;
@@ -267,51 +266,4 @@ const char *Target::NameIP() {
     nameIPBuf = (char *) safe_malloc(MAXHOSTNAMELEN + INET6_ADDRSTRLEN);
   return NameIP(nameIPBuf, MAXHOSTNAMELEN + INET6_ADDRSTRLEN);
 }
-
-
-/* Starts the timeout clock for the host running (e.g. you are
-   beginning a scan).  If you do not have the current time handy,
-   you can pass in NULL.  When done, call stopTimeOutClock (it will
-   also automatically be stopped of timedOut() returns true) */
-void Target::startTimeOutClock(const struct timeval *now) {
-  assert(htn.toclock_running == false);
-  htn.toclock_running = true;
-  if (now) htn.toclock_start = *now;
-  else gettimeofday(&htn.toclock_start, NULL);
-  if (!htn.host_start) htn.host_start = htn.toclock_start.tv_sec;
-}
-
-
-/* The complement to startTimeOutClock. */
-void Target::stopTimeOutClock(const struct timeval *now) {
-  struct timeval tv;
-  assert(htn.toclock_running == true);
-  htn.toclock_running = false;
-  if (now) tv = *now;
-  else gettimeofday(&tv, NULL);
-  htn.msecs_used += timeval_msec_subtract(tv, htn.toclock_start);
-  htn.host_end = tv.tv_sec;
-}
-
-/* Returns whether the host is timedout.  If the timeoutclock is
-   running, counts elapsed time for that.  Pass NULL if you don't have the
-   current time handy.  You might as well also pass NULL if the
-   clock is not running, as the func won't need the time. */
-bool Target::timedOut(const struct timeval *now) {
-  unsigned long used = htn.msecs_used;
-  struct timeval tv;
-
-  if (!o.host_timeout)
-    return false;
-  if (htn.toclock_running) {
-    if (now)
-      tv = *now;
-    else
-      gettimeofday(&tv, NULL);
-    used += timeval_msec_subtract(tv, htn.toclock_start);
-  }
-
-  return (used > o.host_timeout)? true : false;
-}
-
 

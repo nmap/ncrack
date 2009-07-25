@@ -90,6 +90,10 @@
  ***************************************************************************/
 
 #include "Service.h"
+
+#if HAVE_OPENSSL
+  #include <openssl/ssl.h>
+#endif
  
 /* A connection must *always* belong to one specific Service */
 Connection::
@@ -107,6 +111,7 @@ Connection(Service *serv)
   buf = NULL;
   misc_info = NULL;
   iobuf = NULL;
+  ssl_session = NULL;
 }
 
 Connection::
@@ -121,4 +126,10 @@ Connection::
     misc_info = NULL;
   }
   delete iobuf;
+
+#if HAVE_OPENSSL
+  if (ssl_session)
+    SSL_SESSION_free((SSL_SESSION*)ssl_session);
+  ssl_session = NULL;
+#endif
 }

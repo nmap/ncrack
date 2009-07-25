@@ -111,11 +111,15 @@
 #endif
 
 #define DEFAULT_CONNECT_TIMEOUT 5000
+/* includes connect() + ssl negotiation */
+#define DEFAULT_CONNECT_SSL_TIMEOUT 8000  
 #define DEFAULT_USERNAME_FILE "./username.lst"
 #define DEFAULT_PASSWORD_FILE "./password.lst"
 
 /* (in milliseconds) every such interval we poll for interactive user input */
 #define KEYPRESSED_INTERVAL 500 
+
+#define SERVICE_TIMEDOUT "Service timed-out as specified by user option."
 
 extern NcrackOps o;
 using namespace std;
@@ -145,7 +149,7 @@ enum mode { USER, PASS };
 static void print_usage(void);
 static void lookup_init(const char *const filename);
 static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
-
+static void startTimeOutClocks(ServiceGroup *SG);
 
 static void
 print_usage(void)
@@ -189,10 +193,12 @@ print_usage(void)
       "    CL (max connection limit): maximum number of concurrent parallel "
            "connections\n"
       "    at (authentication tries): authentication attempts per connection\n"
-      "    cd (connection delay): delay between each connection initiation "
-           "(in milliseconds)\n"
+      "    cd (connection delay): delay <time> between each connection "
+           "initiation\n"
       "    cr (connection retries): caps number of service connection "
            "attempts\n"
+      "    to (time-out): maximum cracking <time> for service, regardless "
+           "of success so far\n"
       "  -T<0-5>: Set timing template (higher is faster)\n"
       "  --connection-limit <number>: threshold for total concurrent "
         "connections\n"
@@ -203,9 +209,9 @@ print_usage(void)
       "  --passwords-first: Iterate password list for each username. "
         "Default is opposite.\n"
       "OUTPUT:\n"
-      "  -oN/-oX <file>: Output scan in normal and XML format,\n"
-      "  respectively, to the given filename.\n"
-      "  -oA <basename>: Output in the three major formats at once\n"
+      "  -oN/-oX <file>: Output scan in normal and XML format, respectively, "
+         "to the given filename.\n"
+      "  -oA <basename>: Output in the two major formats at once\n"
       "  -v: Increase verbosity level (use twice or more for greater effect)\n"
       "  -d[level]: Set or increase debugging level (Up to 10 is meaningful)\n"
       "  --log-errors: Log errors/warnings to the normal-format output file\n"
@@ -236,6 +242,7 @@ lookup_init(const char *const filename)
   temp.timing.auth_tries = -1;
   temp.timing.connection_delay = -1;
   temp.timing.connection_retries = -1;
+  temp.timing.timeout = -1;
 
   fp = fopen(filename, "r");
   if (!fp) 
@@ -718,14 +725,14 @@ int main(int argc, char **argv)
   if (o.list_only) {
     if (o.debugging > 3) {
       log_write(LOG_PLAIN, "----- [ Timing Template ] -----\n");
-      log_write(LOG_PLAIN, "cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld\n",
+      log_write(LOG_PLAIN, "cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld, to=%ld\n",
           timing.min_connection_limit, timing.max_connection_limit,
           timing.auth_tries, timing.connection_delay,
-          timing.connection_retries);
+          timing.connection_retries, timing.timeout);
       log_write(LOG_PLAIN, "\n----- [ ServicesTable ] -----\n");
       for (i = 0; i < ServicesTable.size(); i++) {
         log_write(LOG_PLAIN, "%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, "
-            "cr=%ld, ssl=%s, path=%s\n", 
+            "cr=%ld, to=%ld, ssl=%s, path=%s\n", 
             ServicesTable[i].lookup.name,
             ServicesTable[i].lookup.portno,
             ServicesTable[i].timing.min_connection_limit,
@@ -733,6 +740,7 @@ int main(int argc, char **argv)
             ServicesTable[i].timing.auth_tries,
             ServicesTable[i].timing.connection_delay,
             ServicesTable[i].timing.connection_retries,
+            ServicesTable[i].timing.timeout,
             ServicesTable[i].misc.ssl ? "yes" : "no",
             ServicesTable[i].misc.path ? ServicesTable[i].misc.path : "null");
       }
@@ -746,11 +754,11 @@ int main(int argc, char **argv)
       for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
         if ((*li)->target == Targets[i]) 
           log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, "
-              "cr=%ld, ssl=%s, path=%s\n", 
+              "cr=%ld, to=%ld, ssl=%s, path=%s\n", 
               (*li)->name, (*li)->portno, (*li)->min_connection_limit,
               (*li)->max_connection_limit, (*li)->auth_tries, 
               (*li)->connection_delay, (*li)->connection_retries,
-              (*li)->ssl ? "yes" : "no", (*li)->path);
+              (*li)->timeout, (*li)->ssl ? "yes" : "no", (*li)->path);
       }
     }
   } else {
@@ -781,6 +789,21 @@ int main(int argc, char **argv)
 
   log_write(LOG_STDOUT, "\nNcrack finished.\n");
   exit(EXIT_SUCCESS);
+}
+
+
+/* Start the timeout clocks of any targets that aren't already timedout */
+static void
+startTimeOutClocks(ServiceGroup *SG)
+{
+  struct timeval tv;
+  list<Service *>::iterator li;
+  
+  gettimeofday(&tv, NULL);
+  for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
+    if (!(*li)->timedOut(NULL))
+      (*li)->startTimeOutClock(&tv);
+  }
 }
 
 
@@ -883,7 +906,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
    * pair only and make no additional check.
    */
   if (con->peer_alive) {
-    if (con->login_attempts < (unsigned long)serv->auth_tries
+    if ((!serv->auth_tries
+         || con->login_attempts < (unsigned long)serv->auth_tries)
         && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
       if (pair_ret == 1)
         con->from_pool = true;
@@ -900,9 +924,10 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     } else if (serv->just_started) {
       con->check_closed = true;
       nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
-    } else if (con->login_attempts < (unsigned long)serv->auth_tries &&
-        con->login_attempts < serv->supported_attempts &&
-        (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
+    } else if ((!serv->auth_tries
+          || con->login_attempts < (unsigned long)serv->auth_tries)
+        && con->login_attempts < serv->supported_attempts
+        && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
       if (pair_ret == 1)
         con->from_pool = true;
 
@@ -1106,7 +1131,12 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   assert(type == NSE_TYPE_READ);
 
-  if (status == NSE_STATUS_SUCCESS) {
+  if (serv->timedOut(nsock_gettimeofday())) {
+    serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
+    SG->pushServiceToList(serv, &SG->services_finished);
+    return ncrack_connection_end(nsp, con);
+
+  } else if (status == NSE_STATUS_SUCCESS) {
 
     str = nse_readbuf(nse, &nbytes);
 
@@ -1138,7 +1168,8 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
        *    this service
        * 2. we still have enough login pairs from the pool
        */
-      if (con->login_attempts < (unsigned long)serv->auth_tries
+      if ((!serv->auth_tries 
+            || con->login_attempts < (unsigned long)serv->auth_tries)
           && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
         if (pair_ret == 1)
           con->from_pool = true;
@@ -1181,11 +1212,17 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
   Connection *con = (Connection *) mydata;
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
   int err;
 
-  if (status == NSE_STATUS_SUCCESS)
+  if (serv->timedOut(nsock_gettimeofday())) {
+    serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
+    SG->pushServiceToList(serv, &SG->services_finished);
+    return ncrack_connection_end(nsp, con);
+  
+  } else if (status == NSE_STATUS_SUCCESS)
     call_module(nsp, con);
   else if (status == NSE_STATUS_ERROR) {
     err = nse_errorcode(nse);
@@ -1238,9 +1275,12 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
 
-  // if (svc->target->timedOut(nsock_gettimeofday())) {
-  //end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, nsi);
-  if (status == NSE_STATUS_SUCCESS) {
+  if (serv->timedOut(nsock_gettimeofday())) {
+    serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
+    SG->pushServiceToList(serv, &SG->services_finished);
+    return ncrack_connection_end(nsp, con);
+
+  } else if (status == NSE_STATUS_SUCCESS) {
 
 #if HAVE_OPENSSL
     // TODO: handle ossl
@@ -1323,8 +1363,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
   char *login, *pass;
   const char *hostinfo;
 
-
-
   /* First check for every service if connection_delay time has already
    * passed since its last connection and move them back to 'services_active'
    * list if it has.
@@ -1350,10 +1388,11 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     serv = *li;
     hostinfo = serv->HostInfo();
 
-    //if (serv->target->timedOut(nsock_gettimeofday())) {
-    // end_svcprobe(nsp, PROBESTATE_INCOMPLETE, SG, svc, NULL);  TODO: HANDLE
-    //  goto next;
-    // }
+    if (serv->timedOut(nsock_gettimeofday())) {
+      serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
+      SG->pushServiceToList(serv, &SG->services_finished);
+      goto next;
+    }
 
     /*
      * If the service's last connection was earlier than 'connection_delay'
@@ -1431,12 +1470,19 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     SG->active_connections++;
 
     serv->target->TargetSockAddr(&ss, &ss_len);
-    if (serv->proto == IPPROTO_TCP)
-      nsock_connect_tcp(nsp, con->niod, ncrack_connect_handler, 
-          DEFAULT_CONNECT_TIMEOUT, con,
-          (struct sockaddr *)&ss, ss_len,
-          serv->portno);
-    else {
+    if (serv->proto == IPPROTO_TCP) {
+      if (!serv->ssl) {
+        nsock_connect_tcp(nsp, con->niod, ncrack_connect_handler, 
+            DEFAULT_CONNECT_TIMEOUT, con,
+            (struct sockaddr *)&ss, ss_len,
+            serv->portno);
+      } else {
+        nsock_connect_ssl(nsp, con->niod, ncrack_connect_handler, 
+            DEFAULT_CONNECT_SSL_TIMEOUT, con, 
+            (struct sockaddr *) &ss, ss_len,
+            serv->portno, con->ssl_session);
+      }
+    } else {
       assert(serv->proto == IPPROTO_UDP);
       nsock_connect_udp(nsp, con->niod, ncrack_connect_handler, 
           serv, (struct sockaddr *) &ss, ss_len,
@@ -1483,6 +1529,9 @@ ncrack(ServiceGroup *SG)
    */
   if (SG->min_connection_delay != 0)
     nsock_timeout = SG->min_connection_delay;
+
+  /* Initiate time-out clocks */
+  startTimeOutClocks(SG);
 
   /* initiate all authentication rate meters */
   SG->auth_rate_meter.start();

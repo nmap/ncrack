@@ -119,7 +119,7 @@ Ncrack finished.
    </refsect1>
 
 
-   <refsect1 id="man-target-specification">
+  <refsect1 id="man-target-specification">
     <title>Target Specification</title>
     <indexterm significance="normal"><primary>target specification</primary>
     </indexterm>

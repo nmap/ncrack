@@ -100,10 +100,14 @@ extern vector <global_service> ServicesTable;
 extern NcrackOps o;
 using namespace std;
 
-static int check_duplicate_services(vector <service_lookup *> services, service_lookup *serv);
-static void check_service_option(global_service *temp, char *argname, char *argval);
-static int parse_service_argument(char *const arg, char **argname, char **argval);
-static int check_duplicate_services(vector <service_lookup *> services, service_lookup *serv);
+static int check_duplicate_services(vector <service_lookup *> services,
+    service_lookup *serv);
+static void check_service_option(global_service *temp, char *argname,
+    char *argval);
+static int parse_service_argument(char *const arg, char **argname,
+    char **argval);
+static int check_duplicate_services(vector <service_lookup *> services,
+    service_lookup *serv);
 static global_service parse_services_options(char *const exp);
 static int check_supported_services(service_lookup *serv);
 static char *port2name(char *portno);
@@ -138,7 +142,8 @@ parse_services_target(char *const exp)
       port_len = h - p - 1;
       temp.portno = Strndup(++p, port_len);
     } else if (s == exp)  /* neither port nor service name! */
-        fatal("You must specify either a service name or a port (or both): %s", exp);
+        fatal("You must specify either a service name or a port (or both): %s",
+            exp);
 
     if (p) { /* port has been specified */
       host_len = h - s - port_len - 1;
@@ -148,7 +153,8 @@ parse_services_target(char *const exp)
         temp.service_name = port2name(temp.portno);
       }
     } else {
-      /* port not specified, but to reach here means that sevice-name had been specified */
+      /* port not specified, but to reach here means that sevice-name had
+       * been specified */
       host_len = h - s;
     }
 
@@ -269,6 +275,8 @@ parse_module_options(char *const exp)
     vi->timing.connection_delay = temp.timing.connection_delay;
   if (temp.timing.connection_retries)
     vi->timing.connection_retries = temp.timing.connection_retries;
+  if (temp.timing.timeout)
+    vi->timing.timeout = temp.timing.timeout;
   if (temp.misc.path) {
     vi->misc.path = Strndup(temp.misc.path, strlen(temp.misc.path)+1);
     free(temp.misc.path);
@@ -304,6 +312,8 @@ apply_host_options(Service *service, char *const options)
     service->connection_delay = temp.timing.connection_delay;
   if (temp.timing.connection_retries != -1)
     service->connection_retries = temp.timing.connection_retries;
+  if (temp.timing.timeout != -1)
+    service->timeout = temp.timing.timeout;
   if (temp.misc.path) {
     if (service->path)
       free(service->path);
@@ -340,6 +350,8 @@ apply_service_options(Service *service)
     service->connection_delay = vi->timing.connection_delay;
   if (vi->timing.connection_retries != -1)
     service->connection_retries = vi->timing.connection_retries;
+  if (vi->timing.timeout != -1)
+    service->timeout = vi->timing.timeout;
   if (vi->misc.path) {
     if (service->path)
       free(service->path);
@@ -375,14 +387,16 @@ clean_spec(ts_spec *spec)
 void
 prepare_timing_template(timing_options *timing)
 { 
-  //TODO: select optimal values
   if (!timing)
     fatal("%s invalid pointer!", __func__);
+
+  /* Default timeout is 0 - which means no timeout */
+  timing->timeout = 0;
 
   if (o.timing_level == 0) { /* Paranoid */
     timing->min_connection_limit = 1;
     timing->max_connection_limit = 1;
-    timing->auth_tries = 3;
+    timing->auth_tries = 1;
     timing->connection_delay = 10000; /* 10 secs */
     timing->connection_retries = 1;
     if (o.connection_limit == -1)
@@ -390,7 +404,7 @@ prepare_timing_template(timing_options *timing)
   } else if (o.timing_level == 1) { /* Sneaky */
     timing->min_connection_limit = 1;
     timing->max_connection_limit = 2;
-    timing->auth_tries = 3;
+    timing->auth_tries = 2;
     timing->connection_delay = 7500; 
     timing->connection_retries = 1;
     if (o.connection_limit == -1)
@@ -406,7 +420,7 @@ prepare_timing_template(timing_options *timing)
   } else if (o.timing_level == 4) { /* Aggressive */
     timing->min_connection_limit = 10;
     timing->max_connection_limit = 150;
-    timing->auth_tries = 10;
+    timing->auth_tries = 0;
     timing->connection_delay = 0;
     timing->connection_retries = 15;
     if (o.connection_limit == -1)
@@ -414,7 +428,7 @@ prepare_timing_template(timing_options *timing)
   } else if (o.timing_level == 5) { /* Insane */
     timing->min_connection_limit = 15;
     timing->max_connection_limit = 1000;
-    timing->auth_tries = 10;
+    timing->auth_tries = 0;
     timing->connection_delay = 0;
     timing->connection_retries = 20;
     if (o.connection_limit == -1)
@@ -422,7 +436,7 @@ prepare_timing_template(timing_options *timing)
   } else { /* Normal */
     timing->min_connection_limit = 7;
     timing->max_connection_limit = 80;
-    timing->auth_tries = 6;
+    timing->auth_tries = 0;
     timing->connection_delay = 0;
     timing->connection_retries = 10;
     if (o.connection_limit == -1)
@@ -439,8 +453,8 @@ apply_timing_template(Service *service, timing_options *timing)
   service->auth_tries = timing->auth_tries;
   service->connection_delay = timing->connection_delay;
   service->connection_retries = timing->connection_retries;
+  service->timeout = timing->timeout;
 }
-
 
 
 
@@ -452,7 +466,8 @@ apply_timing_template(Service *service, timing_options *timing)
  * Checks for duplicate services by looking at port number.
  */
 static int
-check_duplicate_services(vector <service_lookup *> services, service_lookup *serv)
+check_duplicate_services(vector <service_lookup *> services,
+    service_lookup *serv)
 {
   vector <service_lookup *>::iterator vi;
 
@@ -558,8 +573,10 @@ check_service_option(global_service *temp, char *argname, char *argval)
   if (!strcmp("cl", argname)) {
     long limit = Strtoul(argval);
     if (limit < 0)
-      fatal("Minimum connection limit (cl) '%ld' cannot be a negative number!", limit);
-    if (temp->timing.max_connection_limit != -1 && temp->timing.max_connection_limit < limit)
+      fatal("Minimum connection limit (cl) '%ld' cannot be a negative number!",
+          limit);
+    if (temp->timing.max_connection_limit != -1
+        && temp->timing.max_connection_limit < limit)
       fatal("Minimum connection limit (cl) '%ld' cannot be larger than "
         "maximum connection limit (CL) '%ld'!", 
         limit, temp->timing.max_connection_limit);
@@ -567,8 +584,10 @@ check_service_option(global_service *temp, char *argname, char *argval)
   } else if (!strcmp("CL", argname)) {
     long limit = Strtoul(argval);
     if (limit < 0)
-      fatal("Maximum connection limit (CL) '%ld' cannot be a negative number!", limit);
-    if (temp->timing.min_connection_limit != -1 && temp->timing.min_connection_limit > limit)
+      fatal("Maximum connection limit (CL) '%ld' cannot be a negative number!",
+          limit);
+    if (temp->timing.min_connection_limit != -1 
+        && temp->timing.min_connection_limit > limit)
       fatal("Maximum connection limit (CL) '%ld' cannot be smaller than "
           "minimum connection limit (cl) '%ld'!",
           limit, temp->timing.min_connection_limit);
@@ -576,15 +595,22 @@ check_service_option(global_service *temp, char *argname, char *argval)
   } else if (!strcmp("at", argname)) {
     long tries = Strtoul(argval);
     if (tries < 0)
-      fatal("Authentication tries (at) '%ld' cannot be a negative number!", tries);
+      fatal("Authentication tries (at) '%ld' cannot be a negative number!",
+          tries);
     temp->timing.auth_tries = tries;
   } else if (!strcmp("cd", argname)) {
-    temp->timing.connection_delay = tval2msecs(argval);
+    if ((temp->timing.connection_delay = tval2msecs(argval)) < 0)
+      fatal("Connection delay (cd) '%s' cannot be parsed correctly!",
+          argval);
   } else if (!strcmp("cr", argname)) {
     long retries = Strtoul(argval);
     if (retries < 0)
-      fatal("Connection retries (cr) '%ld' cannot be a negative number!", retries);
+      fatal("Connection retries (cr) '%ld' cannot be a negative number!",
+          retries);
     temp->timing.connection_retries = retries;
+  } else if (!strcmp("to", argname)) {
+    if ((temp->timing.timeout = tval2msecs(argval)) < 0)
+      fatal("Timeout (to) '%s' cannot be parsed correctly!", argval);
   /* Miscalleneous options */
   } else if (!strcmp("path", argname)) {
     temp->misc.path = Strndup(argval, strlen(argval));
@@ -608,6 +634,7 @@ parse_services_options(char *const exp)
   temp.timing.auth_tries = -1;
   temp.timing.connection_delay = -1;
   temp.timing.connection_retries = -1;
+  temp.timing.timeout = -1;
 
   arg = argval = argname = NULL;
 

@@ -122,6 +122,13 @@ struct end_reason
 };
 
 
+struct host_timeout_nfo {
+  unsigned long msecs_used; /* How many msecs has this Target used? */
+  bool toclock_running; /* Is the clock running right now? */
+  struct timeval toclock_start; /* When did the clock start? */
+  time_t host_start, host_end; /* The absolute start and end for this host */
+};
+
 
 class Service
 {
@@ -229,7 +236,9 @@ class Service
     /* number of milliseconds to wait between each connection */
 		long connection_delay; 
     /* number of connection retries after connection failure */
-		long connection_retries;  
+		long connection_retries;
+    /* maximum cracking time regardless of success so far */
+    long timeout;
 
 		/* misc options */
 		bool ssl;   /* true -> SSL enabled over this service */
@@ -243,7 +252,34 @@ class Service
       struct timeval time;
     } last_auth_rate;
 
-		list <Connection *> connections;
+    list <Connection *> connections;
+
+    /*
+     * Starts the timeout clock for the host running (e.g. you are
+     * beginning a scan). If you do not have the current time handy,
+     * you can pass in NULL. When done, call stopTimeOutClock (it will
+     * also automatically be stopped if timedOut() returns true)
+     */
+    void startTimeOutClock(const struct timeval *now);
+
+    /* The complement to startTimeOutClock. */
+    void stopTimeOutClock(const struct timeval *now);
+
+    /* Is the timeout clock currently running? */
+    bool timeOutClockRunning() { return htn.toclock_running; }
+
+    /* 
+     * Returns whether the host is timedout. If the timeoutclock is
+     * running, counts elapsed time for that. Pass NULL if you don't have the
+     * current time handy. You might as well also pass NULL if the
+     * clock is not running, as the func won't need the time.
+     */
+    bool timedOut(const struct timeval *now);
+
+    /* Return time_t for the start and end time of this host */
+    time_t StartTime() { return htn.host_start; }
+
+    time_t EndTime() { return htn.host_end; }
 
   private:
 
@@ -279,6 +315,8 @@ class Service
     bool list_full;     /* service appended to 'services_full' list */
     bool list_finishing;/* service appended to 'services_finishing' list */
     bool list_finished; /* service is now on 'services_finished' list */
+
+    struct host_timeout_nfo htn;
 
 };
 
