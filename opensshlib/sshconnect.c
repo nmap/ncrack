@@ -16,48 +16,46 @@
 #include "includes.h"
 
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
 #ifdef HAVE_SYS_TIME_H
 # include <sys/time.h>
 #endif
 
+#ifndef WIN32
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pwd.h>
+#include <unistd.h>
+#endif
 
 #include <ctype.h>
 #include <errno.h>
-#include <netdb.h>
 #ifdef HAVE_PATHS_H
 #include <paths.h>
 #endif
-#include <pwd.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+
 
 #include "xmalloc.h"
 #include "key.h"
-#include "hostfile.h"
 #include "ssh.h"
 #include "rsa.h"
 #include "buffer.h"
 #include "packet.h"
-#include "uidswap.h"
 #include "compat.h"
 #include "key.h"
 #include "sshconnect.h"
-#include "hostfile.h"
 #include "log.h"
 #include "misc.h"
-#include "version.h"
 
 char *client_version_string = NULL;
 char *server_version_string = NULL;
 
+
+#if 0
 /* import */
 extern Options options;
 
@@ -135,3 +133,4 @@ ssh_exchange_identification()
 	debug("Local version string %.100s", client_version_string);
 }
 
+#endif

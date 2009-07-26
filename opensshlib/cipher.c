@@ -181,6 +181,7 @@ ciphers_valid(const char *names)
  * cipher, or -1 on error.
  */
 
+#if 0
 int
 cipher_number(const char *name)
 {
@@ -192,6 +193,7 @@ cipher_number(const char *name)
 			return c->number;
 	return -1;
 }
+#endif
 
 char *
 cipher_name(int id)

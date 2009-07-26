@@ -26,7 +26,9 @@
 
 #include "includes.h"
 
-#include <sys/param.h>
+#ifndef WIN32
+ #include <sys/param.h>
+#endif
 
 #include <signal.h>
 #include <stdarg.h>
@@ -180,8 +182,12 @@ kex_send_kexinit(ncrack_ssh_state *nstate)
 		fatal("kex_send_kexinit: kex proposal too short");
 	cookie = buffer_ptr(&nstate->kex->my);
 	for (i = 0; i < KEX_COOKIE_LEN; i++) {
-		if (i % 4 == 0)
+		if (i % 4 == 0) 
+#ifndef WIN32
 			rnd = random();
+#else
+			rnd = rand();
+#endif
 		cookie[i] = rnd;
 		rnd >>= 8;
 	}

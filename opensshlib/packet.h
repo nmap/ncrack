@@ -18,7 +18,7 @@
 
 #include "opensshlib.h"
 
-#include <termios.h>
+//#include <termios.h>
 #include "buffer.h"
 #include "cipher.h"
 #include "key.h"

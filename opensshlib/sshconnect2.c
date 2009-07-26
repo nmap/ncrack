@@ -27,18 +27,18 @@
 #include "includes.h"
 
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
 
 #include <errno.h>
-#include <netdb.h>
-#include <pwd.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifndef WIN32
 #include <unistd.h>
+#include <pwd.h>
+#endif
 
 
 #include "ssh.h"

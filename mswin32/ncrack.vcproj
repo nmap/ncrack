@@ -23,8 +23,7 @@
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="2"
-			>	
-
+			>
 			<Tool
 				Name="VCPreBuildEventTool"
 			/>
@@ -39,23 +38,23 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\Debug/nmap.tlb"
+				TypeLibraryName=".\Debug\nmap.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories=".;..;../nbase;..\nsock\include;OpenSSL\include;"
+				AdditionalIncludeDirectories=".;..;..\nbase;..\nsock\include;..\opensshlib;..\mod;OpenSSL\include;"
 				PreprocessorDefinitions="WIN32;_CONSOLE"
 				GeneratePreprocessedFile="0"
 				KeepComments="false"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\Debug/ncrack.pch"
-				AssemblerListingLocation=".\Debug/"
-				ObjectFile=".\Debug/"
-				ProgramDataBaseFileName=".\Debug/"
+				PrecompiledHeaderFile=".\Debug\ncrack.pch"
+				AssemblerListingLocation=".\Debug\"
+				ObjectFile=".\Debug\"
+				ProgramDataBaseFileName=".\Debug\"
 				WarningLevel="2"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -72,14 +71,14 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="nsock.lib nbase.lib ws2_32.lib advapi32.lib libeay32.lib ssleay32.lib $(NOINHERIT)"
+				AdditionalDependencies="nsock.lib nbase.lib openssh.lib ws2_32.lib advapi32.lib libeay32.lib ssleay32.lib $(NOINHERIT)"
 				OutputFile=".\Debug\ncrack.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="lib;..\nsock;..\nbase;OpenSSL\lib;"
+				AdditionalLibraryDirectories="lib;..\nsock;..\nbase;..\opensshlib;OpenSSL\lib;"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Debug/ncrack.pdb"
+				ProgramDatabaseFile=".\Debug\ncrack.pdb"
 				SubSystem="1"
 				OptimizeForWindows98="0"
 				RandomizedBaseAddress="1"
@@ -90,6 +89,9 @@
 				Name="VCALinkTool"
 			/>
 			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
 				Name="VCXDCMakeTool"
 			/>
 			<Tool
@@ -97,13 +99,15 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>	
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
 			<Tool
 				Name="VCPostBuildEventTool"
 				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\*.lst&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
 			/>
 		</Configuration>
-		
 		<Configuration
 			Name="Release|Win32"
 			OutputDirectory=".\$(ConfigurationName)"
@@ -113,8 +117,7 @@
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="2"
-			>	
-
+			>
 			<Tool
 				Name="VCPreBuildEventTool"
 			/>
@@ -136,7 +139,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories=".;..;..\nbase;..\nsock\include;OpenSSL\include;"
+				AdditionalIncludeDirectories=".;..;..\nbase;..\nsock\include;..\opensshlib;..\mod;OpenSSL\include;"
 				PreprocessorDefinitions="WIN32;_CONSOLE"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -159,7 +162,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="nsock.lib nbase.lib ws2_32.lib advapi32.lib libeay32.lib ssleay32.lib $(NOINHERIT)"
+				AdditionalDependencies="nsock.lib nbase.lib openssh.lib ws2_32.lib advapi32.lib libeay32.lib ssleay32.lib $(NOINHERIT)"
 				OutputFile=".\Release\ncrack.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
@@ -177,6 +180,9 @@
 				Name="VCALinkTool"
 			/>
 			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
 				Name="VCXDCMakeTool"
 			/>
 			<Tool
@@ -184,16 +190,16 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>	
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
 			<Tool
 				Name="VCPostBuildEventTool"
 				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\*.lst&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
 			/>
 		</Configuration>
-		
 	</Configurations>
-	
-
 	<References>
 	</References>
 	<Files>
@@ -203,7 +209,11 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath="..\ftp_module.cc"
+				RelativePath="..\Buf.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\Connection.cc"
 				>
 			</File>
 			<File
@@ -211,7 +221,35 @@
 				>
 			</File>
 			<File
+				RelativePath="..\ncrack_error.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\mod\ncrack_ftp.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\mod\ncrack_http.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\mod\ncrack_ssh.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\mod\ncrack_telnet.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\ncrack_tty.cc"
+				>
+			</File>
+			<File
 				RelativePath="..\NcrackOps.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\output.cc"
 				>
 			</File>
 			<File
@@ -236,10 +274,6 @@
 			</File>
 			<File
 				RelativePath="..\targets.cc"
-				>
-			</File>
-			<File
-				RelativePath="..\telnet_module.cc"
 				>
 			</File>
 			<File
@@ -281,11 +315,19 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
+				RelativePath="..\Buf.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Connection.h"
+				>
+			</File>
+			<File
 				RelativePath="..\global_structures.h"
 				>
 			</File>
 			<File
-				RelativePath="..\modules.h"
+				RelativePath="..\mod\modules.h"
 				>
 			</File>
 			<File
@@ -293,7 +335,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\ncrack_error.h"
+				>
+			</File>
+			<File
+				RelativePath="..\ncrack_tty.h"
+				>
+			</File>
+			<File
 				RelativePath="..\NcrackOps.h"
+				>
+			</File>
+			<File
+				RelativePath="..\output.h"
 				>
 			</File>
 			<File
@@ -338,7 +392,7 @@
 				<File
 					RelativePath=".\winfix.h"
 					>
-				</File>			
+				</File>
 			</Filter>
 		</Filter>
 		<Filter

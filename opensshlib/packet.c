@@ -41,22 +41,24 @@
 #include "includes.h"
  
 #include <sys/types.h>
-#include <sys/param.h>
-#include <sys/socket.h>
-#ifdef HAVE_SYS_TIME_H
-# include <sys/time.h>
-#endif
 
+#ifndef WIN32
+#include <sys/param.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
+#include <unistd.h>
+#endif
+
+#ifdef HAVE_SYS_TIME_H
+# include <sys/time.h>
+#endif
 
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <signal.h>
 
 #include "xmalloc.h"
@@ -461,7 +463,11 @@ packet_send2_wrapped(ncrack_ssh_state *nstate)
     for (i = 0; i < padlen; i++) {
       if (i % 4 == 0)
         /* Ncrack: Normally this would be arc4random() */
+#ifndef WIN32
         rnd = random();
+#else
+		rnd = rand();
+#endif
       cp[i] = rnd & 0xff;
       rnd >>= 8;
     }

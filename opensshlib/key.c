@@ -37,11 +37,14 @@
 #include "includes.h"
 #include "opensshlib.h"
 
+#ifndef WIN32
 #include <sys/param.h>
+#endif
+
 #include <sys/types.h>
 
 #include <openssl/evp.h>
-#include <openssl-compat.h>
+#include "openssl-compat.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -175,6 +178,7 @@ key_equal(const Key *a, const Key *b)
 	default:
 		fatal("key_equal: bad key type %d", a->type);
 	}
+	return 0;
 	/* NOTREACHED */
 }
 

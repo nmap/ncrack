@@ -246,9 +246,13 @@ typedef unsigned char u_char;
 # define HAVE_U_CHAR
 #endif /* HAVE_U_CHAR */
 
+#ifndef WIN32
+
 #ifndef SIZE_T_MAX
 #define SIZE_T_MAX ULONG_MAX
 #endif /* SIZE_T_MAX */
+
+#endif
 
 #ifndef HAVE_SIZE_T
 typedef unsigned int size_t;
@@ -556,9 +560,11 @@ struct winsize {
 #  define USE_VHANGUP
 #endif /* defined(HAVE_VHANGUP) && !defined(HAVE_DEV_PTMX) */
 
+#if 0
 #ifndef GETPGRP_VOID
 # include <unistd.h>
 # define getpgrp() getpgrp(0)
+#endif
 #endif
 
 #ifdef USE_BSM_AUDIT

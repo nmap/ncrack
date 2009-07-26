@@ -15,7 +15,10 @@
 
 #include "includes.h"
 
+#ifndef WIN32
 #include <sys/param.h>
+#endif
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

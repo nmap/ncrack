@@ -16,6 +16,10 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
+#ifdef WIN32
+#include "winfixssh.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

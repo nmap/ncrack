@@ -19,7 +19,10 @@
 
 #include <sys/types.h>
 
+#ifndef WIN32
 #include <unistd.h>
+#endif
+
 #include <stdarg.h>
 
 #include "log.h"

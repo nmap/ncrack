@@ -160,8 +160,8 @@ Service(const Service& ref)
   connection_retries = ref.connection_retries;
   timeout = ref.timeout;
   ssl = ref.ssl;
-  if (path)
-    free(path);
+  //if (path)
+  //  free(path);
   path = Strndup(ref.path, strlen(ref.path));
 
   ideal_parallelism = 1;  /* we start with 1 connection exactly */
@@ -191,6 +191,8 @@ Service(const Service& ref)
   module_data = NULL;
   hostinfo = NULL;
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
+  htn.toclock_running = false;
+  htn.host_start = htn.host_end = 0;
 }
 
 Service::

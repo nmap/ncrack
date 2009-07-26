@@ -26,13 +26,13 @@ char	*chop(char *);
 char	*strdelim(char **);
 char	*colon(char *);
 long	 convtime(const char *);
-char	*tilde_expand_filename(const char *, uid_t);
+//char	*tilde_expand_filename(const char *, uid_t);
 char	*percent_expand(const char *, ...) __attribute__((__sentinel__));
 char	*tohex(const void *, size_t);
 void	 ms_subtract_diff(struct timeval *, int *);
 void	 ms_to_timeval(struct timeval *, int);
 
-struct passwd *pwcopy(struct passwd *);
+//struct passwd *pwcopy(struct passwd *);
 
 
 /* Functions to extract or store big-endian words of various sizes */

@@ -668,7 +668,6 @@ int main(int argc, char **argv)
       }
     }
 
-
     for (Svi = Services.begin(); Svi != Services.end(); Svi++) {
       /* first apply timing template */
       apply_timing_template(*Svi, &timing);
@@ -684,6 +683,7 @@ int main(int argc, char **argv)
       apply_host_options(Services[0], spec.service_options);
     if (spec.portno)
       Services[0]->portno = str2port(spec.portno);
+
 
     while ((currenths = nexthost(spec.host_expr, exclude_group))) {
       for (Tvi = Targets.begin(); Tvi != Targets.end(); Tvi++) {
@@ -708,6 +708,7 @@ int main(int argc, char **argv)
             fatal("Duplicate service %s for target %s !",
                 service->name, currenths->NameIP());
         }
+
         /* 
          * Push service to both 'services_all' (every service resides there)
          * and to 'services_active' list (every service starts with

@@ -27,22 +27,24 @@
 #include "includes.h"
 
 #include <sys/types.h>
+
+#ifndef WIN32
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/param.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#endif
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 
 #include <errno.h>
 #include <fcntl.h>
-#include <netdb.h>
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #include <pwd.h>
@@ -117,6 +119,7 @@ strdelim(char **s)
 	return (old);
 }
 
+#if 0
 struct passwd *
 pwcopy(struct passwd *pw)
 {
@@ -140,6 +143,7 @@ pwcopy(struct passwd *pw)
 	copy->pw_shell = xstrdup(pw->pw_shell);
 	return copy;
 }
+#endif
 
 #define SECONDS		1
 #define MINUTES		(SECONDS * 60)
@@ -250,6 +254,8 @@ colon(char *cp)
 }
 
 
+
+#if 0
 /*
  * Expands tildes in the file name.  Returns data allocated by xmalloc.
  * Warning: this calls getpw*.
@@ -295,6 +301,8 @@ tilde_expand_filename(const char *filename, uid_t uid)
 
 	return (xstrdup(ret));
 }
+#endif
+
 
 /*
  * Expand a string with a set of %[char] escapes. A number of escapes may be
