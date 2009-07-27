@@ -319,7 +319,7 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
   int res;
   int foundsomething = 0;
   //struct passwd *pw;
-  char dot_buffer[512];
+  //char dot_buffer[512];
 
 #ifdef WIN32
   if (!foundsomething) { /* Try the Ncrack directory */

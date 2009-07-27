@@ -1,7 +1,7 @@
 /***************************************************************************
  * winclude.h -- some windows include files and                            *
- * windows-compatabilty-related functions that are specific to Ncrack.  Most *
- * of this has been moved into nbase so it can be shared.                  *
+ * windows-compatabilty-related functions that are specific to Ncrack.     *
+ * Most of this has been moved into nbase so it can be shared.             *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
