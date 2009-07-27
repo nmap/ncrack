@@ -19,6 +19,10 @@
 
 #include "includes.h"
 
+#ifdef WIN32
+#include <stdio.h>  // for vsnprintf definition
+#endif
+
 #ifndef HAVE_VASPRINTF
 
 #include <errno.h>

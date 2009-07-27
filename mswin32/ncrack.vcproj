@@ -38,7 +38,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\Debug\nmap.tlb"
+				TypeLibraryName=".\Debug\ncrack.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -132,7 +132,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\Release/nmap.tlb"
+				TypeLibraryName=".\Release\ncrack.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -166,7 +166,7 @@
 				OutputFile=".\Release\ncrack.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="lib;..\nsock;..\nbase;OpenSSL\lib;"
+				AdditionalLibraryDirectories="lib;..\nsock;..\nbase;..\opensshlib;OpenSSL\lib;"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release/ncrack.pdb"

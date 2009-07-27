@@ -376,12 +376,14 @@ set_newkeys(int mode, ncrack_ssh_state *nstate)
   if (mode == MODE_OUT) {
     cc = &nstate->send_context;
     crypt_type = CIPHER_ENCRYPT;
-    nstate->p_send.packets = nstate->p_send.blocks = 0;
+    nstate->p_send.packets = 0;
+	nstate->p_send.blocks = 0;
     max_blocks = &nstate->max_blocks_out;
   } else {
     cc = &nstate->receive_context;
     crypt_type = CIPHER_DECRYPT;
-    nstate->p_read.packets = nstate->p_read.blocks = 0;
+    nstate->p_read.packets = 0;
+	nstate->p_read.blocks = 0;
     max_blocks = &nstate->max_blocks_in;
   }
 

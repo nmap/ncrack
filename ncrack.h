@@ -93,6 +93,16 @@
 #ifndef NCRACK_H 
 #define NCRACK_H 1
 
+#ifndef NCRACK_VERSION
+/* Edit this definition only within the quotes, because it is read from this
+   file by the makefiles. */
+#define NCRACK_VERSION "0.01ALPHA"
+#define NCRACK_NUM_VERSION "0.01"
+#endif
+
+#define NCRACK_NAME "Ncrack"
+#define NCRACK_URL "http://ncrack.org"
+
 #ifdef WIN32
 #include "mswin32\winclude.h"
 #endif
@@ -202,11 +212,6 @@
 #include <sys/resource.h>
 #endif
 
-
-
-#define NCRACK_NAME "Ncrack"
-#define NCRACK_URL "http://ncrack.org"
-#define NCRACK_VERSION "0.01ALPHA"
 
 #ifndef MAXHOSTNAMELEN
 #define MAXHOSTNAMELEN 64

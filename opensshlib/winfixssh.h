@@ -29,6 +29,9 @@ typedef unsigned __int64 u_int64_t;
 #endif
 
 #define SNPRINTF_CONST const
+#ifndef HAVE_VSNPRINTF
+  #define HAVE_VSNPRINTF 
+#endif
 
 #undef HAVE_ENDIAN_H
 #undef HAVE_TTYENT_H

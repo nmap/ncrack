@@ -467,6 +467,7 @@ put_u16(void *vp, u_int16_t v)
 	p[1] = (u_char)v & 0xff;
 }
 
+#if 0
 void
 ms_subtract_diff(struct timeval *start, int *ms)
 {
@@ -476,6 +477,7 @@ ms_subtract_diff(struct timeval *start, int *ms)
 	timersub(&finish, start, &diff);	
 	*ms -= (diff.tv_sec * 1000) + (diff.tv_usec / 1000);
 }
+#endif
 
 void
 ms_to_timeval(struct timeval *tv, int ms)

@@ -29,7 +29,7 @@ long	 convtime(const char *);
 //char	*tilde_expand_filename(const char *, uid_t);
 char	*percent_expand(const char *, ...) __attribute__((__sentinel__));
 char	*tohex(const void *, size_t);
-void	 ms_subtract_diff(struct timeval *, int *);
+//void	 ms_subtract_diff(struct timeval *, int *);
 void	 ms_to_timeval(struct timeval *, int);
 
 //struct passwd *pwcopy(struct passwd *);

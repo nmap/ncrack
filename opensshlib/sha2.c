@@ -493,6 +493,16 @@ SHA256_Update(SHA256_CTX *context, const u_int8_t *data, size_t len)
 	usedspace = freespace = 0;
 }
 
+#if defined(_MSC_VER)
+#  pragma warning(push)
+   /* Disable warning C4244: '=' : 
+    * conversion from 'u_int64_t' to 'u_int32_t', possible loss of data
+	* as we are not really having these issues
+	*/
+#  pragma warning(disable: 4244)
+#endif
+
+
 void
 SHA256_Pad(SHA256_CTX *context)
 {
@@ -836,6 +846,11 @@ SHA512_Final(u_int8_t digest[SHA512_DIGEST_LENGTH], SHA512_CTX *context)
 		memset(context, 0, sizeof(*context));
 	}
 }
+
+#if defined(_MSC_VER)
+#  pragma warning(pop)
+#endif
+
 
 
 #if 0

@@ -73,7 +73,17 @@ evp_ssh_sha256(void)
 	ssh_sha256.type = NID_undef;
 	ssh_sha256.md_size = SHA256_DIGEST_LENGTH;
 	ssh_sha256.init = ssh_sha256_init;
+#if defined(_MSC_VER)
+#  pragma warning(push)
+   /* Disable warning: 
+    * C4028: formal parameter 3 different from declaration
+	*/
+#  pragma warning(disable: 4028)
+#endif
 	ssh_sha256.update = ssh_sha256_update;
+#if defined(_MSC_VER)
+#  pragma warning(pop)
+#endif
 	ssh_sha256.final = ssh_sha256_final;
 	ssh_sha256.cleanup = ssh_sha256_cleanup;
 	ssh_sha256.block_size = SHA256_BLOCK_LENGTH;

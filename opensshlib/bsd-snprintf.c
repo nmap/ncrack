@@ -94,6 +94,10 @@
 
 #include "includes.h"
 
+#ifdef WIN32
+#include <stdio.h>  // for vsnprintf definition
+#endif
+
 #if defined(BROKEN_SNPRINTF)		/* For those with broken snprintf() */
 # undef HAVE_SNPRINTF
 # undef HAVE_VSNPRINTF

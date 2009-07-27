@@ -21,7 +21,7 @@
 #else
  #include "winfixssh.h"
  #include "winsock.h"
- #include <stdlib.h> // for random()
+ #include <stdlib.h> // for rand()
 #endif
 
 #define _GNU_SOURCE /* activate extra prototypes for glibc */

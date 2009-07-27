@@ -113,8 +113,8 @@
 #define DEFAULT_CONNECT_TIMEOUT 5000
 /* includes connect() + ssl negotiation */
 #define DEFAULT_CONNECT_SSL_TIMEOUT 8000  
-#define DEFAULT_USERNAME_FILE "./username.lst"
-#define DEFAULT_PASSWORD_FILE "./password.lst"
+#define DEFAULT_USERNAME_FILE "username.lst"
+#define DEFAULT_PASSWORD_FILE "password.lst"
 
 /* (in milliseconds) every such interval we poll for interactive user input */
 #define KEYPRESSED_INTERVAL 500 
@@ -148,6 +148,9 @@ enum mode { USER, PASS };
 
 static void print_usage(void);
 static void lookup_init(const char *const filename);
+static int file_readable(const char *pathname);
+static int ncrack_fetchfile(char *filename_returned, int bufferlen,
+  const char *file);
 static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
 static void startTimeOutClocks(ServiceGroup *SG);
 
@@ -277,6 +280,83 @@ lookup_init(const char *const filename)
 }
 
 
+/* Returns one if the file pathname given exists, is not a directory and
+ * is readable by the executing process.  Returns two if it is readable
+ * and is a directory.  Otherwise returns 0.
+ */
+
+static int
+file_readable(const char *pathname) {
+	char *pathname_buf = strdup(pathname);
+	int status = 0;
+
+#ifdef WIN32
+	// stat on windows only works for "dir_name" not for "dir_name/" or "dir_name\\"
+	int pathname_len = strlen(pathname_buf);
+	char last_char = pathname_buf[pathname_len - 1];
+
+	if(	last_char == '/'
+		|| last_char == '\\')
+		pathname_buf[pathname_len - 1] = '\0';
+
+#endif
+
+  struct stat st;
+
+  if (stat(pathname_buf, &st) == -1)
+    status = 0;
+  else if (access(pathname_buf, R_OK) != -1)
+    status = S_ISDIR(st.st_mode) ? 2 : 1;
+
+  free(pathname_buf);
+  return status;
+}
+
+
+int
+ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
+  //char *dirptr;
+  int res;
+  int foundsomething = 0;
+  //struct passwd *pw;
+  char dot_buffer[512];
+
+#ifdef WIN32
+  if (!foundsomething) { /* Try the Ncrack directory */
+	  char fnbuf[MAX_PATH];
+	  int i;
+	  res = GetModuleFileName(GetModuleHandle(0), fnbuf, 1024);
+      if(!res) fatal("GetModuleFileName failed (!)\n");
+
+	  /*	Strip it */
+	  for(i = res - 1; i >= 0 && fnbuf[i] != '/' && fnbuf[i] != '\\'; i--);
+	  if(i >= 0) /* we found it */
+		  fnbuf[i] = 0;
+	  res = Snprintf(filename_returned, bufferlen, "%s\\%s", fnbuf, file);
+	  if(res > 0 && res < bufferlen)
+		  foundsomething = file_readable(filename_returned);
+  }
+#endif
+
+  if (!foundsomething) {
+    res = Snprintf(filename_returned, bufferlen, "./%s", file);
+    if (res > 0 && res < bufferlen) {
+      foundsomething = file_readable(filename_returned);
+    }
+  }
+
+  if (!foundsomething) {
+    filename_returned[0] = '\0';
+  }
+
+  if (foundsomething && o.debugging > 1)
+    log_write(LOG_PLAIN, "Fetchfile found %s\n", filename_returned);
+
+  return foundsomething;
+
+}
+
+
 
 
 static char *
@@ -382,6 +462,9 @@ int main(int argc, char **argv)
   char *xmlfilename = NULL;
   unsigned long l;
   unsigned int i; /* iteration var */
+  char services_file[256]; /* path name for "ncrack-services" file */
+  char username_file[256];
+  char password_file[256];
 
   char *host_spec = NULL;
   Target *currenths = NULL;
@@ -449,8 +532,9 @@ int main(int argc, char **argv)
   if (argc < 2)
     print_usage();
 
+  ncrack_fetchfile(services_file, sizeof(services_file), "ncrack-services");
   /* Initialize available services' lookup table */
-  lookup_init("ncrack-services");
+  lookup_init(services_file);
 
 #if WIN32
   win_init();
@@ -607,10 +691,16 @@ int main(int argc, char **argv)
     free(xmlfilename);
   }
 
-  if (UserArray.empty())
-    load_login_file(DEFAULT_USERNAME_FILE, USER);
-  if (PassArray.empty())
-    load_login_file(DEFAULT_PASSWORD_FILE, PASS);
+  if (UserArray.empty()) {
+    ncrack_fetchfile(username_file, sizeof(username_file),
+      DEFAULT_USERNAME_FILE);
+    load_login_file(username_file, USER);
+  }
+  if (PassArray.empty()) {
+	ncrack_fetchfile(password_file, sizeof(password_file),
+      DEFAULT_PASSWORD_FILE);
+    load_login_file(password_file, PASS);
+  }
 
   /* Prepare -T option (3 is default) */
   prepare_timing_template(&timing);
