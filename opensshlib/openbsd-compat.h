@@ -32,7 +32,6 @@
 #include "includes.h"
 
 #include <sys/types.h>
-#include "base64.h"
 #include "sha2.h"
 
 #ifndef HAVE_STRLCPY
