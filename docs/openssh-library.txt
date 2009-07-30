@@ -1,0 +1,642 @@
+
+---- [ Hacking the OpenSSH library for Ncrack ] ----
+
+by ithilgore - ithilgore.ryu.l@gmail.com
+sock-raw.org
+
+30 July, 2009
+Version: 1.0
+
+
+---[ Contents
+
+   1 - Introduction
+
+   2 - OpenSSH overview
+     2.1 - Initialization and Identification Exchange
+     2.2 - Algorithm negotiation
+     2.3 - Diffie-Hellman Key Exchange
+     2.4 - User Authentication
+     2.5 - Packet handling
+
+   3 - Ncrack OpenSSH library
+     3.1 - One Struct Fits All
+     3.2 - Main Changes Outlined
+
+   4 - SSH bruteforcing
+
+   5 - Conclusion
+
+   6 - References
+
+
+
+1. Introduction
+================
+
+The purpose of this document is to outline the process of building a SSH
+library leveraged by the corresponding module of Ncrack. The code used
+is largely based on the latest version of OpenSSH (currently 5.2) which
+makes it more secure and flexible, being audited by the OpenBSD team and
+being able to handle and adapt to many different implementations of SSH
+out there. First we are going to give a brief overview of the OpenSSH
+code mainly focusing on everything related to the authentication phase,
+since that is what concerns us most. Then we are going to mention what
+different hacks were made in order to convert that code into a library
+suitable for use by Ncrack's architecture. Finally, we are going to discuss
+some issues concerning SSH bruteforcing.
+
+
+2. OpenSSH overview
+====================
+
+The OpenSSH package bundles together code for both the client-side and the
+server-side of SSH, as many C files are generic enough to be able to handle
+both situations. It also contains an internal library but that has no
+relation with the library that was built for Ncrack as it is too restricted
+and suitable only for the needs of OpenSSH itself. Since, Ncrack's SSH
+module only needs to test the authentication credentials for a target
+server, we are going to concentrate our analysis on the client part of
+OpenSSH and only for the subsystem of authentication. The SSH protocol is a
+very complex one, being outlined in about 12 RFCs [0] and thus for clarity
+reasons we are going to point out the important details and intricacies of
+it as we go through the OpenSSH client code. Keep in mind, that only SSH
+version 2 will be studied. The reader is also advised to take a look
+specifically at RFC 4253 [1], since that covers a great deal of what we are
+going to see in the following sections.
+
+
+---- [ 2.1 Initialization and Identification Exchange
+
+The client begins from the ssh.c file calling ssh_login() function after a
+connection has been established through ssh_connect(). ssh_login(), which
+resides at sshconnect.c, starts a dialogue with the server and tries to
+authenticate the user following the SSH procotocol specification. It does
+that by first exchanging version identification strings through
+ssh_exchange_identification() which is defined in the same file. This
+function is responsible for reading the opposite side's identification
+string, which is something along the lines of "SSH-2.0-OpenSSH_5.2\n", as
+well as sending the client's own identification string with the same
+format. This is actually more important than it seems, since these version
+numbers are extracted by OpenSSH and further processed in order to find
+possible misbehaviours that were caused by bugs in certain older
+implementations. This is done by compat_datafellows() at compat.c which
+makes OpenSSH adapt its own behaviour to account for these bugs. This
+provides perfect backwards compatibility and flexibility for almost every
+server out there. Note that protocol version exchange is part of the
+official SSH specification (RFC 4253).
+
+
+---- [ 2.2 Algorithm negotiation
+
+The next phase is the process of key algorithm negotiation. This begins by
+calling ssh_kex2() inside ssh_login(). ssh_kex2() is defined at sshconnect2.c
+and its main job is to setup a proposal of key exchange methods supported by
+the client. A Kex structure is used for that and contains a set of lists
+describing which algorithms are supported client-to-server and which for
+server-to-client. Algorithms include server host key algorithms, encryption
+algorithms, mac algorithms, compression algorithms and optionally
+additional languages supported. Server host key algorithms are responsible
+for public key encryption and/or signature. Examples are ssh-dss and
+ssh-rsa. Encryption algorithms are actually the ciphers that will encrypt
+the packets with the secret session key that will be created later. These
+include aes128-ctr, aes198-ctr, aes256-ctr, 3des-cbc, blowfish-cbc and many
+more. Data integrity is protected by mac algorithms like hmac-md5,
+hmac-sha1 etc. Compression is optionally used for network performance
+reasons (mainly provided by the zlib algorithm). The kex proposal is
+sent by kex_setup() at kex.c which calls kex_send_kexinit(). This function
+uses the packet_* wrapper functions which we are going to analyse later,
+since they deserve a section for their own given their importance.
+kex_reset_dispatch() leverages the dispatch_* functions which are a clever
+way of providing temporary callback handlers for various kinds of messages.
+dispatch.c is the host of their definitions and they are used for
+situations where OpenSSH is not expecting a certain message so that a
+central function could handle it by itself. Such is the case here, where
+the server might return some other transport message (note that SSH uses
+certain code number at the beginnig of the ssh packet to denote the kind of
+the message that is contained in it) other than SSH2_MSG_KEXINIT in which
+case that would be handled as an error by kex_protocol_error(). If
+everything goes well, however, kex_input_kexinit() will be called. Note
+that the key exchange is a completely asynchronous phase meaning that the
+client message might arrive first to the server or the server's proposal
+might reach the client first. This will vary according to the load of each
+side at the time. Ncrack sends the kex message immediately after sending its
+own client version string, in order to speed things up. To sum up, the KEX
+message contains the following: 
+
+      byte         SSH_MSG_KEXINIT
+      byte[16]     cookie (random bytes)
+      name-list    kex_algorithms
+      name-list    server_host_key_algorithms
+      name-list    encryption_algorithms_client_to_server
+      name-list    encryption_algorithms_server_to_client
+      name-list    mac_algorithms_client_to_server
+      name-list    mac_algorithms_server_to_client
+      name-list    compression_algorithms_client_to_server
+      name-list    compression_algorithms_server_to_client
+      name-list    languages_client_to_server
+      name-list    languages_server_to_client
+      boolean      first_kex_packet_follows
+      uint32       0 (reserved for future extension)
+
+After the client gets the server's proposal, kex_input_kexinit() will be
+called as we mentioned earlier. Some packet sanity checks will take place
+there and then kex_kexinit_finish() will essentially finish this phase by
+issuing a call to kex_choose_conf(). This function now compares the two
+proposals and searches for the best match of algorithms supported by both
+sides. This is done by a series of helper functions defined in kex.c . The
+same procedure takes place on the server side too so by the end of this
+phase both ends know how to further communicate.
+To get a visual representation of what has happened so far here's a small
+function call invocation diagram:
+
+ssh_connect()
+ssh_login()
+  |
+  |--> ssh_exchange_identification()
+  |                    |
+  |--> ssh_kex2()      |--> compat_datafellows(), etc
+         |
+         |--> kex_setup()
+                |
+                |--> kex_send_kexinit()
+                          |
+                          |--> kex_reset_dispatch()
+                                  |
+                                  |--> kex_input_kexinit()
+                                         |
+                                         |--> kex_kexinit_finish()
+                                                |
+                                                |--> kex_choose_conf()
+
+                                                
+
+---- [ 2.3 Diffie-Hellman Key Exchange
+
+This procedure is going to create the secret session keys that are going to
+encrypt the rest of the packets during that connection. It involves some
+prime number and mod maths about which you can read at Section 8 of RFC
+4253 [2]. In summary, both hosts create a common shared secret that cannot be
+determined by either party alone. This phase also provides server
+authentication if that is needed. Of course, this normally requires a
+priori knowledge of the server's public host key. In Ncrack's case, the server
+authentication step is skipped.
+
+Continuing from above, we were analysing kex_kexinit_finish() which chooses
+the matching proposals. This doesn't end there however, since before it
+finishes it also calls the appropriate Diffie-Hellman (DH) handler to
+initiate the DH key exchange. This is done by dereferencing a function
+pointer inside the Kex structure:
+
+static void
+kex_kexinit_finish(Kex *kex)
+{
+	if (!(kex->flags & KEX_INIT_SENT))
+		kex_send_kexinit(kex);
+
+	kex_choose_conf(kex);
+
+	if (kex->kex_type >= 0 && kex->kex_type < KEX_MAX &&
+	    kex->kex[kex->kex_type] != NULL) {
+		(kex->kex[kex->kex_type])(kex);
+	} else {
+		fatal("Unsupported key exchange %d", kex->kex_type);
+	}
+}
+
+
+These were initialized during the ssh_kex2() function:
+
+void
+ssh_kex2(char *host, struct sockaddr *hostaddr)
+{
+	Kex *kex;
+
+  ...
+
+
+	/* start key exchange */
+	kex = kex_setup(myproposal);
+	kex->kex[KEX_DH_GRP1_SHA1] = kexdh_client;
+	kex->kex[KEX_DH_GRP14_SHA1] = kexdh_client;
+	kex->kex[KEX_DH_GEX_SHA1] = kexgex_client;
+	kex->kex[KEX_DH_GEX_SHA256] = kexgex_client;
+	kex->client_version_string=client_version_string;
+	kex->server_version_string=server_version_string;
+	kex->verify_host_key=&verify_host_key_callback;
+
+  ...
+}
+
+As you see, there are 2 different functions that are registered:
+kexdh_client() residing at kexdhc.c and kexgex_client() residing at
+kexgexc.c . The first is a handler for the diffie-hellman-group14-sha1
+method which uses a SHA-1 as hash and 2048-bit MODP Group, while the
+latter which is probably the most common one and supported by all known
+implementations is a handler for the diffie-hellman-group1-sha1 which also
+uses a SHA-1 as hash but a 1024-bit MODP Group. Both of these are explained
+in RFC3256 and RFC2409 correspondingly.
+
+kexgex_client() starts by sending a SSH2_MSG_KEX_DH_GEX_REQUEST message,
+expects to get back a SSH2_MSG_KEX_DH_GEX_GROUP, then sends a
+SSH2_MSG_KEX_DH_GEX_INIT and expects back a SSH2_MSG_KEX_DH_GEX_REPLY.
+These messages mainly contain the prime numbers and math-stuff that we
+mentioned earlier. With the last message received, the client can
+authenticate the server using 'kex->verify_host_key(server_host_key)' and
+then proceed on creating the cipher session key as the last step with:
+'kex_derive_keys(kex, hash, hashlen, shared_secret)' (defined at kex.c)
+Finally, kex_finish() is called to complete this phase by sending a
+SSH2_MSG_NEWKEYS message and also expecting back the same kind of message
+from the server. When these two have been exchanged, the rest of the
+packets are encrypted using the derived keys.
+
+Moving back in the call graph, after all these functions have finished
+their work, ssh_kex2() finally returns. It is time to move on to
+ssh_userauth2() and the user authentication part.
+
+
+---- [ 2.4 User Authentication
+
+ssh_userauth2() begins by issuing a "ssh-userauth" service request to the
+server. It is possible, for any reason, that the server denies this request
+in which case the client terminates. If this SSH2_MSG_SERVICE_REQUEST
+message is, however, replied with a SSH2_MSG_SERVICE_ACCEPT one, then the
+client moves on to the real authentication part. There are a number of
+choices here as far as the authentication methods are concerned. "none",
+"publickey", "password" and "hostbased" are what SSH officially specifies
+with "publickey" being the only one that all implementations *must* always
+support. The "none" method is special in that it is normally used by ssh
+clients as a way to get the server to list all the available authentication
+methods it supports. What is interesting, is that RFC 4252 Section 9 [5]
+mentions that the server can also return a SSH_MSG_USERAUTH_SUCCESS if no
+authentication is needed for the user! However, that would probably be
+non-applicable for most SSH servers out there (not for telnet servers though).
+
+OpenSSH tries to get that list of supported methods by sending a "none"
+method request and then moving on to try the best available way to
+authenticate. ssh_userauth2() then registers with the dispatch_* functions
+a number of callback functions for all kind of possible replies:
+SSH2_MSG_USERAUTH_SUCCESS, SSH2_MSG_USERAUTH_FAILURE and
+SSH2_MSG_USERAUTH_BANNER which are pretty self-explanatory. Each
+authentication attempt includes all relevant information (username,
+password etc) in a SSH2_MSG_USERAUTH_REQUEST message.
+
+It is important to note here, that SSH does not allow the client to change
+the username in the same connection. It can surely, try different passwords
+(if using the "password" method) but if the client sends a new
+SSH2_MSG_USERAUTH_REQUEST with a username other than the one that it
+initially sent in that particular connection, then the server terminates
+the connection immediately. This has called for another kind of
+bruteforcing iteration for Ncrack that is explained in part 4 of this
+paper.
+
+
+---- [ 2.5 Packet Handling
+
+This is one of the most interesting and important subsystems of OpenSSH.
+packet.c is full of packet processing and parsing code. We are dealing with
+code that is involved with the more low-level details of passing the outgoing
+messages of all other functions to an internal queue and then sending them
+out on the network or doing the opposite for incoming ones. Most of the
+handlers here largely rely on buffer manipulation functions defined at
+buffer.c, bufaux.c and bufbn.c .
+
+We are going to focus on the main ingress and egress functions:
+packet_read() and packet_send2() respectively.
+
+The packet.c subsystem uses some global variables to do its job. The most
+important ones are:
+
+
+/* Encryption context for receiving data.  This is only used for decryption. */
+static CipherContext receive_context;
+
+/* Encryption context for sending data.  This is only used for encryption. */
+static CipherContext send_context;
+
+/* Buffer for raw input data from the socket. */
+Buffer input;
+
+/* Buffer for raw output data going to the socket. */
+Buffer output;
+
+/* Buffer for the partial outgoing packet being constructed. */
+static Buffer outgoing_packet;
+
+/* Buffer for the incoming packet currently being processed. */
+static Buffer incoming_packet;
+
+
+The difference between 'output' and 'outgoing_packet' is, as the authors'
+comments already denote, that 'output' is referring to the raw data that
+is going to be sent in the end (which may also be encrypted), while the
+'outgoing_packet' is just a temporary buffer holding the intermediate
+operations that take place inside packet_send2() and its subsequent
+functions. The same applies for 'input' and 'incoming_packet'.
+
+packet_send2() is a wrapper for packet_send2_wrapped() and also checks for
+some cases like rekeying (when that is imperative to happen - which can
+happen after a session is online for much time). packet_send2_wrapped() is
+the real workhorse here. It first checks for whether the session keys have
+been already initialized, which is always the case after the DH phase is
+complete, so as to apply the corresponding cipher, hash message authentication
+code and possibly compression on the outgoing packet. 
+
+packet_read() is a zero-code wrapper for packet_read_seqnr() (though it
+makes a difference by calling it with a NULL argument) which is basically a
+common select() loop that tries to read a complete packet before moving on.
+packet_read_poll_seqnr() is called inside this loop and gives its place to
+packet_read_poll2() which is the main workhorse for incoming packet
+processing. It does almost the opposite operations of what
+packet_send2_wrapped() does. The return value of this function, which is
+the message type of the incoming message, if that was possible with the data
+available at 'input' (since we might be at the first iteration of the
+packet_read_seqnr() loop and thus haven't issued a read() call yet). This
+type is then used a decision-making value for packet_read_poll_seqnr(). For
+every message other than SSH2_MSG_IGNORE, SSH2_MSG_DEBUG and
+SSH2_MSG_DISCONNECT where special action is taken (like printing debugging
+output or exiting the client in the last case), this type is just returned
+to packet_read_seqnr(). If the type was SSH_MSG_NONE, which is the case
+when packet_read_poll2 can't extract the type yet, or just encounters a
+strange error (e.g bad packet length), then the loop goes on until a
+'clean' message has arrived.
+
+This is a very brief summary of what these functions do. If you are curious
+about more details, you are advised to read the source code as it is easily
+readble and well-written.
+
+
+
+3 - Ncrack OpenSSH library
+===========================
+
+One of the most challenging parts of hacking the OpenSSH library for Ncrack
+was, apart from having to study and understand a large part of the OpenSSH
+code and the SSH protocol itself, the fact that it would need to be
+tailored so that socket operations are not done by OpenSSH but by Nsock,
+the underlying parallel socket library leveraged by Ncrack. The OpenSSH
+client needs only open 1 connection at a time, and thus any concurrency
+issues can be handled perfectly by having these global variables in
+packet.c and other subsystems. This is not the case for Ncrack, however,
+which not only needs to be able to open many connections at the same time,
+but also has to do so in a way that Nsock understands (obviously by calling
+its designated handlers). For this reason, almost every function that had
+socket operations involved was hacked to the core. In addition, a separate
+structure was created that holds all nessecary information for each
+connection that Ncrack initiates with the SSH module.
+
+
+---- [ 3.1 - One Struct Fits All
+
+This struct 'ncrack_ssh_state' is created for each new SSH connection that
+is initiated by Ncrack. It is defined at opensshlib.h under opensshlib/ of
+Ncrack's directory and literally holds all variables that need to be separate
+for each connection (and were globall ones previously on OpenSSH). Examples
+are the buffers for the incoming and outgoing packets. 
+
+
+typedef struct packet_state {
+  u_int32_t seqnr;
+  u_int32_t packets;
+  u_int64_t blocks;
+  u_int64_t bytes;
+} packet_state;
+
+
+/* 
+ * Every module invocation has its own Ncrack_state struct which holds every
+ * bit of information needed to keep track of things. Most of the variables
+ * found inside this object were usually static/global variables in the original
+ * OpenSSH codebase.
+ */
+typedef struct ncrack_ssh_state {
+
+  struct Kex *kex;
+  DH *dh;
+  /* Session key information for Encryption and MAC */
+  struct Newkeys *keys[2];
+  char *client_version_string;
+  char *server_version_string;
+  /* Encryption context for receiving data. This is only used for decryption. */
+  CipherContext receive_context;
+  /* Encryption context for sending data. This is only used for encryption. */
+  CipherContext send_context;
+
+  /* ***** IO Buffers ****** */
+  Buffer ncrack_buf;
+
+  /* Buffer for raw input data from the socket. */
+  Buffer input;
+  /* Buffer for raw output data going to the socket. */
+  Buffer output;
+  /* Buffer for the incoming packet currently being processed. */
+  Buffer incoming_packet;
+  /* Buffer for the partial outgoing packet being constructed. */
+  Buffer outgoing_packet;
+
+  u_int64_t max_blocks_in;
+  u_int64_t max_blocks_out;
+  packet_state p_read;
+  packet_state p_send;
+
+	int compat20;	/* boolean -> true if SSHv2 compatible */
+
+  /* Compatibility mode for different bugs of various older sshd
+   * versions. It holds a list of these bug types in a binary OR list
+   */
+  int datafellows;
+  int type;   /* type of packet returned */
+  u_char extra_pad; /* extra padding that might be needed */
+
+  /* 
+   * Reason that this connection was ended. It might be that we got a
+   * disconnnect packet from the server due to many authentication attempts
+   * or some other exotic reason.
+   */
+  char *disc_reason;
+
+	u_int packet_length; 
+
+} ncrack_ssh_state;
+
+
+---- [ 3.2 - Main Changes Outlined
+
+Perhaps, the largest hacks took place inside packet.c which holds the
+packet processing functions and some socket operations. packet.c handlers
+now reference ncrack_ssh_state's unique Buffers and keys and apply all
+changes to them instead of on the previously global variables. 
+
+Many changes were also made in kex.c for all the related functions
+mentioned in our analysis before. 
+
+A function that was dissected into smaller pieces was kexgex_client() of
+kexgexc.c . This was nessacary because previously it did all socket
+operations in one go, while Ncrack needs to isolate each such operation so
+that proper action is taken by Nsock. Thus, for each message sent or
+received by kexgex_client() a separate function which is a subset of it was
+made. Each such function is then separately called by Ncrack's SSH module
+when the corresponding internal state is reached.
+From this function, the verification of the server host key was also
+skipped.
+
+As far as the ssh_userauth2() function is concerned, it only bothers
+sending the 'password' method to authenticate and if that fails, then there
+is no point in continuing to try anything else for that service (Ncrack
+just stops cracking it entirely). In addition, the message for the 'none'
+method is not sent at all, since that would be a waste of 2 packets for
+each connection with no real meaning for current implementations (since
+nowadays (almost?) no SSH server allows anyone to enter without any kind of
+authentication).
+
+We should also mention here, that OpenSSH relies on non-OpenBSD systems
+needs an underlying openbsd-compat library which comes bundled with the
+OpenSSH-portable package. Since, Ncrack uses only a small subset of the
+OpenSSH functionality, only the absolutely nessecary functions were kept.
+Finally, a lot of clean-up took place for many OpenSSH functions as
+well.
+
+
+
+4 - SSH bruteforcing
+=====================
+
+As we had mentioned in part 2.4 User Authentication of this paper, SSH
+doesn't allow a client to change the username during a particular
+connection. It terminates the session if that happens so that calls for
+a specialized mode of username/password iteration.
+
+Ncrack by default uses an iteration of trying each password for every
+username, instead of the usual iteration of trying every 
+password for each username. This means that given the following lists:
+
+Username list: guest, root
+Password list: 12345, test, foo, bar
+
+Ncrack will try them by default with the following order:
+guest/12345, root/12345, guest/test, root/test, guest/foo, root/foo, guest/bar,
+root/bar
+
+Usually the default for common password crackers is doing the opposite. However,
+this is less effective for the reason that password lists are usually sorted by
+order of password frequency. This means that by trying the most common passwords
+for every username at the beginning of the cracking phase, the odds of success
+are increased.
+Of course, Ncrack is flexible enough to give you the option to do the opposite
+iteration by specifying the option --passwords-first.
+
+As you have already realized by now neither the default nor the opposite
+iteration is good enough against SSH targets. Using Ncrack's default iteration
+we would only be able to make 1 authentication per connection, since we would
+get disconnected when trying to change the username in the same connection.
+Using the opposite iteration is still not good enough, because we are are not
+able to take advantage of the frequency-sorted password lists.
+
+Consequently, a better iteration would be the following:
+For every service, Ncrack uses a first reconnaissance probe that opens just 1
+connection and tries to make as many authentication attempts as the server
+allows. By doing this, it can understand the maximum number of allowed
+authentication attempts per connection against that specific server and since
+there is only 1 connection open at that time, the reliability of the inference
+is much higher.
+Knowing that, Ncrack in this special mode of iteration will provide each
+connection with passwords for the same username. So if a connection started with
+the username 'guest' then Ncrack will give the next 'maximum allowed
+authentication attempts per connection' passwords for that username. 
+The above sounds a bit complicated, so let's see an example to clear things out.
+
+Let's suppose that the SSH server allows 3 attempts per connection and we have
+the following lists:
+
+Username list: guest, root
+Password list: 12345, test, foo, bar, changeme, lala, keke, 000
+
+Suppose Ncrack opens 4 parallel connections numbered #1-#4.
+
+Connection #1 will first get guest/12345 and will additionally be allocated with
+the passwords 'test' and 'foo' for the same username(guest) for the next 2 attempts.
+
+Connection #2 will first get root/12345 and will additionally be allocated with
+the passwords 'test' and 'foo' for the same username(root) for the next 2 attempts.
+
+Connection #3 will first get guest/bar and will additionally be allocated with
+the passwords 'changeme' and 'lala' for the same username(guest) for the next 2
+attempts.
+
+Connection #4 will first get root/bar and will additionally be allocated with
+the passwords 'changeme' and 'lala' for the same username(root) for the next 2
+attempts.
+
+After any of the connection finishes, then the first newly invoked connection #5
+will get guest/keke and will then try guest/keke and guest/000 and so on.
+
+By using this mixed mode of iteration we are taking advantage of the
+frequency-sorted password lists and the maximum efficiency of using all the
+allowed attempts per connection.
+
+However, note that it is sometimes actually more efficient to open more
+connections instead of using this special mode of iteration to get as many
+authentication attempts per connections as possible. Most SSH servers
+insert a delay before showing the results of the authentication attempt.
+That delay may be 1 or 2 seconds or more depending on the configuration.
+By default, it is usually more than 2 seconds. This delay is at most times
+more than the time it takes to initiate a new 3way TCP handshake and
+exchange the nessecary protocol packets before getting to the
+authentication phase. Consequently, it may be faster to open more connections
+that each try out 1 authentication attempt and then immediately close
+instead of trying as many attempts as possible with each connection.
+This holds true, when the connection probes are not strictly limited by
+a firewall or other hindrance. In any case, it is noteworthy to mention
+that by default OpenSSH allows at most 10 concurrent unauthenticated
+connections as mentioned by the manual of sshd_config:
+
+ MaxStartups
+   Specifies the maximum number of concurrent unauthenticated connections to
+   the SSH daemon. Additional connections will be dropped until
+   authentication succeeds or the LoginGraceTime expires for a connection.
+   The default is 10.
+
+
+5. Conclusion
+==============
+
+Building the OpenSSH library for Ncrack was definitely a valuable experience
+and was worth the time and the effort. As Ncrack keeps improving, this
+library might also be subject to more changes in order to deal with more
+subtle situations and corner-cases. This document has the form of a paper
+but might also be updated in the future as these changes might need to have
+their own mention here. 
+
+
+6. References
+==============
+
+[0]. List of SSH-related RFCs:
+
+ The Secure Shell (SSH) Protocol Assigned Numbers, RFC 4250, 2006.
+ The Secure Shell (SSH) Protocol Architecture, RFC 4251, 2006.
+ The Secure Shell (SSH) Authentication Protocol, RFC 4252, 2006.
+ The Secure Shell (SSH) Transport Layer Protocol, RFC 4253, 2006.
+ The Secure Shell (SSH) Connection Protocol, RFC 4254, 2006.
+ The Secure Shell (SSH) Session Channel Break Extension, RFC 4335, 2006.
+ The Secure Shell (SSH) Transport Layer Encryption Modes, RFC 4344, 2006.
+ Diffie-Hellman Group Exchange for the Secure Shell (SSH) Transport
+   Layer Protocol, RFC 4419, 2006.
+ Using DNS to Securely Publish Secure Shell (SSH) Key Fingerprints,
+   RFC 4255, 2006.
+ Generic Message Exchange Authentication for the Secure Shell Protocol (SSH),
+   RFC 4256, 2006.
+ Improved Arcfour Modes for the Secure Shell (SSH) Transport Layer Protocol,
+   RFC 4345, 2006.
+ The Secure Shell (SSH) Public Key File Format, RFC 4716, 2006.
+
+[1]. http://tools.ietf.org/html/rfc4253
+
+[2]. http://tools.ietf.org/html/rfc4253#section-8
+
+[3]. http://tools.ietf.org/html/rfc3526
+
+[4]. http://tools.ietf.org/html/rfc2409
+
+[5]. http://tools.ietf.org/html/rfc4252#section-9
+
