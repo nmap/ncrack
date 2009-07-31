@@ -140,6 +140,9 @@ template<class T> T box(T bmin, T bmax, T bnum) {
 }
 
 
+/* Like the perl equivalent -- It removes the terminating newline from string
+   IF one exists.  It then returns the POSSIBLY MODIFIED string */
+char *chomp(char *string);
 
 /* 
  * Case insensitive memory search - a combination of memmem and strcasestr

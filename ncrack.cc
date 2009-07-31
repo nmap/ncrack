@@ -546,6 +546,7 @@ int main(int argc, char **argv)
   char *xmlfilename = NULL;
   unsigned long l;
   unsigned int i; /* iteration var */
+  int argiter;    /* iteration for argv */
   char services_file[256]; /* path name for "ncrack-services" file */
   char username_file[256];
   char password_file[256];
@@ -572,6 +573,7 @@ int main(int argc, char **argv)
   struct tm *tm;
   time_t now;
   char tbuf[128];
+  char mytime[128];
 
   /* exclude-specific variables */
   FILE *excludefd = NULL;
@@ -792,8 +794,6 @@ int main(int argc, char **argv)
   /* Prepare -T option (3 is default) */
   prepare_timing_template(&timing);
 
-  now = time(NULL);
-  tm = localtime(&now);
   if (strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M %Z", tm) <= 0)
     fatal("Unable to properly format time");
   log_write(LOG_STDOUT, "\nStarting %s %s ( %s ) at %s\n",
@@ -813,6 +813,16 @@ int main(int argc, char **argv)
     if ((char *)NULL != exclude_spec)
       free(exclude_spec);
   }
+ 
+  /* Brief info incase they forget what was scanned */
+  Strncpy(mytime, ctime(&now), sizeof(mytime));
+  chomp(mytime);
+  log_write(LOG_NORMAL, "# ");
+  log_write(LOG_NORMAL|LOG_XML, "%s %s scan initiated %s as: ", NCRACK_NAME,
+      NCRACK_VERSION, mytime);
+  for (argiter = 0; argiter < argc; argiter++)
+    log_write(LOG_NORMAL, "%s ", argv[argiter]);
+  log_write(LOG_NORMAL, "\n");
 
 
   SG = new ServiceGroup();

@@ -139,6 +139,21 @@ memsearch(const char *haystack, const char *pneedle, size_t bytes) {
 }
 
 
+/* Like the perl equivalent -- It removes the terminating newline from string
+   IF one exists.  It then returns the POSSIBLY MODIFIED string */
+char *
+chomp(char *string) {
+
+  int len = strlen(string);
+  if (len && string[len - 1] == '\n') {
+    if (len > 1 && string[len - 2] == '\r')
+      string[len - 2] = '\0';
+    else
+      string[len - 1] = '\0';
+  }
+  return string;
+}
+
 
 /* strtoul with error checking */
 unsigned long int

@@ -408,10 +408,11 @@ print_service_output(Service *serv)
 void
 print_final_output(ServiceGroup *SG)
 {
-  struct timeval tv;
+  struct tm *tm;
+  time_t now;
+  char mytime[128];
   long long whole_t = 0, dec_t = 0;
 
-  gettimeofday(&tv, NULL);
   /* Workaround for default rounding-up that is done when printing a .2f float.
    * Previously with a variable e.g 20999, printf (".2f", var/1000.0) would
    * show it as 21.00, something which isn't right. 
@@ -422,14 +423,23 @@ print_final_output(ServiceGroup *SG)
   dec_t %= 1000;
   if (dec_t)
     dec_t /= 10;
+
+  now = time(NULL);
+  Strncpy(mytime, ctime(&now), sizeof(mytime));
+  chomp(mytime);
   
   if (o.list_only) 
-    log_write(LOG_PLAIN, "\nNcrack done: %lu %s would be scanned.\n",
+    log_write(LOG_STDOUT, "\nNcrack done: %lu %s would be scanned.\n",
         SG->total_services, (SG->total_services == 1)? "service" : "services");
-  else
-    log_write(LOG_PLAIN, "\nNcrack done: %lu %s scanned in %lld.%02lld "
+  else {
+    log_write(LOG_STDOUT, "\nNcrack done: %lu %s scanned in %lld.%02lld "
         "seconds.\n", SG->total_services, (SG->total_services == 1)? "service"
         : "services", whole_t, dec_t);
+    log_write(LOG_NORMAL, "\n# Ncrack done at %s -- %lu %s scanned in "
+        "%lld.%02lld seconds.\n", mytime, SG->total_services,
+        (SG->total_services == 1)? "service" : "services", whole_t, dec_t);
+  }
+
 
   if (o.verbose)
     log_write(LOG_PLAIN, "Probes sent: %lu | timed-out: %lu |"
