@@ -382,7 +382,7 @@ which not only needs to be able to open many connections at the same time,
 but also has to do so in a way that Nsock understands (obviously by calling
 its designated handlers). For this reason, almost every function that had
 socket operations involved was hacked to the core. In addition, a separate
-structure was created that holds all nessecary information for each
+structure was created that holds all necessary information for each
 connection that Ncrack initiates with the SSH module.
 
 
@@ -492,7 +492,7 @@ authentication).
 We should also mention here, that OpenSSH relies on non-OpenBSD systems
 needs an underlying openbsd-compat library which comes bundled with the
 OpenSSH-portable package. Since, Ncrack uses only a small subset of the
-OpenSSH functionality, only the absolutely nessecary functions were kept.
+OpenSSH functionality, only the absolutely necessary functions were kept.
 Finally, a lot of clean-up took place for many OpenSSH functions as
 well.
 
@@ -581,7 +581,7 @@ insert a delay before showing the results of the authentication attempt.
 That delay may be 1 or 2 seconds or more depending on the configuration.
 By default, it is usually more than 2 seconds. This delay is at most times
 more than the time it takes to initiate a new 3way TCP handshake and
-exchange the nessecary protocol packets before getting to the
+exchange the necessary protocol packets before getting to the
 authentication phase. Consequently, it may be faster to open more connections
 that each try out 1 authentication attempt and then immediately close
 instead of trying as many attempts as possible with each connection.

@@ -106,6 +106,10 @@
 #include <time.h>
 #include <vector>
 
+#if HAVE_OPENSSL
+  #include <openssl/ssl.h>
+#endif
+
 #ifdef WIN32
 #include "winfix.h"
 #endif
@@ -446,6 +450,8 @@ call_module(nsock_pool nsp, Connection *con)
   else if (!strcmp(name, "ssh"))
     ncrack_ssh(nsp, con);
   else if (!strcmp(name, "http"))
+    ncrack_http(nsp, con);
+  else if (!strcmp(name, "https"))
     ncrack_http(nsp, con);
   else
     fatal("Invalid service module: %s", name);
@@ -1356,6 +1362,7 @@ ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 void
 ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
+  nsock_iod nsi = nse_iod(nse);
   enum nse_status status = nse_status(nse);
   enum nse_type type = nse_type(nse);
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
@@ -1374,7 +1381,19 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   } else if (status == NSE_STATUS_SUCCESS) {
 
 #if HAVE_OPENSSL
-    // TODO: handle ossl
+    // Snag our SSL_SESSION from the nsi for use in subsequent connections.
+    if (nsi_checkssl(nsi)) {
+      if (con->ssl_session ) {
+        if (con->ssl_session == (SSL_SESSION *)(nsi_get0_ssl_session(nsi))) {
+          //nada
+        } else {
+          SSL_SESSION_free((SSL_SESSION*)con->ssl_session);
+          con->ssl_session = (SSL_SESSION *)(nsi_get1_ssl_session(nsi));
+        }
+      } else {
+        con->ssl_session = (SSL_SESSION *)(nsi_get1_ssl_session(nsi));
+      }
+    }
 #endif
 
     return call_module(nsp, con);
@@ -1610,6 +1629,11 @@ ncrack(ServiceGroup *SG)
 
   gettimeofday(&now, NULL);
   nsp_settrace(nsp, tracelevel, &now);
+
+#if HAVE_OPENSSL
+  /* We don't care about connection security, so cast Haste */
+  nsp_ssl_init_max_speed(nsp);
+#endif
 
   SG->findMinDelay();
   /* We have to set the nsock_loop timeout to the minimum of the connection
