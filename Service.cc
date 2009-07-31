@@ -422,10 +422,12 @@ getPercDone(void)
 }
 
 
-/* Starts the timeout clock for the host running (e.g. you are
-   beginning a scan).  If you do not have the current time handy,
-   you can pass in NULL.  When done, call stopTimeOutClock (it will
-   also automatically be stopped of timedOut() returns true) */
+/*
+ * Starts the timeout clock for the host running (e.g. you are
+ * beginning a scan). If you do not have the current time handy,
+ * you can pass in NULL. When done, call stopTimeOutClock (it will
+ * also automatically be stopped of timedOut() returns true)
+ */
 void Service::
 startTimeOutClock(const struct timeval *now) {
   assert(htn.toclock_running == false);
@@ -448,10 +450,12 @@ stopTimeOutClock(const struct timeval *now) {
   htn.host_end = tv.tv_sec;
 }
 
-/* Returns whether the host is timedout.  If the timeoutclock is
-   running, counts elapsed time for that.  Pass NULL if you don't have the
-   current time handy.  You might as well also pass NULL if the
-   clock is not running, as the func won't need the time. */
+/*
+ * Returns whether the host is timedout. If the timeoutclock is
+ * running, counts elapsed time for that. Pass NULL if you don't have the
+ * current time handy. You might as well also pass NULL if the
+ * clock is not running, as the func won't need the time.
+ */
 bool Service::
 timedOut(const struct timeval *now) {
   unsigned long used = htn.msecs_used;

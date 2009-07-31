@@ -1,18 +1,15 @@
 TODO:
 
 * Write form auth http module.
-  * Fix the false positives/false negative issues we've been seeing
-    when scanning over the Internet.
 
 * Search for good username and password lists, or find ways to
   generate them (e.g. web scraping for email addresses or account
-  names or whatever).  Usernames seems like a relatively easy problem,
+  names or whatever). Usernames seems like a relatively easy problem,
   while password lists are more difficult to come by.
+  * Assembled a lot of lists. Now need to sort them out.
 
 * Documentation: write the man page (in Docbook XML, at least for the
   final version)
-
-* Add ssl support (through nsock).
 
 * Make Ncrack packaging - a source tarball for *nix and a Windows installer.
 
@@ -37,7 +34,10 @@ TODO:
   ------> It seems the Microsoft guys found the thing not reproducible but they
   must have tested it under XP SP2 whereas the behaviour seems to be occuring
   only in SP3. I have mentioned that in a comment but they probably won't see
-  that again, so perhaps I might have to resubmit the issue.
+  that again, so perhaps I might have to resubmit the issue. 
+  ------> I have resubmitted the bug, pointing out now that it only applies
+  to XP SP3:
+  https://connect.microsoft.com/WNDP/feedback/ViewFeedback.aspx?FeedbackID=479640
 
 * Add --resume support
 
@@ -83,6 +83,12 @@ TODO:
 
 
 ============================== DONE ==========================================
+
+
+* Fix the false positives/false negative issues we've been seeing
+  when scanning over the Internet for http module.
+
+* Add ssl support (through nsock).
 
 * Implement Service timeout, where the user imposes a certain timeout
   after which the service is marked as finished regardless of the progress

@@ -44,7 +44,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories=".;..;..\nbase;..\nsock\include;..\opensshlib;..\mod;OpenSSL\include;"
+				AdditionalIncludeDirectories=".;..;..\nbase;..\nsock\include;..\opensshlib;..\modules;OpenSSL\include;"
 				PreprocessorDefinitions="WIN32;_CONSOLE"
 				GeneratePreprocessedFile="0"
 				KeepComments="false"
@@ -105,7 +105,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\*.lst&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
+				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\lists\*&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
 			/>
 		</Configuration>
 		<Configuration
@@ -139,7 +139,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories=".;..;..\nbase;..\nsock\include;..\opensshlib;..\mod;OpenSSL\include;"
+				AdditionalIncludeDirectories=".;..;..\nbase;..\nsock\include;..\opensshlib;..\modules;OpenSSL\include;"
 				PreprocessorDefinitions="WIN32;_CONSOLE"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -196,7 +196,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\*.lst&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
+				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\lists\*&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
 			/>
 		</Configuration>
 	</Configurations>
@@ -225,19 +225,19 @@
 				>
 			</File>
 			<File
-				RelativePath="..\mod\ncrack_ftp.cc"
+				RelativePath="..\modules\ncrack_ftp.cc"
 				>
 			</File>
 			<File
-				RelativePath="..\mod\ncrack_http.cc"
+				RelativePath="..\modules\ncrack_http.cc"
 				>
 			</File>
 			<File
-				RelativePath="..\mod\ncrack_ssh.cc"
+				RelativePath="..\modules\ncrack_ssh.cc"
 				>
 			</File>
 			<File
-				RelativePath="..\mod\ncrack_telnet.cc"
+				RelativePath="..\modules\ncrack_telnet.cc"
 				>
 			</File>
 			<File
@@ -327,7 +327,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\mod\modules.h"
+				RelativePath="..\modules\modules.h"
 				>
 			</File>
 			<File

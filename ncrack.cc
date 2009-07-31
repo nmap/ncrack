@@ -111,7 +111,7 @@
 #endif
 
 #ifdef WIN32
-#include "winfix.h"
+  #include "winfix.h"
 #endif
 
 #define DEFAULT_CONNECT_TIMEOUT 5000
@@ -226,6 +226,7 @@ print_usage(void)
          "files\n"
       "MISC:\n"
       "  -sL or --list: only list hosts and services\n"
+      "  --datadir <dirname>: Specify custom Ncrack data file location\n"
       "  -V: Print version number\n"
       "  -h: Print this help summary page.\n",
       NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
@@ -319,34 +320,112 @@ file_readable(const char *pathname) {
 
 int
 ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
-  //char *dirptr;
+  char *dirptr;
   int res;
   int foundsomething = 0;
-  //struct passwd *pw;
-  //char dot_buffer[512];
+  struct passwd *pw;
+  static int warningcount = 0;
+  char dot_buffer[512];
 
-#ifdef WIN32
+  /* First, check the map of requested data file names. If there's an entry for
+     file, use it and return.
+     Otherwise, we try [--datadir]/file, then $NCRACKDIR/file
+     next we try ~user/ncrack/file
+     then we try NCRACKDATADIR/file <--NCRACKDATADIR 
+     finally we try ./file
+
+     -- or on Windows --
+
+     --datadir -> $NCRACKDIR -> nmap.exe directory -> NCRACKDATADIR -> .
+  */
+
+  if (o.datadir) {
+    res = Snprintf(filename_returned, bufferlen, "%s/%s", o.datadir, file);
+    if (res > 0 && res < bufferlen) {
+      foundsomething = file_readable(filename_returned);
+    }
+  }
+
+  if (!foundsomething && (dirptr = getenv("NCRACKDIR"))) {
+    res = Snprintf(filename_returned, bufferlen, "%s/%s", dirptr, file);
+    if (res > 0 && res < bufferlen) {
+      foundsomething = file_readable(filename_returned);
+    }
+  }
+
+#ifndef WIN32
+  if (!foundsomething) {
+    pw = getpwuid(getuid());
+    if (pw) {
+      res = Snprintf(filename_returned, bufferlen, "%s/.ncrack/%s",
+          pw->pw_dir, file);
+      if (res > 0 && res < bufferlen) {
+        foundsomething = file_readable(filename_returned);
+      }
+    }
+    if (!foundsomething && getuid() != geteuid()) {
+      pw = getpwuid(geteuid());
+      if (pw) {
+        res = Snprintf(filename_returned, bufferlen, "%s/.ncrack/%s",
+            pw->pw_dir, file);
+        if (res > 0 && res < bufferlen) {
+          foundsomething = file_readable(filename_returned);
+        }
+      }
+    }
+  }
+#else
   if (!foundsomething) { /* Try the Ncrack directory */
-	  char fnbuf[MAX_PATH];
-	  int i;
-	  res = GetModuleFileName(GetModuleHandle(0), fnbuf, 1024);
-      if(!res) fatal("GetModuleFileName failed (!)\n");
+    char fnbuf[MAX_PATH];
+    int i;
+    res = GetModuleFileName(GetModuleHandle(0), fnbuf, 1024);
+    if(!res) fatal("GetModuleFileName failed (!)\n");
 
-	  /*	Strip it */
-	  for(i = res - 1; i >= 0 && fnbuf[i] != '/' && fnbuf[i] != '\\'; i--);
-	  if(i >= 0) /* we found it */
-		  fnbuf[i] = 0;
-	  res = Snprintf(filename_returned, bufferlen, "%s\\%s", fnbuf, file);
-	  if(res > 0 && res < bufferlen)
-		  foundsomething = file_readable(filename_returned);
+    /*	Strip it */
+    for(i = res - 1; i >= 0 && fnbuf[i] != '/' && fnbuf[i] != '\\'; i--);
+    if(i >= 0) /* we found it */
+      fnbuf[i] = 0;
+    res = Snprintf(filename_returned, bufferlen, "%s\\%s", fnbuf, file);
+    if(res > 0 && res < bufferlen)
+      foundsomething = file_readable(filename_returned);
   }
 #endif
 
   if (!foundsomething) {
-    res = Snprintf(filename_returned, bufferlen, "./%s", file);
+    res = Snprintf(filename_returned, bufferlen, "%s/%s", NCRACKDATADIR, file);
     if (res > 0 && res < bufferlen) {
       foundsomething = file_readable(filename_returned);
     }
+  }
+
+  if (foundsomething && (*filename_returned != '.')) {    
+    res = Snprintf(dot_buffer, sizeof(dot_buffer), "./%s", file);
+    if (res > 0 && res < bufferlen) {
+      if (file_readable(dot_buffer)) {
+#ifdef WIN32
+        if (warningcount++ < 1 && o.debugging)
+#else
+          if(warningcount++ < 1)
+#endif
+            error("Warning: File %s exists, but Ncrack is using %s for security "
+                "and consistency reasons. Set NCRACKDIR=. to give priority to "
+                "files in your local directory (may affect the other data "
+                "files too).", dot_buffer, filename_returned);
+      }
+    }
+  }
+
+  if (!foundsomething) {
+    res = Snprintf(filename_returned, bufferlen, "./%s", file);
+    if (res > 0 && res < bufferlen)
+      foundsomething = file_readable(filename_returned);
+  }
+    
+  /* For username/password lists also search ./lists */
+  if (!foundsomething) {
+    res = Snprintf(filename_returned, bufferlen, "./lists/%s", file);
+    if (res > 0 && res < bufferlen)
+      foundsomething = file_readable(filename_returned);
   }
 
   if (!foundsomething) {
@@ -512,6 +591,7 @@ int main(int argc, char **argv)
     {"services", required_argument, 0, 'p'},
     {"version", no_argument, 0, 'V'},
     {"verbose", no_argument, 0, 'v'},
+    {"datadir", required_argument, 0, 0},
     {"debug", optional_argument, 0, 'd'},
     {"help", no_argument, 0, 'h'},
     {"timing", required_argument, 0, 'T'},
@@ -594,6 +674,8 @@ int main(int argc, char **argv)
           o.log_errors = true;
         } else if (!optcmp(long_options[option_index].name, "append-output")) {
           o.append_output = true;
+        } else if (strcmp(long_options[option_index].name, "datadir") == 0) {
+          o.datadir = strdup(optarg);
         } else if (strcmp(long_options[option_index].name, "oN") == 0) {
           normalfilename = logfilename(optarg, tm);
         } else if (strcmp(long_options[option_index].name, "oX") == 0) {
@@ -682,7 +764,7 @@ int main(int argc, char **argv)
         print_usage();
     }
   }
-  
+
   /* Initialize tty for interactive output */
   tty_init();
 
@@ -699,12 +781,12 @@ int main(int argc, char **argv)
 
   if (UserArray.empty()) {
     ncrack_fetchfile(username_file, sizeof(username_file),
-      DEFAULT_USERNAME_FILE);
+        DEFAULT_USERNAME_FILE);
     load_login_file(username_file, USER);
   }
   if (PassArray.empty()) {
-	ncrack_fetchfile(password_file, sizeof(password_file),
-      DEFAULT_PASSWORD_FILE);
+    ncrack_fetchfile(password_file, sizeof(password_file),
+        DEFAULT_PASSWORD_FILE);
     load_login_file(password_file, PASS);
   }
 
@@ -719,7 +801,6 @@ int main(int argc, char **argv)
       NCRACK_NAME, NCRACK_VERSION, NCRACK_URL, tbuf);
 
   o.setaf(AF_INET);
-
 
   /* lets load our exclude list */
   if ((NULL != excludefd) || (NULL != exclude_spec)) {
@@ -798,8 +879,8 @@ int main(int argc, char **argv)
         /* check for duplicates */
         for (li = SG->services_all.begin(); li != SG->services_all.end();
             li++) {
-          if (!strcmp((*li)->target->NameIP(), currenths->NameIP()) &&
-              (!strcmp((*li)->name, service->name))
+          if (!strcmp((*li)->target->NameIP(), currenths->NameIP())
+              && (!strcmp((*li)->name, service->name))
               && ((*li)->portno == service->portno))
             fatal("Duplicate service %s for target %s !",
                 service->name, currenths->NameIP());
@@ -895,7 +976,7 @@ startTimeOutClocks(ServiceGroup *SG)
 {
   struct timeval tv;
   list<Service *>::iterator li;
-  
+
   gettimeofday(&tv, NULL);
   for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
     if (!(*li)->timedOut(NULL))
@@ -1004,7 +1085,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
    */
   if (con->peer_alive) {
     if ((!serv->auth_tries
-         || con->login_attempts < (unsigned long)serv->auth_tries)
+          || con->login_attempts < (unsigned long)serv->auth_tries)
         && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
       if (pair_ret == 1)
         con->from_pool = true;
@@ -1318,7 +1399,7 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
     return ncrack_connection_end(nsp, con);
-  
+
   } else if (status == NSE_STATUS_SUCCESS)
     call_module(nsp, con);
   else if (status == NSE_STATUS_ERROR) {

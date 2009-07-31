@@ -31,14 +31,11 @@ if test "$user_localdirs" = 1; then
 fi
 
 
-
 dnl use ncrack_config.h instead of -D macros
 AC_CONFIG_HEADER(ncrack_config.h)
 
 
-
-
-
+AC_PATH_TOOL([STRIP], [strip], [/bin/true])
 
 
 dnl Host specific hacks
@@ -336,13 +333,13 @@ MODULES_SRCS="$MODULES_SRCS ncrack_ftp.cc ncrack_telnet.cc ncrack_http.cc"
 MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o ncrack_http.o"
 AC_SUBST(MODULES_SRCS)
 AC_SUBST(MODULES_OBJS)
-AC_OUTPUT(mod/Makefile)
+AC_OUTPUT(modules/Makefile)
 
 AC_SUBST(OPENSSHLIB_DIR)
 AC_SUBST(OPENSSHLIB_BUILD)
 AC_SUBST(OPENSSH_LIB)
 
-CPPFLAGS="$CPPFLAGS -Imod"
+CPPFLAGS="$CPPFLAGS -Imodules"
 
 AC_SUBST(CPPFLAGS)
 AC_SUBST(LDFLAGS)

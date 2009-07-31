@@ -127,6 +127,7 @@ class NcrackOps {
     unsigned long host_timeout;
     FILE *logfd[LOG_NUM_FILES];
     FILE *ncrack_stdout; /* Ncrack standard output */
+    char *datadir;
 
   private:
     struct timeval start_time;

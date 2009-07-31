@@ -1,27 +1,55 @@
-export NBASEDIR=@NBASEDIR@
-export NSOCKDIR=@NSOCKDIR@
+# Extract the version string from nmap.h.
+export NCRACK_VERSION := $(shell grep '^\#[ \t]*define[ \t]\+NCRACK_VERSION' \
+	ncrack.h | sed -e 's/.*"\(.*\)".*/\1/' -e 'q')
+NCRACK_NAME= Ncrack
+NCRACK_URL= http://ncrack.org
+NCRACK_PLATFORM=@host@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = @bindir@
+sbindir = @sbindir@
+mandir = @mandir@
+srcdir = @srcdir@
+ncrackdatadir = @datadir@/ncrack
+
+export NBASEDIR = @NBASEDIR@
+export NSOCKDIR = @NSOCKDIR@
 export OPENSSHLIB_DIR = @OPENSSHLIB_DIR@
 
-DEFS = @DEFS@
-DEFS += -D_FORTIFY_SOURCE=2
+DEFS = @DEFS@ -DNCRACK_NAME=\"$(NCRACK_NAME)\" -DNCRACK_URL=\"$(NCRACK_URL)\" \
+-DNCRACK_PLATFORM=\"$(NCRACK_PLATFORM)\" -DNCRACKDATADIR=\"$(ncrackdatadir)\"
+DEFS += -D_FORTIFY_SOURCE=2 
+
+CC = @CC@
+CXX = @CXX@
+CCOPT = 
+DBGFLAGS = 
+STRIP = @STRIP@
 CXXFLAGS = @CXXFLAGS@ $(DBGFLAGS) $(DEFS) 
 CPPFLAGS = @CPPFLAGS@
 export CFLAGS = $(CXXFLAGS)
 STATIC =
 LDFLAGS = @LDFLAGS@ $(DBGFLAGS) $(STATIC)
+INSTALL = @INSTALL@
 
 MOD_OBJS = @MODULES_OBJS@
-MOD_OBJS := $(addprefix mod/,$(MOD_OBJS))
+MOD_OBJS := $(addprefix modules/,$(MOD_OBJS))
 MOD_SRCS = @MODULES_SRCS@
-MOD_SRCS := $(addprefix mod/,$(MOD_SRCS))
+MOD_SRCS := $(addprefix modules/,$(MOD_SRCS))
 
 LIBS = @LIBNSOCK_LIBS@ @LIBNBASE_LIBS@ @OPENSSL_LIBS@ @OPENSSH_LIB@ 
 
+DESTDIR =
+
 TARGET = ncrack
 
-export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc NcrackOps.cc Service.cc ServiceGroup.cc Connection.h services.cc timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buf.cc 
+export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc \
+	NcrackOps.cc Service.cc ServiceGroup.cc Connection.h services.cc \
+	timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buf.cc 
 
-OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o Service.o ServiceGroup.o Connection.o services.o timing.o ncrack_error.o output.o ncrack_tty.o Buf.o 
+OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o \
+Service.o ServiceGroup.o Connection.o services.o timing.o \
+ncrack_error.o output.o ncrack_tty.o Buf.o 
 
 .cc.o :
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
@@ -38,7 +66,7 @@ $(TARGET): $(NSOCKDIR)/src/libnsock.a $(NBASEDIR)/libnbase.a $(OBJS) $(MOD_OBJS)
 
 modules_build:
 	@echo Compiling modules
-	cd mod && $(MAKE)
+	cd modules && $(MAKE)
 
 nbase_build: $(NBASEDIR)/Makefile
 	@echo Compiling libnbase;
@@ -51,6 +79,29 @@ nsock_build: $(NSOCKDIR)/src/Makefile nbase_build
 opensshlib_build: $(OPENSSHLIB_DIR)/Makefile
 	@echo Compiling openssh lib;
 	cd $(OPENSSHLIB_DIR) && $(MAKE)
+
+
+
+install: install-ncrack
+	@echo "NCRACK SUCCESSFULLY INSTALLED"
+
+install-ncrack: $(TARGET)
+	$(INSTALL) -d $(DESTDIR)$(bindir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(ncrackdatadir)
+	$(INSTALL) -c -m 755 ncrack $(DESTDIR)$(bindir)/ncrack
+	$(STRIP) $(DESTDIR)$(bindir)/ncrack
+	$(INSTALL) -c -m 644 docs/$(TARGET).1 $(DESTDIR)$(mandir)/man1/
+#	$(INSTALL) -c -m 644 docs/ncrack.xsl $(DESTDIR)$(ncrackdatadir)/
+#	$(INSTALL) -c -m 644 docs/ncrack.dtd $(DESTDIR)$(ncrackatadir)/
+	$(INSTALL) -c -m 644 ncrack-services $(DESTDIR)$(ncrackdatadir)/
+	$(INSTALL) -c -m 644 lists/* $(DESTDIR)$(ncrackdatadir)/
+
+
+uninstall: uninstall-ncrack
+
+uninstall-ncrack:
+	rm -f $(DESTDIR)$(bindir)/$(TARGET)
+	rm -f $(DESTDIR)$(mandir)/man1/$(TARGET).1
+	rm -rf $(DESTDIR)$(ncrackdatadir)
 
 
 # cleaning stuff
@@ -67,7 +118,7 @@ nsock_clean:
 opensshlib_clean:
 	-cd $(OPENSSHLIB_DIR) && $(MAKE) clean
 modules_clean:
-	-cd mod && $(MAKE) clean
+	-cd modules && $(MAKE) clean
 
 Makefile: Makefile.in config.status
 	./config.status

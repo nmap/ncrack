@@ -98,6 +98,7 @@ NcrackOps o;
 NcrackOps::
 NcrackOps() {
 
+  datadir = NULL;
   stats_interval = 0.0; /* unset */
   log_errors = false;
   append_output = false;
@@ -113,11 +114,14 @@ NcrackOps() {
   memset(logfd, 0, sizeof(FILE *) * LOG_NUM_FILES);
   ncrack_stdout = stdout;
   gettimeofday(&start_time, NULL);
+
 }
 
 NcrackOps::
 ~NcrackOps() {
-  ;
+
+  if (datadir)
+    free(datadir);
 }
 
 
