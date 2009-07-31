@@ -116,7 +116,7 @@ Ncrack finished.
       &ncrack-usage;
       <indexterm class="endofrange" startref="ncrack-usage-ncrack-indexterm"/>
       <indexterm class="endofrange" startref="ncrack-usage-indexterm"/>
-   </refsect1>
+  </refsect1>
 
 
   <refsect1 id="man-target-specification">
@@ -188,10 +188,210 @@ Ncrack finished.
         following options are also available to control target selection:
       </para>
 
+      <variablelist>
 
+      <varlistentry>
+        <term>
+          <option>-iL <replaceable>inputfilename</replaceable></option>
+          (Input from list)
+          <indexterm><primary><option>-iL</option></primary></indexterm>
+          <indexterm><primary>target specification</primary><secondary>
+              from list</secondary></indexterm>
+        </term>
+        <listitem>
+          <para>Reads target specifications from
+          <replaceable>inputfilename</replaceable>. Passing a huge
+          list of hosts is often awkward on the command line, yet it
+          is a common desire. For example, you might want to crack
+          a list of very specific servers that have been specified for
+          penetration testing. Simply generate the list
+          of hosts to crack and pass that filename to Ncrack as an
+          argument to the <option>-iL</option> option. Entries can be
+          in any of the formats accepted by Ncrack on the command line
+          (IP address, hostname, CIDR, octet ranges or Ncrack's special
+          host-service syntax. Each
+          entry must be separated by one or more spaces, tabs, or
+          newlines.  You can specify a hyphen (<literal>-</literal>)
+          as the filename if you want Ncrack to read hosts from standard
+          input rather than an actual file. Note, however, that if hosts
+          are specified without any service, you will have to also provide
+          services/ports for the targets using the <option>-p</option>
+          option.
+        </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>--exclude
+            <replaceable>host1</replaceable><optional>,
+              <replaceable>host2</replaceable><optional>,
+                ...</optional></optional></option> (Exclude hosts/networks)
+          <indexterm significance="preferred"><primary><option>--exclude
+          </option></primary></indexterm>
+          <indexterm><primary>excluding targets</primary></indexterm>
+        </term>
+        <listitem>
+          <para>Specifies a comma-separated list of targets to be
+          excluded from the scan even if they are part of the overall
+          network range you specify.  The list you pass in uses normal
+          Ncrack syntax, so it can include hostnames, CIDR netblocks,
+          octet ranges, etc.  This can be useful when the network you
+          wish to scan includes untouchable mission-critical servers,
+          systems that are known to react adversely to heavy load,
+          or subnets administered by other people.</para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>--excludefile <replaceable>exclude_file</replaceable>
+          </option> (Exclude list from file)
+          <indexterm significance="preferred"><primary><option>
+                --excludefile</option></primary></indexterm>
+        </term>
+        <listitem>
+          <para>This offers the same functionality as the
+            <option>--exclude</option>
+          option, except that the excluded targets are provided in a
+          newline, space, or tab delimited
+          <replaceable>exclude_file</replaceable> rather than on the
+          command line.</para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+   </refsect1>
+
+
+   <refsect1 id='man-misc-options'>
+    <title>Miscellaneous Options</title>
+    <para>This section describes some important (and not-so-important)
+    options that don't really fit anywhere else.</para>
+
+   <variablelist>
+
+      <varlistentry>
+        <term>
+          <option>--datadir <replaceable>directoryname</replaceable></option>
+          (Specify custom Ncrack data file location)
+          <indexterm significance="preferred"><primary><option>--datadir
+          </option></primary></indexterm>
+        </term>
+        <listitem>
+
+          <para>Ncrack needs a file called <filename>ncrack-services</filename>
+          to load a lookup-table of supported services/ports. This file
+          shouldn't be changed, unless you know what you are doing (e.g
+          extending Ncrack for additional modules). In addition, Ncrack is
+          shipped with various username and password lists, some of which
+          are used by default in case the user doesn't specify ones of his
+          own. All these files are normally copied during the installation
+          procedure to a directory such as /usr/share/ncrack or
+          /usr/local/share/ncrack . Using the <option>--datadir</option>
+          option, will force Ncrack to start searching for these files in
+          specified directory. If the files aren't found, then it will continue
+          searching in the directory specified by the NCRACKDIR environmental
+          variable <envar>NCRACKDIR</envar> (if it is defined).
+          Next comes <filename>~/.ncrack</filename> directory for real and
+          effective UIDs (POSIX systems only) or location of the Ncrack
+          executable (Win32 only), and then a compiled-in location such as
+          <filename>/usr/local/share/ncrack</filename> or
+          <filename>/usr/share/ncrack</filename>. As a last resort, Ncrack will
+          look in the current directory.
+        </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-V</option>; <option>--version</option>
+          (Print version number)
+          <indexterm><primary><option>-V</option></primary></indexterm>
+          <indexterm><primary><option>--version</option></primary></indexterm>
+        </term>
+        <listitem>
+          <para>Prints the Ncrack version number and exits.</para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-h</option>; <option>--help</option>
+          (Print help summary page)
+          <indexterm><primary><option>-h</option></primary></indexterm>
+          <indexterm><primary><option>--help</option></primary></indexterm>
+        </term>
+        <listitem>
+          <para>Prints a short help screen with the most common
+          command flags. Running Ncrack without any arguments does the
+          same thing.</para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
   </refsect1>
 
 
+
+   <refsect1 id='man-runtime-interaction'>
+     <title>Runtime Interaction<indexterm><primary>runtime interaction
+     </primary></indexterm></title>
+
+    <para>During the execution of Ncrack, all key presses are
+    captured. This allows you to interact with the program
+    without aborting and restarting it. Certain special
+    keys will change options, while any other keys will print out a
+    status message telling you about the scan. The convention is
+    that 
+    <emphasis>lowercase letters increase</emphasis> the
+    amount of printing, and 
+    <emphasis>uppercase letters decrease</emphasis> the
+    printing.  You may also press &lsquo;<emphasis>?</emphasis>&rsquo;
+    for help.</para>
+    <variablelist>
+      <varlistentry>
+        <term>
+          <option>v</option> / <option>V</option>
+        </term>
+        <listitem>
+          <para>Increase / decrease the verbosity level</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>d</option> / <option>D</option>
+        </term>
+        <listitem>
+          <para>Increase / decrease the debugging Level</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>?</option>
+        </term>
+        <listitem>
+          <para>Print a runtime interaction help screen</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          Anything else
+        </term>
+        <listitem>
+          <para>Print out a status message like this:</para>
+          <para>Stats: 0:00:20 elapsed; 0 services completed (1 total)</para>
+          <para>
+       Rate: 6.26; Found: 1; About 13.27% done; ETC: 21:06 (0:02:17 remaining)
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+
+    
   <refsect1 id='man-bugs'>
    <title>Bugs</title>
    <indexterm><primary>bugs, reporting</primary></indexterm>
@@ -211,7 +411,7 @@ Ncrack finished.
     Read this full manual page as well. If nothing comes of this, mail a bug
     report to <email>nmap-dev@insecure.org</email> . Please include
     everything you have learned about the problem, as well as what version of
-    Nmap you are running and what operating system version it is running on.
+    Ncrack you are running and what operating system version it is running on.
     Problem reports and Ncrack usage questions sent to
     <email>nmap-dev@insecure.org</email> are far more likely to be answered
     than those sent to Fyodor directly. If you subscribe to the nmap-dev

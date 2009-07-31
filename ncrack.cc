@@ -289,7 +289,6 @@ lookup_init(const char *const filename)
  * is readable by the executing process.  Returns two if it is readable
  * and is a directory.  Otherwise returns 0.
  */
-
 static int
 file_readable(const char *pathname) {
 	char *pathname_buf = strdup(pathname);
