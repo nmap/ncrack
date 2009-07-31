@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 07/31/2009
+.\"      Date: 08/01/2009
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "07/31/2009" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "08/01/2009" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -175,6 +175,137 @@ This offers the same functionality as the
 option, except that the excluded targets are provided in a newline, space, or tab delimited
 \fIexclude_file\fR
 rather than on the command line\&.
+.RE
+.SH "OUTPUT"
+.\" output formats
+.PP
+Any security tool is only as useful as the output it generates\&. Complex tests and algorithms are of little value if they aren\'t presented in an organized and comprehensible fashion\&. Of course, no single format can please everyone\&. So Ncrack offers several formats, including the interactive mode for humans to read directly and XML for easy parsing by software\&.
+.PP
+In addition to offering different output formats, Ncrack provides options for controlling the verbosity of output as well as debugging messages\&. Output types may be sent to standard output or to named files, which Ncrack can append to or clobber\&.
+.PP
+Ncrack makes output available in three different formats\&. The default is called
+interactive output, and it is sent to standard output (stdout)\&. There is also
+normal output, which is similar to interactive except that it displays less runtime information and warnings since it is expected to be analyzed after the scan completes rather than interactively\&.
+.PP
+XML output
+is one of the most important output types, as it can be converted to HTML, easily parsed by programs such as Ncrack graphical user interfaces, or imported into databases\&. Currently, XML output hasn\'t been implemented\&.
+.PP
+While interactive output is the default and has no associated command\-line options, the other two format options use the same syntax\&. They take one argument, which is the filename that results should be stored in\&. Multiple formats may be specified, but each format may only be specified once\&. For example, you may wish to save normal output for your own review while saving XML of the same scan for programmatic analysis\&. You might do this with the options
+\fB\-oX myscan\&.xml \-oN myscan\&.ncrack\fR\&. While this chapter uses the simple names like
+myscan\&.xml
+for brevity, more descriptive names are generally recommended\&. The names chosen are a matter of personal preference\&. A scheme could be using long filenames that incorporate the scan date and a word or two describing the scan, placed in a directory named after the company that is being scanned\&.
+.PP
+While these options save results to files, Ncrack still prints interactive output to stdout as usual\&. For example, the command
+\fBnmap \-oX myscan\&.xml [target]\fR
+prints XML to
+myscan\&.xml
+and fills standard output with the same interactive results it would have printed if
+\fB\-oX\fR
+wasn\'t specified at all\&. You can change this by passing a hyphen character as the argument to one of the format types\&. This causes Ncrack to deactivate interactive output, and instead print results in the format you specified to the standard output stream\&. So the command
+\fBnmap \-oX \- target\fR
+will send only XML output to stdout\&. Serious errors may still be printed to the normal error stream, stderr\&.
+.PP
+Unlike some Ncrack arguments, the space between the logfile option flag (such as
+\fB\-oX\fR) and the filename or hyphen is mandatory\&.
+.PP
+All of these arguments support
+\fBstrftime\fR\-like conversions in the filename\&.
+%H,
+%M,
+%S,
+%m,
+%d,
+%y, and
+%Y
+are all exactly the same as in
+\fBstrftime\fR\&.
+%T
+is the same as
+%H%M%S,
+%R
+is the same as
+%H%M, and
+%D
+is the same as
+%m%d%y\&. A
+%
+followed by any other character just yields that character (%%
+gives you a percent symbol)\&. So
+\fB\-oX \'scan\-%T\-%D\&.xml\'\fR
+will use an XML file in the form of
+scan\-144840\-121307\&.xml\&.
+.PP
+Ncrack also offers options to control scan verbosity and to append to output files rather than clobbering them\&. All of these options are described below\&.
+.PP
+\fBNcrack Output Formats\fR
+.PP
+\fB\-oN \fR\fB\fIfilespec\fR\fR (normal output) .\" -oN .\" normal output
+.RS 4
+Requests that
+normal output
+be directed to the given filename\&. As discussed above, this differs slightly from
+interactive output\&.
+.RE
+.PP
+\fB\-oX \fR\fB\fIfilespec\fR\fR (XML output) .\" -oX .\" XML output
+.RS 4
+Requests that
+XML output
+be directed to the given filename\&. Currently this is not implemented\&.
+.RE
+.PP
+\fB\-oA \fR\fB\fIbasename\fR\fR (Output to all formats) .\" -oA
+.RS 4
+As a convenience, you may specify
+\fB\-oA \fR\fB\fIbasename\fR\fR
+to store scan results in normal and XML formats at once\&. They are stored in
+\fIbasename\fR\&.ncrack, and
+\fIbasename\fR\&.xml
+respectively\&. As with most programs, you can prefix the filenames with a directory path, such as
+~/ncracklogs/foocorp/
+on Unix or
+c:\ehacking\esco
+on Windows\&.
+.RE
+.PP
+\fBVerbosity and debugging options\fR
+.PP
+\fB\-v\fR (Increase verbosity level) .\" -v .\" verbosity
+.RS 4
+Increases the verbosity level, causing Ncrack to print more information about the scan in progress\&. Credentials are shown as they are found and more statistical information is printed in the end\&. Use it twice or more for even greater verbosity\&.
+.\" -v: giving more than once
+.RE
+.PP
+\fB\-d [level]\fR (Increase or set debugging level) .\" -d .\" debugging
+.RS 4
+When even verbose mode doesn\'t provide sufficient data for you, debugging is available to flood you with much more! As with the verbosity option (\fB\-v\fR), debugging is enabled with a command\-line flag (\fB\-d\fR) and the debug level can be increased by specifying it multiple times\&. Alternatively, you can set a debug level by giving an argument to
+\fB\-d\fR\&. For example,
+\fB\-d10\fR
+sets level ten\&. That is the highest effective level and will produce thousands of lines, unless your cracking session is going really slow\&.
+.sp
+Debugging output is useful when a bug is suspected in Ncrack, or if you are simply confused as to what Ncrack is doing and why\&. As this feature is mostly intended for developers, debug lines aren\'t always self\-explanatory\&. If you don\'t understand a line, your only recourses are to ignore it, look it up in the source code, or request help from the development list (nmap\-dev)\&. Some lines are self explanatory, but the messages become more obscure as the debug level is increased\&.
+.RE
+.PP
+\fB\-\-log\-errors\fR (Log errors/warnings to normal mode output file) .\" --log-errors
+.RS 4
+Warnings and errors printed by Ncrack usually go only to the screen (interactive output), leaving any normal\-format output files (usually specified with
+\fB\-oN\fR) uncluttered\&. When you do want to see those messages in the normal output file you specified, add this option\&. It is useful when you aren\'t watching the interactive output or when you want to record errors while debugging a problem\&. The error and warning messages will still appear in interactive mode too\&. This won\'t work for most errors related to bad command\-line arguments because Ncrack may not have initialized its output files yet\&.
+.sp
+An alternative to
+\fB\-\-log\-errors\fR
+is redirecting interactive output (including the standard error stream) to a file\&. Most Unix shells make this approach easy, though it can be difficult on Windows\&.
+.RE
+.PP
+\fBMiscellaneous output options\fR
+.PP
+\fB\-\-append\-output\fR (Append to rather than clobber output files) .\" --append-output
+.RS 4
+When you specify a filename to an output format flag such as
+\fB\-oX\fR
+or
+\fB\-oN\fR, that file is overwritten by default\&. If you prefer to keep the existing content of the file and append the new results, specify the
+\fB\-\-append\-output\fR
+option\&. All output filenames specified in that Nmap execution will then be appended to rather than clobbered\&. This doesn\'t work well for XML (\fB\-oX\fR) scan data as the resultant file generally won\'t parse properly until you fix it up by hand\&.
 .RE
 .SH "MISCELLANEOUS OPTIONS"
 .PP

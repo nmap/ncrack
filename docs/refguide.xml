@@ -262,10 +262,282 @@ Ncrack finished.
 
     </variablelist>
 
-   </refsect1>
+  </refsect1>
+
+  
+  <refsect1 id='man-output'>
+    <title>Output</title>
+    <indexterm class="startofrange" id="man-output-indexterm">
+      <primary>output formats</primary></indexterm>
+
+    <para>
+     Any security tool is only as useful as the output it
+     generates.  Complex tests and algorithms are of little value if
+     they aren't presented in an organized and comprehensible fashion.
+     Of course, no single format can please everyone. So Ncrack offers
+     several formats, including the interactive mode for humans to read
+     directly and XML for easy parsing by software.
+    </para>
+
+    <para>
+     In addition to offering different output formats, Ncrack provides
+     options for controlling the verbosity of output as well as debugging
+     messages. Output types may be sent to standard output or to named
+     files, which Ncrack can append to or clobber.  
+    </para>
+     
+    <para>
+     Ncrack makes output available in three different formats.
+     The default is called <firstterm>interactive output</firstterm>,
+     and it is sent to standard output (stdout). There is also 
+     <firstterm>normal output</firstterm>, which is similar to interactive
+     except that it displays less runtime information and warnings since
+     it is expected to be analyzed after the scan completes rather than
+     interactively.
+    </para>
+
+    <para><firstterm>XML output</firstterm> is one of the most important
+     output types, as it can be converted to HTML, easily parsed by
+     programs such as Ncrack graphical user interfaces, or imported
+     into databases. Currently, XML output hasn't been implemented.
+    </para>
+
+    <para>
+     While interactive output is the default and has no associated
+     command-line options, the other two format options use the same
+     syntax. They take one argument, which is the filename that results
+     should be stored in. Multiple formats may be specified, but each
+     format may only be specified once. For example, you may wish to save
+     normal output for your own review while saving XML of the same scan
+     for programmatic analysis. You might do this with the options
+     <option>-oX myscan.xml -oN myscan.ncrack</option>. While this chapter
+     uses the simple names like <literal>myscan.xml</literal> for brevity,
+     more descriptive names are generally recommended. The names chosen
+     are a matter of personal preference. A scheme could be using long
+     filenames that incorporate the scan date and a word or two
+     describing the scan, placed in a directory named after the
+     company that is being scanned.
+    </para>
+
+    <para>
+     While these options save results to files, Ncrack still prints
+     interactive output to stdout as usual. For example, the command
+     <command>nmap -oX myscan.xml [target]</command> prints XML to
+     <filename>myscan.xml</filename> and fills standard output with
+     the same interactive results it would have printed if
+     <option>-oX</option> wasn't specified at all. You can change this
+     by passing a hyphen character as the argument to one of the format
+     types. This causes Ncrack to deactivate interactive output, and
+     instead print results in the format you specified to the standard
+     output stream. So the command <command>nmap -oX - target</command>
+     will send only XML output to stdout. Serious errors may still be
+     printed to the normal error stream, stderr.
+    </para>
+
+    <para>
+     Unlike some Ncrack arguments, the space between the logfile option
+     flag (such as <option>-oX</option>) and the filename or hyphen is
+     mandatory.
+    </para>
+
+    <para>
+     All of these arguments support
+     <function>strftime</function>-like conversions in the filename.
+     <literal>%H</literal>, <literal>%M</literal>, <literal>%S</literal>,
+     <literal>%m</literal>, <literal>%d</literal>, <literal>%y</literal>,
+     and <literal>%Y</literal> are all exactly the same as in
+     <function>strftime</function>.  <literal>%T</literal> is the same
+     as <literal>%H%M%S</literal>, <literal>%R</literal> is the same as
+     <literal>%H%M</literal>, and <literal>%D</literal> is the same as
+     <literal>%m%d%y</literal>. A <literal>%</literal> followed by any other
+     character just yields that character (<literal>%%</literal> gives you a
+     percent symbol).  So <option>-oX 'scan-%T-%D.xml'</option> will use an XML
+     file in the form of <filename>scan-144840-121307.xml</filename>.
+    </para>
+
+   <para>
+    Ncrack also offers options to control scan verbosity and to append
+    to output files rather than clobbering them.  All of these options are
+    described below.
+   </para>
+
+  <variablelist><title>Ncrack Output Formats</title>
+      <varlistentry>
+        <term>
+          <option>-oN <replaceable>filespec</replaceable></option>
+          (normal output)
+          <indexterm><primary><option>-oN</option></primary></indexterm>
+          <indexterm><primary>normal output</primary></indexterm></term>
+        <listitem>
+
+        <para>
+          Requests that <literal>normal output</literal> be
+          directed to the given filename. As discussed above, this
+          differs slightly from <literal>interactive output</literal>.
+        </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+        <option>-oX <replaceable>filespec</replaceable></option> (XML output)
+          <indexterm><primary><option>-oX</option></primary></indexterm>
+          <indexterm><primary>XML output</primary></indexterm></term>
+        <listitem>
+
+        <para>
+          Requests that <literal>XML output</literal> be
+          directed to the given filename. Currently this is not
+          implemented.
+        </para>
+
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-oA <replaceable>basename</replaceable></option>
+          (Output to all formats)
+          <indexterm significance="preferred"><primary><option>-oA
+          </option></primary></indexterm></term>
+          <listitem>
+          <para>
+
+           As a convenience, you may specify <option>-oA
+           <replaceable>basename</replaceable></option> to store scan
+           results in normal and XML formats at once. They
+           are stored in
+           <filename><replaceable>basename</replaceable>.ncrack</filename>, and
+           <filename><replaceable>basename</replaceable>.xml</filename>
+           respectively. As with most programs, you can prefix the filenames
+           with a directory path, such as
+           <filename>~/ncracklogs/foocorp/</filename> on Unix or
+           <filename>c:\hacking\sco</filename> on Windows.
+         </para>
+        </listitem>
+      </varlistentry>
+
+   </variablelist>
+
+   <variablelist><title>Verbosity and debugging options</title>
+      <varlistentry>
+        <term>
+          <option>-v</option> (Increase verbosity level)
+          <indexterm><primary><option>-v</option></primary></indexterm>
+          <indexterm><primary>verbosity</primary></indexterm>
+        </term>
+        <listitem>
+
+        <para>
+        Increases the verbosity level, causing Ncrack to
+        print more information about the scan in progress. Credentials
+        are shown as they are found and more statistical information is
+        printed in the end. Use it twice or more for even greater
+        verbosity.
+        <indexterm><primary><option>-v</option></primary>
+          <secondary>giving more than once</secondary></indexterm>
+        </para>
+
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>-d [level]</option> (Increase or set debugging level)
+        <indexterm><primary><option>-d</option></primary></indexterm>
+        <indexterm><primary>debugging</primary></indexterm>
+        </term>
+        <listitem>
+
+        <para>
+        When even verbose mode doesn't provide sufficient data for you,
+        debugging is available to flood you with much more! As with the
+        verbosity option (<option>-v</option>), debugging is enabled with a
+        command-line flag (<option>-d</option>) and the debug level can be
+        increased by specifying it multiple times. Alternatively, you can set
+        a debug level by giving an argument to <option>-d</option>. For
+        example, <option>-d10</option> sets level ten. That is the highest
+        effective level and will produce thousands of lines, unless your
+        cracking session is going really slow.
+        </para>
+
+        <para>
+        Debugging output is useful when a bug is suspected in Ncrack,
+        or if you are simply confused as to what Ncrack is doing and why.
+        As this feature is mostly intended for developers, debug lines aren't
+        always self-explanatory. 
+        If you don't understand a line, your only recourses are to ignore it,
+        look it up in the source code, or request help from
+        the development list (<citetitle>nmap-dev</citetitle>). Some lines are
+        self explanatory, but the messages become more obscure as the debug
+        level is increased.
+        </para>
+
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>--log-errors</option> (Log errors/warnings to normal mode output file)
+          <indexterm significance="preferred"><primary><option>--log-errors
+          </option></primary></indexterm>
+        </term>
+        <listitem>
+
+        <para>
+        Warnings and errors printed by Ncrack usually go only to
+        the screen (interactive output), leaving any normal-format
+        output files (usually specified with <option>-oN</option>)
+        uncluttered.  When you do want to see those messages in the
+        normal output file you specified, add this option. It is
+        useful when you aren't watching the interactive output or
+        when you want to record errors while debugging a problem.
+        The error and warning messages will still appear in
+        interactive mode too.  This won't work for most errors
+        related to bad command-line arguments because Ncrack may not
+        have initialized its output files yet.
+        </para>
+
+        <para>
+        An alternative to <option>--log-errors</option> is
+        redirecting interactive output (including the standard error
+        stream) to a file. Most Unix shells make this
+        approach easy, though it can be difficult on Windows.
+        </para>
+
+        </listitem>
+      </varlistentry>
+
+   </variablelist>
+
+   <variablelist><title>Miscellaneous output options</title>
+
+     <varlistentry>
+        <term>
+          <option>--append-output</option> (Append to rather than clobber output files)
+           <indexterm><primary><option>--append-output</option></primary></indexterm>
+        </term>
+        <listitem>
+
+           <para>When you specify a filename to an output format flag
+           such as <option>-oX</option> or <option>-oN</option>, that
+           file is overwritten by default.  If you prefer to keep the
+           existing content of the file and append the new results,
+           specify the <option>--append-output</option> option. All
+           output filenames specified in that Ncrack execution will then
+           be appended to rather than clobbered. This doesn't work
+           well for XML (<option>-oX</option>) scan data as the
+           resultant file generally won't parse properly until you fix
+           it up by hand.</para>
+        </listitem>
+    </varlistentry>
+
+   </variablelist>
+
+  </refsect1>
 
 
-   <refsect1 id='man-misc-options'>
+  <refsect1 id='man-misc-options'>
     <title>Miscellaneous Options</title>
     <para>This section describes some important (and not-so-important)
     options that don't really fit anywhere else.</para>
@@ -335,7 +607,7 @@ Ncrack finished.
 
 
 
-   <refsect1 id='man-runtime-interaction'>
+  <refsect1 id='man-runtime-interaction'>
      <title>Runtime Interaction<indexterm><primary>runtime interaction
      </primary></indexterm></title>
 
@@ -396,7 +668,7 @@ Ncrack finished.
    <title>Bugs</title>
    <indexterm><primary>bugs, reporting</primary></indexterm>
 
-  <para>
+   <para>
     Like its authors, Ncrack isn't perfect. But you can help make
     it better by sending bug reports or even writing patches. If Ncrack
     doesn't behave the way you expect, first upgrade to the latest
@@ -418,15 +690,15 @@ Ncrack finished.
     list before posting, your message will bypass moderation and get through
     more quickly. Subscribe at 
     <ulink url="http://cgi.insecure.org/mailman/listinfo/nmap-dev"/> .
-  </para>
+   </para>
 
-  <para>
+   <para>
     Code patches to fix bugs are even better than bug reports.
     Basic instructions for creating patch files with your changes are
     available at <ulink url="http://nmap.org/data/HACKING" /> . Patches may
     be sent to <citetitle>nmap-dev</citetitle> (recommended) or to Fyodor
     directly.
-  </para>
+   </para>
 
   </refsect1>
 
