@@ -106,8 +106,8 @@ Section "Ncrack Core Files" SecCore
 
   SetOverwrite on 
   File ..\..\COPYING 
-  File ..\..\username.lst
-  File ..\..\password.lst
+  File ..\..\lists\username.lst
+  File ..\..\lists\password.lst
   File ..\..\ncrack-services 
   File ..\Release\ncrack.exe
   File libeay32.dll
