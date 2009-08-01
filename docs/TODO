@@ -11,8 +11,6 @@ TODO:
 * Documentation: write the man page (in Docbook XML, at least for the
   final version)
 
-* Make Ncrack packaging - a source tarball for *nix and a Windows installer.
-
 * Test more thoroughly the windows version of ncrack.
 
 * Solve the ssh username/password special iteration challenge as mentioned here:
@@ -84,6 +82,7 @@ TODO:
 
 ============================== DONE ==========================================
 
+* Make Ncrack packaging - a source tarball for *nix and a Windows installer.
 
 * Fix the false positives/false negative issues we've been seeing
   when scanning over the Internet for http module.

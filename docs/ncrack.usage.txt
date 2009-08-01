@@ -1,9 +1,9 @@
 Ncrack 0.01ALPHA ( http://ncrack.org )
 Usage: ncrack [Options] {target specification}
-TARGET SPECIFICATION:                         
+TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc.
   Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254
-  -iL <inputfilename>: Input from list of hosts/networks              
+  -iL <inputfilename>: Input from list of hosts/networks
   --exclude <host1[,host2][,host3],...>: Exclude hosts/networks
   --excludefile <exclude_file>: Exclude list from file
 SERVICE SPECIFICATION:
@@ -25,8 +25,9 @@ TIMING AND PERFORMANCE:
     cl (min connection limit): minimum number of concurrent parallel connections
     CL (max connection limit): maximum number of concurrent parallel connections
     at (authentication tries): authentication attempts per connection
-    cd (connection delay): delay between each connection initiation (in milliseconds)
+    cd (connection delay): delay <time> between each connection initiation
     cr (connection retries): caps number of service connection attempts
+    to (time-out): maximum cracking <time> for service, regardless of success so far
   -T<0-5>: Set timing template (higher is faster)
   --connection-limit <number>: threshold for total concurrent connections
 AUTHENTICATION:
@@ -34,15 +35,14 @@ AUTHENTICATION:
   -P <filename>: password file
   --passwords-first: Iterate password list for each username. Default is opposite.
 OUTPUT:
-  -oN/-oX <file>: Output scan in normal and XML format,
-  respectively, to the given filename.
-  -oA <basename>: Output in the three major formats at once
+  -oN/-oX <file>: Output scan in normal and XML format, respectively, to the given filename.
+  -oA <basename>: Output in the two major formats at once
   -v: Increase verbosity level (use twice or more for greater effect)
   -d[level]: Set or increase debugging level (Up to 10 is meaningful)
   --log-errors: Log errors/warnings to the normal-format output file
   --append-output: Append to rather than clobber specified output files
 MISC:
   -sL or --list: only list hosts and services
+  --datadir <dirname>: Specify custom Ncrack data file location
   -V: Print version number
   -h: Print this help summary page.
-

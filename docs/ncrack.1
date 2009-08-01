@@ -75,10 +75,10 @@ This options summary is printed when Ncrack is run with no arguments\&. It helps
 .nf
 Ncrack 0\&.01ALPHA ( http://ncrack\&.org )
 Usage: ncrack [Options] {target specification}
-TARGET SPECIFICATION:                         
+TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc\&.
   Ex: scanme\&.nmap\&.org, microsoft\&.com/24, 192\&.168\&.0\&.1; 10\&.0\&.0\-255\&.1\-254
-  \-iL <inputfilename>: Input from list of hosts/networks              
+  \-iL <inputfilename>: Input from list of hosts/networks
   \-\-exclude <host1[,host2][,host3],\&.\&.\&.>: Exclude hosts/networks
   \-\-excludefile <exclude_file>: Exclude list from file
 SERVICE SPECIFICATION:
@@ -100,8 +100,9 @@ TIMING AND PERFORMANCE:
     cl (min connection limit): minimum number of concurrent parallel connections
     CL (max connection limit): maximum number of concurrent parallel connections
     at (authentication tries): authentication attempts per connection
-    cd (connection delay): delay between each connection initiation (in milliseconds)
+    cd (connection delay): delay <time> between each connection initiation
     cr (connection retries): caps number of service connection attempts
+    to (time\-out): maximum cracking <time> for service, regardless of success so far
   \-T<0\-5>: Set timing template (higher is faster)
   \-\-connection\-limit <number>: threshold for total concurrent connections
 AUTHENTICATION:
@@ -109,18 +110,17 @@ AUTHENTICATION:
   \-P <filename>: password file
   \-\-passwords\-first: Iterate password list for each username\&. Default is opposite\&.
 OUTPUT:
-  \-oN/\-oX <file>: Output scan in normal and XML format,
-  respectively, to the given filename\&.
-  \-oA <basename>: Output in the three major formats at once
+  \-oN/\-oX <file>: Output scan in normal and XML format, respectively, to the given filename\&.
+  \-oA <basename>: Output in the two major formats at once
   \-v: Increase verbosity level (use twice or more for greater effect)
   \-d[level]: Set or increase debugging level (Up to 10 is meaningful)
   \-\-log\-errors: Log errors/warnings to the normal\-format output file
   \-\-append\-output: Append to rather than clobber specified output files
 MISC:
   \-sL or \-\-list: only list hosts and services
+  \-\-datadir <dirname>: Specify custom Ncrack data file location
   \-V: Print version number
   \-h: Print this help summary page\&.
-
 .fi
 .if n \{\
 .RE
@@ -130,7 +130,7 @@ MISC:
 .SH "TARGET SPECIFICATION"
 .\" target specification
 .PP
-Everything on the Ncrack command\-line that isn\'t an option (or an option argument) is treated as a target host specification\&. The simplest case is to specify a target IP address or a hostname\&.
+Everything on the Ncrack command\-line that isn\'t an option (or an option argument) is treated as a target host specification\&. The simplest case is to specify a target IP address or a hostname\&. Note, that you also need to specify a service to crack for the selected targets\&. Ncrack is very flexible in host/service specification\&. While hostnames and IP addresses can be defined with the flexibility that you are probably used to from Nmap, services along with service\-specific options have a unique specification style that enables a combination of features to be taken advantage of\&.
 .PP
 Sometimes you wish to crack a whole network of adjacent hosts\&. For this, Ncrack supports CIDR\-style
 .\" CIDR (Classless Inter-Domain Routing)
@@ -176,6 +176,10 @@ option, except that the excluded targets are provided in a newline, space, or ta
 \fIexclude_file\fR
 rather than on the command line\&.
 .RE
+.SH "SERVICE SPECIFICATION"
+.\" target specification
+.PP
+No cracking session can be carried out without a certain service to attack\&. Service specification is one of the most flexible subsystems of Ncrack and collaborates with target\-specification in a way that allows different option combinations to be applied\&.
 .SH "OUTPUT"
 .\" output formats
 .PP
@@ -305,7 +309,7 @@ When you specify a filename to an output format flag such as
 or
 \fB\-oN\fR, that file is overwritten by default\&. If you prefer to keep the existing content of the file and append the new results, specify the
 \fB\-\-append\-output\fR
-option\&. All output filenames specified in that Nmap execution will then be appended to rather than clobbered\&. This doesn\'t work well for XML (\fB\-oX\fR) scan data as the resultant file generally won\'t parse properly until you fix it up by hand\&.
+option\&. All output filenames specified in that Ncrack execution will then be appended to rather than clobbered\&. This doesn\'t work well for XML (\fB\-oX\fR) scan data as the resultant file generally won\'t parse properly until you fix it up by hand\&.
 .RE
 .SH "MISCELLANEOUS OPTIONS"
 .PP
