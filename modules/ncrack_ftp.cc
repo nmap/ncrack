@@ -153,7 +153,8 @@ ftp_loop_read(nsock_pool nsp, Connection *con, char *ftp_code_ret)
    */
 
   /* Convert digits to string code for parsing */
-  snprintf(ftp_code, FTP_DIGITS + 1, "%d%d%d", ftp_dig[0], ftp_dig[1], ftp_dig[2]);
+  snprintf(ftp_code, FTP_DIGITS + 1, "%d%d%d", ftp_dig[0], ftp_dig[1],
+      ftp_dig[2]);
   ftp_code[FTP_DIGITS] = ' ';
   ftp_code[FTP_DIGITS + 1] = '\0';
 
