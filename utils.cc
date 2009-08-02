@@ -91,7 +91,9 @@
 
 #include "utils.h"
 #include "Service.h"
+#include "NcrackOps.h"
 
+extern NcrackOps o;
 
 /* 
  * Case insensitive memory search - a combination of memmem and strcasestr
@@ -155,16 +157,26 @@ chomp(char *string) {
 }
 
 
-/* strtoul with error checking */
+/* strtoul with error checking:
+ * fatality should be 0 if error will be handled by caller, or else Strtoul
+ * will exit
+ */
 unsigned long int
-Strtoul(const char *nptr)
+Strtoul(const char *nptr, int fatality)
 {
   unsigned long value;
   char *endp = NULL;
 
+  errno = 0;
   value = strtoul(nptr, &endp, 0);
-  if (errno != 0 || *endp != '\0')
-    fatal("Invalid value for number: %s", nptr);
+  if (errno != 0 || *endp != '\0') {
+    if (fatality)
+      fatal("Invalid value for number: %s", nptr);
+    else {
+      if (o.debugging)
+        error("Invalid value for number: %s", nptr);
+    }
+  }
 
   return value;
 }

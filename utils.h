@@ -165,7 +165,7 @@ u8 str2proto(char *str);
 const char *proto2str(u8 proto);
 
 /* strtoul with error checking */
-unsigned long int Strtoul(const char *nptr);
+unsigned long int Strtoul(const char *nptr, int fatality);
 
 /* 
  * Return a copy of 'size' characters from 'src' string.

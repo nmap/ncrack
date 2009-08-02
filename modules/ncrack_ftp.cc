@@ -96,6 +96,7 @@
 #include <list>
 
 #define FTP_TIMEOUT 20000
+#define FTP_DIGITS 3
 
 
 extern NcrackOps o;
@@ -105,10 +106,90 @@ extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
     void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+static int ftp_loop_read(nsock_pool nsp, Connection *con);
+
+enum states { FTP_INIT, FTP_USER, FTP_FINI };
 
 
-enum states { FTP_INIT, FTP_BANNER, FTP_USER_R, FTP_USER_W, FTP_PASS,
-  FTP_FINI };
+static int
+ftp_loop_read(nsock_pool nsp, Connection *con, char *ftp_code_ret)
+{
+  int i;
+  int ftp_dig[FTP_DIGITS];
+  char ftp_code[FTP_DIGITS + 2]; /* 3 digits + space + '\0' */
+  char dig[2]; /* temporary digit string */
+  char *p;
+  char *p2;
+
+  if (con->iobuf == NULL || con->iobuf->get_len() < FTP_DIGITS + 1) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
+    return -1;
+  }
+
+  memprint((const char *)con->iobuf->get_dataptr(), con->iobuf->get_len());
+
+  /* Make sure first 3 (FTP_DIGITS) bytes of each line are digits */
+  p = (char *)con->iobuf->get_dataptr();
+  dig[1] = '\0';
+  for (i = 0; i < FTP_DIGITS; i++) {
+    dig[0] = *p++;
+    ftp_dig[i] = (int)Strtoul(dig, 0);
+    if (errno) { /* It wasn't a number! */
+      return -2;  /* Oops, malformed FTP packet */
+    }
+  }
+
+  /* 
+   * http://www.faqs.org/rfcs/rfc959.html
+   * Thus the format for multi-line replies is that the first line
+   * will begin with the exact required reply code, followed
+   * immediately by a Hyphen, "-" (also known as Minus), followed by
+   * text.  The last line will begin with the same code, followed
+   * immediately by Space <SP>, optionally some text, and the Telnet
+   * end-of-line code.
+   *
+   * For example:
+   *   123-First line
+   *   Second line
+   *      234 A line beginning with numbers
+   *   123 The last line
+   */
+
+  /* Convert digits to string code for parsing */
+  snprintf(ftp_code, FTP_DIGITS + 1, "%d%d%d", ftp_dig[0], ftp_dig[1], ftp_dig[2]);
+  ftp_code[FTP_DIGITS] = ' ';
+  ftp_code[FTP_DIGITS + 1] = '\0';
+
+  if (*p == '-') {
+    /* FTP message is multiple lines, so first search for the 'ftp code' to
+     * find the last line, according to the scheme proposed by RFC 959 */
+    if (!(p2 = memsearch((const char *)con->iobuf->get_dataptr(), ftp_code,
+          con->iobuf->get_len()))) {
+      nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
+      return -1;
+    }
+    /* Now that we found the the last line, find that line's end */
+    if (!memsearch((const char *)p2, "\r\n", con->iobuf->get_len())) {
+      nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
+      return -1;
+    }
+  } else {
+    /* FTP message is one line only */
+    if (!memsearch((const char *)con->iobuf->get_dataptr(), "\r\n",
+          con->iobuf->get_len())) {
+      nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
+      return -1;
+    }
+  }
+
+  /* Return the ftp code to caller */
+  strncpy(ftp_code_ret, ftp_code, FTP_DIGITS);
+
+  return 0;
+
+}
+
+
 
 void
 ncrack_ftp(nsock_pool nsp, Connection *con)
@@ -117,67 +198,72 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
+  char ftp_code[FTP_DIGITS + 1];
+  memset(ftp_code, 0, sizeof(ftp_code));
 
   switch (con->state)
   {
     case FTP_INIT:
-      con->state = FTP_BANNER;
-      nsock_read(nsp, nsi, ncrack_read_handler, FTP_TIMEOUT, con);
-      break;
 
-    case FTP_BANNER:
-      con->state = FTP_USER_R;
+      /* Wait to read banner only at the beginning of
+       * the connection */
       if (!con->login_attempts) {
-        if (!con->buf || con->buf[0] != '2') {
-          if (o.debugging > 6)
+
+        if (ftp_loop_read(nsp, con, ftp_code) < 0)
+          break;
+
+        /* ftp_loop_read already takes care so that the iobuf contains the
+         * 3 first ftp digit code, so you can safely traverse it that much */
+        if (strncmp(ftp_code, "220", FTP_DIGITS)) {
+
+        if (o.debugging > 6)
             error("%s Not ftp or service was shutdown\n", hostinfo);
-          ncrack_module_end(nsp, con);
-        } else {
-          //if (o.debugging > 9)
-           // log_write(LOG_STDOUT, "%s reply: %s", hostinfo, con->buf);
+          return ncrack_module_end(nsp, con);
         }
       }
-      /* Workaround for Filezilla which sends 3 banners in 3 tcp segments */
-      if (memsearch(con->buf, "FileZilla Server", con->bufsize) ||
-          memsearch(con->buf, "Tim Kosse", con->bufsize)) {
-        nsock_read(nsp, nsi, ncrack_read_handler, FTP_TIMEOUT, con);
-        con->state = FTP_BANNER;
-        break;
-      }
+
+      con->state = FTP_USER;
+
+      delete con->iobuf;
+      con->iobuf = NULL;
+      
       snprintf(lbuf, sizeof(lbuf), "USER %s\r\n", con->user);
       nsock_write(nsp, nsi, ncrack_write_handler, FTP_TIMEOUT, con, lbuf, -1);
       break;
 
-    case FTP_USER_R:
-      con->state = FTP_USER_W;
-      nsock_read(nsp, nsi, ncrack_read_handler, FTP_TIMEOUT, con);
-      break;
+    case FTP_USER:
 
-    case FTP_USER_W:
-      con->state = FTP_PASS;
-      if (!con->buf || con->buf[0] != '3') {
-        if (con->buf[0] != '2') {
-          if (o.debugging > 9)
-            log_write(LOG_STDOUT, "%s Username failed\n", hostinfo);
-        }
-      } else {
-        if (o.debugging > 9)
+      if (ftp_loop_read(nsp, con, ftp_code) < 0)
+        break;
+
+      if (!strncmp(ftp_code, "331", FTP_DIGITS)) {
+        
           log_write(LOG_STDOUT, "%s reply: %s", hostinfo, con->buf);
+
+      } else {
+
+        return ncrack_module_end(nsp, con);
+    
       }
+    
+      con->state = FTP_FINI;
+
+      delete con->iobuf;
+      con->iobuf = NULL;
+
       snprintf(lbuf, sizeof(lbuf), "PASS %s\r\n", con->pass);
       nsock_write(nsp, nsi, ncrack_write_handler, FTP_TIMEOUT, con, lbuf, -1);
       break;
 
-    case FTP_PASS:
-      con->state = FTP_FINI;
-      nsock_read(nsp, nsi, ncrack_read_handler, FTP_TIMEOUT, con);
-      break;
-
     case FTP_FINI:
-      if (memsearch(con->buf, "230", con->bufsize))
+
+      if (ftp_loop_read(nsp, con, ftp_code) < 0)
+        break;
+
+      if (!strncmp(ftp_code, "230", FTP_DIGITS)) 
         con->auth_success = true;
 
-      con->state = FTP_BANNER;
+      con->state = FTP_INIT;
 
       return ncrack_module_end(nsp, con);
   }

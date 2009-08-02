@@ -571,7 +571,7 @@ check_service_option(global_service *temp, char *argname, char *argval)
 {
   /* Timing options */
   if (!strcmp("cl", argname)) {
-    long limit = Strtoul(argval);
+    long limit = Strtoul(argval, 1);
     if (limit < 0)
       fatal("Minimum connection limit (cl) '%ld' cannot be a negative number!",
           limit);
@@ -582,7 +582,7 @@ check_service_option(global_service *temp, char *argname, char *argval)
         limit, temp->timing.max_connection_limit);
     temp->timing.min_connection_limit = limit;
   } else if (!strcmp("CL", argname)) {
-    long limit = Strtoul(argval);
+    long limit = Strtoul(argval, 1);
     if (limit < 0)
       fatal("Maximum connection limit (CL) '%ld' cannot be a negative number!",
           limit);
@@ -593,7 +593,7 @@ check_service_option(global_service *temp, char *argname, char *argval)
           limit, temp->timing.min_connection_limit);
     temp->timing.max_connection_limit = limit;
   } else if (!strcmp("at", argname)) {
-    long tries = Strtoul(argval);
+    long tries = Strtoul(argval, 1);
     if (tries < 0)
       fatal("Authentication tries (at) '%ld' cannot be a negative number!",
           tries);
@@ -603,7 +603,7 @@ check_service_option(global_service *temp, char *argname, char *argval)
       fatal("Connection delay (cd) '%s' cannot be parsed correctly!",
           argval);
   } else if (!strcmp("cr", argname)) {
-    long retries = Strtoul(argval);
+    long retries = Strtoul(argval, 1);
     if (retries < 0)
       fatal("Connection retries (cr) '%ld' cannot be a negative number!",
           retries);

@@ -408,7 +408,6 @@ print_service_output(Service *serv)
 void
 print_final_output(ServiceGroup *SG)
 {
-  struct tm *tm;
   time_t now;
   char mytime[128];
   long long whole_t = 0, dec_t = 0;
