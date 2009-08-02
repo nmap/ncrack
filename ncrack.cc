@@ -546,7 +546,7 @@ int main(int argc, char **argv)
   char *normalfilename = NULL;
   char *xmlfilename = NULL;
   unsigned long l;
-  unsigned int i; /* iteration var */
+  unsigned int i, j; /* iteration vars */
   int argiter;    /* iteration for argv */
   char services_file[256]; /* path name for "ncrack-services" file */
   char username_file[256];
@@ -915,24 +915,91 @@ int main(int argc, char **argv)
   }
 
   if (o.list_only) {
-    if (o.debugging > 3) {
+    if (o.debugging) {
       log_write(LOG_PLAIN, "----- [ Timing Template ] -----\n");
       log_write(LOG_PLAIN, "cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld, to=%ld\n",
           timing.min_connection_limit, timing.max_connection_limit,
           timing.auth_tries, timing.connection_delay,
           timing.connection_retries, timing.timeout);
+
       log_write(LOG_PLAIN, "\n----- [ ServicesTable ] -----\n");
+
+      /* For alignment issues: find the longest length of string pair
+       * <service_name>:<port_number> and then calculate how many spaces
+       * each of the rest of services will need, in order to be aligned with
+       * that one in the ServicesTable printing */
+      vector <unsigned int> space_array;
+      char port_string[6]; /* maximum port number is 5 digits ('65535') + '\0' */
+      unsigned int cur_len;
+      unsigned int longer_srv_name;
+
+      snprintf(port_string, sizeof(port_string), "%hu",
+          ServicesTable[0].lookup.portno);
+      longer_srv_name = strlen(port_string) +
+        strlen(ServicesTable[0].lookup.name);
+
       for (i = 0; i < ServicesTable.size(); i++) {
-        log_write(LOG_PLAIN, "%s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, "
-            "cr=%ld, to=%ld, ssl=%s, path=%s\n", 
-            ServicesTable[i].lookup.name,
-            ServicesTable[i].lookup.portno,
-            ServicesTable[i].timing.min_connection_limit,
-            ServicesTable[i].timing.max_connection_limit,
-            ServicesTable[i].timing.auth_tries,
-            ServicesTable[i].timing.connection_delay,
-            ServicesTable[i].timing.connection_retries,
-            ServicesTable[i].timing.timeout,
+        snprintf(port_string, sizeof(port_string), "%hu",
+            ServicesTable[i].lookup.portno);
+        cur_len = strlen(ServicesTable[i].lookup.name) + strlen(port_string);
+        if (cur_len >= longer_srv_name)
+          longer_srv_name = cur_len;
+      }
+
+      for (i = 0; i < ServicesTable.size(); i++) {
+        snprintf(port_string, sizeof(port_string), "%hu",
+            ServicesTable[i].lookup.portno);
+        cur_len = strlen(ServicesTable[i].lookup.name) + strlen(port_string);
+        if (cur_len < longer_srv_name)
+          space_array.push_back(longer_srv_name - cur_len);
+        else 
+          space_array.push_back(0);
+      }
+
+      for (i = 0; i < ServicesTable.size(); i++) {
+        log_write(LOG_PLAIN, "%s:%hu ",
+            ServicesTable[i].lookup.name, 
+            ServicesTable[i].lookup.portno);
+        for (j = 0; j < space_array[i]; j++)
+          log_write(LOG_PLAIN, " ");
+
+        if (ServicesTable[i].timing.min_connection_limit != NOT_ASSIGNED)
+          log_write(LOG_PLAIN, "cl=%ld, ",
+              ServicesTable[i].timing.min_connection_limit);
+        else 
+          log_write(LOG_PLAIN, "cl=N/A, ");
+
+        if (ServicesTable[i].timing.max_connection_limit != NOT_ASSIGNED)
+          log_write(LOG_PLAIN, "CL=%ld, ",
+              ServicesTable[i].timing.max_connection_limit);
+        else
+          log_write(LOG_PLAIN, "CL=N/A, ");
+
+        if (ServicesTable[i].timing.auth_tries != NOT_ASSIGNED)
+          log_write(LOG_PLAIN, "at=%ld, ",
+              ServicesTable[i].timing.auth_tries);
+        else
+          log_write(LOG_PLAIN, "at=N/A, ");
+
+        if (ServicesTable[i].timing.connection_delay != NOT_ASSIGNED)
+          log_write(LOG_PLAIN, "cd=%ld, ",
+              ServicesTable[i].timing.connection_delay);
+        else
+          log_write(LOG_PLAIN, "cd=N/A, ");
+
+        if (ServicesTable[i].timing.connection_retries != NOT_ASSIGNED)
+          log_write(LOG_PLAIN, "cr=%ld, ",
+              ServicesTable[i].timing.connection_retries);
+        else
+          log_write(LOG_PLAIN, "cr=N/A, ");
+
+        if (ServicesTable[i].timing.timeout != NOT_ASSIGNED)
+          log_write(LOG_PLAIN, "to=%ld, ",
+              ServicesTable[i].timing.timeout);
+        else
+          log_write(LOG_PLAIN, "to=N/A, ");
+
+        log_write(LOG_PLAIN, "ssl=%s, path=%s\n", 
             ServicesTable[i].misc.ssl ? "yes" : "no",
             ServicesTable[i].misc.path ? ServicesTable[i].misc.path : "null");
       }

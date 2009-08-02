@@ -97,6 +97,8 @@
 #include <vector>
 using namespace std;
 
+#define NOT_ASSIGNED -1
+
 /* target-service specification */
 typedef struct ts_spec {
   char *service_name;

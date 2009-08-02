@@ -296,23 +296,23 @@ apply_host_options(Service *service, char *const options)
   temp = parse_services_options(options);
 
   /* apply any valid options to this service */
-  if (temp.timing.min_connection_limit != -1) {
+  if (temp.timing.min_connection_limit != NOT_ASSIGNED) {
     if (temp.timing.min_connection_limit > service->max_connection_limit)
       service->max_connection_limit = temp.timing.min_connection_limit;
     service->min_connection_limit = temp.timing.min_connection_limit;
   } 
-  if (temp.timing.max_connection_limit != -1) {
+  if (temp.timing.max_connection_limit != NOT_ASSIGNED) {
     if (temp.timing.max_connection_limit < service->min_connection_limit)
       service->min_connection_limit = temp.timing.max_connection_limit;    
     service->max_connection_limit = temp.timing.max_connection_limit;
   }
-  if (temp.timing.auth_tries != -1)
+  if (temp.timing.auth_tries != NOT_ASSIGNED)
     service->auth_tries = temp.timing.auth_tries;
-  if (temp.timing.connection_delay != -1)
+  if (temp.timing.connection_delay != NOT_ASSIGNED)
     service->connection_delay = temp.timing.connection_delay;
-  if (temp.timing.connection_retries != -1)
+  if (temp.timing.connection_retries != NOT_ASSIGNED)
     service->connection_retries = temp.timing.connection_retries;
-  if (temp.timing.timeout != -1)
+  if (temp.timing.timeout != NOT_ASSIGNED)
     service->timeout = temp.timing.timeout;
   if (temp.misc.path) {
     if (service->path)
@@ -340,17 +340,17 @@ apply_service_options(Service *service)
 
   if (!service->portno)
     service->portno = vi->lookup.portno;
-  if (vi->timing.min_connection_limit != -1)
+  if (vi->timing.min_connection_limit != NOT_ASSIGNED)
     service->min_connection_limit = vi->timing.min_connection_limit;
-  if (vi->timing.max_connection_limit != -1)
+  if (vi->timing.max_connection_limit != NOT_ASSIGNED)
     service->max_connection_limit = vi->timing.max_connection_limit;
-  if (vi->timing.auth_tries != -1)
+  if (vi->timing.auth_tries != NOT_ASSIGNED)
     service->auth_tries = vi->timing.auth_tries;
-  if (vi->timing.connection_delay != -1)
+  if (vi->timing.connection_delay != NOT_ASSIGNED)
     service->connection_delay = vi->timing.connection_delay;
-  if (vi->timing.connection_retries != -1)
+  if (vi->timing.connection_retries != NOT_ASSIGNED)
     service->connection_retries = vi->timing.connection_retries;
-  if (vi->timing.timeout != -1)
+  if (vi->timing.timeout != NOT_ASSIGNED)
     service->timeout = vi->timing.timeout;
   if (vi->misc.path) {
     if (service->path)
@@ -399,7 +399,7 @@ prepare_timing_template(timing_options *timing)
     timing->auth_tries = 1;
     timing->connection_delay = 10000; /* 10 secs */
     timing->connection_retries = 1;
-    if (o.connection_limit == -1)
+    if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 50;
   } else if (o.timing_level == 1) { /* Sneaky */
     timing->min_connection_limit = 1;
@@ -407,7 +407,7 @@ prepare_timing_template(timing_options *timing)
     timing->auth_tries = 2;
     timing->connection_delay = 7500; 
     timing->connection_retries = 1;
-    if (o.connection_limit == -1)
+    if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 150;
   } else if (o.timing_level == 2) { /* Polite */
     timing->min_connection_limit = 3;
@@ -415,7 +415,7 @@ prepare_timing_template(timing_options *timing)
     timing->auth_tries = 5;
     timing->connection_delay = 5000;
     timing->connection_retries = 1;
-    if (o.connection_limit == -1)
+    if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 500;
   } else if (o.timing_level == 4) { /* Aggressive */
     timing->min_connection_limit = 10;
@@ -423,7 +423,7 @@ prepare_timing_template(timing_options *timing)
     timing->auth_tries = 0;
     timing->connection_delay = 0;
     timing->connection_retries = 15;
-    if (o.connection_limit == -1)
+    if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 3000;
   } else if (o.timing_level == 5) { /* Insane */
     timing->min_connection_limit = 15;
@@ -431,7 +431,7 @@ prepare_timing_template(timing_options *timing)
     timing->auth_tries = 0;
     timing->connection_delay = 0;
     timing->connection_retries = 20;
-    if (o.connection_limit == -1)
+    if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 10000;
   } else { /* Normal */
     timing->min_connection_limit = 7;
@@ -439,7 +439,7 @@ prepare_timing_template(timing_options *timing)
     timing->auth_tries = 0;
     timing->connection_delay = 0;
     timing->connection_retries = 10;
-    if (o.connection_limit == -1)
+    if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 1500;
   }
 }
@@ -575,7 +575,7 @@ check_service_option(global_service *temp, char *argname, char *argval)
     if (limit < 0)
       fatal("Minimum connection limit (cl) '%ld' cannot be a negative number!",
           limit);
-    if (temp->timing.max_connection_limit != -1
+    if (temp->timing.max_connection_limit != NOT_ASSIGNED
         && temp->timing.max_connection_limit < limit)
       fatal("Minimum connection limit (cl) '%ld' cannot be larger than "
         "maximum connection limit (CL) '%ld'!", 
@@ -586,7 +586,7 @@ check_service_option(global_service *temp, char *argname, char *argval)
     if (limit < 0)
       fatal("Maximum connection limit (CL) '%ld' cannot be a negative number!",
           limit);
-    if (temp->timing.min_connection_limit != -1 
+    if (temp->timing.min_connection_limit != NOT_ASSIGNED 
         && temp->timing.min_connection_limit > limit)
       fatal("Maximum connection limit (CL) '%ld' cannot be smaller than "
           "minimum connection limit (cl) '%ld'!",
@@ -629,12 +629,12 @@ parse_services_options(char *const exp)
   global_service temp;
 
   memset(&temp, 0, sizeof(temp));
-  temp.timing.min_connection_limit = -1;
-  temp.timing.max_connection_limit = -1;
-  temp.timing.auth_tries = -1;
-  temp.timing.connection_delay = -1;
-  temp.timing.connection_retries = -1;
-  temp.timing.timeout = -1;
+  temp.timing.min_connection_limit = NOT_ASSIGNED;
+  temp.timing.max_connection_limit = NOT_ASSIGNED;
+  temp.timing.auth_tries = NOT_ASSIGNED;
+  temp.timing.connection_delay = NOT_ASSIGNED;
+  temp.timing.connection_retries = NOT_ASSIGNED;
+  temp.timing.timeout = NOT_ASSIGNED;
 
   arg = argval = argname = NULL;
 
