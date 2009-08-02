@@ -423,6 +423,7 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
   /* For username/password lists also search ./lists */
   if (!foundsomething) {
     res = Snprintf(filename_returned, bufferlen, "./lists/%s", file);
+    printf("%s \n", filename_returned);
     if (res > 0 && res < bufferlen)
       foundsomething = file_readable(filename_returned);
   }
@@ -714,10 +715,14 @@ int main(int argc, char **argv)
         }
         break;
       case 'U':
-        load_login_file(optarg, USER);
+        ncrack_fetchfile(username_file, sizeof(username_file),
+          optarg);
+        load_login_file(username_file, USER);
         break;
       case 'P':
-        load_login_file(optarg, PASS);
+        ncrack_fetchfile(password_file, sizeof(password_file),
+          optarg);
+        load_login_file(password_file, PASS);
         break;
       case 'm':
         parse_module_options(optarg);
