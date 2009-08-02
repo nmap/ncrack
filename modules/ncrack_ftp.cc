@@ -234,11 +234,8 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
         break;
 
       if (!strncmp(ftp_code, "331", FTP_DIGITS)) {
-        if (o.debugging > 6)
-          log_write(LOG_STDOUT, "%s reply: %s", hostinfo, con->buf);
-
+        ;
       } else {
-
         return ncrack_module_end(nsp, con);
       }
     
@@ -260,6 +257,9 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
         con->auth_success = true;
 
       con->state = FTP_INIT;
+
+      delete con->iobuf;
+      con->iobuf = NULL;
 
       return ncrack_module_end(nsp, con);
   }

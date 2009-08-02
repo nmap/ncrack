@@ -1013,6 +1013,11 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   serv->total_attempts++;
   serv->finished_attempts++;
 
+  if (con->iobuf) {
+    delete con->iobuf;
+    con->iobuf = NULL;
+  }
+
   if (con->auth_success) {
     serv->addCredential(con->user, con->pass);
     SG->credentials_found++;
@@ -1331,14 +1336,6 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       con->iobuf = new Buf();
     con->iobuf->append(str, nbytes);
 
-    /* don't forget to free possibly previous allocated memory */
-    if (con->buf) {
-      free(con->buf);
-      con->buf = NULL;
-    }
-    con->buf = (char *) safe_zalloc(nbytes + 1);
-    memcpy(con->buf, str, nbytes);
-    con->bufsize = nbytes;
     return call_module(nsp, con);
 
   } else if (status == NSE_STATUS_TIMEOUT) {
@@ -1434,10 +1431,6 @@ ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   const char *hostinfo = serv->HostInfo();
 
   if (status == NSE_STATUS_SUCCESS) {
-    if (con->buf) {
-      free(con->buf);
-      con->buf = NULL;
-    }
     call_module(nsp, con);
   }
   else 

@@ -108,7 +108,6 @@ Connection(Service *serv)
   peer_might_close = false;
   finished_normally = false;
   login_attempts = 0;
-  buf = NULL;
   misc_info = NULL;
   iobuf = NULL;
   ssl_session = NULL;
@@ -117,10 +116,6 @@ Connection(Service *serv)
 Connection::
 ~Connection()
 {
-  if (buf) {
-    free(buf);
-    buf = NULL;
-  }
   if (misc_info) {
     free(misc_info);
     misc_info = NULL;
@@ -133,3 +128,4 @@ Connection::
   ssl_session = NULL;
 #endif
 }
+

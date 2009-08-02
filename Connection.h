@@ -146,8 +146,6 @@ class Connection
 
     Buf *iobuf;
 
-		char *buf;          /* auxiliary buffer */
-		int bufsize;        /* total buffer size in bytes */
 		unsigned long login_attempts; /* login attempts up until now */
 		nsock_iod niod;     /* I/O descriptor for this connection */
 

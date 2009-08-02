@@ -149,8 +149,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
   telnet_info *info = NULL;
   size_t datasize;
-
-  char *recvbufptr = con->buf;
+  char *recvbufptr = NULL;
+  size_t recvbuflen = 0;
   char *localbufptr = lbuf;
   if (con->misc_info)
     info = (telnet_info *) con->misc_info;
@@ -165,9 +165,13 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       break;
 
     case TELNET_OPTIONS_1:
+
+      recvbufptr = (char *)con->iobuf->get_dataptr();
+      recvbuflen = con->iobuf->get_len();
+
       /* Telnet Option Parsing */
       while (*recvbufptr == (char) IAC
-          && ((recvbufptr - con->buf) < con->bufsize)
+          && ((recvbufptr - (char *)con->iobuf->get_dataptr()) < recvbuflen)
           && ((localbufptr - lbuf) < BUFSIZE - 3)) {
 
         /* For every option other than linemode we reject it */
@@ -221,7 +225,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
 
           /* We just ignore any suboption we receive */
         } else if (recvbufptr[1] == (char) SB) {
-          while (*recvbufptr != (char) SE && (recvbufptr - con->buf) < con->bufsize)
+          while (*recvbufptr != (char) SE
+              && (recvbufptr - (char *)con->iobuf->get_dataptr()) < recvbuflen)
             recvbufptr++;
           recvbufptr++;
         }
@@ -242,7 +247,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
         }
       }
 
-      datasize = con->bufsize - (recvbufptr - con->buf);
+      datasize = recvbuflen - (recvbufptr - (char *)con->iobuf->get_dataptr());
 
       /* Now check for banner and login prompt */
       if (datasize > 0) {
@@ -276,6 +281,9 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       break;
 
     case TELNET_OPTIONS_2:
+      delete con->iobuf;
+      con->iobuf = NULL;
+
       con->state = TELNET_OPTIONS_1;
       nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
       break;
@@ -291,6 +299,10 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
          * character of the username in individual packets. We send 1 byte
          * and wait for the server's echo and so on...
          */
+        if (con->iobuf) {
+          recvbufptr = (char *)con->iobuf->get_dataptr();
+          recvbuflen = con->iobuf->get_len();
+        }
 
         if (!info->userptr)
           info->userptr = con->user;
@@ -302,21 +314,21 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
          * those options, and wait until we see our character echoed back in
          * order to go on sending the rest of the username.
          */
-        if (con->buf && info->userptr > con->user
+        if (con->iobuf && info->userptr > con->user
             && (info->userptr - con->user) != strlen(con->user)) {
           /* Some telnet daemons send the echo reply with a \0 byte in front of
            * the echoed characted. Damn inconsistencies. */
-          if ((con->bufsize > 2 && con->buf[1] != *(info->userptr - 1))
-              || (con->bufsize == 1 && con->buf[0] != *(info->userptr - 1))) {
+          if ((recvbuflen > 2 && recvbufptr[1] != *(info->userptr - 1))
+              || (recvbuflen == 1 && recvbufptr[0] != *(info->userptr - 1))) {
             nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
             break;
           }
         }
 
         /* we can move on to reading the password prompt */
-        if (con->buf && info->userptr > con->user &&
-            memsearch(con->buf, "\r", con->bufsize)) {
-          if (memsearch(con->buf, "password", con->bufsize)) 
+        if (recvbufptr && info->userptr > con->user &&
+            memsearch(recvbufptr, "\r", recvbuflen)) {
+          if (memsearch(recvbufptr, "password", recvbuflen)) 
             con->state = TELNET_PASS_W;
           else
             con->state = TELNET_PASS_R;
@@ -337,11 +349,17 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       break;
 
     case TELNET_ECHO_USER:
+      delete con->iobuf;
+      con->iobuf = NULL;
+
       con->state = TELNET_AUTH;
       nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
       break;
 
     case TELNET_PASS_R:
+      delete con->iobuf;
+      con->iobuf = NULL;
+
       con->state = TELNET_PASS_W;
       nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
       break;
@@ -356,8 +374,13 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       break;
 
     case TELNET_FINI:
-      if (memsearch(con->buf, "incorrect", con->bufsize)
-          || memsearch(con->buf, "fail", con->bufsize)) {
+      if (con->iobuf) {
+        recvbufptr = (char *)con->iobuf->get_dataptr();
+        recvbuflen = con->iobuf->get_len();
+      }
+
+      if (memsearch(recvbufptr, "incorrect", recvbuflen)
+          || memsearch(recvbufptr, "fail", recvbuflen)) {
         con->auth_success = false;
         con->state = TELNET_AUTH;
         info->userptr = NULL;
@@ -369,18 +392,30 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
          * (something which happens with some daemons), then we don't need to 
          * check if the peer has closed the connection because obviously he hasn't!
          */
-        if (memsearch(con->buf, "login", con->bufsize)
-            || memsearch(con->buf, "username", con->bufsize))
+        if (memsearch(recvbufptr, "login", recvbuflen)
+            || memsearch(recvbufptr, "username", recvbuflen))
           con->peer_alive = true;
+
+        delete con->iobuf;
+        con->iobuf = NULL;
+        
         return ncrack_module_end(nsp, con);
 
-      } else if (memsearch(con->buf, ">", con->bufsize)
-          || memsearch(con->buf, "$", con->bufsize)
-          || memsearch(con->buf, "#", con->bufsize)) {
+      } else if (memsearch(recvbufptr, ">", recvbuflen)
+          || memsearch(recvbufptr, "$", recvbuflen)
+          || memsearch(recvbufptr, "#", recvbuflen)) {
         con->auth_success = true;
+
+        delete con->iobuf;
+        con->iobuf = NULL;
+
         return ncrack_module_end(nsp, con);
 
       } else {  /* wait for more replies */
+
+        delete con->iobuf;
+        con->iobuf = NULL;
+
         con->state = TELNET_FINI;
         nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
       }
