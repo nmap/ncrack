@@ -119,14 +119,11 @@ ftp_loop_read(nsock_pool nsp, Connection *con, char *ftp_code_ret)
   char ftp_code[FTP_DIGITS + 2]; /* 3 digits + space + '\0' */
   char dig[2]; /* temporary digit string */
   char *p;
-  char *p2;
 
   if (con->iobuf == NULL || con->iobuf->get_len() < FTP_DIGITS + 1) {
     nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
     return -1;
   }
-
-  memprint((const char *)con->iobuf->get_dataptr(), con->iobuf->get_len());
 
   /* Make sure first 3 (FTP_DIGITS) bytes of each line are digits */
   p = (char *)con->iobuf->get_dataptr();
@@ -163,13 +160,13 @@ ftp_loop_read(nsock_pool nsp, Connection *con, char *ftp_code_ret)
   if (*p == '-') {
     /* FTP message is multiple lines, so first search for the 'ftp code' to
      * find the last line, according to the scheme proposed by RFC 959 */
-    if (!(p2 = memsearch((const char *)con->iobuf->get_dataptr(), ftp_code,
+    if (!(p = memsearch((const char *)con->iobuf->get_dataptr(), ftp_code,
           con->iobuf->get_len()))) {
       nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
       return -1;
     }
     /* Now that we found the the last line, find that line's end */
-    if (!memsearch((const char *)p2, "\r\n", con->iobuf->get_len())) {
+    if (!memsearch((const char *)p, "\r\n", con->iobuf->get_len())) {
       nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
       return -1;
     }
@@ -237,13 +234,12 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
         break;
 
       if (!strncmp(ftp_code, "331", FTP_DIGITS)) {
-        
+        if (o.debugging > 6)
           log_write(LOG_STDOUT, "%s reply: %s", hostinfo, con->buf);
 
       } else {
 
         return ncrack_module_end(nsp, con);
-    
       }
     
       con->state = FTP_FINI;
