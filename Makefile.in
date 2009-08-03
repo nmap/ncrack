@@ -45,11 +45,11 @@ TARGET = ncrack
 
 export SRCS = ncrack.cc utils.cc TargetGroup.cc Target.cc targets.cc \
 	NcrackOps.cc Service.cc ServiceGroup.cc Connection.h services.cc \
-	timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buf.cc 
+	timing.cc ncrack_error.cc output.cc ncrack_tty.cc Buf.cc NcrackOutputTable.cc
 
 OBJS = ncrack.o utils.o TargetGroup.o Target.o targets.o NcrackOps.o \
 Service.o ServiceGroup.o Connection.o services.o timing.o \
-ncrack_error.o output.o ncrack_tty.o Buf.o 
+ncrack_error.o output.o ncrack_tty.o Buf.o NcrackOutputTable.o
 
 .cc.o :
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@

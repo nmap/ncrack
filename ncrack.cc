@@ -99,6 +99,7 @@
 #include "ServiceGroup.h"
 #include "nsock.h"
 #include "global_structures.h"
+#include "NcrackOutputTable.h"
 #include "modules.h"
 #include "ncrack_error.h"
 #include "output.h"
@@ -266,6 +267,12 @@ lookup_init(const char *const filename)
     temp.lookup.portno = portno;
     temp.lookup.proto = str2proto(proto);
     temp.lookup.name = strdup(servicename);
+    /* 
+     * When more ssl-services are going to be added, this will probably
+     * need a more generic scheme
+     */
+    if (!strncmp(servicename, "https", sizeof("https")))
+      temp.misc.ssl = true;
 
     for (vi = ServicesTable.begin(); vi != ServicesTable.end(); vi++) {
       if ((vi->lookup.portno == temp.lookup.portno) 
@@ -295,7 +302,9 @@ file_readable(const char *pathname) {
 	int status = 0;
 
 #ifdef WIN32
-	// stat on windows only works for "dir_name" not for "dir_name/" or "dir_name\\"
+	/* stat on windows only works for "dir_name" not for "dir_name/"
+   * or "dir_name\\"
+   */
 	int pathname_len = strlen(pathname_buf);
 	char last_char = pathname_buf[pathname_len - 1];
 
@@ -546,7 +555,7 @@ int main(int argc, char **argv)
   char *normalfilename = NULL;
   char *xmlfilename = NULL;
   unsigned long l;
-  unsigned int i, j; /* iteration vars */
+  unsigned int i; /* iteration var */
   int argiter;    /* iteration for argv */
   char services_file[256]; /* path name for "ncrack-services" file */
   char username_file[256];
@@ -924,85 +933,83 @@ int main(int argc, char **argv)
 
       log_write(LOG_PLAIN, "\n----- [ ServicesTable ] -----\n");
 
-      /* For alignment issues: find the longest length of string pair
-       * <service_name>:<port_number> and then calculate how many spaces
-       * each of the rest of services will need, in order to be aligned with
-       * that one in the ServicesTable printing */
-      vector <unsigned int> space_array;
-      char port_string[6]; /* maximum port number is 5 digits ('65535') + '\0' */
-      unsigned int cur_len;
-      unsigned int longer_srv_name;
+      int colno = 0;
+      int col_port = colno++;
+      int col_cl = colno++;
+      int col_CL = colno++;
+      int col_at = colno++;
+      int col_cd = colno++;
+      int col_cr = colno++;
+      int col_to = colno++;
+      int col_ssl = colno++;
+      int col_path = colno++;
+      int numrows = ServicesTable.size() + 1;
+      NcrackOutputTable *Tbl = new NcrackOutputTable(numrows, colno);
 
-      snprintf(port_string, sizeof(port_string), "%hu",
-          ServicesTable[0].lookup.portno);
-      longer_srv_name = strlen(port_string) +
-        strlen(ServicesTable[0].lookup.name);
+      Tbl->addItem(0, col_port, false, "SERVICE", sizeof("SERVICE") - 1);
+      Tbl->addItem(0, col_cl, false, "cl", sizeof("cl") - 1);
+      Tbl->addItem(0, col_CL, false, "CL", sizeof("CL") - 1);
+      Tbl->addItem(0, col_at, false, "at", sizeof("at") - 1);
+      Tbl->addItem(0, col_cd, false, "cd", sizeof("cd") - 1);
+      Tbl->addItem(0, col_cr, false, "cr", sizeof("cr") - 1);
+      Tbl->addItem(0, col_to, false, "to", sizeof("to") - 1);
+      Tbl->addItem(0, col_ssl, false, "ssl", sizeof("ssl") - 1);
+      Tbl->addItem(0, col_path, false, "path", sizeof("path") - 1);
 
-      for (i = 0; i < ServicesTable.size(); i++) {
-        snprintf(port_string, sizeof(port_string), "%hu",
-            ServicesTable[i].lookup.portno);
-        cur_len = strlen(ServicesTable[i].lookup.name) + strlen(port_string);
-        if (cur_len >= longer_srv_name)
-          longer_srv_name = cur_len;
-      }
-
-      for (i = 0; i < ServicesTable.size(); i++) {
-        snprintf(port_string, sizeof(port_string), "%hu",
-            ServicesTable[i].lookup.portno);
-        cur_len = strlen(ServicesTable[i].lookup.name) + strlen(port_string);
-        if (cur_len < longer_srv_name)
-          space_array.push_back(longer_srv_name - cur_len);
-        else 
-          space_array.push_back(0);
-      }
+      int rowno = 1;
 
       for (i = 0; i < ServicesTable.size(); i++) {
-        log_write(LOG_PLAIN, "%s:%hu ",
-            ServicesTable[i].lookup.name, 
-            ServicesTable[i].lookup.portno);
-        for (j = 0; j < space_array[i]; j++)
-          log_write(LOG_PLAIN, " ");
+
+        Tbl->addItemFormatted(rowno, col_port, false, "%s:%hu",
+            ServicesTable[i].lookup.name, ServicesTable[i].lookup.portno);
 
         if (ServicesTable[i].timing.min_connection_limit != NOT_ASSIGNED)
-          log_write(LOG_PLAIN, "cl=%ld, ",
+          Tbl->addItemFormatted(rowno, col_cl, false, "%ld",
               ServicesTable[i].timing.min_connection_limit);
         else 
-          log_write(LOG_PLAIN, "cl=N/A, ");
+          Tbl->addItem(rowno, col_cl, false, "N/A");
 
         if (ServicesTable[i].timing.max_connection_limit != NOT_ASSIGNED)
-          log_write(LOG_PLAIN, "CL=%ld, ",
+          Tbl->addItemFormatted(rowno, col_CL, false, "%ld",
               ServicesTable[i].timing.max_connection_limit);
-        else
-          log_write(LOG_PLAIN, "CL=N/A, ");
+        else 
+          Tbl->addItem(rowno, col_CL, false, "N/A");
 
         if (ServicesTable[i].timing.auth_tries != NOT_ASSIGNED)
-          log_write(LOG_PLAIN, "at=%ld, ",
+          Tbl->addItemFormatted(rowno, col_at, false, "%ld",
               ServicesTable[i].timing.auth_tries);
-        else
-          log_write(LOG_PLAIN, "at=N/A, ");
+        else 
+          Tbl->addItem(rowno, col_at, false, "N/A");
 
         if (ServicesTable[i].timing.connection_delay != NOT_ASSIGNED)
-          log_write(LOG_PLAIN, "cd=%ld, ",
+          Tbl->addItemFormatted(rowno, col_cd, false, "%ld",
               ServicesTable[i].timing.connection_delay);
-        else
-          log_write(LOG_PLAIN, "cd=N/A, ");
+        else 
+          Tbl->addItem(rowno, col_cd, false, "N/A");
 
         if (ServicesTable[i].timing.connection_retries != NOT_ASSIGNED)
-          log_write(LOG_PLAIN, "cr=%ld, ",
+          Tbl->addItemFormatted(rowno, col_cr, false, "%ld",
               ServicesTable[i].timing.connection_retries);
-        else
-          log_write(LOG_PLAIN, "cr=N/A, ");
+        else 
+          Tbl->addItemFormatted(rowno, col_cr, false, "N/A");
 
         if (ServicesTable[i].timing.timeout != NOT_ASSIGNED)
-          log_write(LOG_PLAIN, "to=%ld, ",
+          Tbl->addItemFormatted(rowno, col_to, false, "%ld",
               ServicesTable[i].timing.timeout);
-        else
-          log_write(LOG_PLAIN, "to=N/A, ");
+        else 
+          Tbl->addItemFormatted(rowno, col_to, false, "N/A");
 
-        log_write(LOG_PLAIN, "ssl=%s, path=%s\n", 
-            ServicesTable[i].misc.ssl ? "yes" : "no",
-            ServicesTable[i].misc.path ? ServicesTable[i].misc.path : "null");
-      }
+        Tbl->addItem(rowno, col_ssl, false,
+            ServicesTable[i].misc.ssl ? "yes" : "no");
+
+        Tbl->addItem(rowno, col_path, false, ServicesTable[i].misc.path ?
+            ServicesTable[i].misc.path : "null");
+
+        rowno++;
+      }      
+      log_write(LOG_PLAIN, "%s", Tbl->printableTable(NULL));
+      delete Tbl;
+
     }
     log_write(LOG_PLAIN, "\n----- [ Targets ] -----\n");
     for (i = 0; i < Targets.size(); i++) {

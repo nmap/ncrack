@@ -247,6 +247,10 @@
 			<File
 				RelativePath="..\NcrackOps.cc"
 				>
+      </File>
+			<File
+				RelativePath="..\NcrackOutputTable.cc"
+				>
 			</File>
 			<File
 				RelativePath="..\output.cc"
@@ -345,7 +349,11 @@
 			<File
 				RelativePath="..\NcrackOps.h"
 				>
-			</File>
+      </File>
+			<File
+				RelativePath="..\NcrackOutputTable.h"
+				>
+      </File>
 			<File
 				RelativePath="..\output.h"
 				>
