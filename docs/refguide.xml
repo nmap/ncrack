@@ -273,18 +273,173 @@ Ncrack finished.
 
   <refsect1 id="man-service-specification">
   <title>Service Specification</title>
-  <indexterm significance="normal"><primary>target specification</primary>
+  <indexterm significance="normal"><primary>service specification</primary>
   </indexterm>
 
    <para>
-    No cracking session can be carried out without a certain service to attack.
-    Service specification is one of the most flexible subsystems of Ncrack
-    and collaborates with target-specification in a way that allows
-    different option combinations to be applied.
+     No cracking session can be carried out without targetting a certain
+     service to attack. Service specification is one of the most flexible
+     subsystems of Ncrack and collaborates with target-specification in a
+     way that allows different option combinations to be applied. For
+     Ncrack to start running, you will have to specify at least one target
+     host and one associated service to attack. Ncrack provides ways to
+     specify a service by its default port number, by its name (as
+     extracted from the <filename>ncrack-services</filename> file) or both.
+     Normally, you need to define both name and port number only in
+     the special case where you know that a particular service is listening on
+     a non-default port.
    </para>
+
+   <para>
+     Ncrack offers two distinct ways with which services will be applied to
+     your targets: per-host service specification and global specification. 
+   </para>
+
+   <variablelist><title>Per-host service specification</title>
+
+     <varlistentry>
+       <listitem>
+      <para>
+       Services specified in this mode are written next to the host and
+       apply to it only. Keep in mind, however, that target-specification
+       allows wildcards/netmasks, which essentially means that
+       applying a per-host service specification format to that particular
+       target will affect all of the expanded ones as a result.
+       The general format is:
+      </para>
+         <para><option>
+             service-name://target:port-number</option>
+         </para>
+      <para>
+       where <option>target</option> is a hostname or IP
+         address in any of the formats described in the
+         target-specification section, <option>service-name</option> is
+         one of the common service names as defined in the
+         <emphasis><filename>ncrack-services</filename></emphasis>
+         file (e.g ssh, http) and <option>port number</option>
+         is what it obviously means.
+
+       Ncrack can determine the default port numbers for each of the
+       services it supports, as well as being able to deduce the service
+       name when a default port number has been specified. Specifying both
+       has meaning only when the user has a priori knowledge of a service
+       listening on a non-default port number. This can easily be
+       determined by using version detection like the one offered by Nmap's 
+       -sV option. 
+      </para>
+
+      <example id="man-rep-exscan"><title>Per-host service specification
+          example</title>
+        <screen>
+
+$ ncrack scanme.nmap.org:22 ftp://10.0.0.10 ssh://192.168.1.*:5910
+
+       </screen>
+     </example>
+     <para>
+       The above command will try to crack hosts: scanme.nmap.org on SSH
+       service (default port 22), 10.0.0.10 on FTP service (default port
+       21) and 192.168.1.0 - 192.168.1.255 (all of this C subnet) on SSH
+       service on non-default port 5910 which has been explicitly
+       specified. In the last case, Ncrack wouldn't be able to determine
+       that the subnet hosts are to be scanned against the SSH
+       service on that particular port without the user explicitly asking
+       for it, because there isn't any mapping of port-number 5910 to
+       service SSH. 
+      </para>
+ 
+ 
+     </listitem>
+     </varlistentry>
+
+   </variablelist>
+
+
+     <variablelist><title>Global service specification</title>
+
+     <varlistentry>
+       <listitem>
+      <para>
+        Services specified in this mode are applied to
+        <emphasis>all</emphasis> hosts that haven't been associated with
+        the per-host service specification format. This is done using
+        the <option>-p</option> option. While this facility may be similar
+        to that of Nmap's, you should try not to confuse it, since the
+        functionality is of a slightly different nature. Services can be
+        specified using comma separated directives of the general format:
+
+      </para>
+         <para><option>
+             -p service1:port-number1,service2:port-number2,...
+           </option>
+         </para>
+      <para>
+        As usual, you need not specify both service name and port number
+        since Ncrack knows the mappings of default-services to default-port
+        numbers. Be careful though not to include any space between each
+        service-name and/or port number, because Ncrack will think that
+        the argument after the space is a host as per the rule
+        "everything that isn't an option is a target specification". 
+      </para>
+
+       <example id="man-rep-exscan"><title>Global service specification
+          example</title>
+        <screen>
+
+$ ncrack scanme.nmap.org 10.0.0.120-122 192.168.2.0/24 -p 22,ftp:3210,telnet
+
+       </screen>
+     </example>
+     <para>
+       The above command will try to crack all of the specified hosts
+       scanme.nmap.org, 10.0.0.120, 10.0.0.121, 10.0.0.123 and the C subnet
+       of 192.168.2.0 against the following services: SSH service (mapped
+       from default port 22), FTP service on non-default port 3210, and
+       TELNET service on default port 23.
+     </para>
+     </listitem>
+     </varlistentry>
+
+   </variablelist>
+
+   <para>
+     Of course, Ncrack allows you to combine both modes of service
+     specification if you deem that as necessary. Normally, you will only
+     need to specify a couple of services but cracking a lot of hosts
+     against many different services might be a longterm project for
+     large networks that need to be consistently audited for weak
+     passwords. If you are in doubt, about which hosts and services are
+     going to be cracked with the current command, you can use the
+     <option>-sL</option> option (see below for explanation).
+   </para>        
+
+  </refsect1>
+
+
+  <refsect1 id="man-specification">
+    <title>Timing and Performance</title>
+    <indexterm class="startofrange" id="man-performance-timing-indexterm">
+      <primary>timing</primary></indexterm>
+    <indexterm class="startofrange" id="man-performance-indexterm">
+      <primary>performance</primary></indexterm>
+
+    <para>
+      The timing engine is perhaps the most important part of any serious
+      network authentication cracking tool. Ncrack's timing engine offers
+      countless options for optimization and can be bended to serve
+      virtually any user need. As Ncrack is progressing, this subsystem
+      is going to to evolve into a dynamic autonomous engine
+      that will be able to automatically adjust its behaviour
+      according to the network feedback it gets, in order to achieve
+      maximum performance without any user intervention.
+    </para>
+
 
 
   </refsect1>
+
+
+  
 
   
   <refsect1 id='man-output'>
@@ -294,7 +449,7 @@ Ncrack finished.
 
     <para>
      Any security tool is only as useful as the output it
-     generates.  Complex tests and algorithms are of little value if
+     generates. Complex tests and algorithms are of little value if
      they aren't presented in an organized and comprehensible fashion.
      Of course, no single format can please everyone. So Ncrack offers
      several formats, including the interactive mode for humans to read

@@ -214,7 +214,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
          * 3 first ftp digit code, so you can safely traverse it that much */
         if (strncmp(ftp_code, "220", FTP_DIGITS)) {
 
-        if (o.debugging > 6)
+          if (o.debugging > 6)
             error("%s Not ftp or service was shutdown\n", hostinfo);
           return ncrack_module_end(nsp, con);
         }
@@ -224,7 +224,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
 
       delete con->iobuf;
       con->iobuf = NULL;
-      
+
       snprintf(lbuf, sizeof(lbuf), "USER %s\r\n", con->user);
       nsock_write(nsp, nsi, ncrack_write_handler, FTP_TIMEOUT, con, lbuf, -1);
       break;
@@ -239,7 +239,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
       } else {
         return ncrack_module_end(nsp, con);
       }
-    
+
       con->state = FTP_FINI;
 
       delete con->iobuf;

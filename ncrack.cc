@@ -611,7 +611,6 @@ int main(int argc, char **argv)
     {"iL", required_argument, 0, 'i'},
     {"oA", required_argument, 0, 0},  
     {"oN", required_argument, 0, 0},
-    {"oM", required_argument, 0, 0},  
     {"oX", required_argument, 0, 0},  
     {"host_timeout", required_argument, 0, 0},
     {"host-timeout", required_argument, 0, 0},
@@ -991,13 +990,13 @@ int main(int argc, char **argv)
           Tbl->addItemFormatted(rowno, col_cr, false, "%ld",
               ServicesTable[i].timing.connection_retries);
         else 
-          Tbl->addItemFormatted(rowno, col_cr, false, "N/A");
+          Tbl->addItem(rowno, col_cr, false, "N/A");
 
         if (ServicesTable[i].timing.timeout != NOT_ASSIGNED)
           Tbl->addItemFormatted(rowno, col_to, false, "%ld",
               ServicesTable[i].timing.timeout);
         else 
-          Tbl->addItemFormatted(rowno, col_to, false, "N/A");
+          Tbl->addItem(rowno, col_to, false, "N/A");
 
         Tbl->addItem(rowno, col_ssl, false,
             ServicesTable[i].misc.ssl ? "yes" : "no");

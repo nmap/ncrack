@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 08/01/2009
+.\"      Date: 08/04/2009
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "08/01/2009" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "08/04/2009" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -177,9 +177,88 @@ option, except that the excluded targets are provided in a newline, space, or ta
 rather than on the command line\&.
 .RE
 .SH "SERVICE SPECIFICATION"
-.\" target specification
+.\" service specification
 .PP
-No cracking session can be carried out without a certain service to attack\&. Service specification is one of the most flexible subsystems of Ncrack and collaborates with target\-specification in a way that allows different option combinations to be applied\&.
+No cracking session can be carried out without targetting a certain service to attack\&. Service specification is one of the most flexible subsystems of Ncrack and collaborates with target\-specification in a way that allows different option combinations to be applied\&. For Ncrack to start running, you will have to specify at least one target host and one associated service to attack\&. Ncrack provides ways to specify a service by its default port number, by its name (as extracted from the
+ncrack\-services
+file) or both\&. Normally, you need to define both name and port number only in the special case where you know that a particular service is listening on a non\-default port\&.
+.PP
+Ncrack offers two distinct ways with which services will be applied to your targets: per\-host service specification and global specification\&.
+.PP
+\fBPer\-host service specification\fR
+.PP
+.RS 4
+Services specified in this mode are written next to the host and apply to it only\&. Keep in mind, however, that target\-specification allows wildcards/netmasks, which essentially means that applying a per\-host service specification format to that particular target will affect all of the expanded ones as a result\&. The general format is:
+.sp
+\fB service\-name://target:port\-number\fR
+.sp
+where
+\fBtarget\fR
+is a hostname or IP address in any of the formats described in the target\-specification section,
+\fBservice\-name\fR
+is one of the common service names as defined in the
+\fIncrack\-services\fR
+file (e\&.g ssh, http) and
+\fBport number\fR
+is what it obviously means\&. Ncrack can determine the default port numbers for each of the services it supports, as well as being able to deduce the service name when a default port number has been specified\&. Specifying both has meaning only when the user has a priori knowledge of a service listening on a non\-default port number\&. This can easily be determined by using version detection like the one offered by Nmap\'s \-sV option\&.
+.PP
+\fBExample\ \&2.\ \&Per-host service specification example\fR
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+
+$ ncrack scanme\&.nmap\&.org:22 ftp://10\&.0\&.0\&.10 ssh://192\&.168\&.1\&.*:5910
+
+       
+.fi
+.if n \{\
+.RE
+.\}
+
+The above command will try to crack hosts: scanme\&.nmap\&.org on SSH service (default port 22), 10\&.0\&.0\&.10 on FTP service (default port 21) and 192\&.168\&.1\&.0 \- 192\&.168\&.1\&.255 (all of this C subnet) on SSH service on non\-default port 5910 which has been explicitly specified\&. In the last case, Ncrack wouldn\'t be able to determine that the subnet hosts are to be scanned against the SSH service on that particular port without the user explicitly asking for it, because there isn\'t any mapping of port\-number 5910 to service SSH\&.
+.RE
+.PP
+\fBGlobal service specification\fR
+.PP
+.RS 4
+Services specified in this mode are applied to
+\fIall\fR
+hosts that haven\'t been associated with the per\-host service specification format\&. This is done using the
+\fB\-p\fR
+option\&. While this facility may be similar to that of Nmap\'s, you should try not to confuse it, since the functionality is of a slightly different nature\&. Services can be specified using comma separated directives of the general format:
+.sp
+\fB \-p service1:port\-number1,service2:port\-number2,\&.\&.\&. \fR
+.sp
+As usual, you need not specify both service name and port number since Ncrack knows the mappings of default\-services to default\-port numbers\&. Be careful though not to include any space between each service\-name and/or port number, because Ncrack will think that the argument after the space is a host as per the rule "everything that isn\'t an option is a target specification"\&.
+.PP
+\fBExample\ \&3.\ \&Global service specification example\fR
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+
+$ ncrack scanme\&.nmap\&.org 10\&.0\&.0\&.120\-122 192\&.168\&.2\&.0/24 \-p 22,ftp:3210,telnet
+
+       
+.fi
+.if n \{\
+.RE
+.\}
+
+The above command will try to crack all of the specified hosts scanme\&.nmap\&.org, 10\&.0\&.0\&.120, 10\&.0\&.0\&.121, 10\&.0\&.0\&.123 and the C subnet of 192\&.168\&.2\&.0 against the following services: SSH service (mapped from default port 22), FTP service on non\-default port 3210, and TELNET service on default port 23\&.
+.RE
+.PP
+Of course, Ncrack allows you to combine both modes of service specification if you deem that as necessary\&. Normally, you will only need to specify a couple of services but cracking a lot of hosts against many different services might be a longterm project for large networks that need to be consistently audited for weak passwords\&. If you are in doubt, about which hosts and services are going to be cracked with the current command, you can use the
+\fB\-sL\fR
+option (see below for explanation)\&.
+.SH "TIMING AND PERFORMANCE"
+.\" timing
+.\" performance
+.PP
+The timing engine is perhaps the most important part of any serious network authentication cracking tool\&. Ncrack\'s timing engine offers countless options for optimization and can be bended to serve virtually any user need\&. As Ncrack is progressing, this subsystem is going to to evolve into a dynamic autonomous engine that will be able to automatically adjust its behaviour according to the network feedback it gets, in order to achieve maximum performance without any user intervention\&.
 .SH "OUTPUT"
 .\" output formats
 .PP
