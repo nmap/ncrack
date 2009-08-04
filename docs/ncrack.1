@@ -248,17 +248,49 @@ $ ncrack scanme\&.nmap\&.org 10\&.0\&.0\&.120\-122 192\&.168\&.2\&.0/24 \-p 22,f
 .RE
 .\}
 
-The above command will try to crack all of the specified hosts scanme\&.nmap\&.org, 10\&.0\&.0\&.120, 10\&.0\&.0\&.121, 10\&.0\&.0\&.123 and the C subnet of 192\&.168\&.2\&.0 against the following services: SSH service (mapped from default port 22), FTP service on non\-default port 3210, and TELNET service on default port 23\&.
+The above command will try to crack all of the specified hosts scanme\&.nmap\&.org, 10\&.0\&.0\&.120, 10\&.0\&.0\&.121, 10\&.0\&.0\&.123 and the C class subnet of 192\&.168\&.2\&.0 against the following services: SSH service (mapped from default port 22), FTP service on non\-default port 3210, and TELNET service on default port 23\&.
 .RE
 .PP
 Of course, Ncrack allows you to combine both modes of service specification if you deem that as necessary\&. Normally, you will only need to specify a couple of services but cracking a lot of hosts against many different services might be a longterm project for large networks that need to be consistently audited for weak passwords\&. If you are in doubt, about which hosts and services are going to be cracked with the current command, you can use the
 \fB\-sL\fR
 option (see below for explanation)\&.
+.SH "SERVICE OPTIONS"
+.\" service options
+.PP
+Apart from general service specification, Ncrack allows you to provide a multitude of options that apply to each or a subset of your targets\&. Options include timing and performance optimizations (which are thoroughly analyzed in a seperate section), SSL enabling/disabling and other module\-specific parameters like the relative URL path for the HTTP module\&. Options can be defined in a variety of ways which include: per\-host options, per\-module options and global options\&. Since a combination of these options may be used, there is a strict hierarchy of precedence which will be discussed later\&.
+.PP
+\fBPer\-host Options\fR
+.PP
+.RS 4
+Options in this mode apply only to the host(s) they are referring to and are written next to it according to the following format:
+.sp
+\fB service\-name://target:port\-number,opt1=optval1,opt2=optval2,\&.\&.\&. \fR
+.sp
+The format concerning the service specification which comes before the options, has been explained in the previous section\&.
+\fBoptN\fR
+is referring to any of the option names that are available (a list will follow below), while
+\fBoptvalN\fR
+determines the value of that option and depends on the nature of it\&. For example, most timing\-related options expect to receive numbers as values, while the
+\fBpath\fR
+option obviously needs a string argument\&.
+.RE
+.PP
+\fBPer\-module Options\fR
+.PP
+.RS 4
+Options in this mode apply to all hosts that are associated with the particular service/module\&. This is accomplished using the
+\fB\-m\fR
+which is defined with the format:
+.sp
+\fB \-m service\-name:opt1=optval1,opt2=optval2,\&.\&.\&. \fR
+.sp
+This option can be invoked multiple times, for as many different services as you might need to define service\-wide applicable options\&. Each iteration of this option must refer to only one service\&. However, to avoid confusion, this option had better not be called more than one time for the same service, although this is allowed and the last iteration will take precedence over the previous ones for all redefined option values\&.
+.RE
 .SH "TIMING AND PERFORMANCE"
 .\" timing
 .\" performance
 .PP
-The timing engine is perhaps the most important part of any serious network authentication cracking tool\&. Ncrack\'s timing engine offers countless options for optimization and can be bended to serve virtually any user need\&. As Ncrack is progressing, this subsystem is going to to evolve into a dynamic autonomous engine that will be able to automatically adjust its behaviour according to the network feedback it gets, in order to achieve maximum performance without any user intervention\&.
+The timing engine is perhaps the most important part of any serious network authentication cracking tool\&. Ncrack\'s timing engine offers a great many options for optimization and can be bended to serve virtually any user need\&. As Ncrack is progressing, this subsystem is going to to evolve into a dynamic autonomous engine that will be able to automatically adjust its behaviour according to the network feedback it gets, in order to achieve maximum performance without any user intervention\&.
 .SH "OUTPUT"
 .\" output formats
 .PP

@@ -392,9 +392,9 @@ $ ncrack scanme.nmap.org 10.0.0.120-122 192.168.2.0/24 -p 22,ftp:3210,telnet
      </example>
      <para>
        The above command will try to crack all of the specified hosts
-       scanme.nmap.org, 10.0.0.120, 10.0.0.121, 10.0.0.123 and the C subnet
-       of 192.168.2.0 against the following services: SSH service (mapped
-       from default port 22), FTP service on non-default port 3210, and
+       scanme.nmap.org, 10.0.0.120, 10.0.0.121, 10.0.0.122 and the C class
+       subnet of 192.168.2.0 against the following services: SSH service
+       (mapped from default port 22), FTP service on non-default port 3210, and
        TELNET service on default port 23.
      </para>
      </listitem>
@@ -411,7 +411,88 @@ $ ncrack scanme.nmap.org 10.0.0.120-122 192.168.2.0/24 -p 22,ftp:3210,telnet
      passwords. If you are in doubt, about which hosts and services are
      going to be cracked with the current command, you can use the
      <option>-sL</option> option (see below for explanation).
-   </para>        
+   </para>
+
+  </refsect1>
+
+  <refsect1 id="man-service-options">
+  <title>Service Options</title>
+  <indexterm significance="normal"><primary>service options</primary>
+  </indexterm>
+
+  <para>
+    Apart from general service specification, Ncrack allows you to provide
+    a multitude of options that apply to each or a subset of your targets.
+    Options include timing and performance optimizations
+    (which are thoroughly analyzed in a seperate section), SSL
+    enabling/disabling and other module-specific parameters like the
+    relative URL path for the HTTP module. Options can be defined in a
+    variety of ways which include: per-host options, per-module options
+    and global options. Since a combination of these options may be used,
+    there is a strict hierarchy of precedence which will be discussed
+    later.
+  </para>
+
+   <variablelist><title>Per-host Options</title>
+
+     <varlistentry>
+       <listitem>
+         <para>
+         Options in this mode apply only to the host(s) they are referring
+         to and are written next to it according to the following format:
+
+      </para>
+      <para><option>
+          service-name://target:port-number,opt1=optval1,opt2=optval2,...
+          </option>
+        </para>
+
+        <para>
+          The format concerning the service specification which comes before
+          the options, has been explained in the previous section.
+          <option>optN</option> is referring to any of the option names
+          that are available (a list will follow below), while
+          <option>optvalN</option> determines the value of that option and
+          depends on the nature of it. For example, most timing-related
+          options expect to receive numbers as values, while the
+          <option>path</option> option obviously needs a string argument.
+        </para>
+      </listitem>
+    </varlistentry>
+
+  </variablelist>
+
+  <variablelist><title>Per-module Options</title>
+
+     <varlistentry>
+       <listitem>
+         <para>
+         Options in this mode apply to all hosts that are associated with
+         the particular service/module. This is accomplished using the
+         <option>-m</option> which is defined with the format:
+
+      </para>
+      <para><option>
+          -m service-name:opt1=optval1,opt2=optval2,...
+          </option>
+        </para>
+
+        <para>
+          This option can be invoked multiple times, for as many
+          different services as you might need to define service-wide
+          applicable options. Each iteration of this option must refer to
+          only one service. However, to avoid confusion, this option had better
+          not be called more than one time for the same service, although
+          this is allowed and the last iteration will take precedence over
+          the previous ones for all redefined option values.
+       </para>
+      </listitem>
+    </varlistentry>
+
+   </variablelist>
+
+
+
 
   </refsect1>
 
@@ -426,7 +507,7 @@ $ ncrack scanme.nmap.org 10.0.0.120-122 192.168.2.0/24 -p 22,ftp:3210,telnet
     <para>
       The timing engine is perhaps the most important part of any serious
       network authentication cracking tool. Ncrack's timing engine offers
-      countless options for optimization and can be bended to serve
+      a great many options for optimization and can be bended to serve
       virtually any user need. As Ncrack is progressing, this subsystem
       is going to to evolve into a dynamic autonomous engine
       that will be able to automatically adjust its behaviour
