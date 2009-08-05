@@ -2,6 +2,10 @@ TODO:
 
 * Write form auth http module.
 
+* Think about packet trace. Obviously without pcap or something similar,
+  we can only print info about TCP payloads or connection
+  initiations/endings. How can I get the unique connection id from nsock?
+
 * Possibly adapt Nmap license headers to Ncrack specifically.
 
 * Search for good username and password lists, or find ways to

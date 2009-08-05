@@ -436,7 +436,46 @@ table is the most important part of this output and lists all targets and associ
 .\" timing
 .\" performance
 .PP
-The timing engine is perhaps the most important part of any serious network authentication cracking tool\&. Ncrack\'s timing engine offers a great many options for optimization and can be bended to serve virtually any user need\&. As Ncrack is progressing, this subsystem is going to to evolve into a dynamic autonomous engine that will be able to automatically adjust its behaviour according to the network feedback it gets, in order to achieve maximum performance without any user intervention\&.
+The timing engine is perhaps the most important part of any serious network authentication cracking tool\&. Ncrack\'s timing engine offers a great many options for optimization and can be bended to serve virtually any user need\&. As Ncrack is progressing, this subsystem is going to evolve into a dynamic autonomous engine that will be able to automatically adjust its behaviour according to the network feedback it gets, in order to achieve maximum performance and precision without any user intervention\&.
+.PP
+Some options accept a
+time
+parameter\&. This is specified in milliseconds by default, though you can append \(oqs\(cq, \(oqm\(cq, or \(oqh\(cq to the value to specify seconds, minutes, or hours\&. So the
+\fBcd\fR
+(connection delay) arguments
+900000,
+900s, and
+15m
+all do the same thing\&.
+.PP
+\fBcl \fR\fB\fInum\-connections\fR\fR; \fBCL \fR\fB\fInum\-connections\fR\fR (Adjust number of concurrent parallel connections)
+.RS 4
+
+\fBConnection Limit\fR
+.sp
+These options control the total number of connections that may be outstanding for any service at the same time\&. Normally, Ncrack tries to dynamically adjust the number of connections for each individual target by counting how many drops or connection failures happen\&. If a strange network condition occurs, that signifies that something may be going wrong, like the host dropping any new connection attempts, then Ncrack will immediately lower the parallel connections hitting the service\&. However, the caps number of the minimum or maximum connections that will take place can be overriden using these two options\&. By properly adjusting these options you can essentially optimize performance, if you can handle the tricky part of knowing or discovering your target\'s own limits\&. The convention here is that
+\fBcl\fR
+with lowercase letters is referring to the minimum connection limit, while
+\fBCL \fR
+with uppercase letters is referring to the maximum connections\&.
+.sp
+The most common usage is to set
+\fBcl (minimum connection limit)\fR
+for targets that you are almost certain are going to withstand these many connections at any given time\&. This is a risky option to play with, as setting it too high might actually do more harm than good by effectively DoS\-attacking the target and triggering firewall rules that will ban your IP address\&.
+.sp
+On the other hand, for more stealthy missions, setting the
+\fBCL (maximum connection limit)\fR
+to a low value might be what you want\&. However, setting it too low will surely have a great impact in overall cracking speed\&. For maximum stealth, this can be combined with the
+\fBcd (connection delay)\fR
+described below\&.
+.RE
+.PP
+\fBat \fR\fB\fInum\-attempts\fR\fR; (Adjust authentication attempts per connection) Authentication Tries
+.RS 4
+
+\fBAuthentication Tries\fR
+.sp
+.RE
 .SH "OUTPUT"
 .\" output formats
 .PP
