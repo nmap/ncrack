@@ -330,9 +330,7 @@ to (time\-out): maximum cracking time for service, regardless of success so far
 .PP
 \fBssl\fR (Enable/Disable SSL over service)
 .RS 4
-By enabling SSL, Ncrack will try to open a TCP connection and then negotiate a SSL session with the target\&. Everything will then be transparently encrypted and decrypted\&. However, since Ncrack\'s job is to provide speed rather than strong crypto, the algorithms and ciphers for SSL are chosen on an efficiency basis\&. Possible values for this option are
-\fByes\fR
-but specifying just
+By enabling SSL, Ncrack will try to open a TCP connection and then negotiate a SSL session with the target\&. Everything will then be transparently encrypted and decrypted\&. However, since Ncrack\'s job is to provide speed rather than strong crypto, the algorithms and ciphers for SSL are chosen on an efficiency basis\&. Possible values for this option are \'\fByes\fR\' but just specifying
 \fBssl\fR
 would be enough\&. Thus, this is the only option that doesn\'t need to be written in the
 \fIopt\fR=\fIoptval\fR
@@ -345,8 +343,95 @@ Some services like HTTP or SVN usually require a specific path in the URL\&. Thi
 \fBpath=login\&.php\fR
 \&. The first \'/\' is added if you omit it, but you will have to explicitly specify it at the end of pathnames that are directories\&. So cracking the directory for http://foobar\&.com/protected\-dir/ would require
 \fBpath=protected\-dir/\fR
-\&. Since the symbol \'=\' is used by Ncrack for argument parsing, you will have to espace it if it is included in the URL\&.
+\&. Since the symbol \'=\' is used by Ncrack for argument parsing, you will have to espace it if it is included in the URL\&. By default, the path\-name is initialized to \'/\', but will be ignored by services that do not require it\&.
 .RE
+.PP
+\fBService Option Hierarchy\fR
+.PP
+As already noted, Ncrack allows a combination of the three different modes of service option specification\&. In that case, there is a strict hierarchy that resolves the order in which conflicting values for these options take precedence over each other\&. The order is as follows, leftmost being the highest priority and rightmost the lowest one:
+.PP
+Per\-host options > Per\-module options > Global options > Timing\-Template (for timing options only)
+.PP
+The concept of the "Timing\-Template" will be explained in the Section "Timing and Performance", but for now, just have in mind that its values have the least prevalence over everything else and essentially act as defaults for everything timing\-related\&. Global options specified with
+\fB\-g\fR
+have the directly higher precedence, while
+\fB\-m\fR
+per\-module options are immediately higher\&. In the top of the hierarcy reside the per\-host options which are essentially the most specific ones\&. Consequently, you can see that the pattern is: the more specific the higher the precedence\&.
+.PP
+\fBExample\ \&4.\ \&Service Option Hierarchy example\fR
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+
+$ ncrack scanme\&.nmap\&.org:22,cl=10,at=1 10\&.0\&.0\&.120 10\&.0\&.0\&.20 \-p 21 \-m ftp:CL=1 \-g CL=3
+
+       
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+The example demonstrates the hierarchy precedence\&. The services that are going to be cracked are SSH for scanme\&.nmap\&.org and FTP for hosts 10\&.0\&.0\&.120, 10\&.0\&.0\&.20\&. No particular timing\-template has been specified and thus the default will be used (Normal \- 3)\&. The per\-host options for scanme\&.nmap\&.org define that the minimum connection limit (cl) is 10 and that Ncrack should attempt only 1 authentication try (at) per connection\&. These values would override any other for service SSH of host scanme\&.nmap\&.org if there were conflicts with other modes\&. Since a global option of
+\fB\-g CL=3\fR
+was defined and there is no other higher\-precedence for service SSH and scanme\&.nmap\&.org in particular, this value will also be applied\&. As for the FTP targets, the per\-module
+\fB\-m ftp:CL=1\fR
+defined for all FTP services will override the equivalent global one\&. All these can get quite complex if overused, but they are not expected to be leveraged by the average Ncrack user anyway\&. Complicated network scanning scenarios might require them, though\&. To make certain the results are the ones you expect them to be, don\'t forget to use the
+\fB\-sL\fR
+option that prints out details about what Ncrack would crack if invoked normally\&. You can add the debugging
+\fB\-d\fR
+option if you want even more verbose output\&. For the above example, Ncrack would print the following:
+.PP
+\fBExample\ \&5.\ \&Service Option Hierarchy Output example\fR
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+
+$ ncrack scanme\&.nmap\&.org:22,cl=10,at=1 10\&.0\&.0\&.120 10\&.0\&.0\&.20 \-p 21 \-m ftp:CL=1 \-g CL=3 \-sL \-d
+
+Starting Ncrack 0\&.01ALPHA ( http://ncrack\&.org ) at 2009\-08\-05 18:32 EEST
+
+\-\-\-\-\- [ Timing Template ] \-\-\-\-\-
+cl=7, CL=80, at=0, cd=0, cr=10, to=0
+
+\-\-\-\-\- [ ServicesTable ] \-\-\-\-\-
+SERVICE   cl  CL  at  cd  cr  to  ssl path
+ftp:21    N/A 1   N/A N/A N/A N/A no  null
+ssh:22    N/A N/A N/A N/A N/A N/A no  null
+telnet:23 N/A N/A N/A N/A N/A N/A no  null
+smtp:25   N/A N/A N/A N/A N/A N/A no  null
+http:80   N/A N/A N/A N/A N/A N/A no  null
+https:443 N/A N/A N/A N/A N/A N/A yes null
+
+\-\-\-\-\- [ Targets ] \-\-\-\-\-
+Host: 64\&.13\&.134\&.52 ( scanme\&.nmap\&.org )
+  ssh:22 cl=10, CL=10, at=1, cd=0, cr=10, to=0, ssl=no, path=/
+Host: 10\&.0\&.0\&.120
+  ftp:21 cl=3, CL=1, at=0, cd=0, cr=10, to=0, ssl=no, path=/
+Host: 10\&.0\&.0\&.20
+  ftp:21 cl=3, CL=1, at=0, cd=0, cr=10, to=0, ssl=no, path=/
+
+Ncrack done: 3 services would be scanned\&.
+Probes sent: 0 | timed\-out: 0 | prematurely\-closed: 0
+
+Ncrack finished\&.
+
+       
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+The
+\fIServicesTable\fR
+just lists the per\-module options for all available services\&. As you can see, the only defined option is in the FTP service for the
+\fBCL\fR
+\&. The
+\fITargets\fR
+table is the most important part of this output and lists all targets and associated options according to the command\-line invokation\&. No network operation takes place in this mode, apart from forward DNS resolution for hostnames (like scanme\&.nmap\&.org in this example)\&.
 .SH "TIMING AND PERFORMANCE"
 .\" timing
 .\" performance
