@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 08/04/2009
+.\"      Date: 08/05/2009
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "08/04/2009" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "08/05/2009" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -92,7 +92,7 @@ SERVICE SPECIFICATION:
   \-g <options>: options will be applied to every service globally
   Misc options:
     ssl: enable SSL over this service
-    path: path\-name used in modules like HTTP (\'=\' needs escaping if used)
+    path <name>: used in modules like HTTP (\'=\' needs escaping if used)
 TIMING AND PERFORMANCE:
   Options which take <time> are in milliseconds, unless you append \'s\'
   (seconds), \'m\' (minutes), or \'h\' (hours) to the value (e\&.g\&. 30m)\&.
@@ -190,17 +190,19 @@ Ncrack offers two distinct ways with which services will be applied to your targ
 .RS 4
 Services specified in this mode are written next to the host and apply to it only\&. Keep in mind, however, that target\-specification allows wildcards/netmasks, which essentially means that applying a per\-host service specification format to that particular target will affect all of the expanded ones as a result\&. The general format is:
 .sp
-\fB service\-name://target:port\-number\fR
+\fB \fR\fB\fI[service\-name]\fR\fR\fB://\fR\fB\fItarget\fR\fR\fB:\fR\fB\fI[port\-number]\fR\fR
 .sp
 where
-\fBtarget\fR
+\fItarget\fR
 is a hostname or IP address in any of the formats described in the target\-specification section,
-\fBservice\-name\fR
+\fI[service\-name]\fR
 is one of the common service names as defined in the
 \fIncrack\-services\fR
 file (e\&.g ssh, http) and
-\fBport number\fR
-is what it obviously means\&. Ncrack can determine the default port numbers for each of the services it supports, as well as being able to deduce the service name when a default port number has been specified\&. Specifying both has meaning only when the user has a priori knowledge of a service listening on a non\-default port number\&. This can easily be determined by using version detection like the one offered by Nmap\'s \-sV option\&.
+\fI[port\-number]\fR
+is what it obviously means\&. Ncrack can determine the default port numbers for each of the services it supports, as well as being able to deduce the service name when a default port number has been specified\&. Specifying both has meaning only when the user has a priori knowledge of a service listening on a non\-default port number\&. This can easily be determined by using version detection like the one offered by Nmap\'s
+\fB\-sV\fR
+option\&.
 .PP
 \fBExample\ \&2.\ \&Per-host service specification example\fR
 .sp
@@ -229,7 +231,7 @@ hosts that haven\'t been associated with the per\-host service specification for
 \fB\-p\fR
 option\&. While this facility may be similar to that of Nmap\'s, you should try not to confuse it, since the functionality is of a slightly different nature\&. Services can be specified using comma separated directives of the general format:
 .sp
-\fB \-p service1:port\-number1,service2:port\-number2,\&.\&.\&. \fR
+\fB \-p \fR\fB\fI[service1]\fR\fR\fB:\fR\fB\fI[port\-number1]\fR\fR\fB,\fR\fB\fI[service2]\fR\fR\fB:\fR\fB\fI[port\-number2]\fR\fR\fB,\&.\&.\&. \fR
 .sp
 As usual, you need not specify both service name and port number since Ncrack knows the mappings of default\-services to default\-port numbers\&. Be careful though not to include any space between each service\-name and/or port number, because Ncrack will think that the argument after the space is a host as per the rule "everything that isn\'t an option is a target specification"\&.
 .PP
@@ -248,7 +250,7 @@ $ ncrack scanme\&.nmap\&.org 10\&.0\&.0\&.120\-122 192\&.168\&.2\&.0/24 \-p 22,f
 .RE
 .\}
 
-The above command will try to crack all of the specified hosts scanme\&.nmap\&.org, 10\&.0\&.0\&.120, 10\&.0\&.0\&.121, 10\&.0\&.0\&.123 and the C class subnet of 192\&.168\&.2\&.0 against the following services: SSH service (mapped from default port 22), FTP service on non\-default port 3210, and TELNET service on default port 23\&.
+The above command will try to crack all of the specified hosts scanme\&.nmap\&.org, 10\&.0\&.0\&.120, 10\&.0\&.0\&.121, 10\&.0\&.0\&.122 and the C class subnet of 192\&.168\&.2\&.0 against the following services: SSH service (mapped from default port 22), FTP service on non\-default port 3210, and TELNET service on default port 23\&.
 .RE
 .PP
 Of course, Ncrack allows you to combine both modes of service specification if you deem that as necessary\&. Normally, you will only need to specify a couple of services but cracking a lot of hosts against many different services might be a longterm project for large networks that need to be consistently audited for weak passwords\&. If you are in doubt, about which hosts and services are going to be cracked with the current command, you can use the
@@ -264,10 +266,10 @@ Apart from general service specification, Ncrack allows you to provide a multitu
 .RS 4
 Options in this mode apply only to the host(s) they are referring to and are written next to it according to the following format:
 .sp
-\fB service\-name://target:port\-number,opt1=optval1,opt2=optval2,\&.\&.\&. \fR
+\fB \fR\fB\fI[service\-name]\fR\fR\fB://\fR\fB\fItarget\fR\fR\fB:\fR\fB\fI[port\-number]\fR\fR\fB,\fR\fB\fIopt1\fR\fR\fB=\fR\fB\fIoptval1\fR\fR\fB,\fR\fB\fIopt2\fR\fR\fB=\fR\fB\fIoptval\fR\fR\fB,\&.\&.\&. \fR
 .sp
 The format concerning the service specification which comes before the options, has been explained in the previous section\&.
-\fBoptN\fR
+\fB\fIoptN\fR\fR
 is referring to any of the option names that are available (a list will follow below), while
 \fBoptvalN\fR
 determines the value of that option and depends on the nature of it\&. For example, most timing\-related options expect to receive numbers as values, while the
@@ -282,9 +284,68 @@ Options in this mode apply to all hosts that are associated with the particular 
 \fB\-m\fR
 which is defined with the format:
 .sp
-\fB \-m service\-name:opt1=optval1,opt2=optval2,\&.\&.\&. \fR
+\fB \-m \fR\fB\fIservice\-name\fR\fR\fB:\fR\fB\fIopt1\fR\fR\fB=\fR\fB\fIoptval1\fR\fR\fB,\fR\fB\fIopt2\fR\fR\fB=\fR\fB\fIoptval2\fR\fR\fB,\&.\&.\&. \fR
 .sp
 This option can be invoked multiple times, for as many different services as you might need to define service\-wide applicable options\&. Each iteration of this option must refer to only one service\&. However, to avoid confusion, this option had better not be called more than one time for the same service, although this is allowed and the last iteration will take precedence over the previous ones for all redefined option values\&.
+.RE
+.PP
+\fBGlobal Options\fR
+.PP
+.RS 4
+Options in this mode apply to all hosts regardless of which service they are associated with\&. This is accomplished using the
+\fB\-g\fR
+as follows:
+.sp
+\fB \-g \fR\fB\fIopt1\fR\fR\fB=\fR\fB\fIoptval1\fR\fR\fB,\fR\fB\fIopt2\fR\fR\fB=\fR\fB\fIoptval2\fR\fR\fB,\&.\&.\&. \fR
+.sp
+This acts as a convenience option, where you can apply options to all services globally\&. Everything else regarding the available options and option values is the same as the previous modes\&.
+.RE
+.PP
+\fBList of available Service Options\fR
+.PP
+Bellow follows a list of all the currently available service options\&. You can apply them with any of the three modes described above\&. The last six of the options are timing related and will be analyzed in Section "Timing and Performance" of this manual\&.
+.PP
+.RS 4
+
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ssl: enable SSL over this service
+path: path\-name used in modules like HTTP (\'=\' needs escaping if used)
+cl (min connection limit): minimum number of concurrent parallel connections
+CL (max connection limit): maximum number of concurrent parallel connections
+at (authentication tries): authentication attempts per connection
+cd (connection delay): delay time between each connection initiation
+cr (connection retries): caps number of service connection attempts
+to (time\-out): maximum cracking time for service, regardless of success so far
+    
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+.RE
+.PP
+\fBssl\fR (Enable/Disable SSL over service)
+.RS 4
+By enabling SSL, Ncrack will try to open a TCP connection and then negotiate a SSL session with the target\&. Everything will then be transparently encrypted and decrypted\&. However, since Ncrack\'s job is to provide speed rather than strong crypto, the algorithms and ciphers for SSL are chosen on an efficiency basis\&. Possible values for this option are
+\fByes\fR
+but specifying just
+\fBssl\fR
+would be enough\&. Thus, this is the only option that doesn\'t need to be written in the
+\fIopt\fR=\fIoptval\fR
+format\&. By default, SSL is disabled for all services except those that are stricly dependent on it like HTTPS\&.
+.RE
+.PP
+\fBpath <name>\fR (Path name for relative URLs)
+.RS 4
+Some services like HTTP or SVN usually require a specific path in the URL\&. This option takes that pathname string as its value\&. The path is always relative to the hostname or IP address, so if you want to target something like http://foobar\&.com/login\&.php the path must take the value
+\fBpath=login\&.php\fR
+\&. The first \'/\' is added if you omit it, but you will have to explicitly specify it at the end of pathnames that are directories\&. So cracking the directory for http://foobar\&.com/protected\-dir/ would require
+\fBpath=protected\-dir/\fR
+\&. Since the symbol \'=\' is used by Ncrack for argument parsing, you will have to espace it if it is included in the URL\&.
 .RE
 .SH "TIMING AND PERFORMANCE"
 .\" timing

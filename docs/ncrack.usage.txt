@@ -17,7 +17,7 @@ SERVICE SPECIFICATION:
   -g <options>: options will be applied to every service globally
   Misc options:
     ssl: enable SSL over this service
-    path: path-name used in modules like HTTP ('=' needs escaping if used)
+    path <name>: used in modules like HTTP ('=' needs escaping if used)
 TIMING AND PERFORMANCE:
   Options which take <time> are in milliseconds, unless you append 's'
   (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).

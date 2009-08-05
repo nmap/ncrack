@@ -189,7 +189,7 @@ print_usage(void)
       "  -g <options>: options will be applied to every service globally\n"
       "  Misc options:\n"
       "    ssl: enable SSL over this service\n"
-      "    path: path-name used in modules like HTTP ('=' needs escaping if "
+      "    path <name>: used in modules like HTTP ('=' needs escaping if "
            "used)\n"
       "TIMING AND PERFORMANCE:\n"
       "  Options which take <time> are in milliseconds, unless you append "
@@ -642,7 +642,7 @@ int main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "d:g:hi:U:P:m:o:p:s:T:vV",
+  while((arg = getopt_long_only(argc, argv, "d::g:hi:U:P:m:o:p:s:T:vV",
           long_options, &option_index)) != EOF) {
     switch(arg) {
       case 0:

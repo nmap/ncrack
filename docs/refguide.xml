@@ -308,16 +308,19 @@ Ncrack finished.
        The general format is:
       </para>
          <para><option>
-             service-name://target:port-number</option>
+             <replaceable><optional>service-name</optional></replaceable>://<replaceable>target</replaceable>:<replaceable><optional>port-number</optional></replaceable></option>
+
          </para>
       <para>
-       where <option>target</option> is a hostname or IP
-         address in any of the formats described in the
-         target-specification section, <option>service-name</option> is
-         one of the common service names as defined in the
-         <emphasis><filename>ncrack-services</filename></emphasis>
-         file (e.g ssh, http) and <option>port number</option>
-         is what it obviously means.
+        where <replaceable>target</replaceable> is a hostname
+        or IP address in any of the formats described in the
+        target-specification section,
+        <replaceable><optional>service-name</optional></replaceable> is
+        one of the common service names as defined in the
+        <emphasis><filename>ncrack-services</filename></emphasis>
+        file (e.g ssh, http) and
+        <replaceable><optional>port-number</optional></replaceable>
+        is what it obviously means.
 
        Ncrack can determine the default port numbers for each of the
        services it supports, as well as being able to deduce the service
@@ -325,7 +328,7 @@ Ncrack finished.
        has meaning only when the user has a priori knowledge of a service
        listening on a non-default port number. This can easily be
        determined by using version detection like the one offered by Nmap's 
-       -sV option. 
+       <option>-sV</option> option. 
       </para>
 
       <example id="man-rep-exscan"><title>Per-host service specification
@@ -370,7 +373,7 @@ $ ncrack scanme.nmap.org:22 ftp://10.0.0.10 ssh://192.168.1.*:5910
 
       </para>
          <para><option>
-             -p service1:port-number1,service2:port-number2,...
+             -p <replaceable><optional>service1</optional></replaceable>:<replaceable><optional>port-number1</optional></replaceable>,<replaceable><optional>service2</optional></replaceable>:<replaceable><optional>port-number2</optional></replaceable>,...
            </option>
          </para>
       <para>
@@ -443,14 +446,14 @@ $ ncrack scanme.nmap.org 10.0.0.120-122 192.168.2.0/24 -p 22,ftp:3210,telnet
 
       </para>
       <para><option>
-          service-name://target:port-number,opt1=optval1,opt2=optval2,...
+          <replaceable><optional>service-name</optional></replaceable>://<replaceable>target</replaceable>:<replaceable><optional>port-number</optional></replaceable>,<replaceable>opt1</replaceable>=<replaceable>optval1</replaceable>,<replaceable>opt2</replaceable>=<replaceable>optval</replaceable>,...
           </option>
         </para>
 
         <para>
           The format concerning the service specification which comes before
           the options, has been explained in the previous section.
-          <option>optN</option> is referring to any of the option names
+          <option><replaceable>optN</replaceable></option> is referring to any of the option names
           that are available (a list will follow below), while
           <option>optvalN</option> determines the value of that option and
           depends on the nature of it. For example, most timing-related
@@ -473,7 +476,7 @@ $ ncrack scanme.nmap.org 10.0.0.120-122 192.168.2.0/24 -p 22,ftp:3210,telnet
 
       </para>
       <para><option>
-          -m service-name:opt1=optval1,opt2=optval2,...
+          -m <replaceable>service-name</replaceable>:<replaceable>opt1</replaceable>=<replaceable>optval1</replaceable>,<replaceable>opt2</replaceable>=<replaceable>optval2</replaceable>,...
           </option>
         </para>
 
@@ -490,6 +493,105 @@ $ ncrack scanme.nmap.org 10.0.0.120-122 192.168.2.0/24 -p 22,ftp:3210,telnet
     </varlistentry>
 
    </variablelist>
+
+    <variablelist><title>Global Options</title>
+
+     <varlistentry>
+       <listitem>
+         <para>
+           Options in this mode apply to all hosts regardless of which service
+           they are associated with. This is accomplished using the
+           <option>-g</option> as follows:
+
+      </para>
+      <para><option>
+          -g <replaceable>opt1</replaceable>=<replaceable>optval1</replaceable>,<replaceable>opt2</replaceable>=<replaceable>optval2</replaceable>,...
+          </option>
+        </para>
+
+        <para>
+          This acts as a convenience option, where you can apply options
+          to all services globally. Everything else regarding the available
+          options and option values is the same as the previous modes.
+        </para>
+      </listitem>
+    </varlistentry>
+
+  </variablelist>
+
+  <variablelist><title>List of available Service Options</title>
+
+    <para>
+      Bellow follows a list of all the currently available service options.
+      You can apply them with any of the three modes described above. The
+      last six of the options are timing related and will be analyzed in
+      Section "Timing and Performance" of this manual.
+    </para>
+
+     <varlistentry>
+       <listitem>
+         <para>
+    <screen>
+ssl: enable SSL over this service
+path: path-name used in modules like HTTP ('=' needs escaping if used)
+cl (min connection limit): minimum number of concurrent parallel connections
+CL (max connection limit): maximum number of concurrent parallel connections
+at (authentication tries): authentication attempts per connection
+cd (connection delay): delay time between each connection initiation
+cr (connection retries): caps number of service connection attempts
+to (time-out): maximum cracking time for service, regardless of success so far
+    </screen>
+        </para>
+      </listitem>
+    </varlistentry>
+
+  </variablelist>
+
+  <variablelist>
+  <varlistentry>
+        <term>
+          <option>ssl</option> (Enable/Disable SSL over service)
+        </term>
+        <listitem>
+          <para>
+            By enabling SSL, Ncrack will try to open a TCP connection and
+            then negotiate a SSL session with the target. Everything will
+            then be transparently encrypted and decrypted. However, since
+            Ncrack's job is to provide speed rather than strong crypto, the
+            algorithms and ciphers for SSL are chosen on an efficiency
+            basis. Possible values for this option are <option>yes</option>
+            but specifying just <option>ssl</option> would be enough. Thus,
+            this is the only option that doesn't need to be written in the 
+            <replaceable>opt</replaceable>=<replaceable>optval</replaceable>
+            format. By default, SSL is disabled for all services except
+            those that are stricly dependent on it like HTTPS. 
+          </para>
+        </listitem>
+  </varlistentry>
+</variablelist>
+
+  <variablelist>
+  <varlistentry>
+        <term>
+          <option>path &lt;name&gt;</option> (Path name for relative URLs)
+        </term>
+        <listitem>
+          <para>
+            Some services like HTTP or SVN usually require a specific path
+            in the URL. This option takes that pathname string as its value.
+            The path is always relative to the hostname or IP address, so if
+            you want to target something like http://foobar.com/login.php
+            the path must take the value <option>path=login.php</option> .
+            The first '/' is added if you omit it, but you will have to
+            explicitly specify it at the end of pathnames that are directories.
+            So cracking the directory for http://foobar.com/protected-dir/
+            would require <option>path=protected-dir/</option> . Since the
+            symbol '=' is used by Ncrack for argument parsing, you will
+            have to espace it if it is included in the URL. 
+          </para>
+        </listitem>
+  </varlistentry>
+  </variablelist>
 
 
 
