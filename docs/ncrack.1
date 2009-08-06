@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 08/05/2009
+.\"      Date: 08/06/2009
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "08/05/2009" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "08/06/2009" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -448,16 +448,16 @@ parameter\&. This is specified in milliseconds by default, though you can append
 15m
 all do the same thing\&.
 .PP
-\fBcl \fR\fB\fInum\-connections\fR\fR; \fBCL \fR\fB\fInum\-connections\fR\fR (Adjust number of concurrent parallel connections)
+\fBcl \fR\fB\fInum\-minconnections\fR\fR; \fBCL \fR\fB\fInum\-maxconnections\fR\fR (Adjust number of concurrent parallel connections)
 .RS 4
 
 \fBConnection Limit\fR
 .sp
-These options control the total number of connections that may be outstanding for any service at the same time\&. Normally, Ncrack tries to dynamically adjust the number of connections for each individual target by counting how many drops or connection failures happen\&. If a strange network condition occurs, that signifies that something may be going wrong, like the host dropping any new connection attempts, then Ncrack will immediately lower the parallel connections hitting the service\&. However, the caps number of the minimum or maximum connections that will take place can be overriden using these two options\&. By properly adjusting these options you can essentially optimize performance, if you can handle the tricky part of knowing or discovering your target\'s own limits\&. The convention here is that
+These options control the total number of connections that may be outstanding for any service at the same time\&. Normally, Ncrack tries to dynamically adjust the number of connections for each individual target by counting how many drops or connection failures happen\&. If a strange network condition occurs, that signifies that something may be going wrong, like the host dropping any new connection attempts, then Ncrack will immediately lower the total number of connections hitting the service\&. However, the caps number of the minimum or maximum connections that will take place can be overriden using these two options\&. By properly adjusting them, you can essentially optimize performance, if you can handle the tricky part of knowing or discovering your target\'s own limits\&. The convention here is that
 \fBcl\fR
 with lowercase letters is referring to the minimum connection limit, while
 \fBCL \fR
-with uppercase letters is referring to the maximum connections\&.
+with uppercase letters is referring to the maximum number of connections\&.
 .sp
 The most common usage is to set
 \fBcl (minimum connection limit)\fR
@@ -470,11 +470,92 @@ to a low value might be what you want\&. However, setting it too low will surely
 described below\&.
 .RE
 .PP
-\fBat \fR\fB\fInum\-attempts\fR\fR; (Adjust authentication attempts per connection) Authentication Tries
+\fBat \fR\fB\fInum\-attempts\fR\fR (Adjust authentication attempts per connection)
 .RS 4
 
 \fBAuthentication Tries\fR
 .sp
+Using this option, you can order Ncrack to limit the authentication attempts it carries out per connection\&. Ncrack initially sends a reconnaisance probe that lets it calculate the maximum number of such authentication tries and from thereon it always tries to use that number\&. Most servicse pose an upper limit on the number of authentication per connection and in most cases finding that maximum leads to better performance\&.
+.sp
+Setting this option to lower values can give you some stealth bonus, since services such as SSH tend to log failed attempts after more than a certain number of authentication tries per connection\&. They use that as a metric rather than counting the total number of authentication attempts or connections per IP address (which is usually done by a firewall)\&. Consequently, a number of 1 or 2 authentication tries might circumvent logging in some cases\&.
+.sp
+Note that setting that option to a high value will not have any effect if Ncrack realizes that the server doesn\'t allow that many attempts per connection\&. In this case, it will just use that maximum number and ignore your setting\&.
+.RE
+.PP
+\fBcd \fR\fB\fItime\fR\fR (Adjust delay time between each new connection)
+.RS 4
+
+\fBConnection Delay\fR
+.sp
+This option essentially defines the imposed time delay between each new connection\&. Ncrack will wait the amount of time you specify in this option value, before starting a new connection against the given service\&. The higher you set it, the slower Ncrack will perform, but the stealthier your attack will become\&.
+.sp
+Ncrack by default tries to initiate new connections as fast as possible given that new probes are actually allowed to be sent and are not restricted by parameters such as
+\fBConnection Limit\fR
+which can dynamically increase or decrease\&. Although this approach achieves blazing speed as long as the host remains responsive, it can lead to a number of disasters such as a firewall being triggered, the targets\' or your bandwidth to be diminished and even the tested service to suffer a Denial of Service attack\&. By carefully adjusting this option, you can potentially avoid these annoying situations\&.
+.RE
+.PP
+\fBcr \fR\fB\fImax\-conattempts\fR\fR (Adjust the max number of connection attempts)
+.RS 4
+
+\fBConnection Retries\fR
+.sp
+NOT IMPLEMENTED YET\&.
+.RE
+.PP
+\fBto \fR\fB\fItime\fR\fR (Adjust the maximum overall cracking time)
+.RS 4
+
+\fBTimeout\fR
+.sp
+Define how much time Ncrack is going to spend cracking the service, before giving up regardless of whether it has found any credentials so far\&. However, any authentication token discovered until that time, will be stored and printed normally\&. Ncrack marks a service as finished when the username/password lists iteration ends or when it can no longer crack it for some serious reason\&. If Ncrack finishes cracking a service before the time specified in this option, then it will not be taken into account at all\&.
+.sp
+Sometimes, you have a limited time window to scan/crack your hosts\&. This might occur for various reasons\&. A common one would be that normal user activity mustn\'t be interrupted and since Ncrack can become very aggressive, it might be allowed to scan the hosts only at during certain time period like the night hours\&. Scanning during certain such hours is also likely to make an attack less detectable\&.
+.sp
+Don\'t forget that Ncrack allows you to specify the time unit of measure by appending \(oqs\(cq, \(oqm\(cq, or \(oqh\(cq for seconds, minutes or hours\&. Using them in this particular option, is really convenient as you can specify something like
+\fBto=8h\fR
+to give Ncrack a total of 8 hours to crack that service\&. Setting up cronjobs for scheduled scans in combination with this option, might also be a good idea\&.
+.RE
+.PP
+\fB\-T paranoid|sneaky|polite|normal|aggressive|insane\fR (Set a timing template) .\" -T .\" timing templates
+.RS 4
+.\" -T0
+.\" -T1
+.\" -T2
+.\" -T3
+.\" -T4
+.\" -T5
+While the fine\-grained timing controls discussed in the previous section are powerful and effective, some people find them confusing\&. Moreover, choosing the appropriate values can sometimes take more time than the scan you are trying to optimize\&. So Nmap offers a simpler approach, with six timing templates\&. You can specify them with the
+\fB\-T\fR
+option and their number (0\(en5) or their name\&. The template names are
+\fBparanoid\fR\ \&(\fB0\fR),
+\fBsneaky\fR\ \&(\fB1\fR),
+\fBpolite\fR\ \&(\fB2\fR),
+\fBnormal\fR\ \&(\fB3\fR),
+\fBaggressive\fR\ \&(\fB4\fR), and
+\fBinsane\fR\ \&(\fB5\fR)\&. The first two are for IDS evasion\&. Polite mode slows down the scan to use less bandwidth and target machine resources\&. Normal mode is the default and so
+\fB\-T3\fR
+does nothing\&. Aggressive mode speeds scans up by making the assumption that you are on a reasonably fast and reliable network\&. Finally insane mode assumes that you are on an extraordinarily fast network or are willing to sacrifice some accuracy for speed\&.
+.sp
+These templates allow the user to specify how aggressive they wish to be, while leaving Ncrack to pick the exact timing values\&. If you know that the network service is going to withstand a huge number of connections you might try using the aggressive template of
+\fB\-T4\fR
+\&. Even then, this is mostly advised for services residing in the local network\&. Going over to insane mode
+\fB\-T5\fR
+is not recommended, unless you absolutely know what you are doing\&.
+.sp
+While
+\fB\-T0\fR.\" paranoid (-T0) timing template
+and
+\fB\-T1\fR.\" sneaky (-T1) timing template
+may be useful for avoiding IDS alerts, they will take an extraordinarily long time to crack even a few services\&. For such a long scan, you may prefer to set the exact timing values you need rather than rely on the canned
+\fB\-T0\fR
+and
+\fB\-T1\fR
+values\&.
+.RE
+.PP
+\fB\-\-connection\-limit \fR\fB\fInumprobes\fR\fR (Adjust the threshold of total concurrent connections)
+.RS 4
+NOT IMPLEMENTED YET\&.
 .RE
 .SH "OUTPUT"
 .\" output formats

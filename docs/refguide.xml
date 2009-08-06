@@ -739,8 +739,8 @@ Ncrack finished.
 
    <varlistentry>
      <term>
-       <option>cl <replaceable>num-connections</replaceable></option>; 
-       <option>CL <replaceable>num-connections</replaceable></option>
+       <option>cl <replaceable>num-minconnections</replaceable></option>; 
+       <option>CL <replaceable>num-maxconnections</replaceable></option>
        (Adjust number of concurrent parallel connections) 
      </term>
      <listitem>
@@ -756,16 +756,17 @@ Ncrack finished.
          individual target by counting how many drops or connection failures
          happen. If a strange network condition occurs, that signifies that
          something may be going wrong, like the host dropping any new
-         connection attempts, then Ncrack will immediately lower the parallel
+         connection attempts, then Ncrack will immediately lower the total
+         number of 
          connections hitting the service. However, the caps number of the
          minimum or maximum connections that will take place can be
-         overriden using these two options. By properly adjusting these
-         options you can essentially optimize performance, if you can handle
+         overriden using these two options. By properly adjusting them,
+         you can essentially optimize performance, if you can handle
          the tricky part of knowing or discovering your target's own limits.
          The convention here is that <option>cl</option> with lowercase
          letters is referring to the minimum connection limit, while
          <option>CL </option> with uppercase letters is referring to the
-         maximum connections. 
+         maximum number of connections. 
        </para>
 
        <para>
@@ -795,9 +796,8 @@ Ncrack finished.
   <variablelist>
    <varlistentry>
      <term>
-       <option>at <replaceable>num-attempts</replaceable></option>;
+       <option>at <replaceable>num-attempts</replaceable></option>
        (Adjust authentication attempts per connection) 
-       Authentication Tries
      </term>
      <listitem>
 
@@ -806,19 +806,248 @@ Ncrack finished.
        </para>
 
        <para>
+         Using this option, you can order Ncrack to limit the
+         authentication attempts it carries out per connection. 
+         Ncrack initially sends a reconnaisance probe that lets it
+         calculate the maximum number of such authentication tries and
+         from thereon it always tries to use that number. Most servicse
+         pose an upper limit on the number of authentication per connection
+         and in most cases finding that maximum leads to better performance.
+       </para>
+
+       <para>
+         Setting this option to lower values can give you some stealth
+         bonus, since services such as SSH tend to log failed attempts
+         after more than a certain number of authentication tries per
+         connection. They use that as a metric rather than counting the
+         total number of authentication attempts or connections per
+         IP address (which is usually done by a firewall). Consequently, a
+         number of 1 or 2 authentication tries might circumvent logging in
+         some cases. 
+       </para>
+
+       <para>
+         Note that setting that option to a high value will not have any
+         effect if Ncrack realizes that the server doesn't allow that many
+         attempts per connection. In this case, it will just use that
+         maximum number and ignore your setting.
        </para>
  
          
     </listitem>
   </varlistentry>
+</variablelist>
+
+
+   <variablelist>
+   <varlistentry>
+     <term>
+       <option>cd <replaceable>time</replaceable></option>
+       (Adjust delay time between each new connection) 
+     </term>
+     <listitem>
+
+       <para>
+         <option>Connection Delay</option>
+       </para>
+
+       <para>
+         This option essentially defines the imposed time delay between each
+         new connection. Ncrack will wait the amount of time you specify in
+         this option value, before starting a new connection against the
+         given service. The higher you set it, the slower Ncrack will perform,
+         but the stealthier your attack will become.
+       </para>
+
+       <para>
+         Ncrack by default tries to initiate new connections as fast as
+         possible given that new probes are actually allowed to be sent
+         and are not restricted by parameters such as
+         <option>Connection Limit</option> which can dynamically increase
+         or decrease. Although this approach achieves blazing speed as long
+         as the host remains responsive, it can lead to a number of
+         disasters such as a firewall being triggered, the targets' or your
+         bandwidth to be diminished and even the tested service to suffer
+         a Denial of Service attack. By carefully adjusting this option,
+         you can potentially avoid these annoying situations. 
+       </para>
+
+         
+    </listitem>
+  </varlistentry>
   </variablelist>
 
+   <variablelist>
+   <varlistentry>
+     <term>
+       <option>cr <replaceable>max-conattempts</replaceable></option>
+       (Adjust the max number of connection attempts) 
+     </term>
+     <listitem>
 
+       <para>
+         <option>Connection Retries</option>
+       </para>
+
+       <para>
+           NOT IMPLEMENTED YET.
+       </para>
+
+         
+    </listitem>
+  </varlistentry>
+  </variablelist>
+
+   <variablelist>
+   <varlistentry>
+     <term>
+       <option>to <replaceable>time</replaceable></option>
+       (Adjust the maximum overall cracking time) 
+     </term>
+     <listitem>
+
+       <para>
+         <option>Timeout</option>
+       </para>
+
+       <para>
+         Define how much time Ncrack is going to spend cracking the
+         service, before giving up regardless of whether it has found any
+         credentials so far.
+         However, any authentication token discovered
+         until that time, will be stored and printed normally. 
+         Ncrack marks a service as finished when the
+         username/password lists iteration ends or when it can no
+         longer crack it for some serious reason. If Ncrack finishes
+         cracking a service before the time specified in this option, then
+         it will not be taken into account at all. 
+       </para>
+
+       <para>
+        Sometimes, you have a limited time window to scan/crack your hosts.
+        This might occur for various reasons. A common one would be that
+        normal user activity mustn't be interrupted and since Ncrack can
+        become very aggressive, it might be allowed to scan the hosts only
+        at during certain time period like the night hours. Scanning
+        during certain such hours is also likely to make an attack less
+        detectable. 
+       </para>
+
+      <para>
+        Don't forget that Ncrack allows you to specify the time unit
+        of measure by appending 
+        &lsquo;s&rsquo;, &lsquo;m&rsquo;, or &lsquo;h&rsquo; 
+        for seconds, minutes or hours. Using them in this particular
+        option, is really convenient as you can specify something like
+        <option>to=8h</option> to give Ncrack a total of 8 hours to crack
+        that service. Setting up cronjobs for scheduled scans
+        in combination with this option, might also be a good idea.
+      </para>
+
+         
+    </listitem>
+  </varlistentry>
+  </variablelist>
+
+  <variablelist>
+   <varlistentry>
+   <term>
+     <option>-T
+     paranoid|sneaky|polite|normal|aggressive|insane</option>
+     (Set a timing template)
+   <indexterm><primary><option>-T</option></primary></indexterm>
+   <indexterm><primary>timing templates</primary><seealso>
+       <literal>paranoid</literal>, <literal>sneaky</literal>,
+       <literal>polite</literal>, <literal>normal</literal>,
+       <literal>aggressive</literal>, and
+       <literal>insane</literal></seealso></indexterm>
+   </term>
+   <listitem>
+     <indexterm><primary><option>-T0</option></primary>
+       <see><literal>paranoid</literal> timing template</see></indexterm>
+     <indexterm><primary><option>-T1</option></primary>
+       <see><literal>sneaky</literal> timing template</see></indexterm>
+     <indexterm><primary><option>-T2</option></primary>
+       <see><literal>polite</literal> timing template</see></indexterm>
+     <indexterm><primary><option>-T3</option></primary>
+       <see><literal>normal</literal> timing template</see></indexterm>
+     <indexterm><primary><option>-T4</option></primary>
+       <see><literal>aggressive</literal> timing template</see></indexterm>
+     <indexterm><primary><option>-T5</option></primary>
+       <see><literal>insane</literal> timing template</see></indexterm>
+
+
+    <para>While the fine-grained timing controls discussed in the previous
+    section are powerful and effective, some people find them confusing.
+    Moreover, choosing the appropriate values can sometimes take more time
+    than the scan you are trying to optimize.  So Nmap offers a simpler
+    approach, with six timing templates.  You can specify them with the
+    <option>-T</option> option and their number (0&ndash;5) or their name.
+    The template names are
+    <option>paranoid</option>&nbsp;(<option>0</option>),
+    <option>sneaky</option>&nbsp;(<option>1</option>),
+    <option>polite</option>&nbsp;(<option>2</option>),
+    <option>normal</option>&nbsp;(<option>3</option>),
+    <option>aggressive</option>&nbsp;(<option>4</option>),
+    and <option>insane</option>&nbsp;(<option>5</option>).
+    The first two are for IDS evasion.
+    Polite mode slows down the scan to use less bandwidth
+    and target machine resources.  Normal mode is the default and so
+    <option>-T3</option> does nothing. Aggressive mode speeds scans up by
+    making the assumption that you are on a reasonably fast and reliable
+    network.  Finally
+    insane mode assumes that you are on an
+    extraordinarily fast network or are willing to sacrifice some accuracy
+    for speed.
+    </para>
+
+    <para>These templates allow the user to specify how aggressive they
+    wish to be, while leaving Ncrack to pick the exact timing values. If
+    you know that the network service is going to withstand a huge number
+    of connections you might try using the aggressive template of
+    <option>-T4</option> . Even then, this is mostly advised for services
+    residing in the local network. Going over to insane mode
+    <option>-T5</option> is not recommended, unless you absolutely know what
+    you are doing.
+  </para>
+
+   <para>
+     While
+    <option>-T0</option><indexterm><primary><literal>paranoid</literal>
+        (<option>-T0</option>) timing template</primary></indexterm>
+    and <option>-T1</option><indexterm><primary><literal>sneaky</literal>
+        (<option>-T1</option>) timing template</primary></indexterm>
+   may be useful for avoiding IDS alerts, they will take an extraordinarily long
+   time to crack even a few services. For such a long scan,
+   you may prefer to set the exact timing values you need rather than
+   rely on the canned <option>-T0</option> and <option>-T1</option>
+   values.
+   </para>
+
+
+       </listitem>
+     </varlistentry>
+   </variablelist>
+
+   <variablelist>
+   <varlistentry>
+     <term>
+       <option>--connection-limit <replaceable>numprobes</replaceable></option>
+       (Adjust the threshold of total concurrent connections) 
+     </term>
+     <listitem>
+
+       <para>
+         NOT IMPLEMENTED YET.
+       </para>
+
+         
+    </listitem>
+  </varlistentry>
+  </variablelist>
 
   </refsect1>
 
-
-  
 
   
   <refsect1 id='man-output'>
