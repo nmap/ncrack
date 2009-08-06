@@ -1049,6 +1049,122 @@ Ncrack finished.
   </refsect1>
 
 
+   <refsect1 id='man-authentication'>
+    <title>Authentication</title>
+    <indexterm class="startofrange" id="man-authentication-indexterm">
+      <primary>authentication</primary></indexterm>
+    
+    <para>
+      This section describes ways of specifying your own username and
+      password lists as well as the available modes of iterating over them.
+      Ncrack ships in with a variety of username and password lists which
+      reside under the directory '<emphasis>lists</emphasis>' of the source
+      tarball and later installed under Ncrack's data directory which
+      usually is /usr/local/share/ncrack or /usr/share/ncrack . You can
+      omit specifying any lists and Ncrack is going to use the default
+      ones which contain some of the most common usernames and passwords.
+      The password list is frequency-sorted with the top most common
+      passwords at the beginning of the list so they will be tried out first. 
+      The lists have been derived from a combination of sorting publicly leaked
+      password files and other techniques.
+    </para> 
+
+
+     <variablelist>
+      <varlistentry>
+        <term>
+          <option>-U <replaceable>filename</replaceable></option>
+          (Specify username list)
+        </term>
+        <listitem>
+
+        <para>
+          Specify your own username list by giving the path to the
+          filename as argument to this option.
+        </para>
+                    
+        <para>
+          Usernames for specific environments can be gathered in numerous
+          ways including harvesting for email-addresses in the company's
+          website, looking up information in whois databases, using the SMTP
+          VRFY technique at vulnerable mail servers or through social
+          engineering.
+        </para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+
+    <variablelist>
+      <varlistentry>
+        <term>
+          <option>-P <replaceable>filename</replaceable></option>
+          (Specify password list)
+        </term>
+        <listitem>
+
+        <para>
+          Specify your own password list by giving the path to the
+          filename as argument to this option.
+        </para>
+                    
+        <para>
+          Common passwords are usually derived from leaked lists as a
+          result of successful intrusions in public sites such as forums or
+          other social networking places. A great deal of them have already
+          been publicly disclosed and some of these have been used to
+          assemble Ncrack's own lists.
+        </para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term>
+          <option>--passwords-first</option>
+          (Reverse the way passwords are iterated)
+        </term>
+        <listitem>
+
+        <para>
+          Ncrack by default iterates the username list for each password.
+          With this option, you can reverse that. For example, given the
+          username list of -> "root, guest, admin" and the password list of
+          "test, 12345, q1w2e3r4" Ncrack will normally go over them like
+          this -> root:test, guest:test, admin:test, root:12345 etc. By
+          enabling this option it will over them like this -> root:test,
+          root:12345, root:q1w2e3r4, guest:test etc.
+        </para>
+
+        <para>
+          Most network authentication cracking tools prefer by default to
+          iterate the password list for each username. This is, however,
+          ineffective compared to the opposite iteration in most cases.
+          This holds true for the simple reason that password lists are
+          usually sorted on a frequency basis, meaning that the more common
+          a password is, the closer to the beginning of the password list
+          it is. Thus, iterating over all usernames for the most common
+          passwords first has usually more chances to get a positive
+          result. With the <option>--passwords-first</option> iteration,
+          very common passwords might not even be tried out for certain
+          usernames if the user chooses to abort the session early.
+          However, this option might prove valuable for cases where the
+          attacker knows and has already verified that the username list
+          contains real usernames, instead of blindly bruteforcing through
+          them. 
+        </para>
+                    
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+
+  </refsect1>
+
+
   
   <refsect1 id='man-output'>
     <title>Output</title>
@@ -1328,7 +1444,34 @@ Ncrack finished.
     <para>This section describes some important (and not-so-important)
     options that don't really fit anywhere else.</para>
 
-   <variablelist>
+  <variablelist>
+
+      <varlistentry>
+        <term>
+        <option>-sL</option> (List Scan)
+          <indexterm><primary><option>-sL</option></primary></indexterm>
+          <indexterm><primary>list scan</primary></indexterm>
+        </term>
+        <listitem>
+          <para>            
+            The list scan simply lists each host and service that would
+            be cracked if this option wasn't specified. No packets are sent
+            to the target hosts and the only network operation that might
+            happen is DNS-resolution of any hostnames of targets. This
+            option is really helpful in making sure that you have specified
+            everything as you wanted. Service-specific options will also be
+            printed so this acts as a good sanity check of potentially
+            complex command-line arguments such as the advanced modes
+            of Service Option Specification and the equivalent Hierarchy
+            for sessions that require delicate timing handling. If list
+            scan is called along with the <option>-d</option> debug option,
+            then additional output, like the ServicesTable and the
+            current Timing-Template's parameters, is also going to be printed.           
+        </para>
+
+        </listitem>
+      </varlistentry>
+
 
       <varlistentry>
         <term>
