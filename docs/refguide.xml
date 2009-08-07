@@ -1739,6 +1739,10 @@ Ncrack finished.
   </refsect1>
 
 
+  <refsect1 id='man-legal'>
+    &legal-notices;
+  </refsect1>
+
 </refentry>
 
 <indexterm class="endofrange" startref="man-ncrack-indexterm"

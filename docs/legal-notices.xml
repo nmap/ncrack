@@ -142,7 +142,8 @@ Ncrack can optionally link with the
 <ulink role="hidepdf" url="http://www.openssl.org">OpenSSL
 cryptography toolkit</ulink><indexterm><primary>OpenSSL</primary></indexterm>
 for support of the SSH protocol. The opensshlib is also largely based
-on OpenSSH code <ulink role="hidepdf" url="http://www.openssh.org">.
+on <ulink role="hidepdf" url="http://www.openssh.org">OpenSSH</ulink>
+code.
 </para>
 
 </refsect2>
