@@ -3,6 +3,7 @@
           "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"
 [
 <!ENTITY refguide SYSTEM "refguide.xml">
+<!ENTITY legal-notices SYSTEM "legal-notices.xml">
 <!ENTITY ncrack-usage SYSTEM "ncrack-usage.xml">
 ]>
 

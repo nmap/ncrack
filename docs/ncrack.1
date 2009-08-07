@@ -62,7 +62,7 @@ Ncrack finished\&.
 .\}
 .PP
 The latest version of Ncrack can be obtained from
-\m[blue]\fB\%http://ncrack.org\fR\m[]\&. The latest version of this man page is available at http://ncrack\&.org/man\&.html \&.
+\m[blue]\fB\%http://nmap.org/ncrack\fR\m[]\&. The latest version of this man page is available at http://nmap\&.org/ncrack/man\&.html \&.
 .SH "OPTIONS SUMMARY"
 .PP
 This options summary is printed when Ncrack is run with no arguments\&. It helps people remember the most common options, but is no substitute for the in\-depth documentation in the rest of this manual\&.
@@ -782,11 +782,43 @@ Stats: 0:00:20 elapsed; 0 services completed (1 total)
 .sp
 Rate: 6\&.26; Found: 1; About 13\&.27% done; ETC: 21:06 (0:02:17 remaining)
 .RE
+.SH "MODULES"
+.PP
+Ncrack\'s architecture is modular with each module corresponding to one particular service or protocol\&. Currently, Ncrack supports the protocols FTP, TELNET, SSH and HTTP(S) (basic authentication)\&. Bellow we describe some key points for each of them\&.
+.PP
+\fBFTP Module\fR
+.PP
+.RS 4
+FTP authentication is quite fast, since there is very little protocol negotiation overhead\&. Most FTP daemons allow 3 to 6 authentication attempts but usually impose a certain delay before replying with the results of a failed attempt\&. Filezilla is one of the most characteristic examples of this case, where the time delay is so great, that it is usually faster to open more connections against it, with each of them doing only 1 authentication per connection\&.
+.RE
+.PP
+\fBTELNET Module\fR
+.PP
+.RS 4
+Telnet daemons have been largely substituded by their safer \'counterpart\' of SSH\&. However, there are many boxes, mainly routers or printers, that still rely on Telnet for remote access\&. Usually these are also easier to crack, since default passwords for them are publicly known\&. The drawback is that telnet is a rather slow protocol, so you shouldn\'t be expecting really high rates against it\&.
+.RE
+.PP
+\fBSSH Module\fR
+.PP
+.RS 4
+SSH is one of the most prevalent protocols in today\'s networks\&. For this reason, a special library, named opensshlib and based on code from OpenSSH, was specifically build and tailored for Ncrack\'s needs\&. Opensshlib ships in with Ncrack, so SSH support comes out of the box\&. OpenSSL will have to be installed in Unix systems though\&. Windows OpenSSL dlls are included in Ncrack, so Windows users shouldn\'t be worrying about it at all\&.
+.sp
+SSH bruteforcing holds many pitfalls and challenges, and you are well advised to read a paper that was written to explain them\&. The latest version of the "Hacking the OpenSSH library for Ncrack" document can be found under
+\fIdocs/openssh_library\&.txt\fR
+or at
+\m[blue]\fB\%http://sock-raw.org/papers/openssh_library\fR\m[]
+.RE
+.PP
+\fBHTTP(S) Module\fR
+.PP
+.RS 4
+The HTTP Module currently supports basic authentication only, however additional methods will be added soon\&. Ncrack tries to use the "Keepalive" HTTP option, whenever possible, which leads to really high speeds, since that allows dozens of attempts to be carried out per connection\&. The HTTP module can also be called over SSL\&.
+.RE
 .SH "BUGS"
 .\" bugs, reporting
 .PP
 Like its authors, Ncrack isn\'t perfect\&. But you can help make it better by sending bug reports or even writing patches\&. If Ncrack doesn\'t behave the way you expect, first upgrade to the latest version available from
-\m[blue]\fB\%http://ncrack.org\fR\m[]\&. If the problem persists, do some research to determine whether it has already been discovered and addressed\&. Try searching for the error message on our search page at
+\m[blue]\fB\%http://nmap.org/ncrack\fR\m[]\&. If the problem persists, do some research to determine whether it has already been discovered and addressed\&. Try searching for the error message on our search page at
 \m[blue]\fB\%http://insecure.org/search.html\fR\m[]
 or at Google\&. Also try browsing the
 nmap\-dev

@@ -34,7 +34,7 @@
     <note>
     <para>
     This document describes the very latest version of
-    Ncrack available from <ulink url="http://ncrack.org/download.html"/> Please
+    Ncrack available from <ulink url="http://nmap.org/ncrack/download.html"/> Please
     ensure you are using the latest version before reporting that a
     feature doesn't work as described.
     </para>
@@ -94,8 +94,8 @@ Ncrack finished.
 
   <para>
     The latest version of Ncrack can be obtained from
-    <ulink url="http://ncrack.org" />. The latest version of this man page is
-    available at http://ncrack.org/man.html .
+    <ulink url="http://nmap.org/ncrack" />. The latest version of this man page is
+    available at http://nmap.org/ncrack/man.html .
   </para>
   
   <refsect1 id='man-briefoptions'>
@@ -1592,6 +1592,104 @@ Ncrack finished.
   </refsect1>
 
 
+   <refsect1 id='man-modules'>
+     <title>Modules<indexterm><primary>modules
+     </primary></indexterm></title>
+
+     <para>
+       Ncrack's architecture is modular with each module corresponding to
+       one particular service or protocol. Currently, Ncrack supports the
+       protocols FTP, TELNET, SSH and HTTP(S) (basic authentication). Bellow
+       we describe some key points for each of them.
+     </para>
+
+     <variablelist><title>FTP Module</title>
+
+      <varlistentry>
+        <listitem>
+          <para>  
+            FTP authentication is quite fast, since there is very little
+            protocol negotiation overhead. Most FTP daemons allow 3 to 6
+            authentication attempts but usually impose a certain delay
+            before replying with the results of a failed attempt. Filezilla
+            is one of the most characteristic examples of this case, where
+            the time delay is so great, that it is usually faster to open
+            more connections against it, with each of them doing only 1
+            authentication per connection.
+         </para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist><title>TELNET Module</title>
+    <varlistentry>
+        <listitem>
+          <para>  
+            Telnet daemons have been largely substituded by their safer
+            'counterpart' of SSH. However, there are many boxes, mainly
+            routers or printers, that still rely on Telnet for remote
+            access. Usually these are also easier to crack, since default
+            passwords for them are publicly known. The drawback is that
+            telnet is a rather slow protocol, so you shouldn't be expecting
+            really high rates against it.
+          </para>
+
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+
+    <variablelist><title>SSH Module</title>
+      <varlistentry>
+        <listitem>
+          <para>  
+            SSH is one of the most prevalent protocols in today's networks.
+            For this reason, a special library, named opensshlib and based
+            on code from OpenSSH, was specifically build and tailored for
+            Ncrack's needs. Opensshlib ships in with Ncrack, so SSH support
+            comes out of the box. OpenSSL will have to be installed in Unix
+            systems though. Windows OpenSSL dlls are included in Ncrack, so
+            Windows users shouldn't be worrying about it at all.
+          </para>
+
+          <para>
+            SSH bruteforcing holds many pitfalls and challenges, and you
+            are well advised to read a paper that was written to explain
+            them. The latest version of the
+            "Hacking the OpenSSH library for Ncrack" document can be found
+            under <emphasis>docs/openssh_library.txt</emphasis> or at
+            <ulink url="http://sock-raw.org/papers/openssh_library" />
+          </para>
+            
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+    <variablelist><title>HTTP(S) Module</title>
+      <varlistentry>
+        <listitem>
+          <para>  
+            The HTTP Module currently supports basic authentication only,
+            however additional methods will be added soon. Ncrack tries to
+            use the "Keepalive" HTTP option, whenever possible, which leads
+            to really high speeds, since that allows dozens of attempts
+            to be carried out per connection. The HTTP module can also be
+            called over SSL.
+          </para>
+            
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+
+
+    </refsect1>
+
+
     
   <refsect1 id='man-bugs'>
    <title>Bugs</title>
@@ -1601,7 +1699,7 @@ Ncrack finished.
     Like its authors, Ncrack isn't perfect. But you can help make
     it better by sending bug reports or even writing patches. If Ncrack
     doesn't behave the way you expect, first upgrade to the latest
-    version available from <ulink url="http://ncrack.org"/>. If the
+    version available from <ulink url="http://nmap.org/ncrack"/>. If the
     problem persists, do some research to determine whether it has already
     been discovered and addressed. Try searching for the error message on our
     search page at <ulink url="http://insecure.org/search.html"/> or at
