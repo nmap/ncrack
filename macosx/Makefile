@@ -47,8 +47,6 @@ export-%:
 	rm -rf $*
 # Using @BASE discards local changes.
 	svn export ..@BASE $*
-	svn export ../nbase@BASE $*/nbase
-	svn export ../nsock@BASE $*/nsock
 
 stage-ncrack: export-$(NCRACK_BUILD_DIR)
 	cd $(NCRACK_BUILD_DIR) && ./configure $(CONFIGURE_ARGS)
