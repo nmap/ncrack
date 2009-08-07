@@ -200,7 +200,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
        * to mark the service as finished.
        */
       if (!memsearch((const char *)con->iobuf->get_dataptr(),
-            "401 Authorization Required", con->iobuf->get_len())) {
+            "401", con->iobuf->get_len())) {
         serv->end.orly = true;
         start = memsearch((const char *)con->iobuf->get_dataptr(),
             "HTTP", con->iobuf->get_len());
