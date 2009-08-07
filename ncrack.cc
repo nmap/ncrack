@@ -118,8 +118,8 @@
 #define DEFAULT_CONNECT_TIMEOUT 5000
 /* includes connect() + ssl negotiation */
 #define DEFAULT_CONNECT_SSL_TIMEOUT 8000  
-#define DEFAULT_USERNAME_FILE "username.lst"
-#define DEFAULT_PASSWORD_FILE "password.lst"
+#define DEFAULT_USERNAME_FILE "default.usr"
+#define DEFAULT_PASSWORD_FILE "default.pwd"
 
 /* (in milliseconds) every such interval we poll for interactive user input */
 #define KEYPRESSED_INTERVAL 500 
