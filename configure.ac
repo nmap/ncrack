@@ -5,7 +5,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(ncrack.cc)
 
 
-CXXFLAGS="-O2"
+CXXFLAGS="$CXXFLAGS -O2"
 
 AC_ARG_WITH(localdirs,
 AC_HELP_STRING([--with-localdirs], [Explicitly ask compiler to use /usr/local/{include,libs} if they exist ]),
@@ -26,7 +26,7 @@ if test "$user_localdirs" = 1; then
      fi
    if test -d /usr/local/include; then
      CFLAGS="$CFLAGS -I/usr/local/include"
-     CXXFLAGS="$CFLAGS -I/usr/local/include"
+     CXXFLAGS="$CXXFLAGS -I/usr/local/include"
    fi
 fi
 
