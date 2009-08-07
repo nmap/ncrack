@@ -1,0 +1,5 @@
+Ncrack is an open source tool for network authentication cracking.
+
+This package contains Ncrack and it is intended to work on Intel and PowerPC Macs running Mac OS X 10.4 or later.
+
+The ncrack binary will be installed in /usr/local/bin, and additional support files will be installed in /usr/local/share. 

@@ -1,0 +1,32 @@
+<pkmkdoc spec="1.12">
+  <properties>
+    <title>Ncrack</title>
+    <organization>org.insecure</organization>
+    <userSees ui="custom" />
+    <min-target os="2" />
+    <domain anywhere="true" />
+  </properties>
+  <distribution>
+    <versions min-spec="1.000000" />
+    <scripts></scripts>
+  </distribution>
+  <contents>
+    <choice title="Ncrack" id="choice92" starts_selected="true"
+    description="Ncrack executables, scripts, and support files."
+    starts_enabled="true" starts_hidden="false">
+      <pkgref id="org.insecure.ncrack.ncrack.pkg" />
+    </choice>
+  </contents>
+  <resources bg-scale="none" bg-align="topleft">
+    <locale lang="en">
+      <resource relative="true" type="welcome">README</resource>
+      <resource relative="true" type="license">COPYING.formatted</resource>
+    </locale>
+  </resources>
+  <flags />
+  <item type="file">01ncrack.xml</item>
+  <mod>properties.customizeOption</mod>
+  <mod>properties.title</mod>
+  <mod>properties.anywhereDomain</mod>
+  <mod>properties.systemDomain</mod>
+</pkmkdoc>
