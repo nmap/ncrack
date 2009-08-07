@@ -15,9 +15,9 @@ DEFS = @DEFS@ -DNSOCK_VERSION=\"$(NSOCK_VERSION)\"
 # With GCC, add extra security checks to source code.
 DEFS += -D_FORTIFY_SOURCE=2
 INCLS = -I../include -I../../libpcap
-CFLAGS = @CFLAGS@ $(CCOPT) $(DEFS) $(INCLS)
+CFLAGS = @CFLAGS@ $(CCOPT)
 # CFLAGS = -g -Wall $(DEFS) $(INCLS)
-CPPFLAGS = @CPPFLAGS@
+CPPFLAGS = @CPPFLAGS@ $(DEFS) $(INCLS)
 STATIC = 
 SHTOOL = ./shtool
 INSTALL = $(SHTOOL) install 
@@ -76,5 +76,5 @@ config.status: configure
 	./config.status --recheck
 
 makefile.dep:
-	$(CC) -MM $(CFLAGS) $(CPPFLAGS) $(SRCS) > $@
+	$(CC) -MM $(CPPFLAGS) $(SRCS) > $@
 include makefile.dep

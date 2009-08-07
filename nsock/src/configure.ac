@@ -94,7 +94,7 @@ if test "$user_localdirs" = 1; then
      LDFLAGS="$LDFLAGS -L/usr/local/lib"
      fi
    if test -d /usr/local/include; then
-     CFLAGS="$CFLAGS -I/usr/local/include"
+     CPPFLAGS="$CPPFLAGS -I/usr/local/include"
    fi
 fi
 
@@ -202,7 +202,7 @@ NBASEDIR="../../nbase"
 )
 
 LDFLAGS="$LDFLAGS -L$NBASEDIR"
-CFLAGS="$CFLAGS -I$NBASEDIR"
+CPPFLAGS="$CPPFLAGS -I$NBASEDIR"
 LIBNBASE_LIBS="$LIBS -lnbase"
 
 AC_SUBST(LIBNBASE_LIBS)
