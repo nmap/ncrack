@@ -41,7 +41,7 @@ $(IMAGE_NAME): $(IMAGE_STAGING_DIR)/$(PKG_NAME) $(EXTRA_DIST_FILES)
 
 $(IMAGE_STAGING_DIR)/$(PKG_NAME): stage-ncrack README COPYING.formatted
 	mkdir -p $(IMAGE_STAGING_DIR)
-	$(PACKAGEMAKER) --doc ncrack.pmdoc --title "Ncrack $(NCRACK_VERSION)" -o $@
+	$(PACKAGEMAKER) --doc ncrack.pmdoc --id org.insecure.ncrack --title "Ncrack $(NCRACK_VERSION)" -o $@
 
 export-%:
 	rm -rf $*
