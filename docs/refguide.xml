@@ -1379,6 +1379,30 @@ Ncrack finished.
 
       <varlistentry>
         <term>
+          <option>--nsock-trace <replaceable>level</replaceable></option>
+          (Set nsock trace level)
+          <indexterm><primary><option>--nsock-trace</option>
+          </primary></indexterm>
+        <indexterm><primary>nsock-trace</primary></indexterm>
+        </term>
+        <listitem>
+
+          <para>
+            This option is meant mostly for developers as enabling it will
+            activate the Nsock's library debugging output.
+            Nsock is the underlying library for parallel socket handling.
+            You will have to specify a certain level for this option. Valid
+            range is 0 up to 10. Usually, a level of 1 or 2 is enough
+            to get a good overview of network operations happening behind
+            the scenes. Nsock prints that information to stdout by default.
+        </para>
+
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+        <term>
           <option>--log-errors</option> 
           (Log errors/warnings to normal mode output file)
           <indexterm significance="preferred"><primary><option>--log-errors

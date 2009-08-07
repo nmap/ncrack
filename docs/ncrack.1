@@ -114,6 +114,7 @@ OUTPUT:
   \-oA <basename>: Output in the two major formats at once
   \-v: Increase verbosity level (use twice or more for greater effect)
   \-d[level]: Set or increase debugging level (Up to 10 is meaningful)
+  \-\-nsock\-trace <level>: Set nsock trace level (Valid range: 0 \- 10)
   \-\-log\-errors: Log errors/warnings to the normal\-format output file
   \-\-append\-output: Append to rather than clobber specified output files
 MISC:
@@ -692,6 +693,11 @@ When even verbose mode doesn\'t provide sufficient data for you, debugging is av
 sets level ten\&. That is the highest effective level and will produce thousands of lines, unless your cracking session is going really slow\&.
 .sp
 Debugging output is useful when a bug is suspected in Ncrack, or if you are simply confused as to what Ncrack is doing and why\&. As this feature is mostly intended for developers, debug lines aren\'t always self\-explanatory\&. If you don\'t understand a line, your only recourses are to ignore it, look it up in the source code, or request help from the development list (nmap\-dev)\&. Some lines are self explanatory, but the messages become more obscure as the debug level is increased\&.
+.RE
+.PP
+\fB\-\-nsock\-trace \fR\fB\fIlevel\fR\fR (Set nsock trace level) .\" --nsock-trace .\" nsock-trace
+.RS 4
+This option is meant mostly for developers as enabling it will activate the Nsock\'s library debugging output\&. Nsock is the underlying library for parallel socket handling\&. You will have to specify a certain level for this option\&. Valid range is 0 up to 10\&. Usually, a level of 1 or 2 is enough to get a good overview of network operations happening behind the scenes\&. Nsock prints that information to stdout by default\&.
 .RE
 .PP
 \fB\-\-log\-errors\fR (Log errors/warnings to normal mode output file) .\" --log-errors

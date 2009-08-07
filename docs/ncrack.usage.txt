@@ -39,6 +39,7 @@ OUTPUT:
   -oA <basename>: Output in the two major formats at once
   -v: Increase verbosity level (use twice or more for greater effect)
   -d[level]: Set or increase debugging level (Up to 10 is meaningful)
+  --nsock-trace <level>: Set nsock trace level (Valid range: 0 - 10)
   --log-errors: Log errors/warnings to the normal-format output file
   --append-output: Append to rather than clobber specified output files
 MISC:

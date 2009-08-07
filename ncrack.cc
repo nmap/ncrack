@@ -222,6 +222,7 @@ print_usage(void)
       "  -oA <basename>: Output in the two major formats at once\n"
       "  -v: Increase verbosity level (use twice or more for greater effect)\n"
       "  -d[level]: Set or increase debugging level (Up to 10 is meaningful)\n"
+      "  --nsock-trace <level>: Set nsock trace level (Valid range: 0 - 10)\n"
       "  --log-errors: Log errors/warnings to the normal-format output file\n"
       "  --append-output: Append to rather than clobber specified output "
          "files\n"
@@ -622,6 +623,8 @@ int main(int argc, char **argv)
     {"connection-limit", required_argument, 0, 0},
     {"passwords_first", no_argument, 0, 0},
     {"passwords-first", no_argument, 0, 0},
+    {"nsock-trace", required_argument, 0, 0},
+    {"nsock_trace", required_argument, 0, 0},
     {0, 0, 0, 0}
   };
 
@@ -632,7 +635,7 @@ int main(int argc, char **argv)
   /* Initialize available services' lookup table */
   lookup_init(services_file);
 
-#if WIN32
+#if WIN32 
   win_init();
 #endif
 
@@ -680,6 +683,9 @@ int main(int argc, char **argv)
         } else if (!optcmp(long_options[option_index].name,
               "passwords-first")) {
           o.passwords_first = true;
+        } else if (!optcmp(long_options[option_index].name,
+              "nsock-trace")) {
+            o.nsock_trace = atoi(optarg);
         } else if (!optcmp(long_options[option_index].name, "log-errors")) {
           o.log_errors = true;
         } else if (!optcmp(long_options[option_index].name, "append-output")) {
@@ -1780,7 +1786,6 @@ ncrack(ServiceGroup *SG)
   enum nsock_loopstatus loopret;
   list <Service *>::iterator li;
   nsock_pool nsp;
-  int tracelevel = 0;
   int nsock_timeout = 3000;
   int err;
 
@@ -1789,7 +1794,7 @@ ncrack(ServiceGroup *SG)
     fatal("Can't create nsock pool.");
 
   gettimeofday(&now, NULL);
-  nsp_settrace(nsp, tracelevel, &now);
+  nsp_settrace(nsp, o.nsock_trace, o.getStartTime());
 
 #if HAVE_OPENSSL
   /* We don't care about connection security, so cast Haste */
