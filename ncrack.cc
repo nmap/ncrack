@@ -416,10 +416,10 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
 #else
           if(warningcount++ < 1)
 #endif
-            error("Warning: File %s exists, but Ncrack is using %s for security "
-                "and consistency reasons. Set NCRACKDIR=. to give priority to "
-                "files in your local directory (may affect the other data "
-                "files too).", dot_buffer, filename_returned);
+            error("Warning: File %s exists, but Ncrack is using %s for "
+                "security and consistency reasons. Set NCRACKDIR=. to give "
+                "priority to files in your local directory (may affect the "
+                "other data files too).", dot_buffer, filename_returned);
       }
     }
   }
@@ -433,7 +433,6 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
   /* For username/password lists also search ./lists */
   if (!foundsomething) {
     res = Snprintf(filename_returned, bufferlen, "./lists/%s", file);
-    printf("%s \n", filename_returned);
     if (res > 0 && res < bufferlen)
       foundsomething = file_readable(filename_returned);
   }
@@ -1096,6 +1095,25 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   con->auth_complete = true;
   serv->total_attempts++;
   serv->finished_attempts++;
+
+  /* First check if the module reported that it can no longer continue to
+   * crack the assigned service, in which case we should place it in the
+   * finished services.
+   */
+  if (serv->end.orly) {
+    if (o.debugging) {
+      if (serv->end.reason) {
+        chomp(serv->end.reason);
+        log_write(LOG_STDOUT, "%s will no longer be cracked because module "
+          "reported that:\n %s\n", hostinfo, serv->end.reason);
+      } else {
+        log_write(LOG_STDOUT, "%s will no longer be cracked. No reason was "
+          "reported from module.\n", hostinfo);
+      }
+    }
+    SG->pushServiceToList(serv, &SG->services_finished);
+    return ncrack_connection_end(nsp, con);
+  }
 
   if (con->iobuf) {
     delete con->iobuf;

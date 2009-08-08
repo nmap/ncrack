@@ -95,7 +95,10 @@
 #include "modules.h"
 #include <list>
 
-
+#include <map>
+using namespace std;
+bool http_map_initialized = false;
+map<int, const char*> http_map;
 
 #define USER_AGENT "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1) Gecko/20090703 Shiretoko/3.5\r\n"
 #define HTTP_LANG "Accept-Language: en-us,en;q=0.5\r\n"
@@ -117,7 +120,12 @@ extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
     void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
+static int http_loop_read(nsock_pool nsp, Connection *con);
 static void http_basic(nsock_pool nsp, Connection *con);
+static void http_set_error(Service *serv, const char *reply);
+static char *http_decode(int http_code);
+
+
 enum states { HTTP_INIT, HTTP_GET_AUTH, HTTP_BASIC_AUTH,
   HTTP_FINI };
 
@@ -136,7 +144,6 @@ typedef struct http_state {
   int keep_alive;
 } http_state;
 
-static inline int http_loop_read(nsock_pool nsp, Connection *con);
 
 void
 ncrack_http(nsock_pool nsp, Connection *con)
@@ -144,6 +151,8 @@ ncrack_http(nsock_pool nsp, Connection *con)
   Buf *lbuf; /* local buffer */
   char *start, *end;  /* auxiliary pointers */
   int i;
+  char *http_reply = NULL;   /* server's message reply */
+  size_t tmpsize;
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   http_info *info = NULL;
@@ -205,7 +214,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
         start = memsearch((const char *)con->iobuf->get_dataptr(),
             "HTTP", con->iobuf->get_len());
         if (!start) {
-          serv->end.reason = Strndup(HTTP_UNKNOWN, sizeof(HTTP_UNKNOWN) - 1);
+          http_set_error(serv, http_reply);
           return ncrack_module_end(nsp, con);
         }
         i = 0;
@@ -214,7 +223,12 @@ ncrack_http(nsock_pool nsp, Connection *con)
           end++;
           i++;
         }
-        serv->end.reason = Strndup(start, i);
+        http_reply = Strndup(start, i);
+        /* Now try to decode the HTTP reply we got into a message format,
+         * suitable for human viewing.
+         */
+        http_set_error(serv, http_reply);
+        free(http_reply);
         return ncrack_module_end(nsp, con);
       }
 
@@ -239,7 +253,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
       con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
       info = (http_info *)con->misc_info;
       info->auth_scheme = Strndup(start, i);
-      //printf("%s \n", info->auth_scheme);
+
       if (!strcmp("Basic", info->auth_scheme)) {
         //con->state = HTTP_BASIC_AUTH;
         //info->substate = BASIC_SEND;
@@ -256,7 +270,21 @@ ncrack_http(nsock_pool nsp, Connection *con)
         return ncrack_connection_end(nsp, con);
 
       } else {
-        fatal("Current authentication can't be handled!\n");
+        serv->end.orly = true;
+
+        /* Instead of going through this trouble, I should really
+         * make something like a combination of Strndup and sscanf */
+        tmpsize = sizeof("Current authentication can't be handled: \n")
+              + strlen(info->auth_scheme);
+        serv->end.reason = (char *)safe_malloc(tmpsize);
+        snprintf(serv->end.reason, tmpsize,
+            "Current authentication can't be handled: %s\n",
+            info->auth_scheme);
+
+        delete con->iobuf;
+        con->iobuf = NULL;
+        return ncrack_connection_end(nsp, con);
+        
       }
       break;
 
@@ -267,11 +295,74 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
   }
 
-
 }
 
 
-static inline int
+/* 
+ * Sets the reason why this service can no longer be cracked, by parsing the
+ * http reply we got. If we don't have available information about the returned
+ * HTTP code, then we just set the current reply as the reason.
+ */
+static void
+http_set_error(Service *serv, const char *reply)
+{
+  assert(serv);
+  char *msg = NULL;
+  size_t len = strlen(reply);
+
+  if (!reply) {
+    serv->end.reason = Strndup(HTTP_UNKNOWN, sizeof(HTTP_UNKNOWN) - 1);
+    return;
+  }
+
+  if (memsearch(reply, "200", len))
+    msg = http_decode(200);
+  else if (memsearch(reply, "400", len))
+    msg = http_decode(400);
+  else if (memsearch(reply, "403", len))
+    msg = http_decode(403);
+  else if (memsearch(reply, "404", len))
+    msg = http_decode(404);
+  else 
+    msg = Strndup(reply, strlen(reply));
+    
+  serv->end.reason = msg;   
+}
+
+
+static char *
+http_decode(int http_code)
+{
+  char *ret;
+
+  if (http_map_initialized == false) {
+    http_map_initialized = true;
+    http_map.insert(make_pair(200, "File or directory requested doesn't seem "
+          "to be password protected. (200 OK)"));
+    http_map.insert(make_pair(400, "Malformed syntax on our part. "
+          "(400 Bad Request)"));
+    http_map.insert(make_pair(401, "File or directory has forbidden access. "
+          "(403 Forbidden)"));
+    http_map.insert(make_pair(404, "File or directory doesn't seem to exist. "
+          "(404 Not Found)"));
+    http_map.insert(make_pair(-1, "Unknown HTTP error"));
+  }
+
+  map<int, const char*>::iterator mi = http_map.end();
+  mi = http_map.find(http_code);
+  if (mi == http_map.end()) {
+    /* fallback to key -1 */
+    mi = http_map.find(-1);
+  }
+  ret = Strndup(mi->second, strlen(mi->second));
+
+  return ret;
+}
+
+
+
+
+static int
 http_loop_read(nsock_pool nsp, Connection *con)
 {
 
