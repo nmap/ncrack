@@ -461,9 +461,9 @@ http_basic(nsock_pool nsp, Connection *con)
        * then it means our credentials were correct.
        */
       if (memsearch((const char *)con->iobuf->get_dataptr(),
-            "200 OK", con->iobuf->get_len())) {
+            "200 OK", con->iobuf->get_len()) 
           || memsearch((const char *)con->iobuf->get_dataptr(),
-            "301", con->iobuf->get_len()) {
+            "301", con->iobuf->get_len())) {
         con->auth_success = true;
       }
       delete con->iobuf;
