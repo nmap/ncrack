@@ -4,7 +4,8 @@ TODO:
 
 * Think about packet trace. Obviously without pcap or something similar,
   we can only print info about TCP payloads or connection
-  initiations/endings. How can I get the unique connection id from nsock?
+  initiations/endings.
+  How can I get the unique connection id from nsock? --> With nsi_id() 
 
 * Search for good username and password lists, or find ways to
   generate them (e.g. web scraping for email addresses or account
@@ -18,6 +19,12 @@ TODO:
 
 * Complete output engine. The main thing left is support for XML output using
   the option -oX.
+
+* Find a generic way to fix memory leaks of Connection's void *misc_info.
+  The problem is that we want a way so that the Connection class destructor can
+  remove any dynamically-allocated member, without knowing about the inner
+  structure of them (they can be cast to anything since they are void * and
+  each module casts it as a completely unique struct)
 
 * Solve the ssh username/password special iteration challenge as mentioned here:
   http://seclists.org/nmap-dev/2009/q3/0119.html
