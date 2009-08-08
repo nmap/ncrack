@@ -55,7 +55,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_internal.h 14022 2009-07-03 20:28:06Z david $ */
+/* $Id: nsock_internal.h 14576 2009-07-25 20:59:32Z venkat $ */
 
 #ifndef NSOCK_INTERNAL_H
 #define NSOCK_INTERNAL_H
@@ -97,6 +97,10 @@
 #endif
 #if HAVE_STRINGS_H
 #include <strings.h>
+#endif
+
+#ifndef IPPROTO_SCTP
+#define IPPROTO_SCTP 132
 #endif
 
 #include "nsock_utils.h"
@@ -238,6 +242,9 @@ struct msiod {
 #endif
   unsigned long id; /* Every iod has an id which is always unique for the
 		       same nspool (unless you create billions of them) */
+
+  unsigned long read_count;  /* No. of bytes read  from the sd*/ 
+  unsigned long write_count; /* No. of bytes written to the sd */
   void *userdata;
 
   /* IP options to set on socket before connect() */
@@ -323,6 +330,10 @@ void msevent_delete(mspool *nsp, msevent *nse);
    such as adjusting the descriptor select/poll lists, registering the
    timeout value, etc. */
 void nsp_add_event(mspool *nsp, msevent *nse);
+
+void nsock_connect_internal(mspool *ms, msevent *nse, int proto,
+			    struct sockaddr_storage *ss, size_t sslen,
+			    unsigned short port);
 
 /* Comments on using the following handle_*_result functions are available
    in nsock_core.c */

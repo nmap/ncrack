@@ -88,7 +88,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: strcasecmp.c 12956 2009-04-15 00:37:23Z fyodor $ */
+/* $Id: strcasecmp.c 14748 2009-08-04 04:19:50Z josh $ */
 
 #if !defined(HAVE_STRCASECMP) || !defined(HAVE_STRNCASECMP)
 #include <stdlib.h>
@@ -106,9 +106,9 @@ int strcasecmp(const char *s1, const char *s2)
 	cp2 = safe_malloc(strlen(s2) + 1);
 
 	for (i = 0; i < strlen(s1) + 1; i++)
-		cp1[i] = tolower(s1[i]);
+		cp1[i] = tolower((int) (unsigned char) s1[i]);
 	for (i = 0; i < strlen(s2) + 1; i++)
-		cp2[i] = tolower(s2[i]);
+		cp2[i] = tolower((int) (unsigned char) s2[i]);
   
 	ret = strcmp(cp1, cp2);
   
@@ -129,9 +129,9 @@ int strncasecmp(const char *s1, const char *s2, size_t n)
 	cp2 = safe_malloc(strlen(s2) + 1);
 
 	for (i = 0; i < strlen(s1) + 1; i++)
-		cp1[i] = tolower(s1[i]);
+		cp1[i] = tolower((int) (unsigned char) s1[i]);
 	for (i = 0; i < strlen(s2) + 1; i++)
-		cp2[i] = tolower(s2[i]);
+		cp2[i] = tolower((int) (unsigned char) s2[i]);
   
 	ret = strncmp(cp1, cp2, n);
   

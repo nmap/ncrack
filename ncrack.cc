@@ -1774,7 +1774,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
       } else {
         nsock_connect_ssl(nsp, con->niod, ncrack_connect_handler, 
             DEFAULT_CONNECT_SSL_TIMEOUT, con, 
-            (struct sockaddr *) &ss, ss_len,
+            (struct sockaddr *) &ss, ss_len, serv->proto,
             serv->portno, con->ssl_session);
       }
     } else {

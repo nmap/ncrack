@@ -88,7 +88,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nbase_misc.c 13660 2009-06-10 18:45:47Z david $ */
+/* $Id: nbase_misc.c 14466 2009-07-21 19:59:06Z david $ */
 
 #include "nbase.h"
 
@@ -137,7 +137,9 @@ char *socket_strerror(int errnum) {
 #ifdef WIN32
 	static char buffer[128];
 
-	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS |
+		FORMAT_MESSAGE_MAX_WIDTH_MASK,
 		0, errnum, 0, buffer, sizeof(buffer), NULL);
 
 	return buffer;

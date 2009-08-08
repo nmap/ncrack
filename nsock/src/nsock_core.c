@@ -53,7 +53,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_core.c 14426 2009-07-19 03:09:24Z david $ */
+/* $Id: nsock_core.c 14618 2009-07-27 22:39:23Z venkat $ */
 
 #include "nsock_internal.h"
 #include "gh_list.h"
@@ -123,6 +123,22 @@ do { \
    may for example have two reads pending at once, and the bit must not be
    cleared after the first is completed. The socket_count_* functions take care
    of keeping the fd_sets in sync when the counts change. */
+
+int socket_count_zero(msiod *iod, mspool *ms) {
+  iod->readsd_count = 0;
+  iod->writesd_count = 0;
+  iod->readpcapsd_count = 0;
+ 
+  FD_CLR(iod->sd, &ms->mioi.fds_master_r);
+  FD_CLR(iod->sd, &ms->mioi.fds_master_w);
+  FD_CLR(iod->sd, &ms->mioi.fds_results_r);
+  FD_CLR(iod->sd, &ms->mioi.fds_results_w);
+ 
+  if (iod->events_pending == 1 && ms->mioi.max_sd == iod->sd)
+    ms->mioi.max_sd--;
+ 
+  return 0;
+}
 
 static int socket_count_read_inc(msiod *iod, mspool *ms)
 {
@@ -272,7 +288,9 @@ void handle_connect_result(mspool *ms, msevent *nse,
   msiod *iod = nse->iod;
 #if HAVE_OPENSSL
   int sslerr;
-  int sslconnect_inprogress = nse->type == NSE_TYPE_CONNECT_SSL && iod->ssl;
+  int sslconnect_inprogress = nse->type == NSE_TYPE_CONNECT_SSL && nse->iod &&
+    (nse->sslinfo.ssl_desire == SSL_ERROR_WANT_READ ||
+     nse->sslinfo.ssl_desire == SSL_ERROR_WANT_WRITE);
 #else
   int sslconnect_inprogress = 0;
 #endif
@@ -325,9 +343,13 @@ void handle_connect_result(mspool *ms, msevent *nse,
 	nse->status == NSE_STATUS_SUCCESS) {
 #if HAVE_OPENSSL
       assert(ms->sslctx != NULL);
-      iod->ssl = SSL_new(ms->sslctx);
-      if (!iod->ssl)
-	fatal("SSL_new failed: %s", ERR_error_string(ERR_get_error(), NULL));
+      /* Reuse iod->ssl if present. If set, this is the second try at connection
+         without the SSL_OP_NO_SSLv2 option set. */
+      if (iod->ssl == NULL) {
+        iod->ssl = SSL_new(ms->sslctx);
+        if (!iod->ssl)
+          fatal("SSL_new failed: %s", ERR_error_string(ERR_get_error(), NULL));
+      }
 
       /* Associate our new SSL with the connected socket.  It will inherit
 	 the non-blocking nature of the sd */
@@ -395,6 +417,7 @@ void handle_connect_result(mspool *ms, msevent *nse,
         nse->status = NSE_STATUS_ERROR;
       }
     } else {
+      long options = SSL_get_options(iod->ssl);
       sslerr = SSL_get_error(iod->ssl, rc);
       if (rc == -1 && sslerr == SSL_ERROR_WANT_READ) {
 	nse->sslinfo.ssl_desire = sslerr;
@@ -402,13 +425,29 @@ void handle_connect_result(mspool *ms, msevent *nse,
       } else if  (rc == -1 && sslerr == SSL_ERROR_WANT_WRITE) {
 	nse->sslinfo.ssl_desire = sslerr;
 	socket_count_write_inc(iod, ms);
+      } else if (!(options & SSL_OP_NO_SSLv2)) {
+        /* SSLv3-only and TLSv1-only servers can't be connected to when the
+           SSL_OP_NO_SSLv2 option is not set, which is the case when the pool
+           was initialized with nsp_ssl_init_max_speed. Try reconnecting with
+           SSL_OP_NO_SSLv2. Never downgrade a NO_SSLv2 connection to one that
+           might use SSLv2. */
+        if (ms->tracelevel > 0)
+	  nsock_trace(ms, "EID %li reconnecting with SSL_OP_NO_SSLv2", nse->id);
+        nsock_connect_internal(ms, nse, iod->lastproto, &iod->peer, iod->peerlen, nsi_peerport(iod));
+        SSL_clear(iod->ssl);
+        if(!SSL_clear(iod->ssl))
+           fatal("SSL_clear failed: %s", ERR_error_string(ERR_get_error(), NULL));
+
+        SSL_set_options(iod->ssl, options | SSL_OP_NO_SSLv2);
+        socket_count_read_inc(nse->iod, ms);
+        socket_count_write_inc(nse->iod, ms);
+        nse->sslinfo.ssl_desire = SSL_ERROR_WANT_CONNECT;
       } else {
-	/* Unexpected error */
         if (ms->tracelevel > 0)
 	  nsock_trace(ms, "EID %li %s", nse->id, ERR_error_string(ERR_get_error(), NULL));
 	nse->event_done = 1;
 	nse->status = NSE_STATUS_ERROR;
-	nse->errnum = EIO;
+	nse->errnum = EIO; 
       }
     }
   }
@@ -475,6 +514,8 @@ void handle_write_result(mspool *ms, msevent *nse,
 	}
       }
     }
+    
+    nse->iod->write_count+= res;
   }
 
   if (nse->event_done && nse->iod->sd != -1)
@@ -628,6 +669,7 @@ void handle_read_result(mspool *ms, msevent *nse,
     rc = do_actual_read(ms, nse);
     /* printf("DBG: Just read %d new bytes%s.\n", rc, iod->ssl? "( SSL!)" : ""); */
     if (rc > 0) {
+      nse->iod->read_count += rc;
       /* We decide whether we have read enough to return */      
       switch(nse->readinfo.read_type) {
       case NSOCK_READ:
@@ -802,15 +844,15 @@ static void iterate_through_event_lists(mspool *nsp) {
 	nse = (msevent *) GH_LIST_ELEM_DATA(current);
         if (nsp->tracelevel > 7)
 	  nsock_trace(nsp, "list %i, iterating %lu",current_list_idx, nse->id);
-
-	if ( ! nse->event_done) {	
+        
+       if ( ! nse->event_done){	
 	  switch(nse->type) {
 	  case NSE_TYPE_CONNECT:
 	  case NSE_TYPE_CONNECT_SSL:
-	    if (FD_ISSET(nse->iod->sd, &nsp->mioi.fds_results_r) ||
+           if (FD_ISSET(nse->iod->sd, &nsp->mioi.fds_results_r) ||
 		FD_ISSET(nse->iod->sd, &nsp->mioi.fds_results_w) ||
 		FD_ISSET(nse->iod->sd, &nsp->mioi.fds_results_x)) {
-	      handle_connect_result(nsp, nse, NSE_STATUS_SUCCESS);
+             handle_connect_result(nsp, nse, NSE_STATUS_SUCCESS);
 	    }
 	    if (!nse->event_done && nse->timeout.tv_sec &&
 		TIMEVAL_MSEC_SUBTRACT(nse->timeout, nsock_tod) <= 0) {

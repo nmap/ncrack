@@ -88,7 +88,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nbase_str.c 12956 2009-04-15 00:37:23Z fyodor $ */
+/* $Id: nbase_str.c 14748 2009-08-04 04:19:50Z josh $ */
 
 #include "nbase.h"
 #include <string.h>
@@ -111,11 +111,11 @@ needlelen = (unsigned int) strlen(pneedle);
    needle = (char *) safe_malloc(needlelen + 1);
  } else needle = buf;
  p = pneedle; q = needle;
- while((*q++ = tolower(*p++)))
+ while((*q++ = tolower((int) (unsigned char) *p++)))
    ;
  p = haystack - 1; foundto = needle;
  while(*++p) {
-   if(tolower(*p) == *foundto) {
+   if(tolower((int) (unsigned char) *p) == *foundto) {
      if(!*++foundto) {
        /* Yeah, we found it */
        if (needlelen >= sizeof(buf))
@@ -167,7 +167,7 @@ int Snprintf(char *s, size_t n, const char *fmt, ...)
 int stringisprintable(const char *str, int strlength) {
   int i;
   for(i=0; i < strlength; i++)
-    if (!isprint((unsigned char) str[i]))
+    if (!isprint((int) (unsigned char) str[i]))
       return 0;
 
   return 1;
@@ -177,7 +177,7 @@ int stringisprintable(const char *str, int strlength) {
 void replacenonprintable(char *str, int strlength, char replchar) {
   int i;
   for(i=0; i < strlength; i++)
-    if (!isprint( (unsigned char) str[i]))
+    if (!isprint((int) (unsigned char) str[i]))
       str[i] = replchar;
 
   return;

@@ -56,7 +56,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_iod.c 14022 2009-07-03 20:28:06Z david $ */
+/* $Id: nsock_iod.c 14512 2009-07-22 20:59:50Z david $ */
 
 #include "nsock.h"
 #include "nsock_internal.h"
@@ -118,6 +118,8 @@ nsock_iod nsi_new2(nsock_pool nsockp, int sd, void *userdata) {
   nsi->readsd_count = 0;
   nsi->writesd_count = 0;
   nsi->readpcapsd_count = 0;
+  nsi->read_count=0;
+  nsi->write_count=0;
 
   nsi->ipopts = NULL;
   nsi->ipoptslen = 0;
@@ -136,6 +138,9 @@ nsock_iod nsi_new2(nsock_pool nsockp, int sd, void *userdata) {
   return (nsock_iod) nsi;
 }
 
+
+/* Defined in nsock_core.c. */
+int socket_count_zero(msiod *iod, mspool *ms);
 
 /* If msiod_new returned success, you must free the iod when you are
    done with it to conserve memory (and in some cases, sockets).
@@ -190,6 +195,10 @@ void nsi_delete(nsock_iod nsockiod, int pending_response) {
   
   if (nsi->events_pending != 0)
     fatal("Trying to delete NSI, but could not find %d of the purportedly pending events on that IOD.\n", nsi->events_pending);
+
+  /* Make sure we no longer select on this socket, in case the socket counts
+     weren't already decremented to zero. */
+  socket_count_zero(nsi, nsi->nsp);
 
 #if HAVE_OPENSSL
   /* Close any SSL resources */
@@ -381,4 +390,15 @@ int nsi_set_ipoptions(nsock_iod nsi, void *opts, size_t optslen)
 int nsi_getsd(nsock_iod nsockiod) {
   assert(nsockiod);
   return ((msiod *)nsockiod)->sd;
+}
+
+unsigned long nsi_get_read_count(nsock_iod nsockiod){
+  assert(nsockiod);
+  return ((msiod *)nsockiod)->read_count;
+}
+
+unsigned long nsi_get_write_count(nsock_iod nsockiod){
+  assert(nsockiod);
+  return ((msiod *)nsockiod)->write_count;
+
 }

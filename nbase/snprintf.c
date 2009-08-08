@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: snprintf.c 8430 2008-06-22 04:56:02Z bmenrigh $ */
+/* $Id: snprintf.c 14748 2009-08-04 04:19:50Z josh $ */
 
 #if HAVE_CONFIG_H
 #include "nbase_config.h"
@@ -338,11 +338,11 @@ xyzprintf (struct state *state, const char *char_format, va_list ap)
 	flags ^= zero_flag;
 
       /* width */
-      if (isdigit(c))
+      if (isdigit((int) c))
 	do {
 	  width = width * 10 + c - '0';
 	  c = *format++;
-	} while(isdigit(c));
+	} while(isdigit((int) c));
       else if(c == '*') {
 	width = va_arg(ap, int);
 	c = *format++;
@@ -352,11 +352,11 @@ xyzprintf (struct state *state, const char *char_format, va_list ap)
       if (c == '.') {
 	prec = 0;
 	c = *format++;
-	if (isdigit(c))
+	if (isdigit((int) c))
 	  do {
 	    prec = prec * 10 + c - '0';
 	    c = *format++;
-	  } while(isdigit(c));
+	  } while(isdigit((int) c));
 	else if (c == '*') {
 	  prec = va_arg(ap, int);
 	  c = *format++;

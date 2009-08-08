@@ -53,7 +53,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_connect.c 14215 2009-07-13 00:01:33Z david $ */
+/* $Id: nsock_connect.c 14576 2009-07-25 20:59:32Z venkat $ */
 
 #include "nsock.h"
 #include "nsock_internal.h"
@@ -67,7 +67,7 @@ extern struct timeval nsock_tod;
 
 /* This does the actual logistics of requesting a TCP connection.  It is
  * shared by nsock_connect_tcp and nsock_connect_ssl */
-static void nsock_connect_internal(mspool *ms, msevent *nse, int proto,
+void nsock_connect_internal(mspool *ms, msevent *nse, int proto,
 				   struct sockaddr_storage *ss, size_t sslen,
 				   unsigned short port)
 {
@@ -123,7 +123,7 @@ static void nsock_connect_internal(mspool *ms, msevent *nse, int proto,
     if (connect(iod->sd, (struct sockaddr *) ss, sslen) == -1) {
       int err = socket_errno();
 
-      if (proto != IPPROTO_TCP || (err != EINPROGRESS && err != EAGAIN)) {
+      if (proto == IPPROTO_UDP || (err != EINPROGRESS && err != EAGAIN)) {
         nse->event_done = 1;
         nse->status = NSE_STATUS_ERROR;
         nse->errnum = err;
@@ -170,10 +170,45 @@ nsock_event_id nsock_connect_tcp(nsock_pool nsp, nsock_iod ms_iod,
   return nse->id;
 }
 
-/* Request an SSL over TCP connection to another system (by IP
+/* Request an SCTP association to another system (by IP address).  The
+   in_addr is normal network byte order, but the port number should be
+   given in HOST BYTE ORDER.  ss should be a sockaddr_storage,
+   sockaddr_in6, or sockaddr_in as appropriate (just like what you
+   would pass to connect).  sslen should be the sizeof the structure
+   you are passing in. */
+nsock_event_id nsock_connect_sctp(nsock_pool nsp, nsock_iod ms_iod, 
+				 nsock_ev_handler handler, int timeout_msecs, 
+				 void *userdata, struct sockaddr *saddr, 
+				 size_t sslen, unsigned short port) {
+
+  msiod *nsi = (msiod *) ms_iod;
+  mspool *ms = (mspool *) nsp;
+  msevent *nse;
+  struct sockaddr_storage *ss = (struct sockaddr_storage *) saddr;
+  
+  assert(nsi->state == NSIOD_STATE_INITIAL || nsi->state == NSIOD_STATE_UNKNOWN);
+
+  /* Just in case someone waits a long time and then does a new connect */
+  gettimeofday(&nsock_tod, NULL);
+  
+  nse = msevent_new(ms, NSE_TYPE_CONNECT, nsi, timeout_msecs, handler, userdata);
+  assert(nse);
+  
+  if (ms->tracelevel > 0)
+    nsock_trace(ms, "SCTP association requested to %s:%hu (IOD #%li) EID %li", 
+		inet_ntop_ez(ss, sslen), port, nsi->id, nse->id);
+  
+  /* Do the actual connect() */ 
+  nsock_connect_internal(ms, nse, IPPROTO_SCTP, ss, sslen, port); 
+  nsp_add_event(ms, nse);
+  
+  return nse->id;
+}
+
+/* Request an SSL over TCP/SCTP connection to another system (by IP
    address).  The in_addr is normal network byte order, but the port
    number should be given in HOST BYTE ORDER.  This function will call
-   back only after it has made the TCP connection AND done the initial
+   back only after it has made the connection AND done the initial
    SSL negotiation.  From that point on, you use the normal read/write
    calls and decryption will happen transparently. ss should be a
    sockaddr_storage, sockaddr_in6, or sockaddr_in as appropriate (just
@@ -182,7 +217,7 @@ nsock_event_id nsock_connect_tcp(nsock_pool nsp, nsock_iod ms_iod,
 nsock_event_id nsock_connect_ssl(nsock_pool nsp, nsock_iod nsiod, 
 				 nsock_ev_handler handler, int timeout_msecs, 
 				 void *userdata, struct sockaddr *saddr, 
-				 size_t sslen, unsigned short port,
+				 size_t sslen, int proto, unsigned short port,
 				 nsock_ssl_session ssl_session) {
 
 #ifndef HAVE_OPENSSL
@@ -210,19 +245,21 @@ nsock_event_id nsock_connect_ssl(nsock_pool nsp, nsock_iod nsiod,
   nsi_set_ssl_session(nsi, (SSL_SESSION *) ssl_session);
   
   if (ms->tracelevel > 0)
-    nsock_trace(ms, "SSL/TCP connection requested to %s:%hu (IOD #%li) EID %li", inet_ntop_ez(ss, sslen), port, nsi->id, nse->id);
+    nsock_trace(ms, "SSL connection requested to %s:%hu/%s (IOD #%li) EID %li",
+        inet_ntop_ez(ss, sslen), port, (proto == IPPROTO_TCP ? "tcp" : "sctp"),
+        nsi->id, nse->id);
   
   /* Do the actual connect() */ 
-  nsock_connect_internal(ms, nse, IPPROTO_TCP, ss, sslen, port); 
+  nsock_connect_internal(ms, nse, proto, ss, sslen, port); 
   nsp_add_event(ms, nse);
   
   return nse->id;
 #endif /* HAVE_OPENSSL */
 }
 
-/* Request ssl connection over already established TCP connection.
+/* Request ssl connection over already established connection.
    nsiod must be socket that is already connected to target
-   using nsock_connect_tcp.
+   using nsock_connect_tcp or nsock_connect_sctp.
    All parameters have the same meaning as in 'nsock_connect_ssl' */
 nsock_event_id nsock_reconnect_ssl(nsock_pool nsp, nsock_iod nsiod,
 				 nsock_ev_handler handler, int timeout_msecs,
@@ -247,7 +284,7 @@ nsock_event_id nsock_reconnect_ssl(nsock_pool nsp, nsock_iod nsiod,
   nsi_set_ssl_session(nsi, (SSL_SESSION *) ssl_session);
 
   if (ms->tracelevel > 0)
-    nsock_trace(ms, "SSL/TCP reconnection requested (IOD #%li) EID %li", nsi->id, nse->id);
+    nsock_trace(ms, "SSL reconnection requested (IOD #%li) EID %li", nsi->id, nse->id);
 
   /* Do the actual connect() */
   nse->event_done = 0;
