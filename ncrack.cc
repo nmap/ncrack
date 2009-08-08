@@ -299,19 +299,19 @@ lookup_init(const char *const filename)
  */
 static int
 file_readable(const char *pathname) {
-	char *pathname_buf = strdup(pathname);
-	int status = 0;
+  char *pathname_buf = strdup(pathname);
+  int status = 0;
 
 #ifdef WIN32
-	/* stat on windows only works for "dir_name" not for "dir_name/"
+  /* stat on windows only works for "dir_name" not for "dir_name/"
    * or "dir_name\\"
    */
-	int pathname_len = strlen(pathname_buf);
-	char last_char = pathname_buf[pathname_len - 1];
+  int pathname_len = strlen(pathname_buf);
+  char last_char = pathname_buf[pathname_len - 1];
 
-	if(	last_char == '/'
-		|| last_char == '\\')
-		pathname_buf[pathname_len - 1] = '\0';
+  if( last_char == '/'
+    || last_char == '\\')
+    pathname_buf[pathname_len - 1] = '\0';
 
 #endif
 
@@ -390,7 +390,7 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
     res = GetModuleFileName(GetModuleHandle(0), fnbuf, 1024);
     if(!res) fatal("GetModuleFileName failed (!)\n");
 
-    /*	Strip it */
+    /*  Strip it */
     for(i = res - 1; i >= 0 && fnbuf[i] != '/' && fnbuf[i] != '\\'; i--);
     if(i >= 0) /* we found it */
       fnbuf[i] = 0;
