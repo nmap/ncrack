@@ -582,15 +582,35 @@ to (time-out): maximum cracking time for service, regardless of success so far
             The path is always relative to the hostname or IP address, so if
             you want to target something like http://foobar.com/login.php
             the path must take the value <option>path=login.php</option> .
-            The first '/' is added if you omit it, but you will have to
-            explicitly specify it at the end of pathnames that are directories.
-            So cracking the directory for http://foobar.com/protected-dir/
-            would require <option>path=protected-dir/</option> . Since the
-            symbol '=' is used by Ncrack for argument parsing, you will
-            have to espace it if it is included in the URL. By default, the
+            The initial '/' is added if you omit it. However, it is usually
+            better if you explicitly specify it at the end of pathnames
+            that are directories.
+            For example, to crack the directory for
+            http://foobar.com/protected-dir/ , it would be better if you
+            wrote it as <option>path=protected-dir/</option> . 
+            This is to avoid the (very) slight probability of a false positive,
+            because there are cases where Web servers might reply with a
+            "301 Moved Permanently" for a non-successful attempt.
+            They normally send that reply, when a successful attempt
+            is made for a requested password-protected path which has
+            omitted the ending '/' but the requested source is
+            actually a directory. Consequently,
+            Ncrack regards that reply as having succeeded in the
+            authentication attempt.
+          </para>
+
+          <para>
+            Also be careful with the symbol '=', since it is used by Ncrack
+            for argument parsing and you will
+            have to espace it if it is included in the URL. 
+          </para>
+
+          <para>
+            By default, the
             path-name is initialized to '/', but will be ignored by
             services that do not require it.
           </para>
+
         </listitem>
   </varlistentry>
   </variablelist>
