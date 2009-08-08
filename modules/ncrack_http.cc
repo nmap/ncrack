@@ -267,7 +267,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
         delete con->iobuf;
         con->iobuf = NULL;
-        return ncrack_connection_end(nsp, con);
+        return ncrack_module_end(nsp, con);
 
       } else {
         serv->end.orly = true;
@@ -283,7 +283,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
         delete con->iobuf;
         con->iobuf = NULL;
-        return ncrack_connection_end(nsp, con);
+        return ncrack_module_end(nsp, con);
         
       }
       break;
