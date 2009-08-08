@@ -13,7 +13,7 @@ winbuild:
 	$(VCEXPRESS) ncrack.sln /build release /log $(LOGLOC)
 	rm -rf ncrack-$(NCRACK_VERSION)
 	mkdir ncrack-$(NCRACK_VERSION)
-	cd Release && cp -r ../../COPYING ncrack-services ncrack.exe username.lst password.lst ../ncrack-$(NCRACK_VERSION)/
+	cd Release && cp -r ../../COPYING ncrack-services ncrack.exe ../ncrack-$(NCRACK_VERSION)/
 	cp -f OpenSSL/bin/*.dll ./ncrack-$(NCRACK_VERSION)/
 
 	cp nsis/AddToPath.nsh nsis/Ncrack.nsi nsis/final.ini ncrack-$(NCRACK_VERSION)

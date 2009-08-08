@@ -105,7 +105,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\lists\*&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
+				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
 			/>
 		</Configuration>
 		<Configuration
@@ -196,7 +196,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\lists\*&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
+				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
 			/>
 		</Configuration>
 	</Configurations>

@@ -106,8 +106,7 @@ Section "Ncrack Core Files" SecCore
 
   SetOverwrite on 
   File ..\..\COPYING 
-  File ..\..\lists\username.lst
-  File ..\..\lists\password.lst
+  File /r /x .svn ..\..\lists
   File ..\..\ncrack-services 
   File ..\Release\ncrack.exe
   File libeay32.dll
@@ -180,8 +179,7 @@ Section "Uninstall"
   ncrack_installed: 
   Delete "$INSTDIR\COPYING" 
   Delete "$INSTDIR\ncrack.exe"
-  Delete "$INSTDIR\username.lst" 
-  Delete "$INSTDIR\password.lst"
+  RMDir /r "$INSTDIR\lists"
   Delete "$INSTDIR\ncrack-services" 
   Delete "$INSTDIR\README-WIN32" 
   Delete "$INSTDIR\libeay32.dll"

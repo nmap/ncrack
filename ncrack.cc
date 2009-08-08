@@ -397,6 +397,13 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
     res = Snprintf(filename_returned, bufferlen, "%s\\%s", fnbuf, file);
     if(res > 0 && res < bufferlen)
       foundsomething = file_readable(filename_returned);
+    
+    /* Now try under 'lists' for the installed directory */
+    if (!foundsomething) {
+    res = Snprintf(filename_returned, bufferlen, "%s\\lists\\%s", fnbuf, file);
+    if(res > 0 && res < bufferlen)
+      foundsomething = file_readable(filename_returned);
+    }
   }
 #endif
 
