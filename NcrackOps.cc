@@ -114,6 +114,7 @@ NcrackOps() {
   host_timeout = 0;
   memset(logfd, 0, sizeof(FILE *) * LOG_NUM_FILES);
   ncrack_stdout = stdout;
+  setaf(AF_INET);
   gettimeofday(&start_time, NULL);
 
 }

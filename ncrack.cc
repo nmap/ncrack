@@ -227,6 +227,7 @@ print_usage(void)
       "  --append-output: Append to rather than clobber specified output "
          "files\n"
       "MISC:\n"
+      "  -6: Enable IPv6 cracking\n"
       "  -sL or --list: only list hosts and services\n"
       "  --datadir <dirname>: Specify custom Ncrack data file location\n"
       "  -V: Print version number\n"
@@ -651,7 +652,7 @@ int main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "d::g:hi:U:P:m:o:p:s:T:vV",
+  while((arg = getopt_long_only(argc, argv, "6d::g:hi:U:P:m:o:p:s:T:vV",
           long_options, &option_index)) != EOF) {
     switch(arg) {
       case 0:
@@ -710,6 +711,14 @@ int main(int argc, char **argv)
           xmlfilename = strdup(buf);
         }
         break;
+      case '6':
+#if !HAVE_IPV6
+        fatal("I am afraid IPv6 is not available because your host doesn't "
+            "support it or you chose to compile Ncrack w/o IPv6 support.");
+#else
+        o.setaf(AF_INET6);
+#endif /* !HAVE_IPV6 */
+        break;
       case 'd': 
         if (optarg)
           o.debugging = o.verbose = atoi(optarg);
@@ -736,12 +745,12 @@ int main(int argc, char **argv)
         break;
       case 'U':
         ncrack_fetchfile(username_file, sizeof(username_file),
-          optarg);
+            optarg);
         load_login_file(username_file, USER);
         break;
       case 'P':
         ncrack_fetchfile(password_file, sizeof(password_file),
-          optarg);
+            optarg);
         load_login_file(password_file, PASS);
         break;
       case 'm':
@@ -824,7 +833,6 @@ int main(int argc, char **argv)
   log_write(LOG_STDOUT, "\nStarting %s %s ( %s ) at %s\n",
       NCRACK_NAME, NCRACK_VERSION, NCRACK_URL, tbuf);
 
-  o.setaf(AF_INET);
 
   /* lets load our exclude list */
   if ((NULL != excludefd) || (NULL != exclude_spec)) {
@@ -838,7 +846,7 @@ int main(int argc, char **argv)
     if ((char *)NULL != exclude_spec)
       free(exclude_spec);
   }
- 
+
   /* Brief info incase they forget what was scanned */
   Strncpy(mytime, ctime(&now), sizeof(mytime));
   chomp(mytime);
@@ -1112,10 +1120,10 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       if (serv->end.reason) {
         chomp(serv->end.reason);
         log_write(LOG_STDOUT, "%s will no longer be cracked because module "
-          "reported that:\n %s\n", hostinfo, serv->end.reason);
+            "reported that:\n %s\n", hostinfo, serv->end.reason);
       } else {
         log_write(LOG_STDOUT, "%s will no longer be cracked. No reason was "
-          "reported from module.\n", hostinfo);
+            "reported from module.\n", hostinfo);
       }
     }
     SG->pushServiceToList(serv, &SG->services_finished);
