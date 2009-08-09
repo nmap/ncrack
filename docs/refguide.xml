@@ -52,6 +52,8 @@
       also be used to conduct some fairly sophisticated bruteforcing attacks.
     </para>
 
+    <warning><para>Ncrack is a new project started in the Summer of 2009.  While it is already useful for some purposes, it is still unfinished, alpha quality software.  You can help out by testing it and reporting any problems as described in <xref linkend="man-bugs"/>.</para></warning>
+
     <para>
       The output from Ncrack is a list of found credentials, if any, for each
       of the targets specified. Ncrack can also print an interactive status
@@ -1784,7 +1786,13 @@ Ncrack finished.
 
 
   <refsect1 id='man-legal'>
-    &legal-notices;
+  <title>Ncrack Copyright and Licensing</title>
+  <indexterm><primary>copyright</primary></indexterm>
+  <indexterm><primary>GNU General Public License</primary></indexterm>
+
+  <para>
+    While it isn't distributed with Nmap, Ncrack is part of the Nmap project and falls under the same license and (non) warranty provisions, as described at <ulink url="http://nmap.org/book/man-legal.html"/>.
+  </para>
   </refsect1>
 
 </refentry>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+          "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"
+[
+<!ENTITY refguide SYSTEM "refguide.xml">
+<!ENTITY legal-notices SYSTEM "legal-notices.xml">
+<!ENTITY ncrack-usage SYSTEM "ncrack-usage.xml">
+]>
+<article id="ncrackman">
+<artheader>
+<title>Ncrack Reference Guide (Man Page)</title>
+</artheader>
+&refguide;
+</article>
