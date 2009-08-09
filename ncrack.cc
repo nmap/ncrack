@@ -107,6 +107,10 @@
 #include <time.h>
 #include <vector>
 
+#if HAVE_SIGNAL
+  #include <signal.h>
+#endif
+
 #if HAVE_OPENSSL
   #include <openssl/ssl.h>
 #endif
@@ -158,6 +162,8 @@ static int ncrack_fetchfile(char *filename_returned, int bufferlen,
   const char *file);
 static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
 static void startTimeOutClocks(ServiceGroup *SG);
+void sigdie(int signo);
+
 
 static void
 print_usage(void)
@@ -457,6 +463,56 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
 }
 
 
+void
+sigdie(int signo) {
+  int abt = 0;
+
+  fflush(stdout);
+
+  switch(signo) {
+    case SIGINT:
+      error("caught SIGINT signal, cleaning up");
+      break;
+
+#ifdef SIGTERM
+    case SIGTERM:
+      error("caught SIGTERM signal, cleaning up");
+      break;
+#endif
+
+#ifdef SIGHUP
+    case SIGHUP:
+      error("caught SIGHUP signal, cleaning up");
+      break;
+#endif
+
+#ifdef SIGSEGV
+    case SIGSEGV:
+      error("caught SIGSEGV signal, cleaning up");
+      abt = 1;
+      break;
+#endif
+
+#ifdef SIGBUS
+    case SIGBUS:
+      error("caught SIGBUS signal, cleaning up");
+      abt = 1;
+      break;
+#endif
+
+    default:
+      error("caught signal %d, cleaning up", signo);
+      abt = 1;
+      break;
+  }
+
+  fflush(stderr);
+  log_close(LOG_NORMAL);
+  if (abt)
+    abort();
+  exit(1);
+}
+
 
 
 static char *
@@ -692,7 +748,7 @@ int main(int argc, char **argv)
           o.passwords_first = true;
         } else if (!optcmp(long_options[option_index].name,
               "nsock-trace")) {
-            o.nsock_trace = atoi(optarg);
+          o.nsock_trace = atoi(optarg);
         } else if (!optcmp(long_options[option_index].name, "log-errors")) {
           o.log_errors = true;
         } else if (!optcmp(long_options[option_index].name, "append-output")) {
@@ -824,6 +880,31 @@ int main(int argc, char **argv)
         DEFAULT_PASSWORD_FILE);
     load_login_file(password_file, PASS);
   }
+
+
+  /* Now handle signals */
+
+#if HAVE_SIGNAL
+  if (!o.debugging)
+    signal(SIGSEGV, sigdie); 
+#endif
+
+#if defined(HAVE_SIGNAL) && defined(SIGPIPE)
+  signal(SIGPIPE, SIG_IGN);
+  /* ignore SIGPIPE so our program doesn't crash because
+   * of it, but we really shouldn't get an unsuspected SIGPIPE
+   */
+#endif
+
+  /* Trap these sigs for cleanup */
+#if HAVE_SIGNAL
+  signal(SIGINT, sigdie);
+  signal(SIGTERM, sigdie);
+#ifndef WIN32
+  signal(SIGHUP, sigdie); 
+#endif
+#endif
+
 
   /* Prepare -T option (3 is default) */
   prepare_timing_template(&timing);

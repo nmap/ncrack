@@ -144,6 +144,8 @@ AC_TRY_COMPILE([#include <netinet/in.h>], struct in_addr i; i._S_un._S_addr;, \
 
 dnl Checks for library functions.
 AC_CHECK_FUNCS(strerror)
+AC_CHECK_FUNCS(signal)
+
 
 dnl Type of 6th argument to recvfrom(). Usually int or socklen_t.
 AC_DEFUN([RECVFROM_ARG6_TYPE],
