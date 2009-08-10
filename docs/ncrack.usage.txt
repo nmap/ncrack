@@ -1,3 +1,4 @@
+/usr/local/share/ncrack/ncrack-services
 Ncrack 0.01ALPHA ( http://ncrack.org )
 Usage: ncrack [Options] {target specification}
 TARGET SPECIFICATION:
@@ -43,6 +44,7 @@ OUTPUT:
   --log-errors: Log errors/warnings to the normal-format output file
   --append-output: Append to rather than clobber specified output files
 MISC:
+  -6: Enable IPv6 cracking
   -sL or --list: only list hosts and services
   --datadir <dirname>: Specify custom Ncrack data file location
   -V: Print version number

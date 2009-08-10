@@ -1494,6 +1494,44 @@ Ncrack finished.
 
       <varlistentry>
         <term>
+          <option>-6</option> (Enable IPv6 scanning)
+          <indexterm significance="preferred"><primary><option>-6</option></primary></indexterm>
+          <indexterm><primary>IPv6</primary></indexterm>
+        </term>
+        <listitem>
+
+          <para>Warning: This option was just added and it is currently
+            experimental, so please notify us for any problems and bugs
+            related to it.
+          </para>
+
+          <para>
+          The command syntax is the same as usual except that you also
+          add the <option>-6</option> option.  Of course, you must use
+          IPv6 syntax if you specify an address rather than a
+          hostname.  An address might look like
+          <literal>3ffe:7501:4819:2000:210:f3ff:fe03:14d0</literal>,
+          so hostnames are recommended.  The output looks the same as
+          usual, with the IPv6 address on the <quote>Discovered
+          credentials</quote> line being the only IPv6 give away.</para>
+
+          <para>While IPv6 hasn't exactly taken the world by storm, it
+          gets significant use in some (usually Asian) countries and
+          most modern operating systems support it.  To use Ncrack with
+          IPv6, both the source and target of your scan must be
+          configured for IPv6. If your ISP (like most of them) does
+          not allocate IPv6 addresses to you, free tunnel brokers are
+          widely available and will probably work fine with Ncrack.
+          A popular IPv6 tunnel broker
+          <indexterm><primary>IPv6 tunnel broker</primary></indexterm>
+	        service is at <ulink url="http://www.tunnelbroker.net"/>.
+          6to4 tunnels are another popular, free approach.</para>
+
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
         <option>-sL</option> (List Scan)
           <indexterm><primary><option>-sL</option></primary></indexterm>
           <indexterm><primary>list scan</primary></indexterm>
