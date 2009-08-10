@@ -86,7 +86,11 @@
  * http://www.gnu.org/licenses/gpl-2.0.html , or in the COPYING file       *
  * included with Nmap.                                                     *
  *                                                                         *
- ***************************************************************************/
+ ***************************************************************************
+ * The code in this file was originally written by ithilgore               *
+ * (ithilgore.ryu.l@gmail.com) of http://sock-raw.org during the Google    *
+ * Summer of Code program in 2009                                          *
+ ***************************************************************************/ 
 
 
 #ifndef SERVICES_H
