@@ -10,6 +10,7 @@
 #define NCRACKDATADIR "C:\\Program Files\\Ncrack" /* FIXME: I really need to make this dynamic */
 
 #define HAVE_OPENSSL 1
+#define HAVE_SIGNAL 1
 /* Apparently __func__ isn't yet supported */
 #define __func__ __FUNCTION__
 

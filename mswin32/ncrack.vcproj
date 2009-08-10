@@ -247,7 +247,7 @@
 			<File
 				RelativePath="..\NcrackOps.cc"
 				>
-      </File>
+			</File>
 			<File
 				RelativePath="..\NcrackOutputTable.cc"
 				>
@@ -349,11 +349,11 @@
 			<File
 				RelativePath="..\NcrackOps.h"
 				>
-      </File>
+			</File>
 			<File
 				RelativePath="..\NcrackOutputTable.h"
 				>
-      </File>
+			</File>
 			<File
 				RelativePath="..\output.h"
 				>
@@ -393,6 +393,10 @@
 			<Filter
 				Name="Win Headers"
 				>
+				<File
+					RelativePath="..\ncrack_winconfig.h"
+					>
+				</File>
 				<File
 					RelativePath=".\winclude.h"
 					>
