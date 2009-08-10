@@ -41,15 +41,18 @@
     </note>
     </web>
     <para>
-      Ncrack is an open source tool for network authentication cracking. 
-      It was designed for high-speed parallel cracking using a dynamic engine
-      that can adapt to different network situations. Ncrack can also be
-      extensively fine-tuned for special cases, though the default parameters
-      are generic enough to cover almost every situation. It is built on a
-      modular architecture that allows for easy extension to support additional
-      protocols. While Ncrack's main purpose is to audit the security of large
-      networks for default, weak passwords in a rapid, yet reliable way, it can
-      also be used to conduct some fairly sophisticated bruteforcing attacks.
+      Ncrack is an open source tool for network authentication
+      cracking.  It was designed for high-speed parallel cracking
+      using a dynamic engine that can adapt to different network
+      situations. Ncrack can also be extensively fine-tuned for
+      special cases, though the default parameters are generic enough
+      to cover almost every situation. It is built on a modular
+      architecture that allows for easy extension to support
+      additional protocols. Ncrack is designed for companies and
+      security professionals to audit large networks for default or
+      weak passwords in a rapid and reliable way.  It can also be used
+      to conduct fairly sophisticated and intensive brute force
+      attacks against individual services.
     </para>
 
     <warning><para>Ncrack is a new project started in the Summer of 2009.  While it is already useful for some purposes, it is still unfinished, alpha quality software.  You can help out by testing it and reporting any problems as described in <xref linkend="man-bugs"/>.</para></warning>
