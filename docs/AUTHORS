@@ -1,0 +1,13 @@
+Ncrack AUTHORS
+===============
+
+Ncrack was originally written from the ground up by ithilgore
+(ithilgore.ryu.l@gmail.com) of http://sock-raw.org during the Google Summer of
+Code program in 2009. ithilgore was mentored by Fyodor.
+
+Many helpful comments, suggestions and other useful information was taken from the
+nmap-dev list (@insecure.org) as well as other contributors via email.
+
+Ncrack shares the Nmap infrastructure libraries (Nsock and Nbase) which were
+originally written by Fyodor (fyodor@insecure.org) and are property of
+Insecure.org LLC.
