@@ -7,15 +7,7 @@ TODO:
   initiations/endings.
   How can I get the unique connection id from nsock? --> With nsi_id() 
 
-* Search for good username and password lists, or find ways to
-  generate them (e.g. web scraping for email addresses or account
-  names or whatever). Usernames seems like a relatively easy problem,
-  while password lists are more difficult to come by.
-  * Assembled a lot of lists. Now need to sort them out.
-
 * Add --resume support
-
-* Test more thoroughly the windows version of ncrack.
 
 * Complete output engine. The main thing left is support for XML output using
   the option -oX.
@@ -47,8 +39,6 @@ TODO:
   he doesn't want to accept the change, then he will possibly suffer a
   performance degradation.
 
-* Add IPv6 support
-  
 * Handle the case where ftp tells us that it accepts anonymous login only so
   that we don't waste time cracking it.
 
@@ -67,6 +57,16 @@ TODO:
 
 
 ============================== DONE ==========================================
+
+* Test more thoroughly the windows version of ncrack.
+
+* Add IPv6 support
+
+* Search for good username and password lists, or find ways to
+  generate them (e.g. web scraping for email addresses or account
+  names or whatever). Usernames seems like a relatively easy problem,
+  while password lists are more difficult to come by.
+  * Assembled a lot of lists. Now need to sort them out.
 
 * Possibly adapt Nmap license headers to Ncrack specifically.
   --> This has been halted for a while, until a unified solution for all
