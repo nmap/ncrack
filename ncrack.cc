@@ -159,10 +159,10 @@ static void print_usage(void);
 static void lookup_init(const char *const filename);
 static int file_readable(const char *pathname);
 static int ncrack_fetchfile(char *filename_returned, int bufferlen,
-  const char *file);
+  const char *file, int useroption = 0);
 static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
 static void startTimeOutClocks(ServiceGroup *SG);
-void sigdie(int signo);
+static void sigdie(int signo);
 
 
 static void
@@ -333,15 +333,28 @@ file_readable(const char *pathname) {
   return status;
 }
 
-
+/*
+ * useroption should be 1 if either -U or -P has been specified.
+ * by default it is 0
+ */
 int
-ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
+ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file,
+    int useroption) {
   char *dirptr;
   int res;
   int foundsomething = 0;
   struct passwd *pw;
   static int warningcount = 0;
   char dot_buffer[512];
+
+  /* -U or -P has been specified */
+  if (useroption) {
+    res = Snprintf(filename_returned, bufferlen, "%s", file);
+    if (res > 0 && res < bufferlen) {
+      foundsomething = file_readable(filename_returned);
+    }
+  }
+
 
   /* First, check the map of requested data file names. If there's an entry for
      file, use it and return.
@@ -355,7 +368,7 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
      --datadir -> $NCRACKDIR -> nmap.exe directory -> NCRACKDATADIR -> .
   */
 
-  if (o.datadir) {
+  if (o.datadir && !foundsomething) {
     res = Snprintf(filename_returned, bufferlen, "%s/%s", o.datadir, file);
     if (res > 0 && res < bufferlen) {
       foundsomething = file_readable(filename_returned);
@@ -452,7 +465,7 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
   }
 
   if (!foundsomething) {
-    filename_returned[0] = '\0';
+    Snprintf(filename_returned, bufferlen, "%s", file);
   }
 
   if (foundsomething && o.debugging > 1)
@@ -463,7 +476,7 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file) {
 }
 
 
-void
+static void
 sigdie(int signo) {
   int abt = 0;
 
@@ -801,12 +814,12 @@ int main(int argc, char **argv)
         break;
       case 'U':
         ncrack_fetchfile(username_file, sizeof(username_file),
-            optarg);
+            optarg, 1);
         load_login_file(username_file, USER);
         break;
       case 'P':
         ncrack_fetchfile(password_file, sizeof(password_file),
-            optarg);
+            optarg, 1);
         load_login_file(password_file, PASS);
         break;
       case 'm':
