@@ -169,7 +169,7 @@ static void
 print_usage(void)
 {
   log_write(LOG_STDOUT, "%s %s ( %s )\n"
-      "Usage: ncrack [Options] {target specification}\n"
+      "Usage: ncrack [Options] {target and service specification}\n"
       "TARGET SPECIFICATION:\n"
       "  Can pass hostnames, IP addresses, networks, etc.\n"
       "  Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; "

@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 08/10/2009
+.\"      Date: 08/11/2009
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "08/10/2009" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "08/11/2009" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -26,7 +26,7 @@ ncrack \- Network authentication cracking tool
 .SH "DESCRIPTION"
 .\" Ncrack: description of
 .PP
-Ncrack is an open source tool for network authentication cracking\&. It was designed for high\-speed parallel cracking using a dynamic engine that can adapt to different network situations\&. Ncrack can also be extensively fine\-tuned for special cases, though the default parameters are generic enough to cover almost every situation\&. It is built on a modular architecture that allows for easy extension to support additional protocols\&. While Ncrack\'s main purpose is to audit the security of large networks for default, weak passwords in a rapid, yet reliable way, it can also be used to conduct some fairly sophisticated bruteforcing attacks\&.
+Ncrack is an open source tool for network authentication cracking\&. It was designed for high\-speed parallel cracking using a dynamic engine that can adapt to different network situations\&. Ncrack can also be extensively fine\-tuned for special cases, though the default parameters are generic enough to cover almost every situation\&. It is built on a modular architecture that allows for easy extension to support additional protocols\&. Ncrack is designed for companies and security professionals to audit large networks for default or weak passwords in a rapid and reliable way\&. It can also be used to conduct fairly sophisticated and intensive brute force attacks against individual services\&.
 .if n \{\
 .sp
 .\}
@@ -90,9 +90,8 @@ This options summary is printed when Ncrack is run with no arguments\&. It helps
 .RS 4
 .\}
 .nf
-/usr/local/share/ncrack/ncrack\-services
 Ncrack 0\&.01ALPHA ( http://ncrack\&.org )
-Usage: ncrack [Options] {target specification}
+Usage: ncrack [Options] {target and service specification}
 TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc\&.
   Ex: scanme\&.nmap\&.org, microsoft\&.com/24, 192\&.168\&.0\&.1; 10\&.0\&.0\-255\&.1\-254
