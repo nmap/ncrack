@@ -612,8 +612,10 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_ftp(nsp, con);
   else if (!strcmp(name, "telnet"))
     ncrack_telnet(nsp, con);
+#if HAVE_OPENSSL
   else if (!strcmp(name, "ssh"))
     ncrack_ssh(nsp, con);
+#endif
   else if (!strcmp(name, "http"))
     ncrack_http(nsp, con);
   else if (!strcmp(name, "https"))
