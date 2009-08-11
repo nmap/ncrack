@@ -9,6 +9,14 @@ TODO:
 
 * Add --resume support
 
+* Implement feature that can get input from Nmap's output files, to determine
+  which services to crack. Both -oN and -oX should be supported. Optionally,
+  some additional info could be extracted from version detection, if available,
+  to handle specific corner cases with certain servers.
+
+* Implement option that lets user specify the usernames and passwords directly
+  in the command-line, like -u guest,test etc.
+
 * Extend opensshlib to support SSH version 1, as well as additional
   diffie-hellman algorithms.
 
