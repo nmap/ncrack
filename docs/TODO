@@ -9,6 +9,9 @@ TODO:
 
 * Add --resume support
 
+* Extend opensshlib to support SSH version 1, as well as additional
+  diffie-hellman algorithms.
+
 * Complete output engine. The main thing left is support for XML output using
   the option -oX.
 
