@@ -434,7 +434,7 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file,
     }
   }
 
-  if (foundsomething && (*filename_returned != '.')) {    
+  if (foundsomething && (*filename_returned != '.') && !useroption) {    
     res = Snprintf(dot_buffer, sizeof(dot_buffer), "./%s", file);
     if (res > 0 && res < bufferlen) {
       if (file_readable(dot_buffer)) {
