@@ -1,5 +1,7 @@
 TODO:
 
+* Integrate Solar Designer's list to Ncrack.
+
 * Write form auth http module.
 
 * Think about packet trace. Obviously without pcap or something similar,
