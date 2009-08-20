@@ -478,7 +478,6 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file,
 
 static void
 sigdie(int signo) {
-  int abt = 0;
 
   fflush(stdout);
 
@@ -499,31 +498,19 @@ sigdie(int signo) {
       break;
 #endif
 
-#ifdef SIGSEGV
-    case SIGSEGV:
-      error("caught SIGSEGV signal, cleaning up");
-      abt = 1;
-      break;
-#endif
-
 #ifdef SIGBUS
     case SIGBUS:
       error("caught SIGBUS signal, cleaning up");
-      abt = 1;
       break;
 #endif
 
     default:
       error("caught signal %d, cleaning up", signo);
-      abt = 1;
       break;
   }
 
-  fflush(stderr);
   log_close(LOG_NORMAL);
-  if (abt)
-    abort();
-  exit(1);
+  _exit(1);
 }
 
 
@@ -898,11 +885,6 @@ int main(int argc, char **argv)
 
 
   /* Now handle signals */
-
-#if HAVE_SIGNAL
-  if (!o.debugging)
-    signal(SIGSEGV, sigdie); 
-#endif
 
 #if defined(HAVE_SIGNAL) && defined(SIGPIPE)
   signal(SIGPIPE, SIG_IGN);
