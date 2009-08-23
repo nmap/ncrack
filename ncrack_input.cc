@@ -1,7 +1,7 @@
 
 /***************************************************************************
- * NcrackOps.cc -- The NcrackOps class contains global options, mostly     *
- * based on user-provided command-line settings.                           *
+ * ncrack_input.cc -- Functions for parsing input from Nmap. Support for   *
+ * Nmap's -oX and -oN output formats.                                      *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -88,54 +88,181 @@
  *                                                                         *
  ***************************************************************************/
 
+
 #include "ncrack.h"
-#include "NcrackOps.h"
 #include "utils.h"
+#include "ncrack_input.h"
 
-NcrackOps o;
+void
+xml_input(FILE *inputfd, char *host_spec)
+{
+  static bool begin = true;
+  int ch;
+  unsigned int host_spec_index;
+  char buf[256];
+  static char ip[16];
+  char portnum[7];
 
-NcrackOps::
-NcrackOps() {
+  /* check if file is indeed in Nmap's XML output format */
+  if (begin) {
 
-  datadir = NULL;
-  stats_interval = 0.0; /* unset */
-  log_errors = false;
-  append_output = false;
-  passwords_first = false;
-  global_options = false;
-  list_only = false;
-  nmap_input_normal = false;
-  nmap_input_xml = false;
-  debugging = 0;
-  verbose = 0;
-  nsock_trace = 0;
-  timing_level = 3;
-  connection_limit = -1;
-  numhosts_scanned = 0;
-  host_timeout = 0;
-  memset(logfd, 0, sizeof(FILE *) * LOG_NUM_FILES);
-  ncrack_stdout = stdout;
-  setaf(AF_INET);
-  gettimeofday(&start_time, NULL);
+    /* First check if this is an XML file */
+    if (!fgets(buf, 15, inputfd))
+      fatal("-iX XML checking fgets failure!\n");
+    if (strncmp(buf, "<?xml version=", 15))
+      fatal("-iX file is not a XML file!\n");
+
+    /* Now try to run the special string "nmaprun" to validate that this is
+     * indeed a Nmap XML output file */
+    bool ok = false;
+    memset(buf, 0, sizeof(buf));
+    while ((ch = getc(inputfd)) != EOF) {
+      if (ch == '\n') {
+        if (!fgets(buf, 9, inputfd))
+          fatal("-iX corrupted file: cannot find string \"<nmaprun\"\n");
+        if (!strncmp(buf, "<nmaprun", 8)) {
+          ok = true;
+          break;
+        }
+      }
+    }
+    if (!ok)
+      fatal("-iX file doesn't seem to be in Nmap's XML output format "
+        "option -oX <filename>!\n");
+
+    //memset(ip, 0, sizeof(ip));
+    begin = false;
+  }
+
+  memset(buf, 0, sizeof(buf));
+
+  /* Ready to search for hosts and open ports */
+
+  while ((ch = getc(inputfd)) != EOF) {
+    if (ch == '\n') {
+
+      /* If you have already got an address from a previous invokation, then
+       * search only for open ports, else go look for a new IP */
+      if (!strncmp(ip, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", sizeof(ip))) {
+
+        /* Search for string "<address" */
+        if (!fgets(buf, 9, inputfd))
+          fatal("-iX <address> section searching fgets failure!\n");
+        if (!strncmp(buf, "<address", 8)) {
+          /* Now get the rest of the line which is in the following format:
+           * <address addr="10.0.0.100" addrtype="ipv4" /> */
+          unsigned int i = 0;
+          while ((ch = getc(inputfd)) != EOF) {
+            if (ch == '>')
+              break;
+            if (i < sizeof(buf) / sizeof(char) - 1)
+              buf[i++] = (char) ch;
+            else 
+              fatal("-iX possible buffer overflow!\n");
+          }
+          if (i < 12) 
+            fatal("-iX corrupted Nmap XML output file!\n");
+          i--;
+          char *addr = NULL;
+          if (!(addr = memsearch(buf, "addr=", i)))
+            fatal("-iX corrupted Nmap XML output file!\n");
+          /* Now point to the actual address string */
+          addr += sizeof("addr=");
+
+          /* Now find where the IP ends by finding the ending double quote */
+          i = 0;
+          while (addr[i] != '"')
+            i++;
+          i++;
+          if (i > sizeof(ip))
+            i = sizeof(ip);
+          Strncpy(ip, addr, i);
+          printf("%s\n", ip);
+
+        }
+      } else {
+        /* Search for open ports, since we already have an address */
+
+        if (!fgets(buf, 8, inputfd))
+          fatal("-iX <ports> section searching fgets failure!\n");
+        if (!strncmp(buf, "<ports>", 7)) {
+          /* Now, depending on Nmap invokation we can have an extra section of
+           * "extraports" which we ignore */
+          if (!fgets(buf, 12, inputfd))
+            fatal("-iX <extraports> section searching fgets failure!\n");
+          if (!strncmp(buf, "<extraports", 11)) {
+            /* Found "extraports" section. Now find the end of this section
+             * Nmap ends "</extraports>" in a new line, so use that */
+            while ((ch = getc(inputfd)) != EOF) {
+              if (ch == '\n') {
+                if (!fgets(buf, 13, inputfd))
+                  fatal("-iX extraports fgets failure!\n");
+                if (!strncmp(buf, "</extraports", 12))
+                  break;
+              }
+            }
+          }
+        } else if (!strncmp(buf, "<port ", 6)) {
+          /* We are inside a <port section */
+
+          /* Now get the rest of the line which is in the following format:
+           * <port protocol="tcp" portid="22"><state state="open" 
+           * reason="syn-ack" reason_ttl="0"/><service name="ssh"
+           * method="table" conf="3" /></port>
+           */
+          memset(buf, 0, sizeof(buf));
+
+          unsigned int i = 0;
+          unsigned int subsection = 0;
+          /* Since the <port section has a total of 3 subsections (port,
+           * service, state) we can use that information for parsing */
+          while ((ch = getc(inputfd)) != EOF) {
+            if (ch == '>') {
+              subsection++;
+              if (subsection > 3)
+                break;
+            }
+            if (i < sizeof(buf) / sizeof(char) - 1) {
+              buf[i++] = (char) ch;
+            }
+            else 
+              fatal("-iX possible buffer overflow inside port parsing\n");
+          }
+          if (i < 100) 
+            fatal("-iX corrupted Nmap XML output file: too little length in "
+                "<port> section\n");
+          i--;
+          //printf("%s \n", buf);
+          
+          char *p = NULL;
+          if (!(p = memsearch(buf, "portid=", i)))
+            fatal("-iX cannot find portid inside <port> section!\n");
+          p += sizeof("portid=");
+
+          /* Now find where the port number ends by finding the double quote */
+          i = 0;
+          while (p[i] != '"')
+            i++;
+          i++;
+          if (i > sizeof(portnum))
+            i = sizeof(portnum);
+
+          Strncpy(portnum, p, i);
+          printf("\nport: %s\n", portnum);
+
+          /* Now make sure this port is in 'state=open' since we won't bother
+           * grabbing ports that are not open. */
+
+
+
+
+
+        }
+
+      }
+    }
+
+  }
 
 }
 
-NcrackOps::
-~NcrackOps() {
-
-  if (datadir)
-    free(datadir);
-}
-
-
-/* Number of milliseconds since getStartTime().  The current time is an
- * optional argument to avoid an extra gettimeofday() call. */
-long long NcrackOps::
-TimeSinceStartMS(struct timeval *now) {
-  struct timeval tv;
-  if (!now)
-    gettimeofday(&tv, NULL);
-  else tv = *now;
-
-  return timeval_msec_subtract(tv, start_time);
-}

@@ -151,7 +151,8 @@ parse_services_target(char *const exp)
       if (s == exp) {
       /* No service name was provided so we find the default one based on the
        * port by looking at the supported services table (ServicesTable). */
-        temp.service_name = port2name(temp.portno);
+        if (!(temp.service_name = port2name(temp.portno)))
+          return temp;
       }
     } else {
       /* port not specified, but to reach here means that sevice-name had
@@ -173,7 +174,8 @@ parse_services_target(char *const exp)
       if (s == exp) {
       /* No service name was provided so we find the default one based on the
        * port by looking at the supported services table (ServicesTable). */
-        temp.service_name = port2name(temp.portno);
+        if (!(temp.service_name = port2name(temp.portno)))
+          return temp;
       }
     } else {
       /* only hostname specified (-p option will determine services) */
@@ -336,9 +338,11 @@ apply_service_options(Service *service)
     if (!strcmp(vi->lookup.name, service->name))
       break;
   }
-  if (vi == ServicesTable.end())
-    fatal("Service with name '%s' not supported!", service->name);
-
+  if (vi == ServicesTable.end()) {
+    error("Service with name '%s' not supported! Ignoring...", service->name);
+    return;
+  }
+  
   if (!service->portno)
     service->portno = vi->lookup.portno;
   if (vi->timing.min_connection_limit != NOT_ASSIGNED)
@@ -557,7 +561,7 @@ port2name(char *port)
     }
   }
   if (vi == ServicesTable.end())
-    fatal("Service with default port '%hu' not supported!", portno);
+    error("Service with default port '%hu' not supported! Ignoring...", portno);
   return name;
 }
 

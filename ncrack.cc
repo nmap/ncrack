@@ -104,6 +104,7 @@
 #include "ncrack_error.h"
 #include "output.h"
 #include "ncrack_tty.h"
+#include "ncrack_input.h"
 #include <time.h>
 #include <vector>
 
@@ -174,6 +175,8 @@ print_usage(void)
       "  Can pass hostnames, IP addresses, networks, etc.\n"
       "  Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; "
          "10.0.0-255.1-254\n"
+      "  -iX <inputfilename>: Input from Nmap's -oX XML output format\n"
+      "  -iN <inputfilename>: Input from Nmap's -oN Normal output format\n"
       "  -iL <inputfilename>: Input from list of hosts/networks\n"
       "  --exclude <host1[,host2][,host3],...>: Exclude hosts/networks\n"
       "  --excludefile <exclude_file>: Exclude list from file\n"
@@ -510,7 +513,7 @@ sigdie(int signo) {
   }
 
   log_close(LOG_NORMAL);
-  _exit(1);
+  exit(1);
 }
 
 
@@ -524,20 +527,24 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv)
 
   if (!inputfd) {
     return ((optind < argc) ? argv[optind++] : NULL);
-  } else { 
-    host_spec_index = 0;
-    while((ch = getc(inputfd)) != EOF) {
-      if (ch == ' ' || ch == '\r' || ch == '\n' || ch == '\t' || ch == '\0') {
-        if (host_spec_index == 0)
-          continue;
-        host_spec[host_spec_index] = '\0';
-        return host_spec;
-      } else if (host_spec_index < sizeof(host_spec) / sizeof(char) -1) {
-        host_spec[host_spec_index++] = (char) ch;
-      } else fatal("One of the host_specifications from your input file "
-          "is too long (> %d chars)", (int) sizeof(host_spec));
+  } else {
+    if (o.nmap_input_xml) {
+      xml_input(inputfd, host_spec);
+    } else {
+      host_spec_index = 0;
+      while((ch = getc(inputfd)) != EOF) {
+        if (ch == ' ' || ch == '\r' || ch == '\n' || ch == '\t' || ch == '\0') {
+          if (host_spec_index == 0)
+            continue;
+          host_spec[host_spec_index] = '\0';
+          return host_spec;
+        } else if (host_spec_index < sizeof(host_spec) / sizeof(char) -1) {
+          host_spec[host_spec_index++] = (char) ch;
+        } else fatal("One of the host_specifications from your input file "
+            "is too long (> %d chars)", (int) sizeof(host_spec));
+      }
+      host_spec[host_spec_index] = '\0';
     }
-    host_spec[host_spec_index] = '\0';
   }
   if (!*host_spec) 
     return NULL;
@@ -796,7 +803,14 @@ int main(int argc, char **argv)
         if (!strcmp(optarg, "-"))
           inputfd = stdin;
         else {    
-          inputfd = fopen(optarg, "r");
+          if (*optarg == 'X')
+            o.nmap_input_xml = true;
+          else if (*optarg == 'N')
+            o.nmap_input_normal = true;
+          else if (*optarg != 'L')
+            fatal("You have to specify a specific input format for -i option: "
+                "-iL, -iN or -iX\n");
+          inputfd = fopen((optarg + 2), "r");
           if (!inputfd) 
             fatal("Failed to open input file %s for reading", optarg);
         }
@@ -902,7 +916,6 @@ int main(int argc, char **argv)
 #endif
 #endif
 
-
   /* Prepare -T option (3 is default) */
   prepare_timing_template(&timing);
 
@@ -943,6 +956,8 @@ int main(int argc, char **argv)
 
     /* preparse and separate host - service */
     spec = parse_services_target(host_spec);
+    if (spec.service_name == NULL)
+      continue;
 
     // log_write(LOG_STDOUT,"%s://%s:%s?%s\n",spec.service_name,
     // spec.host_expr, spec.portno, spec.service_options);

@@ -1,7 +1,7 @@
 
 /***************************************************************************
- * NcrackOps.cc -- The NcrackOps class contains global options, mostly     *
- * based on user-provided command-line settings.                           *
+ * ncrack_input.h -- Functions for parsing input from Nmap. Support for    *
+ * Nmap's -oX and -oN output formats.                                      *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -88,54 +88,6 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "ncrack.h"
-#include "NcrackOps.h"
-#include "utils.h"
 
-NcrackOps o;
+void xml_input(FILE *inputfd, char *host_spec);
 
-NcrackOps::
-NcrackOps() {
-
-  datadir = NULL;
-  stats_interval = 0.0; /* unset */
-  log_errors = false;
-  append_output = false;
-  passwords_first = false;
-  global_options = false;
-  list_only = false;
-  nmap_input_normal = false;
-  nmap_input_xml = false;
-  debugging = 0;
-  verbose = 0;
-  nsock_trace = 0;
-  timing_level = 3;
-  connection_limit = -1;
-  numhosts_scanned = 0;
-  host_timeout = 0;
-  memset(logfd, 0, sizeof(FILE *) * LOG_NUM_FILES);
-  ncrack_stdout = stdout;
-  setaf(AF_INET);
-  gettimeofday(&start_time, NULL);
-
-}
-
-NcrackOps::
-~NcrackOps() {
-
-  if (datadir)
-    free(datadir);
-}
-
-
-/* Number of milliseconds since getStartTime().  The current time is an
- * optional argument to avoid an extra gettimeofday() call. */
-long long NcrackOps::
-TimeSinceStartMS(struct timeval *now) {
-  struct timeval tv;
-  if (!now)
-    gettimeofday(&tv, NULL);
-  else tv = *now;
-
-  return timeval_msec_subtract(tv, start_time);
-}

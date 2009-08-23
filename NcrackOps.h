@@ -116,6 +116,8 @@ class NcrackOps {
     bool append_output;   /* append output to log files */
 
     /* iterate password list for each username instead of opposite */
+    bool nmap_input_normal; /* true if host input from Nmap's -oN output */
+    bool nmap_input_xml;    /* true if host input from Nmap's -oX output */
     bool passwords_first; 
     bool global_options;  /* true if -g has been specified */
     bool list_only;       /* only list hosts and exit */
