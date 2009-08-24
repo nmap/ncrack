@@ -93,6 +93,15 @@
 #include "utils.h"
 #include "ncrack_input.h"
 
+
+/* 
+ * Responsible for parsing an Nmap XML output file (with the -oX option).
+ * Returns 0 for success and host_spec is set with a host-service specification
+ * in the form <service_name>://<IP-address>:<port-number>.
+ * Returns -1 upon failure - which is usually when the EOF is reached. 
+ * This function has to be called as many times as needed until it
+ * returns -1 to signify the end of parsing. 
+ */
 int
 xml_input(FILE *inputfd, char *host_spec)
 {
@@ -306,3 +315,13 @@ xml_input(FILE *inputfd, char *host_spec)
   return -1;
 }
 
+
+int
+normal_input(FILE *inputfd, char *host_spec)
+{
+  static bool begin = false;
+
+
+  return -1;
+
+}
