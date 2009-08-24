@@ -102,6 +102,7 @@ xml_input(FILE *inputfd, char *host_spec)
   char buf[256];
   static char ip[16];
   char portnum[7];
+  char service_name[64];
 
   /* check if file is indeed in Nmap's XML output format */
   if (begin) {
@@ -185,6 +186,7 @@ xml_input(FILE *inputfd, char *host_spec)
 
         if (!fgets(buf, 8, inputfd))
           fatal("-iX <ports> section searching fgets failure!\n");
+
         if (!strncmp(buf, "<ports>", 7)) {
           /* Now, depending on Nmap invokation we can have an extra section of
            * "extraports" which we ignore */
@@ -212,7 +214,7 @@ xml_input(FILE *inputfd, char *host_spec)
            */
           memset(buf, 0, sizeof(buf));
 
-          unsigned int i = 0;
+          unsigned int port_section_length = 0;
           unsigned int subsection = 0;
           /* Since the <port section has a total of 3 subsections (port,
            * service, state) we can use that information for parsing */
@@ -222,25 +224,24 @@ xml_input(FILE *inputfd, char *host_spec)
               if (subsection > 3)
                 break;
             }
-            if (i < sizeof(buf) / sizeof(char) - 1) {
-              buf[i++] = (char) ch;
-            }
+            if (port_section_length < sizeof(buf) / sizeof(char) - 1)
+              buf[port_section_length++] = (char) ch;
             else 
               fatal("-iX possible buffer overflow inside port parsing\n");
           }
-          if (i < 100) 
+          if (port_section_length < 100) 
             fatal("-iX corrupted Nmap XML output file: too little length in "
                 "<port> section\n");
-          i--;
+          port_section_length--;
           //printf("%s \n", buf);
           
           char *p = NULL;
-          if (!(p = memsearch(buf, "portid=", i)))
+          if (!(p = memsearch(buf, "portid=", port_section_length)))
             fatal("-iX cannot find portid inside <port> section!\n");
           p += sizeof("portid=");
 
           /* Now find where the port number ends by finding the double quote */
-          i = 0;
+          unsigned int i = 0;
           while (p[i] != '"')
             i++;
           i++;
@@ -252,10 +253,35 @@ xml_input(FILE *inputfd, char *host_spec)
 
           /* Now make sure this port is in 'state=open' since we won't bother
            * grabbing ports that are not open. */
+          p = NULL;
+          if (!(p = memsearch(buf, "state=", port_section_length)))
+            fatal("-iX cannot find state inside <port> section!\n");
+          p += sizeof("state=");
 
+          /* Port is open, so now grab the service name */
+          if (!strncmp(p, "open", 4)) {
 
+            p = NULL;
+            if (!(p = memsearch(buf, "name", port_section_length)))
+              fatal("-iX cannot find service 'name' inside <port> section!\n");
+            p += sizeof("name=");
 
+            i = 0;
+            while (p[i] != '"')
+              i++;
+            i++;
+            if (i > sizeof(service_name))
+              i = sizeof(service_name);
 
+            Strncpy(service_name, p, i);
+            printf("\nservice_name: %s\n", service_name);
+
+            /* Now we get everything we need: IP, service name and port so
+             * we can return them into host_spec 
+             */
+            Snprintf(host_spec, 1024, "%s://%s:%s", service_name, ip, portnum);
+            printf("host_spec: %s \n", host_spec);
+          }
 
         }
 
