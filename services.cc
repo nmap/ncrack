@@ -152,7 +152,7 @@ parse_services_target(char *const exp)
       /* No service name was provided so we find the default one based on the
        * port by looking at the supported services table (ServicesTable). */
         if (!(temp.service_name = port2name(temp.portno)))
-          return temp;
+          temp.error = true;
       }
     } else {
       /* port not specified, but to reach here means that sevice-name had
@@ -174,8 +174,8 @@ parse_services_target(char *const exp)
       if (s == exp) {
       /* No service name was provided so we find the default one based on the
        * port by looking at the supported services table (ServicesTable). */
-        if (!(temp.service_name = port2name(temp.portno)))
-          return temp;
+         if (!(temp.service_name = port2name(temp.portno)))
+           temp.error = true;
       }
     } else {
       /* only hostname specified (-p option will determine services) */
@@ -263,8 +263,7 @@ parse_module_options(char *const exp)
       break;
   }
   if (vi == ServicesTable.end()) {
-    if (o.verbose)
-      error("Service with name '%s' not supported! Ignoring...", name);
+    error("Service with name '%s' not supported! Ignoring...", name);
     return;
   }
 
@@ -330,7 +329,7 @@ apply_host_options(Service *service, char *const options)
 }
 
 
-void
+int
 apply_service_options(Service *service)
 {
   vector <global_service>::iterator vi;
@@ -341,7 +340,7 @@ apply_service_options(Service *service)
   }
   if (vi == ServicesTable.end()) {
     error("Service with name '%s' not supported! Ignoring...", service->name);
-    return;
+    return -1;
   }
   
   if (!service->portno)
@@ -365,6 +364,8 @@ apply_service_options(Service *service)
   }
   if (vi->misc.ssl)
     service->ssl = vi->misc.ssl;
+
+  return 0;
 }
 
 

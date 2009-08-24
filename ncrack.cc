@@ -957,9 +957,9 @@ int main(int argc, char **argv)
 
     /* preparse and separate host - service */
     spec = parse_services_target(host_spec);
-    if (spec.service_name == NULL)
+    if (spec.error)
       continue;
-
+ 
     // log_write(LOG_STDOUT,"%s://%s:%s?%s\n",spec.service_name,
     // spec.host_expr, spec.portno, spec.service_options);
 
@@ -980,15 +980,20 @@ int main(int argc, char **argv)
         Services.push_back(service);
       }
     }
-
-    for (Svi = Services.begin(); Svi != Services.end(); Svi++) {
+    
+    Svi = Services.begin();
+    while (Svi != Services.end()) {
       /* first apply timing template */
       apply_timing_template(*Svi, &timing);
       /* then apply global options -g if they exist */
       if (o.global_options) 
         apply_host_options(*Svi, glob_options);
       /* then apply options from ServiceTable (-m option) */
-      apply_service_options(*Svi);
+      if (apply_service_options(*Svi) < 0) {
+        /* If service is not supported, remove it from list */
+        Svi = Services.erase(Svi);
+      } else 
+        Svi++;
     }
 
     /* finally, if they have been specified, apply options from host */
