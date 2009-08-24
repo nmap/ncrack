@@ -89,5 +89,5 @@
  ***************************************************************************/
 
 
-void xml_input(FILE *inputfd, char *host_spec);
+int xml_input(FILE *inputfd, char *host_spec);
 

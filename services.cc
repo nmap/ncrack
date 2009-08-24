@@ -263,7 +263,8 @@ parse_module_options(char *const exp)
       break;
   }
   if (vi == ServicesTable.end()) {
-    error("Service with name '%s' not supported! Ignoring...", name);
+    if (o.verbose)
+      error("Service with name '%s' not supported! Ignoring...", name);
     return;
   }
 

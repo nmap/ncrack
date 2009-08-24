@@ -93,12 +93,11 @@
 #include "utils.h"
 #include "ncrack_input.h"
 
-void
+int
 xml_input(FILE *inputfd, char *host_spec)
 {
   static bool begin = true;
   int ch;
-  unsigned int host_spec_index;
   char buf[256];
   static char ip[16];
   char portnum[7];
@@ -131,7 +130,7 @@ xml_input(FILE *inputfd, char *host_spec)
       fatal("-iX file doesn't seem to be in Nmap's XML output format "
         "option -oX <filename>!\n");
 
-    //memset(ip, 0, sizeof(ip));
+    //memset(ip, '\0', sizeof(ip));
     begin = false;
   }
 
@@ -147,9 +146,10 @@ xml_input(FILE *inputfd, char *host_spec)
       if (!strncmp(ip, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", sizeof(ip))) {
 
         /* Search for string "<address" */
-        if (!fgets(buf, 9, inputfd))
+        if (!fgets(buf, 8, inputfd))
           fatal("-iX <address> section searching fgets failure!\n");
-        if (!strncmp(buf, "<address", 8)) {
+
+        if (!strncmp(buf, "<addres", 7)) {
           /* Now get the rest of the line which is in the following format:
            * <address addr="10.0.0.100" addrtype="ipv4" /> */
           unsigned int i = 0;
@@ -178,14 +178,18 @@ xml_input(FILE *inputfd, char *host_spec)
           if (i > sizeof(ip))
             i = sizeof(ip);
           Strncpy(ip, addr, i);
-          printf("%s\n", ip);
 
+        } else if (!strncmp(buf, "<runsta", 7)) {
+          /* We reached the end, so that's all folks. Get out. */
+          return -1;
         }
+
       } else {
         /* Search for open ports, since we already have an address */
 
-        if (!fgets(buf, 8, inputfd))
+        if (!fgets(buf, 9, inputfd))
           fatal("-iX <ports> section searching fgets failure!\n");
+
 
         if (!strncmp(buf, "<ports>", 7)) {
           /* Now, depending on Nmap invokation we can have an extra section of
@@ -233,7 +237,6 @@ xml_input(FILE *inputfd, char *host_spec)
             fatal("-iX corrupted Nmap XML output file: too little length in "
                 "<port> section\n");
           port_section_length--;
-          //printf("%s \n", buf);
           
           char *p = NULL;
           if (!(p = memsearch(buf, "portid=", port_section_length)))
@@ -249,7 +252,7 @@ xml_input(FILE *inputfd, char *host_spec)
             i = sizeof(portnum);
 
           Strncpy(portnum, p, i);
-          printf("\nport: %s\n", portnum);
+          //printf("\nport: %s\n", portnum);
 
           /* Now make sure this port is in 'state=open' since we won't bother
            * grabbing ports that are not open. */
@@ -274,21 +277,32 @@ xml_input(FILE *inputfd, char *host_spec)
               i = sizeof(service_name);
 
             Strncpy(service_name, p, i);
-            printf("\nservice_name: %s\n", service_name);
+            //printf("\nservice_name: %s\n", service_name);
 
             /* Now we get everything we need: IP, service name and port so
              * we can return them into host_spec 
              */
             Snprintf(host_spec, 1024, "%s://%s:%s", service_name, ip, portnum);
-            printf("host_spec: %s \n", host_spec);
+            return 0;
           }
 
+        } else if (!strncmp(buf, "</ports>", 8)) {
+
+          /* We reached the end of the <ports> section, so we now need a new
+           * IP address - let the parser know that  */
+          memset(ip, '\0', sizeof(ip));
+
+        } else if (!strncmp(buf, "<runsta", 7)) {
+          /* We reached the end, so that's all folks. Get out. */
+          return -1;
         }
 
-      }
-    }
 
+      }
+
+    }
   }
 
+  return -1;
 }
 

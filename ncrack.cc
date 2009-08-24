@@ -529,7 +529,8 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv)
     return ((optind < argc) ? argv[optind++] : NULL);
   } else {
     if (o.nmap_input_xml) {
-      xml_input(inputfd, host_spec);
+      if (xml_input(inputfd, host_spec) < 0)
+        return NULL;
     } else {
       host_spec_index = 0;
       while((ch = getc(inputfd)) != EOF) {
