@@ -352,10 +352,10 @@ start_over:
       if (!strncmp(ip, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", sizeof(ip))) {
 
         /* Search for string "Interesting ports" */
-        if (!fgets(buf, 18, inputfd))
+        if (!fgets(buf, 17, inputfd))
           fatal("-iN \"Interesting ports\" section fgets failure!\n");
 
-        if (!strncmp(buf, "Interesting ports", 17)) {
+        if (memsearch(buf, "nteresting port", 16)) {
           /* Now get the rest of the line which is in the following format:
            * 'Interesting ports on scanme.nmap.org (64.13.134.52):'
            * OR
@@ -382,7 +382,7 @@ start_over:
           char *addr = NULL;
           if (!(addr = memsearch(buf, "on ", line_length)))
             fatal("-iX corrupted Nmap -oN output file!\n");
-          /* Now point to the actual address string */
+          /* Now poin t to the actual address string */
           addr += sizeof("on");
 
           /* Check if there is a hostname as well as an IP, in which case we
@@ -400,6 +400,7 @@ start_over:
 
             while (addr[i] != ':')
               i++;
+            i++;
           }
 
           if (i > sizeof(ip))
@@ -431,12 +432,13 @@ start_over:
            * protocol string (e.g tcp, udp) 
            */
           unsigned int port_length = 0;
-          bool first_time = true;
           while ((ch = getc(inputfd)) != EOF) {
-            if (ch == '\n' && first_time) {
-              /* It seems we reached the end of the ports for this host, so we
-               * should move on to the next host at once!
-               */
+            /* If we get an alphanumeric character instead of a number,
+             * then it means we are on the next host, since we were expecting
+             * to see a port number. The alphanumeric character will usually
+             * correspond to the beginning of the "Interesting ports" line.
+             */
+            if (isalpha(ch)) {
               port_parsing = false;
               memset(ip, '\0', sizeof(ip));
               goto start_over;
@@ -448,11 +450,47 @@ start_over:
             else 
               fatal("-iN possible buffer overflow!\n");
 
-            if (first_time)
-              first_time = false;
           }
 
-          printf("port: %s \n", buf);
+          port_length++;
+          if (port_length > sizeof(portnum) / sizeof(char))
+            fatal("-iN port length invalid!\n");
+          Strncpy(portnum, buf, port_length);
+
+          printf("port: %s \n", portnum);
+
+          /* Now parse the rest of the line */
+          unsigned int line_length = 0;
+          while ((ch = getc(inputfd)) != EOF) {
+            if (ch == '\n')
+              break;
+            if (line_length < sizeof(buf) / sizeof(char) - 1)
+              buf[line_length++] = (char) ch;
+            else 
+              fatal("-iN possible buffer overflow while parsing port line.\n");
+          }
+  
+          if (line_length > sizeof(buf) / sizeof(char) - 1)
+            fatal("-iN port-line length too big!\n");
+          buf[line_length] = '\0';
+
+          /* Make sure port is open */
+          char *p = NULL;
+          if ((p = memsearch(buf, "open", line_length))) {
+
+            p += sizeof("open");
+            /* Now find the service name */
+            unsigned int i = 0;
+            while (p[i] == ' ' && i < line_length)
+              i++;
+
+            p += i;
+            printf("service name: %s\n", p);
+
+
+          }
+
+          goto start_over;
 
 
         }
