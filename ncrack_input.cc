@@ -319,8 +319,99 @@ xml_input(FILE *inputfd, char *host_spec)
 int
 normal_input(FILE *inputfd, char *host_spec)
 {
-  static bool begin = false;
+  static bool begin = true;
+  int ch;
+  char buf[256];
+  static char ip[16];
+  char portnum[7];
+  char service_name[64];
 
+  /* check if file is indeed in Nmap's Normal output format */
+  if (begin) {
+
+    /* First check if this is an XML file */
+    if (!fgets(buf, 7, inputfd))
+      fatal("-iN checking fgets failure!\n");
+    if (strncmp(buf, "# Nmap", 6))
+      fatal("-iN file doesn't seem to be a Nmap -oN file!\n");
+
+    begin = false;
+  }
+
+  memset(buf, 0, sizeof(buf));
+
+  /* Ready to search for hosts and open ports */
+
+  while ((ch = getc(inputfd)) != EOF) {
+    if (ch == '\n') {
+
+      /* If you have already got an address from a previous invokation, then
+       * search only for open ports, else go look for a new IP */
+      if (!strncmp(ip, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", sizeof(ip))) {
+
+        /* Search for string "Interesting ports" */
+        if (!fgets(buf, 18, inputfd))
+          fatal("-iN \"Interesting ports\" section fgets failure!\n");
+
+        if (!strncmp(buf, "Interesting ports", 17)) {
+          /* Now get the rest of the line which is in the following format:
+           * 'Interesting ports on scanme.nmap.org (64.13.134.52):'
+           * OR
+           * 'Interesting ports on 10.0.0.100:'
+           */
+
+          unsigned int line_length = 0;
+          while ((ch = getc(inputfd)) != EOF) {
+            if (line_length < sizeof(buf) / sizeof(char) - 1)
+              buf[line_length++] = (char) ch;
+            else 
+              fatal("-iN possible buffer overflow!\n");
+            if (ch == ':')
+              break;
+          }
+          if (line_length < 10) 
+            fatal("-iN corrupted Nmap -oN output file!\n");
+          
+          if (line_length < sizeof(buf) / sizeof(char) - 1)
+            buf[line_length] = '\0';
+          else 
+            fatal("-iN possible buffer overflow!\n");
+
+          char *addr = NULL;
+          if (!(addr = memsearch(buf, "on ", line_length)))
+            fatal("-iX corrupted Nmap -oN output file!\n");
+          /* Now point to the actual address string */
+          addr += sizeof("on");
+
+          /* Check if there is a hostname as well as an IP, in which case we
+           * need to grab the IP only */
+          unsigned int i = 0;
+          char *p = NULL;
+          if ((p = memsearch(buf, "(", line_length))) {
+            addr = p + 1;
+
+            while (addr[i] != ')')
+              i++;
+            i++;
+
+          } else {
+
+            while (addr[i] != ':')
+              i++;
+          }
+
+          if (i > sizeof(ip))
+            i = sizeof(ip);
+          Strncpy(ip, addr, i);
+
+          printf("ip: %s\n", ip);
+
+        }
+      }
+
+    }
+ 
+  }
 
   return -1;
 
