@@ -325,11 +325,11 @@ normal_input(FILE *inputfd, char *host_spec)
   static char ip[16];
   char portnum[7];
   char service_name[64];
+  bool port_parsing = false;
 
   /* check if file is indeed in Nmap's Normal output format */
   if (begin) {
 
-    /* First check if this is an XML file */
     if (!fgets(buf, 7, inputfd))
       fatal("-iN checking fgets failure!\n");
     if (strncmp(buf, "# Nmap", 6))
@@ -344,6 +344,8 @@ normal_input(FILE *inputfd, char *host_spec)
 
   while ((ch = getc(inputfd)) != EOF) {
     if (ch == '\n') {
+
+start_over:
 
       /* If you have already got an address from a previous invokation, then
        * search only for open ports, else go look for a new IP */
@@ -407,10 +409,58 @@ normal_input(FILE *inputfd, char *host_spec)
           printf("ip: %s\n", ip);
 
         }
+
+      } else {
+
+        /* Now get the open ports and service */
+
+        if (!port_parsing) {
+
+          if (!fgets(buf, 5, inputfd))
+            fatal("-iN fgets failure while searching for PORT\n");
+
+          if (!strncmp(buf, "PORT", 4))
+            port_parsing = true;
+
+        } else {
+
+          memset(buf, '\0', sizeof(buf));
+
+          /* Now we need to get the port, so parse until you see a '/' which
+           * signifies the end of the por-number and the beginning of the
+           * protocol string (e.g tcp, udp) 
+           */
+          unsigned int port_length = 0;
+          bool first_time = true;
+          while ((ch = getc(inputfd)) != EOF) {
+            if (ch == '\n' && first_time) {
+              /* It seems we reached the end of the ports for this host, so we
+               * should move on to the next host at once!
+               */
+              port_parsing = false;
+              memset(ip, '\0', sizeof(ip));
+              goto start_over;
+            }
+            if (ch == '/')
+              break;
+            if (port_length < sizeof(buf) / sizeof(char) - 1)
+              buf[port_length++] = (char) ch;
+            else 
+              fatal("-iN possible buffer overflow!\n");
+
+            if (first_time)
+              first_time = false;
+          }
+
+          printf("port: %s \n", buf);
+
+
+        }
+
       }
 
     }
- 
+
   }
 
   return -1;
