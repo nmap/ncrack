@@ -200,6 +200,56 @@ Ncrack finished.
       </para>
 
       <variablelist>
+ 
+      <varlistentry>
+        <term>
+          <option>-iX <replaceable>inputfilename</replaceable></option>
+          (Input from Nmap's -oX XML output format)
+          <indexterm><primary><option>-iX</option></primary></indexterm>
+          <indexterm><primary>target specification</primary><secondary>
+              from Nmap XML</secondary></indexterm>
+        </term>
+        <listitem>
+          <para>Reads target/service specifications from an Nmap XML output
+            file.
+            The Nmap XML file is created by scanning any hosts and specifying
+            the Nmap <option>-oX</option> option. Ncrack will automatically
+            parse the IP addresses and the corresponding ports and services
+            that are <emphasis>open</emphasis> and will use these targets for
+            authentication auditing. This is a really useful option, since it
+            lets you essentially combine these two tools -Nmap and Ncrack-
+            for cracking only those services that are surely open. In addition,
+            if version detection has been enabled in Nmap 
+            (<option>-sV</option> option), Ncrack will use
+            those findings to recognize and crack those services that are
+            supported but are listening on non-default ports. For example, if a
+            host is having a server listening on port 41414 and Nmap has
+            identified that it is a SSH service, Ncrack will use that
+            information to crack it using the SSH module. Of course, Ncrack is
+            going to ignore open ports/services that are not supported for
+            authentication cracking by its modules.
+          </para>
+        </listitem>
+      </varlistentry>
+
+       <varlistentry>
+        <term>
+          <option>-iN <replaceable>inputfilename</replaceable></option>
+          (Input from Nmap's -oN Normal output format)
+          <indexterm><primary><option>-iN</option></primary></indexterm>
+          <indexterm><primary>target specification</primary><secondary>
+              from Nmap Normal</secondary></indexterm>
+        </term>
+        <listitem>
+          <para>Reads target/service specifications from an Nmap Normal output
+            file.
+            The Nmap Normal file is created by scanning any hosts and
+            specifying the Nmap <option>-oN</option> option. This works exactly
+            like Ncrack's <option>-iX</option> option, the only difference
+            being the format of the input file.
+          </para>
+        </listitem>
+      </varlistentry>
 
       <varlistentry>
         <term>

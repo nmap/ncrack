@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 08/11/2009
+.\"      Date: 08/26/2009
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "08/11/2009" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "08/26/2009" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -95,6 +95,8 @@ Usage: ncrack [Options] {target and service specification}
 TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc\&.
   Ex: scanme\&.nmap\&.org, microsoft\&.com/24, 192\&.168\&.0\&.1; 10\&.0\&.0\-255\&.1\-254
+  \-iX <inputfilename>: Input from Nmap\'s \-oX XML output format
+  \-iN <inputfilename>: Input from Nmap\'s \-oN Normal output format
   \-iL <inputfilename>: Input from list of hosts/networks
   \-\-exclude <host1[,host2][,host3],\&.\&.\&.>: Exclude hosts/networks
   \-\-excludefile <exclude_file>: Exclude list from file
@@ -171,6 +173,25 @@ Ncrack accepts multiple host specifications on the command line, and they don\'t
 does what you would expect\&.
 .PP
 While targets are usually specified on the command lines, the following options are also available to control target selection:
+.PP
+\fB\-iX \fR\fB\fIinputfilename\fR\fR (Input from Nmap\'s \-oX XML output format) .\" -iX .\" target specification: from Nmap XML
+.RS 4
+Reads target/service specifications from an Nmap XML output file\&. The Nmap XML file is created by scanning any hosts and specifying the Nmap
+\fB\-oX\fR
+option\&. Ncrack will automatically parse the IP addresses and the corresponding ports and services that are
+\fIopen\fR
+and will use these targets for authentication auditing\&. This is a really useful option, since it lets you essentially combine these two tools \-Nmap and Ncrack\- for cracking only those services that are surely open\&. In addition, if version detection has been enabled in Nmap (\fB\-sV\fR
+option), Ncrack will use those findings to recognize and crack those services that are supported but are listening on non\-default ports\&. For example, if a host is having a server listening on port 41414 and Nmap has identified that it is a SSH service, Ncrack will use that information to crack it using the SSH module\&. Of course, Ncrack is going to ignore open ports/services that are not supported for authentication cracking by its modules\&.
+.RE
+.PP
+\fB\-iN \fR\fB\fIinputfilename\fR\fR (Input from Nmap\'s \-oN Normal output format) .\" -iN .\" target specification: from Nmap Normal
+.RS 4
+Reads target/service specifications from an Nmap Normal output file\&. The Nmap Normal file is created by scanning any hosts and specifying the Nmap
+\fB\-oN\fR
+option\&. This works exactly like Ncrack\'s
+\fB\-iX\fR
+option, the only difference being the format of the input file\&.
+.RE
 .PP
 \fB\-iL \fR\fB\fIinputfilename\fR\fR (Input from list) .\" -iL .\" target specification: from list
 .RS 4
