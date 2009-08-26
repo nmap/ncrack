@@ -342,7 +342,7 @@ normal_input(FILE *inputfd, char *host_spec)
 
     if (!fgets(buf, 7, inputfd))
       fatal("-iN checking fgets failure!\n");
-    if (strncmp(buf, "# Nmap", 6))
+    if (strncmp(buf, "# Nmap", 6) && strncmp(buf, "Fetchf", 6))
       fatal("-iN file doesn't seem to be a Nmap -oN file!\n");
 
     begin = false;
@@ -424,7 +424,7 @@ start_over:
 
           //printf("ip: %s\n", ip);
 
-        } else if (memsearch(buf, "map done", 8)) {
+        } else if (memsearch(buf, "map done", 16)) {
           /* We reached the end of the file, so get out. */
           return -1;
         }
@@ -507,15 +507,14 @@ start_over:
             p += i;
 
             i = 0;
-            while (p[i] != '\n')
+            while (p[i] != '\n' && p[i] != ' ')
               i++;
             i++;
             if (i > sizeof(service_name))
               i = sizeof(service_name);
-
             
-            Strncpy(service_name, p, sizeof(service_name));
-            //printf("\nservice_name: %s\n", service_name);
+            Strncpy(service_name, p, i);
+            printf("\nservice_name: %s\n", service_name);
 
             /* Now we get everything we need: IP, service name and port so
              * we can return them into host_spec 
