@@ -316,6 +316,15 @@ xml_input(FILE *inputfd, char *host_spec)
 }
 
 
+/*
+ * Responsible for parsing an Nmap Normal output file (with the -oN option)
+ * Returns 0 for success and host_spec is set with a host-service
+ * specification in the form <service_name>://<IP-address>:<port-number>.
+ * Returns -1 upon failure - which is usually when the EOF is reached.
+ * This function has to be called as many times as needed until it 
+ * returns -1 to signify the end of parsing. Each invokation will result in a
+ * different host_spec being set.
+ */
 int
 normal_input(FILE *inputfd, char *host_spec)
 {
