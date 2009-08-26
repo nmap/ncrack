@@ -325,7 +325,8 @@ normal_input(FILE *inputfd, char *host_spec)
   static char ip[16];
   char portnum[7];
   char service_name[64];
-  bool port_parsing = false;
+  static bool port_parsing = false;
+  static bool skip_over_newline = false;
 
   /* check if file is indeed in Nmap's Normal output format */
   if (begin) {
@@ -341,8 +342,13 @@ normal_input(FILE *inputfd, char *host_spec)
   memset(buf, 0, sizeof(buf));
 
   /* Ready to search for hosts and open ports */
+  if (skip_over_newline) {
+    skip_over_newline = false;
+    goto start_over;
+  }
 
   while ((ch = getc(inputfd)) != EOF) {
+
     if (ch == '\n') {
 
 start_over:
@@ -398,7 +404,7 @@ start_over:
 
           } else {
 
-            while (addr[i] != ':')
+            while (addr[i] != ':' && i < line_length)
               i++;
             i++;
           }
@@ -407,13 +413,16 @@ start_over:
             i = sizeof(ip);
           Strncpy(ip, addr, i);
 
-          printf("ip: %s\n", ip);
+          //printf("ip: %s\n", ip);
 
+        } else if (memsearch(buf, "map done", 8)) {
+          /* We reached the end of the file, so get out. */
+          return -1;
         }
 
       } else {
 
-        /* Now get the open ports and service */
+        /* Now get the open ports and services */
 
         if (!port_parsing) {
 
@@ -457,13 +466,15 @@ start_over:
             fatal("-iN port length invalid!\n");
           Strncpy(portnum, buf, port_length);
 
-          printf("port: %s \n", portnum);
+          //printf("port: %s \n", portnum);
 
           /* Now parse the rest of the line */
           unsigned int line_length = 0;
           while ((ch = getc(inputfd)) != EOF) {
-            if (ch == '\n')
+            if (ch == '\n') {
+              skip_over_newline = true;
               break;
+            }
             if (line_length < sizeof(buf) / sizeof(char) - 1)
               buf[line_length++] = (char) ch;
             else 
@@ -485,13 +496,27 @@ start_over:
               i++;
 
             p += i;
-            printf("service name: %s\n", p);
 
+            i = 0;
+            while (p[i] != '\n')
+              i++;
+            i++;
+            if (i > sizeof(service_name))
+              i = sizeof(service_name);
+
+            
+            Strncpy(service_name, p, sizeof(service_name));
+            //printf("\nservice_name: %s\n", service_name);
+
+            /* Now we get everything we need: IP, service name and port so
+             * we can return them into host_spec 
+             */
+            Snprintf(host_spec, 1024, "%s://%s:%s", service_name, ip, portnum);
+            return 0;
 
           }
 
           goto start_over;
-
 
         }
 
