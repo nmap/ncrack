@@ -122,7 +122,10 @@ xml_input(FILE *inputfd, char *host_spec)
       fatal("-iX file is not a XML file!\n");
 
     /* Now try to run the special string "nmaprun" to validate that this is
-     * indeed a Nmap XML output file */
+     * indeed a Nmap XML output file ------
+     * This string doesn't to appear in Zenmap's XML file, so I will remove
+     * this check for now */
+#if 0
     bool ok = false;
     memset(buf, 0, sizeof(buf));
     while ((ch = getc(inputfd)) != EOF) {
@@ -137,6 +140,7 @@ xml_input(FILE *inputfd, char *host_spec)
     }
     if (!ok)
       fatal("-iX file doesn't seem to be in Nmap's XML output format!\n");
+#endif
 
     //memset(ip, '\0', sizeof(ip));
     begin = false;
