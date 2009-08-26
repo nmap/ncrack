@@ -136,8 +136,7 @@ xml_input(FILE *inputfd, char *host_spec)
       }
     }
     if (!ok)
-      fatal("-iX file doesn't seem to be in Nmap's XML output format "
-        "option -oX <filename>!\n");
+      fatal("-iX file doesn't seem to be in Nmap's XML output format!\n");
 
     //memset(ip, '\0', sizeof(ip));
     begin = false;
@@ -199,7 +198,6 @@ xml_input(FILE *inputfd, char *host_spec)
         if (!fgets(buf, 9, inputfd))
           fatal("-iX <ports> section searching fgets failure!\n");
 
-
         if (!strncmp(buf, "<ports>", 7)) {
           /* Now, depending on Nmap invokation we can have an extra section of
            * "extraports" which we ignore */
@@ -217,7 +215,8 @@ xml_input(FILE *inputfd, char *host_spec)
               }
             }
           }
-        } else if (!strncmp(buf, "<port ", 6)) {
+        } 
+        if (memsearch(buf, "port ", strlen(buf))) {
           /* We are inside a <port section */
 
           /* Now get the rest of the line which is in the following format:
@@ -246,7 +245,7 @@ xml_input(FILE *inputfd, char *host_spec)
             fatal("-iX corrupted Nmap XML output file: too little length in "
                 "<port> section\n");
           port_section_length--;
-          
+
           char *p = NULL;
           if (!(p = memsearch(buf, "portid=", port_section_length)))
             fatal("-iX cannot find portid inside <port> section!\n");
@@ -388,7 +387,7 @@ start_over:
           }
           if (line_length < 10) 
             fatal("-iN corrupted Nmap -oN output file!\n");
-          
+
           if (line_length < sizeof(buf) / sizeof(char) - 1)
             buf[line_length] = '\0';
           else 
@@ -489,7 +488,7 @@ start_over:
             else 
               fatal("-iN possible buffer overflow while parsing port line.\n");
           }
-  
+
           if (line_length > sizeof(buf) / sizeof(char) - 1)
             fatal("-iN port-line length too big!\n");
           buf[line_length] = '\0';
@@ -512,7 +511,7 @@ start_over:
             i++;
             if (i > sizeof(service_name))
               i = sizeof(service_name);
-            
+
             Strncpy(service_name, p, i);
             printf("\nservice_name: %s\n", service_name);
 
