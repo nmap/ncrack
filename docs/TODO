@@ -1,6 +1,8 @@
 TODO:
 
 * Integrate Solar Designer's list to Ncrack.
+  --> Has been added as separate file, but we are waiting for the frequency
+  file to merge the best passwords in our default.pwd 
 
 * Write form auth http module.
 
@@ -10,11 +12,6 @@ TODO:
   How can I get the unique connection id from nsock? --> With nsi_id() 
 
 * Add --resume support
-
-* Implement feature that can get input from Nmap's output files, to determine
-  which services to crack. Both -oN and -oX should be supported. Optionally,
-  some additional info could be extracted from version detection, if available,
-  to handle specific corner cases with certain servers.
 
 * Implement option that lets user specify the usernames and passwords directly
   in the command-line, like -u guest,test etc.
@@ -45,6 +42,8 @@ TODO:
   ------> I have resubmitted the bug, pointing out now that it only applies
   to XP SP3:
   https://connect.microsoft.com/WNDP/feedback/ViewFeedback.aspx?FeedbackID=479640
+  Microsoft responded - but according to those guys, this behaviour isn't
+  exhibited in a clean installation. Ongoing discussion on this one.
 
 * We may also need to increase the maximum number of half-open connections in
   Windows: see http://half-open.com/home_en.htm - We could do this by asking the
@@ -70,6 +69,11 @@ TODO:
 
 
 ============================== DONE ==========================================
+
+* Implement feature that can get input from Nmap's output files, to determine
+  which services to crack. Both -oN and -oX should be supported. Optionally,
+  some additional info could be extracted from version detection, if available,
+  to handle specific corner cases with certain servers.
 
 * Test more thoroughly the windows version of ncrack.
 
