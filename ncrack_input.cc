@@ -123,7 +123,7 @@ xml_input(FILE *inputfd, char *host_spec)
 
     /* Now try to run the special string "nmaprun" to validate that this is
      * indeed a Nmap XML output file ------
-     * This string doesn't to appear in Zenmap's XML file, so I will remove
+     * This string doesn't appear in Zenmap's XML file, so I will remove
      * this check for now */
 #if 0
     bool ok = false;
