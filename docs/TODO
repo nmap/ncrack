@@ -31,20 +31,6 @@ TODO:
 * Solve the ssh username/password special iteration challenge as mentioned here:
   http://seclists.org/nmap-dev/2009/q3/0119.html
 
-* Await reply from Microsoft for Windows Firewall RFC deviation:
-  http://seclists.org/nmap-dev/2009/q2/0774.html
-  http://seclists.org/nmap-dev/2009/q2/0780.html
-  https://connect.microsoft.com/WNDP/feedback/ViewFeedback.aspx?FeedbackID=470990
-  ------> It seems the Microsoft guys found the thing not reproducible but they
-  must have tested it under XP SP2 whereas the behaviour seems to be occuring
-  only in SP3. I have mentioned that in a comment but they probably won't see
-  that again, so perhaps I might have to resubmit the issue. 
-  ------> I have resubmitted the bug, pointing out now that it only applies
-  to XP SP3:
-  https://connect.microsoft.com/WNDP/feedback/ViewFeedback.aspx?FeedbackID=479640
-  Microsoft responded - but according to those guys, this behaviour isn't
-  exhibited in a clean installation. Ongoing discussion on this one.
-
 * We may also need to increase the maximum number of half-open connections in
   Windows: see http://half-open.com/home_en.htm - We could do this by asking the
   user during Ncrack setup if he wants to update the system's imposed limit - if
@@ -69,6 +55,21 @@ TODO:
 
 
 ============================== DONE ==========================================
+
+* Await reply from Microsoft for Windows Firewall RFC deviation:
+  http://seclists.org/nmap-dev/2009/q2/0774.html
+  http://seclists.org/nmap-dev/2009/q2/0780.html
+  https://connect.microsoft.com/WNDP/feedback/ViewFeedback.aspx?FeedbackID=470990
+  ------> It seems the Microsoft guys found the thing not reproducible but they
+  must have tested it under XP SP2 whereas the behaviour seems to be occuring
+  only in SP3. I have mentioned that in a comment but they probably won't see
+  that again, so perhaps I might have to resubmit the issue. 
+  ------> I have resubmitted the bug, pointing out now that it only applies
+  to XP SP3:
+  https://connect.microsoft.com/WNDP/feedback/ViewFeedback.aspx?FeedbackID=479640
+  Microsoft responded - but according to those guys, this behaviour isn't
+  exhibited in a clean installation. Ongoing discussion on this one.
+  It seems they marked that bug as not reproducible finally.
 
 * Implement feature that can get input from Nmap's output files, to determine
   which services to crack. Both -oN and -oX should be supported. Optionally,
