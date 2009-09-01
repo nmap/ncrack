@@ -1,20 +1,28 @@
 TODO:
 
 * Integrate Solar Designer's list to Ncrack.
-  --> Has been added as separate file, but we are waiting for the frequency
-  file to merge the best passwords in our default.pwd 
+  --> Has been added as separate file, but we are waiting for the
+  frequency file to merge the best passwords in our default.pwd.  We
+  could always merge it in an equally balanced way by using the same
+  frequencies for our current default lst for SD's and merge them.
+
+* Implement option that lets user specify the usernames and passwords directly
+  in the command-line, like -u guest,test etc.
+
+* Add --resume support
 
 * Write form auth http module.
+
+* Improve -iX parser to handle more of XML, particularly newlines.
+
+* Make 0.02ALPHA release, send to nmap-dev for testing
+
+* If no major issues discovered, promote 0.02ALPHA a bit more widely.
 
 * Think about packet trace. Obviously without pcap or something similar,
   we can only print info about TCP payloads or connection
   initiations/endings.
   How can I get the unique connection id from nsock? --> With nsi_id() 
-
-* Add --resume support
-
-* Implement option that lets user specify the usernames and passwords directly
-  in the command-line, like -u guest,test etc.
 
 * Extend opensshlib to support SSH version 1, as well as additional
   diffie-hellman algorithms.
