@@ -151,17 +151,17 @@ xml_input(FILE *inputfd, char *host_spec)
   /* Ready to search for hosts and open ports */
 
   while ((ch = getc(inputfd)) != EOF) {
-    if (ch == '\n') {
+    if (ch == '<') {
 
       /* If you have already got an address from a previous invokation, then
        * search only for open ports, else go look for a new IP */
       if (!strncmp(ip, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", sizeof(ip))) {
 
-        /* Search for string "<address" */
-        if (!fgets(buf, 8, inputfd))
+        /* Search for string "address" */
+        if (!fgets(buf, 7, inputfd))
           fatal("-iX <address> section searching fgets failure!\n");
 
-        if (!strncmp(buf, "<addres", 7)) {
+        if (!strncmp(buf, "addres", 6)) {
           /* Now get the rest of the line which is in the following format:
            * <address addr="10.0.0.100" addrtype="ipv4" /> */
           unsigned int i = 0;
@@ -191,7 +191,7 @@ xml_input(FILE *inputfd, char *host_spec)
             i = sizeof(ip);
           Strncpy(ip, addr, i);
 
-        } else if (!strncmp(buf, "<runsta", 7)) {
+        } else if (!strncmp(buf, "runsta", 6)) {
           /* We reached the end, so that's all folks. Get out. */
           return -1;
         }
@@ -199,10 +199,10 @@ xml_input(FILE *inputfd, char *host_spec)
       } else {
         /* Search for open ports, since we already have an address */
 
-        if (!fgets(buf, 9, inputfd))
+        if (!fgets(buf, 7, inputfd))
           fatal("-iX <ports> section searching fgets failure!\n");
 
-        if (!strncmp(buf, "<ports>", 7)) {
+        if (!strncmp(buf, "ports>", 6)) {
           /* Now, depending on Nmap invokation we can have an extra section of
            * "extraports" which we ignore */
           if (!fgets(buf, 12, inputfd))
@@ -211,10 +211,10 @@ xml_input(FILE *inputfd, char *host_spec)
             /* Found "extraports" section. Now find the end of this section
              * Nmap ends "</extraports>" in a new line, so use that */
             while ((ch = getc(inputfd)) != EOF) {
-              if (ch == '\n') {
-                if (!fgets(buf, 13, inputfd))
+              if (ch == '<') {
+                if (!fgets(buf, 12, inputfd))
                   fatal("-iX extraports fgets failure!\n");
-                if (!strncmp(buf, "</extraports", 12))
+                if (!strncmp(buf, "/extraports", 11))
                   break;
               }
             }
@@ -298,13 +298,13 @@ xml_input(FILE *inputfd, char *host_spec)
             return 0;
           }
 
-        } else if (!strncmp(buf, "</ports>", 8)) {
+        } else if (!strncmp(buf, "/ports", 6)) {
 
           /* We reached the end of the <ports> section, so we now need a new
            * IP address - let the parser know that  */
           memset(ip, '\0', sizeof(ip));
 
-        } else if (!strncmp(buf, "<runsta", 7)) {
+        } else if (!strncmp(buf, "runsta", 6)) {
           /* We reached the end, so that's all folks. Get out. */
           return -1;
         }
@@ -517,7 +517,7 @@ start_over:
               i = sizeof(service_name);
 
             Strncpy(service_name, p, i);
-            printf("\nservice_name: %s\n", service_name);
+            //printf("\nservice_name: %s\n", service_name);
 
             /* Now we get everything we need: IP, service name and port so
              * we can return them into host_spec 
