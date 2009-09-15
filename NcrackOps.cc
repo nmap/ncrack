@@ -104,6 +104,8 @@ NcrackOps() {
   passwords_first = false;
   global_options = false;
   list_only = false;
+  userlist_src = 0;
+  passlist_src = 0;
   nmap_input_normal = false;
   nmap_input_xml = false;
   debugging = 0;

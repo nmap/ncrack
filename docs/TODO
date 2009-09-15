@@ -6,9 +6,6 @@ TODO:
   could always merge it in an equally balanced way by using the same
   frequencies for our current default lst for SD's and merge them.
 
-* Implement option that lets user specify the usernames and passwords directly
-  in the command-line, like -u guest,test etc.
-
 * Add --resume support
 
 * Write form auth http module.
@@ -37,12 +34,6 @@ TODO:
 * Solve the ssh username/password special iteration challenge as mentioned here:
   http://seclists.org/nmap-dev/2009/q3/0119.html
 
-* We may also need to increase the maximum number of half-open connections in
-  Windows: see http://half-open.com/home_en.htm - We could do this by asking the
-  user during Ncrack setup if he wants to update the system's imposed limit - if
-  he doesn't want to accept the change, then he will possibly suffer a
-  performance degradation.
-
 * Handle the case where ftp tells us that it accepts anonymous login only so
   that we don't waste time cracking it.
 
@@ -61,6 +52,16 @@ TODO:
 
 
 ============================== DONE ==========================================
+
+* We may also need to increase the maximum number of half-open connections in
+  Windows: see http://half-open.com/home_en.htm - We could do this by asking the
+  user during Ncrack setup if he wants to update the system's imposed limit - if
+  he doesn't want to accept the change, then he will possibly suffer a
+  performance degradation.
+  --> This is way too intrusive and Ncrack isn't really impeded by it.
+
+* Implement option that lets user specify the usernames and passwords directly
+  in the command-line, like -u guest,test etc.
 
 * Improve -iX parser to handle more of XML, particularly newlines.
 

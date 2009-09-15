@@ -1,5 +1,5 @@
 
- /***************************************************************************
+/***************************************************************************
  * Service.h -- The "Service" class encapsulates every bit of information  *
  * about the associated target's (Target class) service. Service-specific  *
  * options, statistical and timing information as well as functions for    *

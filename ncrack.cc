@@ -152,6 +152,7 @@ static void status_timer_handler(nsock_pool nsp, nsock_event nse,
 /* module name demultiplexor */
 static void call_module(nsock_pool nsp, Connection* con);
 
+static void parse_login_list(char const*arg, int mode);
 static void load_login_file(const char *filename, int mode);
 enum mode { USER, PASS };
 
@@ -164,7 +165,6 @@ static int ncrack_fetchfile(char *filename_returned, int bufferlen,
 static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
 static void startTimeOutClocks(ServiceGroup *SG);
 static void sigdie(int signo);
-
 
 static void
 print_usage(void)
@@ -219,10 +219,11 @@ print_usage(void)
       "  -T<0-5>: Set timing template (higher is faster)\n"
       "  --connection-limit <number>: threshold for total concurrent "
         "connections\n"
-  //  "  --host-timeout <time>: Give up on target after this long\n"
       "AUTHENTICATION:\n"
       "  -U <filename>: username file\n"
       "  -P <filename>: password file\n"
+      "  --user <username_list>: comma-separated username list\n"
+      "  --pass <username_list>: comma-separated password list\n"
       "  --passwords-first: Iterate password list for each username. "
         "Default is opposite.\n"
       "OUTPUT:\n"
@@ -556,6 +557,43 @@ grab_next_host_spec(FILE *inputfd, int argc, char **argv)
 }
 
 
+/* 
+ * Parses the username and password list that has been specified from the
+ * command line through the --user and --pass options. The argument must be a
+ * comma separated list of words for each case.
+ */
+static void
+parse_login_list(char *const arg, int mode)
+{
+  vector <char *> *p = NULL;
+  size_t i = 0;
+  char *tmp;
+  char *word;
+
+  if (mode == USER)
+    p = &UserArray;
+  else if (mode == PASS)
+    p = &PassArray;
+  else 
+    fatal("%s invalid mode specified!", __func__);
+
+  while (1) {
+    if (i == 0)
+      tmp = strtok(arg, ",");
+    else
+      tmp = strtok(NULL, ",");
+
+    if (tmp == NULL)
+      break;
+
+    word = Strndup(tmp, strlen(tmp));
+    p->push_back(word);
+
+    i++;
+  }
+
+
+}
 
 static void
 load_login_file(const char *filename, int mode)
@@ -699,6 +737,8 @@ int main(int argc, char **argv)
     {"connection-limit", required_argument, 0, 0},
     {"passwords_first", no_argument, 0, 0},
     {"passwords-first", no_argument, 0, 0},
+    {"user", required_argument, 0, 0},
+    {"pass", required_argument, 0, 0},
     {"nsock-trace", required_argument, 0, 0},
     {"nsock_trace", required_argument, 0, 0},
     {0, 0, 0, 0}
@@ -778,6 +818,16 @@ int main(int argc, char **argv)
           normalfilename = strdup(buf);
           Snprintf(buf, sizeof(buf), "%s.xml", logfilename(optarg, tm));
           xmlfilename = strdup(buf);
+        } else if (strcmp(long_options[option_index].name, "user") == 0) {
+          if (o.userlist_src)
+            fatal("You have already specified the username list source!\n");
+          o.userlist_src = 1;
+          parse_login_list(optarg, USER);
+        } else if (strcmp(long_options[option_index].name, "pass") == 0) {
+          if (o.passlist_src)
+            fatal("You have already specified the password list source!\n");
+          o.passlist_src = 1;
+          parse_login_list(optarg, PASS);
         }
         break;
       case '6':
@@ -820,11 +870,17 @@ int main(int argc, char **argv)
         }
         break;
       case 'U':
+        if (o.userlist_src)
+          fatal("You have already specified the username list source!\n");
+        o.userlist_src = 2;
         ncrack_fetchfile(username_file, sizeof(username_file),
             optarg, 1);
         load_login_file(username_file, USER);
         break;
       case 'P':
+        if (o.passlist_src)
+          fatal("You have already specified the password list source!\n");
+        o.passlist_src = 2;
         ncrack_fetchfile(password_file, sizeof(password_file),
             optarg, 1);
         load_login_file(password_file, PASS);

@@ -115,9 +115,17 @@ class NcrackOps {
     bool log_errors;      /* write errors to log files */
     bool append_output;   /* append output to log files */
 
-    /* iterate password list for each username instead of opposite */
+    int userlist_src;/* 0 -> unassigned (default),
+                        1 -> username list from command line (--user option)
+                        2 -> username list from file (-U option)
+                      */
+    int passlist_src;/* 0 -> unassigned (default),
+                        1 -> password list from command line (--pass option)
+                        2 -> username list from file (-P option)
+                      */
     bool nmap_input_normal; /* true if host input from Nmap's -oN output */
     bool nmap_input_xml;    /* true if host input from Nmap's -oX output */
+    /* iterate password list for each username instead of opposite */
     bool passwords_first; 
     bool global_options;  /* true if -g has been specified */
     bool list_only;       /* only list hosts and exit */
