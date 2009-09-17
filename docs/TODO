@@ -1,11 +1,5 @@
 TODO:
 
-* Integrate Solar Designer's list to Ncrack.
-  --> Has been added as separate file, but we are waiting for the
-  frequency file to merge the best passwords in our default.pwd.  We
-  could always merge it in an equally balanced way by using the same
-  frequencies for our current default lst for SD's and merge them.
-
 * Add --resume support
 
 * Write form auth http module.
@@ -52,6 +46,12 @@ TODO:
 
 
 ============================== DONE ==========================================
+
+* Integrate Solar Designer's list to Ncrack.
+  --> Has been added as separate file, but we are waiting for the
+  frequency file to merge the best passwords in our default.pwd.  We
+  could always merge it in an equally balanced way by using the same
+  frequencies for our current default lst for SD's and merge them.
 
 * We may also need to increase the maximum number of half-open connections in
   Windows: see http://half-open.com/home_en.htm - We could do this by asking the
