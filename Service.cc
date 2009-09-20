@@ -99,10 +99,13 @@ extern NcrackOps o;
 Service::
 Service()
 {
+  static unsigned long id = 0;
   name = NULL;
   target = NULL;
   proto = IPPROTO_TCP;
   portno = 0;
+
+  uid = id++;
 
   loginlist_fini = false;
   list_active = true;
@@ -151,6 +154,8 @@ Service(const Service& ref)
   name = strdup(ref.name);
   proto = ref.proto;
   portno = ref.portno;
+
+  uid = ref.uid;
 
   min_connection_limit = ref.min_connection_limit;
   max_connection_limit = ref.max_connection_limit;
@@ -231,7 +236,17 @@ addCredential(char *user, char *pass)
   credentials_found.push_back(tmp);
 }
 
+unsigned long Service::
+getUserlistIndex(void)
+{
+  return std::distance(UserArray->begin(), uservi);
+}
 
+unsigned long Service::
+getPasslistIndex(void)
+{
+  return std::distance(PassArray->begin(), passvi);
+}
 
 /* 
  * returns -1 for end of login list and empty pool

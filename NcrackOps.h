@@ -139,6 +139,9 @@ class NcrackOps {
     FILE *logfd[LOG_NUM_FILES];
     FILE *ncrack_stdout; /* Ncrack standard output */
     char *datadir;
+    int saved_signal;    /* save caught signal here, -1 for no signal */
+    char **saved_argv;    /* pointer to current argv array */
+    int saved_argc;      /* saved argument count */
 
   private:
     struct timeval start_time;

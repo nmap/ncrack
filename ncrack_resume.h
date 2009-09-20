@@ -1,7 +1,8 @@
 
 /***************************************************************************
- * utils.h -- Various miscellaneous utility functions which defy           *
- * categorization :)                                                       *
+ * ncrack_resume.h -- functions that implement the --resume option, which  *
+ * needs to save the current state of Ncrack into a file and then recall   *
+ * it.                                                                     *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -88,126 +89,35 @@
  *                                                                         *
  ***************************************************************************/
 
-
-#ifndef UTILS_H
-#define UTILS_H 1
-
-
-#include <stdlib.h>
-
-#include <stdarg.h>
-#include <stdio.h>
-
-#include <sys/mman.h>
-
-#if HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#include "nbase.h"
+#include "ncrack.h"
 #include "ncrack_error.h"
-
-/* Timeval subtraction in microseconds */
-#define TIMEVAL_SUBTRACT(a,b) (((a).tv_sec - (b).tv_sec) * 1000000 + (a).tv_usec - (b).tv_usec)
-/* Timeval subtract in milliseconds */
-#define TIMEVAL_MSEC_SUBTRACT(a,b) ((((a).tv_sec - (b).tv_sec) * 1000) + ((a).tv_usec - (b).tv_usec) / 1000)
-/* Timeval subtract in seconds; truncate towards zero */
-#define TIMEVAL_SEC_SUBTRACT(a,b) ((a).tv_sec - (b).tv_sec + (((a).tv_usec < (b).tv_usec) ? - 1 : 0))
-
-/* assign one timeval to another timeval plus some msecs: a = b + msecs */
-#define TIMEVAL_MSEC_ADD(a, b, msecs) { (a).tv_sec = (b).tv_sec + ((msecs) / 1000); (a).tv_usec = (b).tv_usec + ((msecs) % 1000) * 1000; (a).tv_sec += (a).tv_usec / 1000000; (a).tv_usec %= 1000000; }
-#define TIMEVAL_ADD(a, b, usecs) { (a).tv_sec = (b).tv_sec + ((usecs) / 1000000); (a).tv_usec = (b).tv_usec + ((usecs) % 1000000); (a).tv_sec += (a).tv_usec / 1000000; (a).tv_usec %= 1000000; }
-
-/* Find our if one timeval is before or after another, avoiding the integer
-   overflow that can result when doing a TIMEVAL_SUBTRACT on two widely spaced
-   timevals. */
-#define TIMEVAL_BEFORE(a, b) (((a).tv_sec < (b).tv_sec) || ((a).tv_sec == (b).tv_sec && (a).tv_usec < (b).tv_usec))
-#define TIMEVAL_AFTER(a, b) (((a).tv_sec > (b).tv_sec) || ((a).tv_sec == (b).tv_sec && (a).tv_usec > (b).tv_usec))
-
-#ifndef roundup
-  #define roundup(x, y)   ((((x)+((y)-1))/(y))*(y))
-#endif
-
-/* Return num if it is between min and max.  Otherwise return min or
-   max (whichever is closest to num), */
-template<class T> T box(T bmin, T bmax, T bnum) {
-  if (bmin > bmax)
-    fatal("box(%d, %d, %d) called (min,max,num)", (int) bmin, (int) bmax, (int) bnum);
-  //  assert(bmin <= bmax);
-  if (bnum >= bmax)
-    return bmax;
-  if (bnum <= bmin)
-    return bmin;
-  return bnum;
-}
+#include "utils.h"
+#include "ServiceGroup.h"
 
 
-/* Like the perl equivalent -- It removes the terminating newline from string
-   IF one exists.  It then returns the POSSIBLY MODIFIED string */
-char *chomp(char *string);
+#define MAX_PARSE_ARGS 254 /* +1 for integrity checking + 1 for null term */
 
-/* 
- * Case insensitive memory search - a combination of memmem and strcasestr
- * Will search for a particular string 'pneedle' in the first 'bytes' of
- * memory starting at 'haystack'
+/* This function takes a command and the address of an uninitialized
+   char ** .  It parses the command (by separating out whitespace)
+   into an argv[] style char **, which it sets the argv parameter to.
+   The function returns the number of items filled up in the array
+   (argc), or -1 in the case of an error.  This function allocates
+   memory for argv and thus it must be freed -- use argv_parse_free()
+   for that.  If arg_parse returns <1, then argv does not need to be freed.
+   The returned arrays are always terminated with a NULL pointer */
+int arg_parse(const char *command, char ***argv);
+
+/* Free an argv allocated inside arg_parse */
+void arg_parse_free(char **argv);
+
+int ncrack_save(ServiceGroup *SG);
+
+/* Reads in the special restore file that has everything Ncrack needs to know
+ * to resume the saved session. The important things it must gather are:
+ * 1) The command arguments
+ * 2) The unique id of each service
+ * 3) The username/password lists's indexes
+ * 4) Any credentials found so far
  */
-char *memsearch(const char *haystack, const char *pneedle, size_t bytes);
+int ncrack_resume(char *fname, int *myargc, char ***myargv);
 
-
-/* Compare a canonical option name (e.g. "max-scan-delay") with a
-   user-generated option such as "max_scan_delay" and returns 0 if the
-   two values are considered equivalant (for example, - and _ are
-   considered to be the same), nonzero otherwise. */
-int optcmp(const char *a, const char *b);
-
-/* convert string to protocol number */
-u8 str2proto(char *str);
-
-/* convert protocol number to string */
-const char *proto2str(u8 proto);
-
-/* strtoul with error checking */
-unsigned long int Strtoul(const char *nptr, int fatality);
-
-/* 
- * Return a copy of 'size' characters from 'src' string.
- * Will always null terminate by allocating 1 additional char.
- */
-char *Strndup(const char *src, size_t size);
-
-/* Convert string to port (in host-byte order) */
-u16 str2port(char *exp);
-
-/* 
- * This is an update from the old macro TIMEVAL_MSEC_SUBTRACT
- * which now uses a long long variable which can hold all the intermediate
- * operations. This was made after a wrap-around bug was born due to the
- * fact that gettimeofday() can return a pretty large number of seconds
- * and microseconds today and usually one of the two arguments are timeval
- * structs returned by gettimeofday(). Add to that the fact that we are making
- * a multiplication with 1000 and the chances of a wrap-around increase.
- */
-long long timeval_msec_subtract(struct timeval a, struct timeval b);
-
-/* Take in plain text and encode into base64. */
-char *b64enc(const unsigned char *data, int len);
-
-#define BASE64_LENGTH(len) (4 * (((len) + 2) / 3))
-int base64_encode(const char *str, int length, char *b64store);
-
-/* mmap() an entire file into the address space.  Returns a pointer
-   to the beginning of the file.  The mmap'ed length is returned
-   inside the length parameter.  If there is a problem, NULL is
-   returned, the value of length is undefined, and errno is set to
-   something appropriate.  The user is responsible for doing
-   an munmap(ptr, length) when finished with it.  openflags should 
-   be O_RDONLY or O_RDWR, or O_WRONLY
-*/
-char *mmapfile(char *fname, int *length, int openflags);
-
-#ifdef WIN32
-int win32_munmap(char *filestr, int filelen);
-#endif /* WIN32 */
-
-
-#endif /* UTILS_H */

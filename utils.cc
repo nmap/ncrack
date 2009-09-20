@@ -392,3 +392,125 @@ int base64_encode(const char *str, int length, char *b64store)
   return p - b64store;
 }
 
+
+/* mmap() an entire file into the address space.  Returns a pointer
+   to the beginning of the file.  The mmap'ed length is returned
+   inside the length parameter.  If there is a problem, NULL is
+   returned, the value of length is undefined, and errno is set to
+   something appropriate.  The user is responsible for doing
+   an munmap(ptr, length) when finished with it.  openflags should 
+   be O_RDONLY or O_RDWR, or O_WRONLY
+*/
+#ifndef WIN32
+char *mmapfile(char *fname, int *length, int openflags) {
+  struct stat st;
+  int fd;
+  char *fileptr;
+
+  if (!length || !fname) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  *length = -1;
+
+  if (stat(fname, &st) == -1) {
+    errno = ENOENT;
+    return NULL;
+  }
+
+  fd = open(fname, openflags);
+  if (fd == -1) {
+    return NULL;
+  }
+
+  fileptr = (char *)mmap(0, st.st_size, (openflags == O_RDONLY)? PROT_READ :
+      (openflags == O_RDWR)? (PROT_READ|PROT_WRITE) 
+      : PROT_WRITE, MAP_SHARED, fd, 0);
+
+  close(fd);
+
+#ifdef MAP_FAILED
+  if (fileptr == (void *)MAP_FAILED) return NULL;
+#else
+  if (fileptr == (char *) -1) return NULL;
+#endif
+
+  *length = st.st_size;
+  return fileptr;
+}
+#else /* WIN32 */
+/* FIXME:  From the looks of it, this function can only handle one mmaped 
+   file at a time (note how gmap is used).*/
+/* I believe this was written by Ryan Permeh ( ryan@eeye.com) */
+
+static HANDLE gmap = NULL;
+
+char *mmapfile(char *fname, int *length, int openflags)
+{
+  HANDLE fd;
+  DWORD mflags, oflags;
+  char *fileptr;
+
+  if (!length || !fname) {
+    WSASetLastError(EINVAL);
+    return NULL;
+  }
+
+  if (openflags == O_RDONLY) {
+    oflags = GENERIC_READ;
+    mflags = PAGE_READONLY;
+  }
+  else {
+    oflags = GENERIC_READ | GENERIC_WRITE;
+    mflags = PAGE_READWRITE;
+  }
+
+  fd = CreateFile (
+      fname,
+      oflags,                       // open flags
+      0,                            // do not share
+      NULL,                         // no security
+      OPEN_EXISTING,                // open existing
+      FILE_ATTRIBUTE_NORMAL,
+      NULL);                        // no attr. template
+  if (!fd)
+    pfatal ("%s(%u): CreateFile()", __FILE__, __LINE__);
+
+  *length = (int) GetFileSize (fd, NULL);
+
+  gmap = CreateFileMapping (fd, NULL, mflags, 0, 0, NULL);
+  if (!gmap)
+    pfatal ("%s(%u): CreateFileMapping(), file '%s', length %d, mflags %08lX",
+        __FILE__, __LINE__, fname, *length, mflags);
+
+  fileptr = (char*) MapViewOfFile (gmap, oflags == GENERIC_READ ? FILE_MAP_READ : FILE_MAP_WRITE,
+      0, 0, 0);
+  if (!fileptr)
+    pfatal ("%s(%u): MapViewOfFile()", __FILE__, __LINE__);
+
+  if (o.debugging > 2)
+    log_write(LOG_PLAIN, "%s(): fd %08lX, gmap %08lX, fileptr %08lX, length %d\n",
+        __func__, (DWORD)fd, (DWORD)gmap, (DWORD)fileptr, *length);
+
+  CloseHandle (fd);
+
+  return fileptr;
+}
+
+
+/* FIXME:  This only works if the file was mapped by mmapfile (and only
+   works if the file is the most recently mapped one */
+int win32_munmap(char *filestr, int filelen)
+{
+  if (gmap == 0)
+    fatal("%s: no current mapping !\n", __func__);
+
+  FlushViewOfFile(filestr, filelen);
+  UnmapViewOfFile(filestr);
+  CloseHandle(gmap);
+  gmap = NULL;
+  return 0;
+}
+
+#endif

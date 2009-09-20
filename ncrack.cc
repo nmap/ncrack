@@ -105,6 +105,7 @@
 #include "output.h"
 #include "ncrack_tty.h"
 #include "ncrack_input.h"
+#include "ncrack_resume.h"
 #include <time.h>
 #include <vector>
 
@@ -129,6 +130,9 @@
 /* (in milliseconds) every such interval we poll for interactive user input */
 #define KEYPRESSED_INTERVAL 500 
 
+/* (in milliseconds) every such interval check for pending signals */
+#define SIGNAL_CHECK_INTERVAL 1000
+
 #define SERVICE_TIMEDOUT "Service timed-out as specified by user option."
 
 extern NcrackOps o;
@@ -148,11 +152,13 @@ static int ncrack(ServiceGroup *SG);
 /* Poll for interactive user input every time this timer is called. */
 static void status_timer_handler(nsock_pool nsp, nsock_event nse,
     void *mydata);
+static void signal_timer_handler(nsock_pool nsp, nsock_event nse,
+    void *mydata);
 
 /* module name demultiplexor */
 static void call_module(nsock_pool nsp, Connection* con);
 
-static void parse_login_list(char const*arg, int mode);
+static void parse_login_list(char *const arg, int mode);
 static void load_login_file(const char *filename, int mode);
 enum mode { USER, PASS };
 
@@ -164,7 +170,10 @@ static int ncrack_fetchfile(char *filename_returned, int bufferlen,
   const char *file, int useroption = 0);
 static char *grab_next_host_spec(FILE *inputfd, int argc, char **argv);
 static void startTimeOutClocks(ServiceGroup *SG);
-static void sigdie(int signo);
+static void sigcatch(int signo);
+static void sigcheck(ServiceGroup *SG);
+static int ncrack_main(int argc, char **argv);
+
 
 static void
 print_usage(void)
@@ -479,13 +488,28 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file,
 
 }
 
+/* 
+ * The only thing that a safe and generic signal handler should do, is to set a
+ * flag that will be later checked by the main program. Ncrack will
+ * periodically check this variable, and take appropriate action to exit
+ * cleanly and also possibly save the current state into a file that can be
+ * used later with --resume.
+ */
+static void
+sigcatch(int signo)
+{
+  o.saved_signal = signo;
+  return;
+}
 
 static void
-sigdie(int signo) {
+sigcheck(ServiceGroup *SG)
+{
+  if (o.saved_signal == -1)
+    return;
 
   fflush(stdout);
-
-  switch(signo) {
+  switch (o.saved_signal) {
     case SIGINT:
       error("caught SIGINT signal, cleaning up");
       break;
@@ -509,14 +533,18 @@ sigdie(int signo) {
 #endif
 
     default:
-      error("caught signal %d, cleaning up", signo);
+      error("caught signal %d, cleaning up", o.saved_signal);
       break;
   }
 
   log_close(LOG_NORMAL);
+  /* Now try and save available information into a file that might be later
+   * recalled with --resume.
+   */
+  ncrack_save(SG);
+
   exit(1);
 }
-
 
 
 static char *
@@ -661,8 +689,27 @@ call_module(nsock_pool nsp, Connection *con)
 }
 
 
+int
+main(int argc, char **argv)
+{
+  char **myargv = NULL;
+  int myargc = 0;
 
-int main(int argc, char **argv)
+  if (argc == 3 && strcmp("--resume", argv[1]) == 0) {
+    if (ncrack_resume(argv[2], &myargc, &myargv) == -1) {
+      fatal("Cannot resume from (supposed) log file %s", argv[2]);
+    }
+    return ncrack_main(myargc, myargv);
+  }
+
+  return ncrack_main(argc, argv);
+}
+
+
+
+
+static int
+ncrack_main(int argc, char **argv)
 {
   ts_spec spec;
 
@@ -675,6 +722,12 @@ int main(int argc, char **argv)
   char services_file[256]; /* path name for "ncrack-services" file */
   char username_file[256];
   char password_file[256];
+  /* strtok changes the first argument and we don't want to mess with
+   * the argv stuff, as they hold important info for later. For this reason,
+   * we copy optarg to tmp each time a function that calls strtok is going to
+   * be invoked.
+   */
+  char *tmp = NULL;
 
   char *host_spec = NULL;
   Target *currenths = NULL;
@@ -822,12 +875,17 @@ int main(int argc, char **argv)
           if (o.userlist_src)
             fatal("You have already specified the username list source!\n");
           o.userlist_src = 1;
-          parse_login_list(optarg, USER);
+
+          tmp = Strndup(optarg, strlen(optarg));
+          parse_login_list(tmp, USER);
+          free(tmp);
         } else if (strcmp(long_options[option_index].name, "pass") == 0) {
           if (o.passlist_src)
             fatal("You have already specified the password list source!\n");
           o.passlist_src = 1;
-          parse_login_list(optarg, PASS);
+          tmp = Strndup(optarg, strlen(optarg));
+          parse_login_list(tmp, PASS);
+          free(tmp);
         }
         break;
       case '6':
@@ -886,13 +944,17 @@ int main(int argc, char **argv)
         load_login_file(password_file, PASS);
         break;
       case 'm':
-        parse_module_options(optarg);
+        tmp = Strndup(optarg, strlen(optarg));
+        parse_module_options(tmp);
+        free(tmp);
         break;
       case 'o':
         normalfilename = logfilename(optarg, tm);
         break;
       case 'p':   /* services */
-        parse_services(optarg, services_cmd); 
+        tmp = Strndup(optarg, strlen(optarg));
+        parse_services(tmp, services_cmd); 
+        free(tmp);
         break;
       case 's': /* only list hosts */
         if (*optarg == 'L')
@@ -967,14 +1029,15 @@ int main(int argc, char **argv)
    */
 #endif
 
-  /* Trap these sigs for cleanup */
-#if HAVE_SIGNAL
-  signal(SIGINT, sigdie);
-  signal(SIGTERM, sigdie);
-#ifndef WIN32
-  signal(SIGHUP, sigdie); 
-#endif
-#endif
+  /* The handler for the rest of the signals will be established after
+   * ServiceGroup has been initialized, since the saved state that is going to
+   * be written into the file used for --resume option, requires that
+   * information. There is no point in catching the signals before, because
+   * there is no benefit in doing anything special then (can't save the state
+   * yet that is). The default actions are enough.
+   */
+
+
 
   /* Prepare -T option (3 is default) */
   prepare_timing_template(&timing);
@@ -1008,6 +1071,13 @@ int main(int argc, char **argv)
     log_write(LOG_NORMAL, "%s ", argv[argiter]);
   log_write(LOG_NORMAL, "\n");
 
+  /* 
+   * These will later be used by ncrack_save() to write the way Ncrack was
+   * called to the restore file.
+   */
+  o.saved_argv = argv;
+  o.saved_argc = argc;
+
 
   SG = new ServiceGroup();
   SG->connection_limit = o.connection_limit;
@@ -1018,7 +1088,7 @@ int main(int argc, char **argv)
     spec = parse_services_target(host_spec);
     if (spec.error)
       continue;
- 
+
     // log_write(LOG_STDOUT,"%s://%s:%s?%s\n",spec.service_name,
     // spec.host_expr, spec.portno, spec.service_options);
 
@@ -1039,7 +1109,7 @@ int main(int argc, char **argv)
         Services.push_back(service);
       }
     }
-    
+
     Svi = Services.begin();
     while (Svi != Services.end()) {
       /* first apply timing template */
@@ -1207,6 +1277,16 @@ int main(int argc, char **argv)
   } else {
     if (!SG->total_services)
       fatal("No services specified!");
+
+    /* Now is the right time to establish the signal handlers, since
+     * ServiceGroup has been initialized */
+#if HAVE_SIGNAL
+    signal(SIGINT, sigcatch);
+    signal(SIGTERM, sigcatch);
+#ifndef WIN32
+    signal(SIGHUP, sigcatch); 
+#endif
+#endif
 
     SG->last_accessed = SG->services_active.end();
     /* Ncrack 'em all! */
@@ -1812,10 +1892,24 @@ status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   /* Reschedule timer for the next polling. */
   nsock_timer_create(nsp, status_timer_handler, KEYPRESSED_INTERVAL, NULL);
 
-  return;
 }
 
+static void
+signal_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
+{
+  enum nse_status status = nse_status(nse);
+  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  mydata = NULL; /* nothing in there */
 
+  if (status != NSE_STATUS_SUCCESS)
+    error("Nsock signal timer handler error!");
+
+  /* Reschedule timer for the next polling. */
+  nsock_timer_create(nsp, signal_timer_handler, SIGNAL_CHECK_INTERVAL, NULL);
+
+  /* Check for pending signals */
+  sigcheck(SG);
+}
 
 
 static void
@@ -1964,6 +2058,7 @@ next:
       li = SG->services_active.begin();
 
   }
+
   return;
 }
 
@@ -2018,6 +2113,11 @@ ncrack(ServiceGroup *SG)
    * itself every time its handler is called.
    */
   nsock_timer_create(nsp, status_timer_handler, KEYPRESSED_INTERVAL, NULL);
+
+  /* 
+   * We do the same for checking pending signals every SIGNAL_CHECK_INTERVAL
+   */
+  nsock_timer_create(nsp, signal_timer_handler, SIGNAL_CHECK_INTERVAL, NULL);
 
   ncrack_probes(nsp, SG);
 
