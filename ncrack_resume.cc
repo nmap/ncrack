@@ -180,9 +180,11 @@ ncrack_save(ServiceGroup *SG)
 {
   FILE *outfile = NULL;
   int argiter;
-  int magic = 0xdeadbeef;
+  uint32_t magic = MAGIC_NUM;  /* a bell that doesn't ring */
   list <Service *>::iterator li;
-  unsigned long index;
+  vector <loginpair>::iterator vi;
+  uint32_t index;
+  uint32_t credlist_size;
 
   abort();
 
@@ -215,27 +217,43 @@ ncrack_save(ServiceGroup *SG)
     if (fwrite(&(*li)->uid, sizeof((*li)->uid), 1, outfile) != 1)
       fatal("%s: couldn't write unique id to file!\n", __func__);
 
-    printf("---------id: %lu-----------\n", (*li)->uid);
+    //printf("---------id: %u-----------\n", (*li)->uid);
     /* Write the list iterators but first convert them to 'indexes' of the
-     * vectors they are pointing to.
+     * vectors they are pointing to. Indexes are uint32_t which helps
+     * for portability, since it is a standard size of 32 bits everywhere.
      */
     index = (*li)->getUserlistIndex();
-    printf("user index: %lu\n", index);
     if (fwrite(&index, sizeof(index), 1, outfile) != 1)
       fatal("%s: couldn't write userlist index to file!\n", __func__);
 
     index = (*li)->getPasslistIndex();
-    printf("pass index: %lu\n", index);
     if (fwrite(&index, sizeof(index), 1, outfile) != 1)
       fatal("%s: couldn't write passlist index to file!\n", __func__);
 
+    /*
+     * Now store any credentials found for this service. First store a 32bit
+     * number that denotes the number of credentials (pairs of
+     * username/password) that will follow.
+     */
+    credlist_size = (*li)->credentials_found.size();
+    if (fwrite(&credlist_size, sizeof(credlist_size), 1, outfile) != 1)
+      fatal("%s: couldn't write credential list size to file!\n", __func__);
 
+    for (vi = (*li)->credentials_found.begin();
+        vi != (*li)->credentials_found.end(); vi++) {
+      if (fwrite(vi->user, strlen(vi->user), 1, outfile) != 1)
+        fatal("%s: couldn't write credential username to file!\n", __func__);
+      if (fwrite("\0", 1, 1, outfile) != 1)
+        fatal("%s: couldn't even write \'\\0\' to file!\n", __func__);
+      if (fwrite(vi->pass, strlen(vi->pass), 1, outfile) != 1)
+        fatal("%s: couldn't write credential password to file!\n", __func__);
+      if (fwrite("\0", 1, 1, outfile) != 1)
+        fatal("%s: couldn't even write \'\\0\' to file!\n", __func__);
+    }
 
   }
 
-
   fclose(outfile);
-
 
   return 0;
 }
@@ -251,108 +269,55 @@ ncrack_save(ServiceGroup *SG)
 int
 ncrack_resume(char *fname, int *myargc, char ***myargv)
 {
-#if 0
   char *filestr;
   int filelen;
-  char nmap_arg_buffer[1024];
-  struct in_addr lastip;
-  char *p, *q, *found; /* I love C! */
-  /* We mmap it read/write since we will change the last char to a newline if it is not already */
-  filestr = mmapfile(fname, &filelen, O_RDWR);
+  uint32_t magic;
+  char ncrack_arg_buffer[1024];
+  char *p, *q; /* I love C! Oh yes indeed. */
+
+  filestr = mmapfile(fname, &filelen, O_RDONLY);
   if (!filestr) {
-    fatal("Could not mmap() %s read/write", fname);
+    fatal("Could not mmap() %s read", fname);
   }
 
   if (filelen < 20) {
     fatal("Output file %s is too short -- no use resuming", fname);
   }
 
-  /* For now we terminate it with a NUL, but we will terminate the file with
-     a '\n' later */
-  filestr[filelen - 1] = '\0';
+  /* First check magic number */
+  p = filestr;
+  memcpy(&magic, p, sizeof(magic));
+  if (magic != MAGIC_NUM)
+    fatal("Corrupted log file %s . Magic number isn't correct. Are you sure "
+        "this is a Ncrack restore file?\n", fname);
 
-  /* First goal is to find the nmap args */
-  if ((p = strstr(filestr, " as: ")))
-    p += 5;
-  else fatal("Unable to parse supposed log file %s.  Are you sure this is an Nmap output file?", fname);
-  while(*p && !isspace((int) (unsigned char) *p))
+  /* Now find the ncrack args */
+  p += sizeof(magic);
+
+  while (*p && !isspace((int) (unsigned char) *p))
     p++;
-  if (!*p) fatal("Unable to parse supposed log file %s.  Sorry", fname);
+  if (!*p)
+    fatal("Unable to parse supposed restore file %s . Sorry", fname);
   p++; /* Skip the space between program name and first arg */
-  if (*p == '\n' || !*p) fatal("Unable to parse supposed log file %s.  Sorry", fname);
+  if (*p == '\n' || !*p)
+    fatal("Unable to parse supposed restore file %s . Sorry", fname);
 
   q = strchr(p, '\n');
-  if (!q || ((unsigned int) (q - p) >= sizeof(nmap_arg_buffer) - 32))
-    fatal("Unable to parse supposed log file %s.  Perhaps the Nmap execution had not finished at least one host?  In that case there is no use \"resuming\"", fname);
+  if (!q || ((unsigned int) (q - p) >= sizeof(ncrack_arg_buffer) - 32))
+    fatal("Unable to parse supposed restore file %s .", fname);
 
+  strncpy(ncrack_arg_buffer, "ncrack ", 7);
+  if ((q-p) + 7 + 1 >= (int) sizeof(ncrack_arg_buffer))
+    fatal("0verfl0w");
+  memcpy(ncrack_arg_buffer + 7, p, q - p);
+  ncrack_arg_buffer[7 + q - p] = '\0';
 
-  strcpy(nmap_arg_buffer, "nmap --append-output ");
-  if ((q-p) + 21 + 1 >= (int) sizeof(nmap_arg_buffer)) fatal("0verfl0w");
-  memcpy(nmap_arg_buffer + 21, p, q-p);
-  nmap_arg_buffer[21 + q-p] = '\0';
-
-  if (strstr(nmap_arg_buffer, "--randomize-hosts") != NULL) {
-    error("WARNING:  You are attempting to resume a scan which used --randomize-hosts.  Some hosts in the last randomized batch may be missed and others may be repeated once");
-  }
-
-  *myargc = arg_parse(nmap_arg_buffer, myargv);
+  *myargc = arg_parse(ncrack_arg_buffer, myargv);
   if (*myargc == -1) {  
-    fatal("Unable to parse supposed log file %s.  Sorry", fname);
+    fatal("Unable to parse supposed restore file %s . Sorry", fname);
   }
 
-  /* Now it is time to figure out the last IP that was scanned */
-  q = p;
-  found = NULL;
-  /* Lets see if its a machine log first */
-  while((q = strstr(q, "\nHost: ")))
-    found = q = q + 7;
-
-  if (found) {
-    q = strchr(found, ' ');
-    if (!q) fatal("Unable to parse supposed log file %s.  Sorry", fname);
-    *q = '\0';
-    if (inet_pton(AF_INET, found, &lastip) == 0)
-      fatal("Unable to parse supposed log file %s.  Sorry", fname);
-    *q = ' ';
-  } else {
-    /* OK, I guess (hope) it is a normal log then */
-    q = p;
-    found = NULL;
-    while((q = strstr(q, "\nInteresting ports on ")))
-      found = q++;
-
-    /* There may be some later IPs of the form 'All [num] scanned ports on  ([ip]) are: state */
-    if (found) q = found;
-    if (q) {    
-      while((q = strstr(q, "\nAll "))) {
-        q+= 5;
-        while(isdigit((int) (unsigned char) *q)) q++;
-        if (strncmp(q, " scanned ports on", 17) == 0)
-          found = q;
-      }
-    }
-
-    if (found) {    
-      found = strchr(found, '(');
-      if (!found) fatal("Unable to parse supposed log file %s.  Sorry", fname);
-      found++;
-      q = strchr(found, ')');
-      if (!q) fatal("Unable to parse supposed log file %s.  Sorry", fname);
-      *q = '\0';
-      if (inet_pton(AF_INET, found, &lastip) == 0)
-        fatal("Unable to parse ip (%s) supposed log file %s.  Sorry", found, fname);
-      *q = ')';
-    } else {
-      error("Warning: You asked for --resume but it doesn't look like any hosts in the log file were successfully scanned.  Starting from the beginning.");
-      lastip.s_addr = 0;
-    }
-  }
-  o.resume_ip = lastip;
-
-  /* Ensure the log file ends with a newline */
-  filestr[filelen - 1] = '\n';
   munmap(filestr, filelen);
-#endif 
   return 0;
 }
 

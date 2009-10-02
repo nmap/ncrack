@@ -94,7 +94,7 @@
 #include "utils.h"
 #include "ServiceGroup.h"
 
-
+#define MAGIC_NUM 0xdeadbe11 /* a bell that doesn't ring */
 #define MAX_PARSE_ARGS 254 /* +1 for integrity checking + 1 for null term */
 
 /* This function takes a command and the address of an uninitialized

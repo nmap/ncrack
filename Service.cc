@@ -236,13 +236,13 @@ addCredential(char *user, char *pass)
   credentials_found.push_back(tmp);
 }
 
-unsigned long Service::
+uint32_t Service::
 getUserlistIndex(void)
 {
   return std::distance(UserArray->begin(), uservi);
 }
 
-unsigned long Service::
+uint32_t Service::
 getPasslistIndex(void)
 {
   return std::distance(PassArray->begin(), passvi);

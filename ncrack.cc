@@ -1038,7 +1038,6 @@ ncrack_main(int argc, char **argv)
    */
 
 
-
   /* Prepare -T option (3 is default) */
   prepare_timing_template(&timing);
 

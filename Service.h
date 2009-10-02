@@ -175,12 +175,12 @@ class Service
     void setListFinished(void) { list_finished = true; };
     bool getListFinished(void) { return list_finished; };
 
-    unsigned long getUserlistIndex(void);
-    unsigned long getPasslistIndex(void);
+    uint32_t getUserlistIndex(void);
+    uint32_t getPasslistIndex(void);
 
     /* ********************* Members ********************* */
 
-    unsigned long uid;  /* uniquely identifies service */
+    uint32_t uid;  /* uniquely identifies service */
 		char *name;
 		Target *target; /* service belongs to this host */
 		u8 proto;
