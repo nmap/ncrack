@@ -271,8 +271,12 @@ ncrack_resume(char *fname, int *myargc, char ***myargv)
 {
   char *filestr;
   int filelen;
-  uint32_t magic;
+  uint32_t magic, uid, cred_num;
+  struct saved_info tmp_info;
+  vector <loginpair>::iterator vi;
   char ncrack_arg_buffer[1024];
+  char buf[1024];
+  loginpair tmp_pair;
   char *p, *q; /* I love C! Oh yes indeed. */
 
   filestr = mmapfile(fname, &filelen, O_RDONLY);
@@ -315,6 +319,65 @@ ncrack_resume(char *fname, int *myargc, char ***myargv)
   *myargc = arg_parse(ncrack_arg_buffer, myargv);
   if (*myargc == -1) {  
     fatal("Unable to parse supposed restore file %s . Sorry", fname);
+  }
+
+  q++;
+  /* Now start reading in the services info. */
+  while (q - filestr < filelen) {
+
+    uid = (uint32_t)*q;
+    q += sizeof(uint32_t);
+    if (q - filestr >= filelen)
+      fatal("Corrupted file!\n");
+
+    tmp_info.user_index = (uint32_t)*q;
+    q += sizeof(uint32_t);
+    if (q - filestr >= filelen)
+      fatal("Corrupted file!\n");
+
+    tmp_info.pass_index = (uint32_t)*q;
+    q += sizeof(uint32_t);
+    if (q - filestr >= filelen)
+      fatal("Corrupted file!\n");
+
+    cred_num = (uint32_t)*q;
+    q += sizeof(uint32_t);
+    if (cred_num > 0 && (q - filestr >= filelen))
+      fatal("Corrupted file!\n");
+
+    uint32_t i;
+    size_t j;
+    bool user = true;
+    for (i = 0; i < cred_num * 2; i++) {
+
+      j = 0;
+      buf[j++] = *q;
+      while (q != '\0' && j < sizeof(buf)) {
+        q++;
+        if (q - filestr >= filelen)
+          fatal("Corrupted file!\n");
+        buf[j++] = *q;
+      }
+
+      q++;
+
+      if (user) {
+        user = false;
+        tmp_pair.user = Strndup(buf, j - 1);
+        if (q - filestr >= filelen)
+          fatal("Corrupted file!\n");
+      } else {
+        user = true;
+        tmp_pair.pass = Strndup(buf, j - 1);
+        tmp_info.credentials_found.push_back(tmp_pair);
+        if ((i != (cred_num * 2) - 1) && (q - filestr >= filelen))
+          fatal("Corrupted file!\n");
+      }
+
+    }
+
+    /* Now save the service info inside the map */
+    o.resume_map[uid] = tmp_info;
   }
 
   munmap(filestr, filelen);

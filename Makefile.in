@@ -1,4 +1,4 @@
-# Extract the version string from nmap.h.
+# Extract the version string from ncrack.h.
 export NCRACK_VERSION := $(shell grep '^\#[ \t]*define[ \t]\+NCRACK_VERSION' \
 	ncrack.h | sed -e 's/.*"\(.*\)".*/\1/' -e 'q')
 NCRACK_NAME= Ncrack

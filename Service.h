@@ -176,7 +176,10 @@ class Service
     bool getListFinished(void) { return list_finished; };
 
     uint32_t getUserlistIndex(void);
+    void setUserlistIndex(uint32_t index);
     uint32_t getPasslistIndex(void);
+    void setPasslistIndex(uint32_t index);
+
 
     /* ********************* Members ********************* */
 

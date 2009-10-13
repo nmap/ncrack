@@ -97,6 +97,7 @@
 #define MAGIC_NUM 0xdeadbe11 /* a bell that doesn't ring */
 #define MAX_PARSE_ARGS 254 /* +1 for integrity checking + 1 for null term */
 
+
 /* This function takes a command and the address of an uninitialized
    char ** .  It parses the command (by separating out whitespace)
    into an argv[] style char **, which it sets the argv parameter to.

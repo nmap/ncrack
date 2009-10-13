@@ -242,11 +242,24 @@ getUserlistIndex(void)
   return std::distance(UserArray->begin(), uservi);
 }
 
+void Service::
+setUserlistIndex(uint32_t index)
+{
+  uservi = UserArray->begin() + index;
+}
+
 uint32_t Service::
 getPasslistIndex(void)
 {
   return std::distance(PassArray->begin(), passvi);
 }
+
+void Service::
+setPasslistIndex(uint32_t index)
+{
+  passvi = PassArray->begin() + index;
+}
+
 
 /* 
  * returns -1 for end of login list and empty pool

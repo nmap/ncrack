@@ -699,6 +699,7 @@ main(int argc, char **argv)
     if (ncrack_resume(argv[2], &myargc, &myargv) == -1) {
       fatal("Cannot resume from (supposed) log file %s", argv[2]);
     }
+    o.resume = true;
     return ncrack_main(myargc, myargv);
   }
 
@@ -1276,6 +1277,34 @@ ncrack_main(int argc, char **argv)
   } else {
     if (!SG->total_services)
       fatal("No services specified!");
+
+    /* If --resume had been specified, it is time to copy the saved session
+     * info into our ServiceGroup.
+     */
+    if (o.resume) {
+
+      map<uint32_t, struct saved_info>::iterator mi;
+      list <Service *>::iterator li;
+      vector <loginpair>::iterator vi;
+
+      for (mi = o.resume_map.begin(); mi != o.resume_map.end(); mi++) {
+
+        for (li = SG->services_all.begin(); li != SG->services_all.end();
+            li++) {
+          if ((*li)->uid == mi->first)
+            break;
+        }
+
+        (*li)->setUserlistIndex(mi->second.user_index);
+        (*li)->setPasslistIndex(mi->second.pass_index);
+
+        for (vi = mi->second.credentials_found.begin();
+            vi != mi->second.credentials_found.end(); vi++) {
+          (*li)->addCredential(vi->user, vi->pass);
+        }
+
+      }
+    }
 
     /* Now is the right time to establish the signal handlers, since
      * ServiceGroup has been initialized */

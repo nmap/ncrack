@@ -94,6 +94,17 @@
 
 #include "ncrack.h"
 #include "output.h"
+#include <map>
+using namespace std;
+
+/* Each service has an associated saved_info struct that holds everything
+ * needed to continue the session.
+ */
+struct saved_info {
+  uint32_t user_index;
+  uint32_t pass_index;
+  vector <loginpair> credentials_found;
+};
 
 class NcrackOps {
   public:
@@ -139,9 +150,16 @@ class NcrackOps {
     FILE *logfd[LOG_NUM_FILES];
     FILE *ncrack_stdout; /* Ncrack standard output */
     char *datadir;
+
     int saved_signal;    /* save caught signal here, -1 for no signal */
     char **saved_argv;    /* pointer to current argv array */
     int saved_argc;      /* saved argument count */
+    /* This associative container holds the unique id of each service and the
+     * corresponding saved_info struct which holds all the necessary
+     * data to continue the session from where it had been previously stopped.
+     */
+    bool resume;
+    map<uint32_t, struct saved_info> resume_map;
 
   private:
     struct timeval start_time;

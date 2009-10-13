@@ -122,6 +122,7 @@ NcrackOps() {
   saved_argv = NULL;
   setaf(AF_INET);
   gettimeofday(&start_time, NULL);
+  resume = false;
 
 }
 
