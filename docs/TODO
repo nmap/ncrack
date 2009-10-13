@@ -1,12 +1,12 @@
 TODO:
 
-* Add --resume support
-
 * Write form auth http module.
 
 * Make 0.02ALPHA release, send to nmap-dev for testing
 
 * If no major issues discovered, promote 0.02ALPHA a bit more widely.
+
+* Take care of portability (endian) issues for --resume option.
 
 * Think about packet trace. Obviously without pcap or something similar,
   we can only print info about TCP payloads or connection
@@ -46,6 +46,8 @@ TODO:
 
 
 ============================== DONE ==========================================
+
+* Add --resume support
 
 * Integrate Solar Designer's list to Ncrack.
   --> Has been added as separate file, but we are waiting for the
