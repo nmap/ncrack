@@ -186,8 +186,6 @@ ncrack_save(ServiceGroup *SG)
   uint32_t index;
   uint32_t credlist_size;
 
-  abort();
-
   if (!(outfile = fopen("./ncrack.restore", "w")))
     fatal("%s: couldn't open file to save current state!\n", __func__);
 
