@@ -6,6 +6,12 @@ TODO:
 
 * If no major issues discovered, promote 0.02ALPHA a bit more widely.
 
+* Solve bug that sometimes causes http module to report as the password
+  found the one immediately following the real password found.
+
+* Integrate part of recently leaked hotmail passwords into Ncrack's password
+  database.
+
 * Take care of portability (endian) issues for --resume option.
 
 * Think about packet trace. Obviously without pcap or something similar,
