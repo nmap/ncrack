@@ -185,8 +185,59 @@ ncrack_save(ServiceGroup *SG)
   vector <loginpair>::iterator vi;
   uint32_t index;
   uint32_t credlist_size;
+  struct passwd *pw;
+  char path[256];
+  char filename[128];
+  int res;
+  struct tm *tm;
+  time_t now;
 
-  if (!(outfile = fopen("./ncrack.restore", "w")))
+
+  /* First find user home directory to save current session file
+   * in there. 
+   */
+#ifndef WIN32
+  /* Unix systems -> use getpwuid of real or effective uid  */
+  pw = getpwuid(getuid());
+  if (!pw && getuid() != geteuid())
+    pw = getpwuid(geteuid());
+  if (!pw)
+    fatal("%s: couldn't get current user's home directory to save restoration"
+        " file", __func__);
+
+  res = Snprintf(path, sizeof(path), "%s/.ncrack", pw->pw_dir);
+  if (res < 0 || res > (int)sizeof(path))
+    fatal("%s: possibly not enough buffer space for home path!\n", __func__);
+
+#else
+  /* Windows systems -> use the environmental variables */
+
+
+#endif
+
+  /* Check if <home>/.ncrack directory exists and has proper permissions.
+   * If it doesn't exist, create it */
+  if (access(path, F_OK)) {
+    /* dir doesn't exist, so mkdir it */
+    if (mkdir(path, S_IRUSR | S_IWUSR | S_IXUSR))
+      fatal("%s: can't create %s in user's home directory!\n", __func__, path);
+  } else if (access(path, R_OK | W_OK | X_OK))
+      fatal("%s: %s doesn't have proper permissions!\n", __func__, path);
+
+  /* Now create restoration file name based on the current date and time */
+  Strncpy(filename, "restore-", 9);
+
+  now = time(NULL);
+  tm = localtime(&now);
+  if (strftime(&filename[8], sizeof(filename), "%Y-%m-%d_%H:%M", tm) <= 0)
+    fatal("%s: Unable to properly format time", __func__);
+
+  if (chdir(path) < 0) {
+    /* check for race condition */
+    fatal("%s: unable to chdir to %s", __func__, path);
+  }
+
+  if (!(outfile = fopen(filename, "w")))
     fatal("%s: couldn't open file to save current state!\n", __func__);
 
   /* First write magic number */
@@ -250,6 +301,15 @@ ncrack_save(ServiceGroup *SG)
     }
 
   }
+
+  log_write(LOG_STDOUT, "Saved current session state at: %s", path);
+#ifdef WIN32
+  log_write(LOG_STDOUT, "\\");
+#else
+  log_write(LOG_STDOUT, "/");
+#endif
+  log_write(LOG_STDOUT, "%s\n", filename);
+
 
   fclose(outfile);
 
