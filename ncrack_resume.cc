@@ -187,7 +187,6 @@ ncrack_save(ServiceGroup *SG)
   uint32_t credlist_size = 0;
   struct passwd *pw;
   int res;
-  size_t len;
   struct tm *tm;
   time_t now;
   char path[256];
