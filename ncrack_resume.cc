@@ -183,14 +183,15 @@ ncrack_save(ServiceGroup *SG)
   uint32_t magic = MAGIC_NUM;  /* a bell that doesn't ring */
   list <Service *>::iterator li;
   vector <loginpair>::iterator vi;
-  uint32_t index;
-  uint32_t credlist_size;
+  uint32_t index = 0;
+  uint32_t credlist_size = 0;
   struct passwd *pw;
-  char path[256];
-  char filename[128];
   int res;
+  size_t len;
   struct tm *tm;
   time_t now;
+  char path[256];
+  char filename[128];
 
 
   /* First find user home directory to save current session file
@@ -211,7 +212,8 @@ ncrack_save(ServiceGroup *SG)
 
 #else
   /* Windows systems -> use the environmental variables */
-
+  ExpandEnvironmentStrings("%userprofile%", path, sizeof(path));
+  strncpy(&path[strlen(path)], "\\.ncrack", sizeof(path) - strlen(path));
 
 #endif
 
@@ -219,17 +221,27 @@ ncrack_save(ServiceGroup *SG)
    * If it doesn't exist, create it */
   if (access(path, F_OK)) {
     /* dir doesn't exist, so mkdir it */
+#ifdef WIN32
+    if (mkdir(path))
+#else 
     if (mkdir(path, S_IRUSR | S_IWUSR | S_IXUSR))
+#endif
       fatal("%s: can't create %s in user's home directory!\n", __func__, path);
-  } else if (access(path, R_OK | W_OK | X_OK))
+  } else {
+#ifdef WIN32
+    if (access(path, R_OK | W_OK))
+#else
+	if (access(path, R_OK | W_OK | X_OK))
+#endif
       fatal("%s: %s doesn't have proper permissions!\n", __func__, path);
+  }
 
   /* Now create restoration file name based on the current date and time */
-  Strncpy(filename, "restore-", 9);
+  Strncpy(filename, "restore.", 9);
 
   now = time(NULL);
   tm = localtime(&now);
-  if (strftime(&filename[8], sizeof(filename), "%Y-%m-%d_%H:%M", tm) <= 0)
+  if (strftime(&filename[8], sizeof(filename), "%Y-%m-%d_%H-%M", tm) <= 0)
     fatal("%s: Unable to properly format time", __func__);
 
   if (chdir(path) < 0) {
@@ -239,6 +251,7 @@ ncrack_save(ServiceGroup *SG)
 
   if (!(outfile = fopen(filename, "w")))
     fatal("%s: couldn't open file to save current state!\n", __func__);
+
 
   /* First write magic number */
   if (fwrite(&magic, sizeof(magic), 1, outfile) != 1)
@@ -252,6 +265,7 @@ ncrack_save(ServiceGroup *SG)
     if (fwrite(" ", 1, 1, outfile) != 1)
       fatal("%s: can't even write space!\n", __func__);
   }
+
   if (fwrite("\n", 1, 1, outfile) != 1)
     fatal("%s: can't write newline!\n", __func__);
 
@@ -271,6 +285,7 @@ ncrack_save(ServiceGroup *SG)
      * vectors they are pointing to. Indexes are uint32_t which helps
      * for portability, since it is a standard size of 32 bits everywhere.
      */
+
     index = (*li)->getUserlistIndex();
     if (fwrite(&index, sizeof(index), 1, outfile) != 1)
       fatal("%s: couldn't write userlist index to file!\n", __func__);
@@ -290,6 +305,7 @@ ncrack_save(ServiceGroup *SG)
 
     for (vi = (*li)->credentials_found.begin();
         vi != (*li)->credentials_found.end(); vi++) {
+		fprintf(stderr, "sha\n");
       if (fwrite(vi->user, strlen(vi->user), 1, outfile) != 1)
         fatal("%s: couldn't write credential username to file!\n", __func__);
       if (fwrite("\0", 1, 1, outfile) != 1)
@@ -309,7 +325,6 @@ ncrack_save(ServiceGroup *SG)
   log_write(LOG_STDOUT, "/");
 #endif
   log_write(LOG_STDOUT, "%s\n", filename);
-
 
   fclose(outfile);
 

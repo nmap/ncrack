@@ -233,6 +233,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\ncrack_input.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\ncrack_resume.cc"
+				>
+			</File>
+			<File
 				RelativePath="..\modules\ncrack_ssh.cc"
 				>
 			</File>
@@ -340,6 +348,14 @@
 			</File>
 			<File
 				RelativePath="..\ncrack_error.h"
+				>
+			</File>
+			<File
+				RelativePath="..\ncrack_input.h"
+				>
+			</File>
+			<File
+				RelativePath="..\ncrack_resume.h"
 				>
 			</File>
 			<File

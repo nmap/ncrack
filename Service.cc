@@ -191,6 +191,9 @@ Service(const Service& ref)
   list_finished = false;
   just_started = true;
   more_rounds = false;
+
+  end.orly = false;
+  end.reason = NULL;
   
   module_data = NULL;
   hostinfo = NULL;

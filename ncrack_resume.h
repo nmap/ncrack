@@ -94,6 +94,11 @@
 #include "utils.h"
 #include "ServiceGroup.h"
 
+#ifdef WIN32
+#include <direct.h>
+#endif
+
+
 #define MAGIC_NUM 0xdeadbe11 /* a bell that doesn't ring */
 #define MAX_PARSE_ARGS 254 /* +1 for integrity checking + 1 for null term */
 

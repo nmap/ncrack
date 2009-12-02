@@ -2153,11 +2153,13 @@ ncrack(ServiceGroup *SG)
   do {
 
     loopret = nsock_loop(nsp, nsock_timeout);
+
     if (loopret == NSOCK_LOOP_ERROR) {
       err = nsp_geterrorcode(nsp);
       fatal("Unexpected nsock_loop error. Error code %d (%s)",
           err, strerror(err));
     }
+
     ncrack_probes(nsp, SG);
 
   } while (SG->services_finished.size() != SG->total_services);

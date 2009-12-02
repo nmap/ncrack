@@ -98,7 +98,13 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#ifdef WIN32
+#include "mswin32\winclude.h"
+#else
 #include <sys/mman.h>
+#include "ncrack_config.h"
+#endif
+
 
 #if HAVE_UNISTD_H
 #include <unistd.h>
