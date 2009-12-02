@@ -372,13 +372,13 @@ ncrack_fetchfile(char *filename_returned, int bufferlen, const char *file,
   /* First, check the map of requested data file names. If there's an entry for
      file, use it and return.
      Otherwise, we try [--datadir]/file, then $NCRACKDIR/file
-     next we try ~user/ncrack/file
+     next we try ~user/.ncrack/file
      then we try NCRACKDATADIR/file <--NCRACKDATADIR 
      finally we try ./file
 
      -- or on Windows --
 
-     --datadir -> $NCRACKDIR -> nmap.exe directory -> NCRACKDATADIR -> .
+     --datadir -> $NCRACKDIR -> ncrack.exe directory -> NCRACKDATADIR -> .
   */
 
   if (o.datadir && !foundsomething) {
