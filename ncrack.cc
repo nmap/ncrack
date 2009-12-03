@@ -246,6 +246,7 @@ print_usage(void)
       "  --append-output: Append to rather than clobber specified output "
          "files\n"
       "MISC:\n"
+      "  --resume <file>: continue previously saved session\n"
       "  -6: Enable IPv6 cracking\n"
       "  -sL or --list: only list hosts and services\n"
       "  --datadir <dirname>: Specify custom Ncrack data file location\n"
@@ -767,6 +768,7 @@ ncrack_main(int argc, char **argv)
   extern int optind;
   struct option long_options[] =
   {
+    {"resume", required_argument, 0, 0},
     {"list", no_argument, 0, 0},
     {"services", required_argument, 0, 'p'},
     {"version", no_argument, 0, 'V'},
@@ -887,7 +889,11 @@ ncrack_main(int argc, char **argv)
           tmp = Strndup(optarg, strlen(optarg));
           parse_login_list(tmp, PASS);
           free(tmp);
-        }
+        } else if (strcmp(long_options[option_index].name, "resume") == 0) {
+          fatal("--resume <file> can only be used as sole command-line "
+                "option to Ncrack! Invoke Ncrack without any other "
+                "arguments.\n");
+        }         
         break;
       case '6':
 #if !HAVE_IPV6
