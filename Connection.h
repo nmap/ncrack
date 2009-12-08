@@ -142,11 +142,18 @@ class Connection
 
     void *misc_info;    /* additional state information that might be needed */
 
+    void (* ops_free)(void);  /* function pointer to module-specific free
+                                 operation that deallocates all internal
+                                 struct members of misc_info 
+                               */
+
     int close_reason;
 
 		int state;          /* module state-machine's current state */
 
     Buf *iobuf;
+    Buf *inbuf;         /* buffer for inbound data */
+    Buf *outbuf;        /* buffer for outbound data */
 
 		unsigned long login_attempts; /* login attempts up until now */
 		nsock_iod niod;     /* I/O descriptor for this connection */

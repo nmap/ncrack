@@ -112,6 +112,8 @@ Connection(Service *serv)
   login_attempts = 0;
   misc_info = NULL;
   iobuf = NULL;
+  inbuf = NULL;
+  outbuf = NULL;
   ssl_session = NULL;
 }
 
@@ -123,6 +125,11 @@ Connection::
     misc_info = NULL;
   }
   delete iobuf;
+
+  if (inbuf)
+    delete inbuf;
+  if (outbuf)
+    delete outbuf;
 
 #if HAVE_OPENSSL
   if (ssl_session)

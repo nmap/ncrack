@@ -246,7 +246,7 @@ print_usage(void)
       "  --append-output: Append to rather than clobber specified output "
          "files\n"
       "MISC:\n"
-      "  --resume <file>: continue previously saved session\n"
+      "  --resume <file>: Continue previously saved session\n"
       "  -6: Enable IPv6 cracking\n"
       "  -sL or --list: only list hosts and services\n"
       "  --datadir <dirname>: Specify custom Ncrack data file location\n"
@@ -1724,6 +1724,10 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     if (!con->iobuf)
       con->iobuf = new Buf();
     con->iobuf->append(str, nbytes);
+
+    if (!con->inbuf)
+      con->inbuf = new Buf();
+    con->inbuf->append(str, nbytes);
 
     return call_module(nsp, con);
 

@@ -148,7 +148,6 @@ typedef struct http_state {
 void
 ncrack_http(nsock_pool nsp, Connection *con)
 {
-  Buf *lbuf; /* local buffer */
   char *start, *end;  /* auxiliary pointers */
   int i;
   char *http_reply = NULL;   /* server's message reply */
@@ -175,25 +174,20 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
       con->state = HTTP_GET_AUTH;
 
-      lbuf = new Buf();
-      lbuf->append("GET ", sizeof("GET ")-1);
+      con->outbuf = new Buf();
+      con->outbuf->append("GET ", 4);
       if (serv->path[0] != '/')
-        lbuf->append("/", 1);
-      lbuf->append(serv->path, strlen(serv->path));
-      lbuf->append(" HTTP/1.1\r\nHost: ", sizeof(" HTTP/1.1\r\nHost: ")-1);
+        con->outbuf->append("/", 1);
+      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ", serv->path);
       if (serv->target->targetname)
-        lbuf->append(serv->target->targetname,
-            strlen(serv->target->targetname));
+        con->outbuf->append(serv->target->targetname, strlen(serv->target->targetname));
       else 
-        lbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
-      lbuf->append("\r\nUser-Agent: ", sizeof("\r\nUser-Agent: ")-1);
-      lbuf->append(USER_AGENT, sizeof(USER_AGENT)-1);
-      lbuf->append("Connection: close\r\n", sizeof("Connection: close\r\n")-1);
-      lbuf->append("\r\n", sizeof("\r\n")-1);
+        con->outbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
+
+      con->outbuf->snprintf(115, "\r\nUser-Agent: %sConnection: close\r\n\r\n", USER_AGENT);
 
       nsock_write(nsp, nsi, ncrack_write_handler, HTTP_TIMEOUT, con,
-        (const char *)lbuf->get_dataptr(), lbuf->get_len());
-      delete lbuf;
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
     case HTTP_GET_AUTH:
@@ -208,18 +202,18 @@ ncrack_http(nsock_pool nsp, Connection *con)
        * there is no point in trying to crack it. So inform the core engine
        * to mark the service as finished.
        */
-      if (!memsearch((const char *)con->iobuf->get_dataptr(),
-            "401", con->iobuf->get_len())) {
+      if (!memsearch((const char *)con->inbuf->get_dataptr(),
+            "401", con->inbuf->get_len())) {
         serv->end.orly = true;
-        start = memsearch((const char *)con->iobuf->get_dataptr(),
-            "HTTP", con->iobuf->get_len());
+        start = memsearch((const char *)con->inbuf->get_dataptr(),
+            "HTTP", con->inbuf->get_len());
         if (!start) {
           http_set_error(serv, http_reply);
           return ncrack_module_end(nsp, con);
         }
         i = 0;
         end = start;
-        while (*end != '\n' && *end != '\r' && i != con->iobuf->get_len()) {
+        while (*end != '\n' && *end != '\r' && i != con->inbuf->get_len()) {
           end++;
           i++;
         }
@@ -236,8 +230,8 @@ ncrack_http(nsock_pool nsp, Connection *con)
        * we can move on to parsing the reply to get the exact type of
        * authentication scheme used.
        */
-      if (!(start = memsearch((const char *)con->iobuf->get_dataptr(),
-            "WWW-Authenticate:", con->iobuf->get_len()))) {
+      if (!(start = memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate:", con->inbuf->get_len()))) {
         serv->end.orly = true;
         serv->end.reason = Strndup(HTTP_NOAUTH_SCHEME,
             sizeof(HTTP_NOAUTH_SCHEME) - 1);
@@ -246,7 +240,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
       start += sizeof("WWW-Authenticate: ") - 1;
       end = start;
       i = 0;
-      while (*end != ' ' && i != con->iobuf->get_len()) {
+      while (*end != ' ' && i != con->inbuf->get_len()) {
         end++;
         i++;
       }
@@ -265,8 +259,6 @@ ncrack_http(nsock_pool nsp, Connection *con)
         hstate->reconnaissance = true;
         serv->more_rounds = true;
 
-        delete con->iobuf;
-        con->iobuf = NULL;
         return ncrack_module_end(nsp, con);
 
       } else {
@@ -281,8 +273,6 @@ ncrack_http(nsock_pool nsp, Connection *con)
             "Current authentication can't be handled: %s\n",
             info->auth_scheme);
 
-        delete con->iobuf;
-        con->iobuf = NULL;
         return ncrack_module_end(nsp, con);
         
       }
@@ -366,13 +356,13 @@ static int
 http_loop_read(nsock_pool nsp, Connection *con)
 {
 
-  if (con->iobuf == NULL) {
+  if (con->inbuf == NULL) {
     nsock_read(nsp, con->niod, ncrack_read_handler, HTTP_TIMEOUT, con);
     return -1;
   }
 
-  if (!memsearch((const char *)con->iobuf->get_dataptr(), "\r\n\r\n",
-        con->iobuf->get_len())) {
+  if (!memsearch((const char *)con->inbuf->get_dataptr(), "\r\n\r\n",
+        con->inbuf->get_len())) {
     nsock_read(nsp, con->niod, ncrack_read_handler, HTTP_TIMEOUT, con);
     return -1;
   }
@@ -385,7 +375,6 @@ http_loop_read(nsock_pool nsp, Connection *con)
 static void
 http_basic(nsock_pool nsp, Connection *con)
 {
-  Buf *auxbuf;
   char *tmp;
   char *b64;
   size_t tmplen;
@@ -396,35 +385,38 @@ http_basic(nsock_pool nsp, Connection *con)
   switch (info->substate) {
     case BASIC_SEND:
 
-      auxbuf = new Buf();
-      auxbuf->append("GET ", sizeof("GET ") - 1);
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      con->outbuf->append("GET ", 4);
       if (serv->path[0] != '/')
-        auxbuf->append("/", 1);
-      auxbuf->append(serv->path, strlen(serv->path));
-      auxbuf->append(" HTTP/1.1\r\nHost: ", sizeof(" HTTP/1.1\r\nHost: ") - 1);
+        con->outbuf->append("/", 1);
+
+      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ", serv->path);
       if (serv->target->targetname)
-        auxbuf->append(serv->target->targetname,
-            strlen(serv->target->targetname));
+        con->outbuf->append(serv->target->targetname, strlen(serv->target->targetname));
       else 
-        auxbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
-      auxbuf->append("\r\nUser-Agent: ", sizeof("\r\nUser-Agent: ") - 1);
-      auxbuf->append(USER_AGENT, sizeof(USER_AGENT) - 1);
+        con->outbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
+
+      con->outbuf->snprintf(115, "\r\nUser-Agent: %sConnection: close\r\n\r\n", USER_AGENT);
+
 #if 0
-      auxbuf->append(HTTP_ACCEPT, sizeof(HTTP_ACCEPT) - 1);
-      auxbuf->append(HTTP_LANG, sizeof(HTTP_LANG) - 1);
-      auxbuf->append(HTTP_ENCODING, sizeof(HTTP_ENCODING) - 1);
-      auxbuf->append(HTTP_CHARSET, sizeof(HTTP_CHARSET) - 1);
+      con->outbuf->append(HTTP_ACCEPT, sizeof(HTTP_ACCEPT) - 1);
+      con->outbuf->append(HTTP_LANG, sizeof(HTTP_LANG) - 1);
+      con->outbuf->append(HTTP_ENCODING, sizeof(HTTP_ENCODING) - 1);
+      con->outbuf->append(HTTP_CHARSET, sizeof(HTTP_CHARSET) - 1);
 #endif
 
       /* Try sending keep-alive values and see how much authentication attempts
        * we can do in that time-period.
        */
-      auxbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n",
+      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n",
           sizeof("Keep-Alive: 300\r\nConnection: keep-alive\r\n") - 1);
 
-      //auxbuf->append(HTTP_CACHE, sizeof(HTTP_CACHE) - 1);
+      //con->outbuf->append(HTTP_CACHE, sizeof(HTTP_CACHE) - 1);
 
-      auxbuf->append("Authorization: Basic ",
+      con->outbuf->append("Authorization: Basic ",
           sizeof("Authorization: Basic ") - 1);
 
       tmplen = strlen(con->user) + strlen(con->pass) + 1;
@@ -436,16 +428,15 @@ http_basic(nsock_pool nsp, Connection *con)
 
       //b64 = b64enc(tmp, tmplen - 1);
       //printf("%s %s %s \n", con->user, con->pass, b64);
-      auxbuf->append(b64, strlen(b64));
+      con->outbuf->append(b64, strlen(b64));
       free(b64);
       free(tmp);
-      auxbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
       nsock_write(nsp, nsi, ncrack_write_handler, HTTP_TIMEOUT, con,
-        (const char *)auxbuf->get_dataptr(), auxbuf->get_len());
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       
       info->substate = BASIC_RESULTS;
-      delete auxbuf;
       break;
 
     case BASIC_RESULTS:
@@ -460,14 +451,13 @@ http_basic(nsock_pool nsp, Connection *con)
        * happpens when we request access to a directory without an ending '/',
        * then it means our credentials were correct.
        */
-      if (memsearch((const char *)con->iobuf->get_dataptr(),
-            "200 OK", con->iobuf->get_len()) 
-          || memsearch((const char *)con->iobuf->get_dataptr(),
-            "301", con->iobuf->get_len())) {
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "200 OK", con->inbuf->get_len()) 
+          || memsearch((const char *)con->inbuf->get_dataptr(),
+            "301", con->inbuf->get_len())) {
         con->auth_success = true;
       }
-      delete con->iobuf;
-      con->iobuf = NULL;
+
       ncrack_module_end(nsp, con);
       break;
   }

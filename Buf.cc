@@ -124,6 +124,35 @@ Buf::clear(void)
 }
 
 
+/* 
+ * Similar to way snprintf works, but data get saved inside the buffer.
+ * Warning: data won't get null terminated
+ * the len argument is the real length of the _actual_ data
+ */
+void
+Buf::snprintf(u_int len, const void *fmt, ...)
+{
+
+  void *p;
+  va_list ap;
+
+  /* Since vsnprintf always null terminates the data, we
+   * allocate one extra byte for the trailing '\0' and then
+   * drop it by decreasing 'end' by 1
+   */
+  p = append_space(len + 1);
+
+  va_start(ap, fmt);
+  vsnprintf((char *)p, len + 1, (char *)fmt, ap);
+  va_end(ap);
+  end--;
+
+  //memcpy(p, data, len);
+
+}
+
+
+
 /* Appends data to the buffer, expanding it if necessary. */
 void
 Buf::append(const void *data, u_int len)

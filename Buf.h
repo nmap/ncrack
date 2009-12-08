@@ -116,6 +116,13 @@ class Buf {
      */
     void *append_space(u_int len);
 
+    /* 
+     * Similar to way snprintf works, but data get saved inside the buffer.
+     * Warning: data won't get null terminated
+     * the len argument is the real length of the _actual_ data
+     */
+    void snprintf(u_int len, const void *fmt, ...);
+
     /*
      * Check whether an allocation of 'len' will fit in the buffer
      * This must follow the same math as buffer_append_space
