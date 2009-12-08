@@ -155,7 +155,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
   Service *serv = con->service;
   http_info *info = NULL;
   http_state *hstate = NULL;
-  con->ops_free = &http_free;
+  //con->ops_free = &http_free;
 
   if (con->misc_info) {
     info = (http_info *) con->misc_info;
