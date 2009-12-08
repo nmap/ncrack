@@ -142,10 +142,10 @@ class Connection
 
     void *misc_info;    /* additional state information that might be needed */
 
-    void (* ops_free)(void);  /* function pointer to module-specific free
-                                 operation that deallocates all internal
-                                 struct members of misc_info 
-                               */
+    /* function pointer to module-specific free operation that deallocates
+     * all internal struct members of misc_info 
+     */
+    void (* ops_free)(Connection *);
 
     int close_reason;
 

@@ -1652,6 +1652,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   nsi_delete(nsi, NSOCK_PENDING_SILENT);
   serv->connections.erase(li);
+  delete con;
 
   serv->active_connections--;
   SG->active_connections--;

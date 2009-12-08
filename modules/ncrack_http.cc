@@ -126,11 +126,10 @@ static void http_set_error(Service *serv, const char *reply);
 static char *http_decode(int http_code);
 
 
-enum states { HTTP_INIT, HTTP_GET_AUTH, HTTP_BASIC_AUTH,
-  HTTP_FINI };
+enum states { HTTP_INIT, HTTP_GET_AUTH, HTTP_BASIC_AUTH };
 
 /* Basic Authentication substates */
-enum { BASIC_SEND, BASIC_RECV, BASIC_RESULTS };
+enum { BASIC_SEND, BASIC_RESULTS };
 
 typedef struct http_info {
   char *auth_scheme;
@@ -156,8 +155,11 @@ ncrack_http(nsock_pool nsp, Connection *con)
   Service *serv = con->service;
   http_info *info = NULL;
   http_state *hstate = NULL;
-  if (con->misc_info)
+  con->ops_free = &http_free;
+
+  if (con->misc_info) {
     info = (http_info *) con->misc_info;
+  }
 
   if (serv->module_data && !con->misc_info) {
     hstate = (http_state *)serv->module_data;
@@ -174,7 +176,10 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
       con->state = HTTP_GET_AUTH;
 
+      if (con->outbuf)
+        delete con->outbuf;
       con->outbuf = new Buf();
+
       con->outbuf->append("GET ", 4);
       if (serv->path[0] != '/')
         con->outbuf->append("/", 1);
@@ -253,7 +258,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
         //info->substate = BASIC_SEND;
         serv->module_data = (http_state *)safe_zalloc(sizeof(http_state));
         hstate = (http_state *)serv->module_data;
-        hstate->auth_scheme = Strndup(info->auth_scheme,
+        hstate->auth_scheme = Strndup(info->auth_scheme, 
             strlen(info->auth_scheme));
         hstate->state = HTTP_BASIC_AUTH;
         hstate->reconnaissance = true;
@@ -399,7 +404,7 @@ http_basic(nsock_pool nsp, Connection *con)
       else 
         con->outbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
 
-      con->outbuf->snprintf(115, "\r\nUser-Agent: %sConnection: close\r\n\r\n", USER_AGENT);
+      con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
 
 #if 0
       con->outbuf->append(HTTP_ACCEPT, sizeof(HTTP_ACCEPT) - 1);
@@ -411,13 +416,10 @@ http_basic(nsock_pool nsp, Connection *con)
       /* Try sending keep-alive values and see how much authentication attempts
        * we can do in that time-period.
        */
-      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n",
-          sizeof("Keep-Alive: 300\r\nConnection: keep-alive\r\n") - 1);
-
       //con->outbuf->append(HTTP_CACHE, sizeof(HTTP_CACHE) - 1);
 
-      con->outbuf->append("Authorization: Basic ",
-          sizeof("Authorization: Basic ") - 1);
+      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+      con->outbuf->append("Authorization: Basic ", 21);
 
       tmplen = strlen(con->user) + strlen(con->pass) + 1;
       tmp = (char *)safe_malloc(tmplen + 1);
@@ -458,8 +460,16 @@ http_basic(nsock_pool nsp, Connection *con)
         con->auth_success = true;
       }
 
+      /* The in buffer has to be cleared out, because we are expecting
+       * possibly new answers in the same connection.
+       */
+      delete con->inbuf;
+      con->inbuf = NULL;
+
       ncrack_module_end(nsp, con);
       break;
   }
 }
+
+
 

@@ -115,21 +115,26 @@ Connection(Service *serv)
   inbuf = NULL;
   outbuf = NULL;
   ssl_session = NULL;
+  ops_free = NULL;
 }
 
 Connection::
 ~Connection()
 {
-  if (misc_info) {
-    free(misc_info);
-    misc_info = NULL;
-  }
-  delete iobuf;
-
+  if (iobuf)
+    delete iobuf;
   if (inbuf)
     delete inbuf;
   if (outbuf)
     delete outbuf;
+
+  /* This has to be called BEFORE freeing misc_info */
+  //ops_free(this);
+
+  if (misc_info) {
+    free(misc_info);
+    misc_info = NULL;
+  }
 
 #if HAVE_OPENSSL
   if (ssl_session)
