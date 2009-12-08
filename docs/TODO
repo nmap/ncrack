@@ -6,11 +6,15 @@ TODO:
 
 * If no major issues discovered, promote 0.02ALPHA a bit more widely.
 
-* Solve bug that sometimes causes http module to report as the password
-  found the one immediately following the real password found.
-
 * Integrate part of recently leaked hotmail passwords into Ncrack's password
   database.
+
+* Perhaps improve option -U so that user can give a comma separated list of
+  files that will be automatically concatenated by Ncrack.
+
+* Make free (misc_info) handlers for HTTP protocol.
+
+* Convert telnet module to use new inbuf/outbuf system.
 
 * Take care of portability (endian) issues for --resume option.
 
@@ -24,12 +28,6 @@ TODO:
 
 * Complete output engine. The main thing left is support for XML output using
   the option -oX.
-
-* Find a generic way to fix memory leaks of Connection's void *misc_info.
-  The problem is that we want a way so that the Connection class destructor can
-  remove any dynamically-allocated member, without knowing about the inner
-  structure of them (they can be cast to anything since they are void * and
-  each module casts it as a completely unique struct)
 
 * Solve the ssh username/password special iteration challenge as mentioned here:
   http://seclists.org/nmap-dev/2009/q3/0119.html
@@ -52,6 +50,17 @@ TODO:
 
 
 ============================== DONE ==========================================
+
+* Solve bug that sometimes causes http module to report as the password
+  found the one immediately following the real password found. [This seems
+  to be OK since the last changes, but we need to be careful in case it
+  comes up again]
+
+* Find a generic way to fix memory leaks of Connection's void *misc_info.
+  The problem is that we want a way so that the Connection class destructor can
+  remove any dynamically-allocated member, without knowing about the inner
+  structure of them (they can be cast to anything since they are void * and
+  each module casts it as a completely unique struct)
 
 * Add --resume support
 
