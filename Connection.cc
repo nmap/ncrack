@@ -129,7 +129,8 @@ Connection::
     delete outbuf;
 
   /* This has to be called BEFORE freeing misc_info */
-  //ops_free(this);
+  if (*ops_free)
+    ops_free(this);
 
   if (misc_info) {
     free(misc_info);
@@ -142,4 +143,5 @@ Connection::
   ssl_session = NULL;
 #endif
 }
+
 

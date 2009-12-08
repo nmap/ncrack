@@ -123,6 +123,8 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_KEY2, SSH_KEY3, SSH_KEY4, 
   SSH_AUTH, SSH_AUTH2, SSH_AUTH3, SSH_AUTH4, SSH_FINI };
 
+static void ssh_free(Connection *con);
+
 
 static inline int
 ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
@@ -133,10 +135,10 @@ ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
    * scheduled an nsock read event, then append the new data we got inside
    * the 'input' buffer which will be processed by the openssh library
    */
-  if (con->iobuf != NULL) {
-    packetlen = con->iobuf->get_len();
+  if (con->inbuf != NULL) {
+    packetlen = con->inbuf->get_len();
     if (packetlen > 0)
-      buffer_append(&info->input, con->iobuf->get_dataptr(), packetlen); 
+      buffer_append(&info->input, con->inbuf->get_dataptr(), packetlen); 
   }
 
   info->type = openssh_packet_read(info);
@@ -144,8 +146,8 @@ ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
     nsock_read(nsp, con->niod, ncrack_read_handler, SSH_TIMEOUT, con);
     return -1;
   }
-  delete con->iobuf;
-  con->iobuf = NULL;
+  delete con->inbuf;
+  con->inbuf = NULL;
   return 0;
 }
 
@@ -154,13 +156,12 @@ ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
 void
 ncrack_ssh(nsock_pool nsp, Connection *con)
 {
-  Buf *lbuf; /* local buffer */
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
-  //const char *hostinfo = serv->HostInfo();
   void *ioptr;
   u_int buflen;
   ncrack_ssh_state *info = NULL;
+  con->ops_free = &ssh_free;
 
   if (con->misc_info)
     info = (ncrack_ssh_state *) con->misc_info;
@@ -176,15 +177,15 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
     case SSH_ID_EX:
 
-      buflen = con->iobuf->get_len();
-      ioptr = con->iobuf->get_dataptr();
+      buflen = con->inbuf->get_len();
+      ioptr = con->inbuf->get_dataptr();
       if (!memsearch((const char *)ioptr, "\n", buflen)) {
         con->state = SSH_ID_EX;
         nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
         break;
       }
       if (strncmp((const char *)ioptr, "SSH-", 4)) {
-        con->iobuf->clear();
+        con->inbuf->clear();
         con->state = SSH_ID_EX;
         nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
         break;
@@ -197,18 +198,20 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       chop(info->server_version_string);
 
       /* NEVER forget to free allocated memory and also NULL-assign ptr */
-      delete con->iobuf;
-      con->iobuf = NULL;
+      delete con->inbuf;
+      con->inbuf = NULL;
 
-      lbuf = new Buf();
-      lbuf->append(CLIENT_VERSION, sizeof(CLIENT_VERSION)-1);
-      info->client_version_string = Strndup((const char *)lbuf->get_dataptr(),
-          lbuf->get_len());
+      if (con->outbuf)
+        delete con->outbuf;
+
+      con->outbuf = new Buf();
+      con->outbuf->append(CLIENT_VERSION, sizeof(CLIENT_VERSION)-1);
+      info->client_version_string = Strndup(
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       chop(info->client_version_string);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
-          (const char *)lbuf->get_dataptr(), lbuf->get_len());
-      delete lbuf;
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
 
       break;
 
@@ -325,12 +328,14 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
        */
       if (openssh_userauth2_service_rep(info) < 0) {
         serv->end.orly = true;
-        lbuf = new Buf();
-        Snprintf((char *)lbuf->get_dataptr(), DEFAULT_BUF_SIZE,
+        if (con->outbuf)
+          delete con->outbuf;
+
+        con->outbuf = new Buf();
+        Snprintf((char *)con->outbuf->get_dataptr(), DEFAULT_BUF_SIZE,
             "Server denied authentication request: %d", info->type);
-        serv->end.reason = Strndup((const char *)lbuf->get_dataptr(),
-            (size_t)strlen((const char *)lbuf->get_dataptr()));
-        delete lbuf;
+        serv->end.reason = Strndup((const char *)con->outbuf->get_dataptr(),
+            (size_t)strlen((const char *)con->outbuf->get_dataptr()));
         return ncrack_module_end(nsp, con);
       }
 
@@ -382,3 +387,43 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       return ncrack_module_end(nsp, con);
   }
 }
+
+
+static void
+ssh_free(Connection *con)
+{
+  ncrack_ssh_state *p;
+  if (!con->misc_info)
+    return;
+
+  p = (ncrack_ssh_state *)con->misc_info;
+
+  if (p->kex)
+    free(p->kex); 
+
+  /* Note that DH *dh has already been freed from
+   * the openssh library */
+
+  if (p->keys[0])
+    free(p->keys[0]);
+  if (p->keys[1])
+    free(p->keys[1]);
+
+  EVP_CIPHER_CTX_cleanup(&p->receive_context.evp);
+  EVP_CIPHER_CTX_cleanup(&p->send_context.evp);
+
+  buffer_free(&p->ncrack_buf);
+  buffer_free(&p->input);
+  buffer_free(&p->output);
+  buffer_free(&p->incoming_packet);
+  buffer_free(&p->outgoing_packet);
+
+  if (p->client_version_string)
+    free(p->client_version_string);
+  if (p->server_version_string)
+    free(p->server_version_string);
+  if (p->disc_reason)
+    free(p->disc_reason);
+
+}
+
