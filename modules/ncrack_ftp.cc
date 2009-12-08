@@ -120,13 +120,13 @@ ftp_loop_read(nsock_pool nsp, Connection *con, char *ftp_code_ret)
   char dig[2]; /* temporary digit string */
   char *p;
 
-  if (con->iobuf == NULL || con->iobuf->get_len() < FTP_DIGITS + 1) {
+  if (con->inbuf == NULL || con->inbuf->get_len() < FTP_DIGITS + 1) {
     nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
     return -1;
   }
 
   /* Make sure first 3 (FTP_DIGITS) bytes of each line are digits */
-  p = (char *)con->iobuf->get_dataptr();
+  p = (char *)con->inbuf->get_dataptr();
   dig[1] = '\0';
   for (i = 0; i < FTP_DIGITS; i++) {
     dig[0] = *p++;
@@ -161,20 +161,20 @@ ftp_loop_read(nsock_pool nsp, Connection *con, char *ftp_code_ret)
   if (*p == '-') {
     /* FTP message is multiple lines, so first search for the 'ftp code' to
      * find the last line, according to the scheme proposed by RFC 959 */
-    if (!(p = memsearch((const char *)con->iobuf->get_dataptr(), ftp_code,
-          con->iobuf->get_len()))) {
+    if (!(p = memsearch((const char *)con->inbuf->get_dataptr(), ftp_code,
+          con->inbuf->get_len()))) {
       nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
       return -1;
     }
     /* Now that we found the the last line, find that line's end */
-    if (!memsearch((const char *)p, "\r\n", con->iobuf->get_len())) {
+    if (!memsearch((const char *)p, "\r\n", con->inbuf->get_len())) {
       nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
       return -1;
     }
   } else {
     /* FTP message is one line only */
-    if (!memsearch((const char *)con->iobuf->get_dataptr(), "\r\n",
-          con->iobuf->get_len())) {
+    if (!memsearch((const char *)con->inbuf->get_dataptr(), "\r\n",
+          con->inbuf->get_len())) {
       nsock_read(nsp, con->niod, ncrack_read_handler, FTP_TIMEOUT, con);
       return -1;
     }
@@ -192,7 +192,6 @@ ftp_loop_read(nsock_pool nsp, Connection *con, char *ftp_code_ret)
 void
 ncrack_ftp(nsock_pool nsp, Connection *con)
 {
-  char lbuf[BUFSIZE]; /* local buffer */
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
@@ -210,7 +209,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
         if (ftp_loop_read(nsp, con, ftp_code) < 0)
           break;
 
-        /* ftp_loop_read already takes care so that the iobuf contains the
+        /* ftp_loop_read already takes care so that the inbuf contains the
          * 3 first ftp digit code, so you can safely traverse it that much */
         if (strncmp(ftp_code, "220", FTP_DIGITS)) {
 
@@ -222,11 +221,16 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
 
       con->state = FTP_USER;
 
-      delete con->iobuf;
-      con->iobuf = NULL;
+      delete con->inbuf;
+      con->inbuf = NULL;
 
-      snprintf(lbuf, sizeof(lbuf), "USER %s\r\n", con->user);
-      nsock_write(nsp, nsi, ncrack_write_handler, FTP_TIMEOUT, con, lbuf, -1);
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+      con->outbuf->snprintf(7 + strlen(con->user), "USER %s\r\n", con->user);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, FTP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
     case FTP_USER:
@@ -242,11 +246,16 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
 
       con->state = FTP_FINI;
 
-      delete con->iobuf;
-      con->iobuf = NULL;
+      delete con->inbuf;
+      con->inbuf = NULL;
 
-      snprintf(lbuf, sizeof(lbuf), "PASS %s\r\n", con->pass);
-      nsock_write(nsp, nsi, ncrack_write_handler, FTP_TIMEOUT, con, lbuf, -1);
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+      con->outbuf->snprintf(7 + strlen(con->pass), "PASS %s\r\n", con->pass);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, FTP_TIMEOUT, con,
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
     case FTP_FINI:
@@ -259,8 +268,8 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
 
       con->state = FTP_INIT;
 
-      delete con->iobuf;
-      con->iobuf = NULL;
+      delete con->inbuf;
+      con->inbuf = NULL;
 
       return ncrack_module_end(nsp, con);
   }

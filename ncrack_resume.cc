@@ -304,7 +304,6 @@ ncrack_save(ServiceGroup *SG)
 
     for (vi = (*li)->credentials_found.begin();
         vi != (*li)->credentials_found.end(); vi++) {
-		fprintf(stderr, "sha\n");
       if (fwrite(vi->user, strlen(vi->user), 1, outfile) != 1)
         fatal("%s: couldn't write credential username to file!\n", __func__);
       if (fwrite("\0", 1, 1, outfile) != 1)
