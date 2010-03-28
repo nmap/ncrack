@@ -1,5 +1,8 @@
 TODO:
 
+* Fix potentially big memory leak.  See this thread:
+  http://seclists.org/nmap-dev/2010/q1/1140
+
 * Write form auth http module.
 
 * Make 0.02ALPHA release, send to nmap-dev for testing
