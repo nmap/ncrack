@@ -1055,7 +1055,7 @@ Ncrack finished.
     <para>While the fine-grained timing controls discussed in the previous
     section are powerful and effective, some people find them confusing.
     Moreover, choosing the appropriate values can sometimes take more time
-    than the scan you are trying to optimize.  So Nmap offers a simpler
+    than the scan you are trying to optimize.  So Ncrack offers a simpler
     approach, with six timing templates.  You can specify them with the
     <option>-T</option> option and their number (0&ndash;5) or their name.
     The template names are
