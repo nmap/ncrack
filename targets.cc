@@ -368,7 +368,7 @@ nexthost(const char *expr, TargetGroup *exclude_group)
   static bool newexp = true; /* true for new expression */
 
   if (newexp) {
-    group = TargetGroup::TargetGroup();
+    group = TargetGroup();
     group.parse_expr(expr, o.af());
     newexp = false;
   }
