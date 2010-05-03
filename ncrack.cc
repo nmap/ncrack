@@ -817,7 +817,7 @@ ncrack_main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "6d::g:hi:U:P:m:o:p:s:T:vV",
+  while((arg = getopt_long_only(argc, argv, "6d::g:hi:U:P:m:o:p:s:T:v:V",
           long_options, &option_index)) != EOF) {
     switch(arg) {
       case 0:
@@ -893,7 +893,10 @@ ncrack_main(int argc, char **argv)
           fatal("--resume <file> can only be used as sole command-line "
                 "option to Ncrack! Invoke Ncrack without any other "
                 "arguments.\n");
-        }         
+        } else if (strcmp(long_options[option_index].name, "vv") == 0) {
+          /* Compatability hack ... ugly */
+          o.verbose += 2;    
+        }
         break;
       case '6':
 #if !HAVE_IPV6
@@ -994,7 +997,16 @@ ncrack_main(int argc, char **argv)
         exit(EXIT_SUCCESS);
         break;
       case 'v':
-        o.verbose++;
+        if (optarg && isdigit(optarg[0])) {
+          o.verbose = atoi(optarg);
+        } else {
+          const char *p;
+          o.verbose++;
+          for (p = optarg != NULL ? optarg : ""; *p == 'v'; p++)
+            o.verbose++;
+          if (*p != '\0')
+            fatal("Invalid argument to -v: \"%s\".", optarg);
+        }
         break;
       case '?':   /* error */
         print_usage();
