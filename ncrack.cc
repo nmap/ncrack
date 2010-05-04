@@ -293,7 +293,8 @@ lookup_init(const char *const filename)
      * When more ssl-services are going to be added, this will probably
      * need a more generic scheme
      */
-    if (!strncmp(servicename, "https", sizeof("https")))
+    if (!strncmp(servicename, "https", sizeof("https"))
+      || !strncmp(servicename, "pop3s", sizeof("pop3s")))
       temp.misc.ssl = true;
 
     for (vi = ServicesTable.begin(); vi != ServicesTable.end(); vi++) {
@@ -685,6 +686,10 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_http(nsp, con);
   else if (!strcmp(name, "https"))
     ncrack_http(nsp, con);
+  else if (!strcmp(name, "pop3"))
+    ncrack_pop3(nsp, con);
+  else if (!strcmp(name, "pop3s"))
+    ncrack_pop3(nsp, con);
   else
     fatal("Invalid service module: %s", name);
 }

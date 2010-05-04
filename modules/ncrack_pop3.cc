@@ -1,8 +1,10 @@
 
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_pop3.cc -- ncrack module for the POP3 protocol                   *
+ * Coded by Balázs Bucsay <earthquake[at]rycon[dot]hu>                     *
+ *  http://rycon.hu/                                                       *
+ *                                                                         *
+ * 2010. 02. 05.                                                           *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -89,16 +91,150 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef MODULES_H 
-#define MODULES_H 1
 
+#include "ncrack.h"
 #include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
+#include <list>
 
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
+#define POP3_TIMEOUT 20000
+
+extern NcrackOps o;
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
+    void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+static int pop3_response_parser(nsock_pool nsp, Connection *con);
+
+enum states { POP3_INIT, POP3_USER, POP3_FINI };
+
+static int
+pop3_response_parser(nsock_pool nsp, Connection *con)
+{
+  char *p;
+  int i;
+
+  if (con->inbuf == NULL || con->inbuf->get_len() < 3) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, POP3_TIMEOUT, con);
+    return -1;
+  }
+  if (memsearch((const char *)con->inbuf->get_dataptr(), "-ERR",
+          con->inbuf->get_len())) {
+    return 2; 
+  }
+  if (!(memsearch((const char *)con->inbuf->get_dataptr(), "+OK",
+          con->inbuf->get_len()))) {
+    return 1; 
+  }
+
+  return 0; 
+}
+
+void
+ncrack_pop3(nsock_pool nsp, Connection *con)
+{
+  int ret;
+  nsock_iod nsi = con->niod;
+  Service *serv = con->service;  
+
+  switch (con->state)
+  {
+    case POP3_INIT:
+
+      if (!con->login_attempts) {
+
+        if ((ret = pop3_response_parser(nsp, con)) < 0) {
+          break;
+        }
+
+        if (ret == 1) {
+          if (o.debugging > 6) {
+            error("%s Not pop3 or service was shutdown\n", serv->HostInfo());
+            return ncrack_module_end(nsp, con);
+          }     
+        }
+      }  
+
+      con->state = POP3_USER;
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+      con->outbuf->snprintf(7 + strlen(con->user), "USER %s\r\n", con->user);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, POP3_TIMEOUT, con, 
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case POP3_USER:
+
+      if ((ret = pop3_response_parser(nsp, con)) < 0) {
+        break;
+      }
+
+      if (ret == 2) {
+        if (o.debugging > 6) {
+          error("%s Unknown user: %s\n", serv->HostInfo(), con->user);
+          return ncrack_module_end(nsp, con);
+        }     
+      }
+      if (ret == 1) {
+        if (o.debugging > 6) {
+          error("%s Unknown pop3 error for USER\n", serv->HostInfo());
+          return ncrack_module_end(nsp, con);
+        }     
+      }
+
+      con->state = POP3_FINI;
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+      con->outbuf->snprintf(7 + strlen(con->user), "PASS %s\r\n", con->user);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, POP3_TIMEOUT, con, 
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case POP3_FINI:
+
+      if ((ret = pop3_response_parser(nsp, con)) < 0) {
+        break;
+      }
+
+      if (ret == 0) {
+        con->auth_success = true;
+      }
+
+      con->state = POP3_INIT;
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      return ncrack_module_end(nsp, con);
+  }
+}
 
 
-#endif
+
+
+
+
+
+
+
+
+
+
+
