@@ -12,6 +12,10 @@ TODO:
 * Integrate part of recently leaked hotmail passwords into Ncrack's password
   database.
 
+* Fix configure-issue where ./configure is initially run twice instead of
+  just once. This happens for every library (nbase, nsock, opensshlib). Seems to
+  be related with an old issue. (See below)
+
 * Perhaps improve option -U so that user can give a comma separated list of
   files that will be automatically concatenated by Ncrack.
 
