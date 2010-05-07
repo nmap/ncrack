@@ -9,6 +9,19 @@ TODO:
 
 * If no major issues discovered, promote 0.02ALPHA a bit more widely.
 
+* Discuss with nmap-dev about making and distributing a oN2oX converter
+  (Nmap Normal to XML output) so that we drop supporting the -iN option (which
+  seems to change at times) and instead focus on improving the -iX option.
+  The converter program could be in Python (more likely) or Perl and be
+  maintained as a common shared package between Ncrack and Nmap.
+
+* Discuss with Fyodor and nmap-dev about a compact and clean way of providing
+  additional information (like the credential pairs found so far) in the
+  interactive status message.
+
+* Implement option to make Ncrack stop scanning after finding the first
+  credential pair (there is such an option in Hydra).
+
 * Integrate part of recently leaked hotmail passwords into Ncrack's password
   database.
 
