@@ -129,7 +129,7 @@ static void ssh_free(Connection *con);
 static inline int
 ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
 {
-  int packetlen = 0;
+  u_int packetlen = 0;
   
   /* If we have data in the I/O buffer, which means that we had previously
    * scheduled an nsock read event, then append the new data we got inside
