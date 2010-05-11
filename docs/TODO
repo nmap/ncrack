@@ -9,11 +9,20 @@ TODO:
 
 * If no major issues discovered, promote 0.02ALPHA a bit more widely.
 
+* Add --disable-pcap option to Nsock so that Ncrack and Nmap may share the
+  exact same Nsock version all the time.
+
+* Integrate nmap's new password lists.
+
+* Start username-list gathering project. This might be helped from
+  email-harvesting.
+
 * Discuss with nmap-dev about making and distributing a oN2oX converter
   (Nmap Normal to XML output) so that we drop supporting the -iN option (which
   seems to change at times) and instead focus on improving the -iX option.
   The converter program could be in Python (more likely) or Perl and be
   maintained as a common shared package between Ncrack and Nmap.
+  ---> For now try keeping up-to-date with Nmap's -oN format.
 
 * Discuss with Fyodor and nmap-dev about a compact and clean way of providing
   additional information (like the credential pairs found so far) in the
