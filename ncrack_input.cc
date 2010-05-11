@@ -369,15 +369,15 @@ start_over:
        * search only for open ports, else go look for a new IP */
       if (!strncmp(ip, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", sizeof(ip))) {
 
-        /* Search for string "Interesting ports" */
+        /* Search for string "Nmap scan report" */
         if (!fgets(buf, 17, inputfd))
-          fatal("-iN \"Interesting ports\" section fgets failure!\n");
+          fatal("-iN \"Nmap scan report\" section fgets failure!\n");
 
-        if (memsearch(buf, "nteresting port", 16)) {
+        if (memsearch(buf, "map scan report", 16)) {
           /* Now get the rest of the line which is in the following format:
-           * 'Interesting ports on scanme.nmap.org (64.13.134.52):'
+           * 'Nmap scan report for scanme.nmap.org (64.13.134.52):'
            * OR
-           * 'Interesting ports on 10.0.0.100:'
+           * 'Nmap scan report for 10.0.0.100:'
            */
 
           unsigned int line_length = 0;
@@ -386,7 +386,7 @@ start_over:
               buf[line_length++] = (char) ch;
             else 
               fatal("-iN possible buffer overflow!\n");
-            if (ch == ':')
+            if (ch == '\n')
               break;
           }
           if (line_length < 10) 
@@ -398,10 +398,10 @@ start_over:
             fatal("-iN possible buffer overflow!\n");
 
           char *addr = NULL;
-          if (!(addr = memsearch(buf, "on ", line_length)))
+          if (!(addr = memsearch(buf, "for", line_length)))
             fatal("-iX corrupted Nmap -oN output file!\n");
           /* Now poin t to the actual address string */
-          addr += sizeof("on");
+          addr += sizeof("for");
 
           /* Check if there is a hostname as well as an IP, in which case we
            * need to grab the IP only */
@@ -416,7 +416,7 @@ start_over:
 
           } else {
 
-            while (addr[i] != ':' && i < line_length)
+            while (addr[i] != '\n' && i < line_length)
               i++;
             i++;
           }
@@ -441,8 +441,9 @@ start_over:
           if (!fgets(buf, 5, inputfd))
             fatal("-iN fgets failure while searching for PORT\n");
 
-          if (!strncmp(buf, "PORT", 4))
+          if (!strncmp(buf, "PORT", 4)) {
             port_parsing = true;
+          }
 
         } else {
 
@@ -457,7 +458,7 @@ start_over:
             /* If we get an alphanumeric character instead of a number,
              * then it means we are on the next host, since we were expecting
              * to see a port number. The alphanumeric character will usually
-             * correspond to the beginning of the "Interesting ports" line.
+             * correspond to the beginning of the "Nmap scan report" line.
              */
             if (isalpha(ch)) {
               port_parsing = false;
@@ -478,7 +479,7 @@ start_over:
             fatal("-iN port length invalid!\n");
           Strncpy(portnum, buf, port_length);
 
-          //printf("port: %s \n", portnum);
+          //printf("port: %s\n", portnum);
 
           /* Now parse the rest of the line */
           unsigned int line_length = 0;
@@ -517,12 +518,13 @@ start_over:
               i = sizeof(service_name);
 
             Strncpy(service_name, p, i);
-            //printf("\nservice_name: %s\n", service_name);
+            //printf("service_name: %s\n", service_name);
 
             /* Now we get everything we need: IP, service name and port so
              * we can return them into host_spec 
              */
             Snprintf(host_spec, 1024, "%s://%s:%s", service_name, ip, portnum);
+            //printf("%s\n", host_spec);
             return 0;
 
           }
