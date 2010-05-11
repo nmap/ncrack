@@ -12,8 +12,6 @@ TODO:
 * Add --disable-pcap option to Nsock so that Ncrack and Nmap may share the
   exact same Nsock version all the time.
 
-* Integrate nmap's new password lists.
-
 * Start username-list gathering project. This might be helped from
   email-harvesting.
 
@@ -79,6 +77,8 @@ TODO:
 
 
 ============================== DONE ==========================================
+
+* Integrate nmap's new password lists.
 
 * Solve bug that sometimes causes http module to report as the password
   found the one immediately following the real password found. [This seems
