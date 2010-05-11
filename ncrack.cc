@@ -784,7 +784,9 @@ ncrack_main(int argc, char **argv)
     {"timing", required_argument, 0, 'T'},
     {"excludefile", required_argument, 0, 0},
     {"exclude", required_argument, 0, 0},
-    {"iL", required_argument, 0, 'i'},
+    {"iL", required_argument, 0, 0},
+    {"iX", required_argument, 0, 0},
+    {"iN", required_argument, 0, 0},
     {"oA", required_argument, 0, 0},  
     {"oN", required_argument, 0, 0},
     {"oX", required_argument, 0, 0},  
@@ -822,7 +824,7 @@ ncrack_main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "6d::g:hi:U:P:m:o:p:s:T:v:V",
+  while((arg = getopt_long_only(argc, argv, "6d::g:hU:P:m:o:p:s:T:v:V",
           long_options, &option_index)) != EOF) {
     switch(arg) {
       case 0:
@@ -869,6 +871,26 @@ ncrack_main(int argc, char **argv)
           o.append_output = true;
         } else if (strcmp(long_options[option_index].name, "datadir") == 0) {
           o.datadir = strdup(optarg);
+        } else if (strcmp(long_options[option_index].name, "iX") == 0) {
+          if (inputfd)
+            fatal("Only one input filename allowed");
+          o.nmap_input_xml = true;
+          inputfd = fopen(strdup(optarg), "r");
+          if (!inputfd)
+            fatal("Failed to open input file %s for reading", optarg);
+        } else if (strcmp(long_options[option_index].name, "iN") == 0) {
+          if (inputfd)
+            fatal("Only one input filename allowed");
+          o.nmap_input_normal = true;
+          inputfd = fopen(strdup(optarg), "r");
+          if (!inputfd)
+            fatal("Failed to open input file %s for reading", optarg);
+        } else if (strcmp(long_options[option_index].name, "iL") == 0) {
+          if (inputfd)
+            fatal("Only one input filename allowed");
+          inputfd = fopen(strdup(optarg), "r");
+          if (!inputfd)
+            fatal("Failed to open input file %s for reading", optarg);
         } else if (strcmp(long_options[option_index].name, "oN") == 0) {
           normalfilename = logfilename(optarg, tm);
         } else if (strcmp(long_options[option_index].name, "oX") == 0) {
@@ -924,24 +946,17 @@ ncrack_main(int argc, char **argv)
       case 'h':   /* help */
         print_usage();
         break;
+#if 0
       case 'i': 
         if (inputfd)
           fatal("Only one input filename allowed");
         if (!strcmp(optarg, "-"))
           inputfd = stdin;
-        else {    
-          if (*optarg == 'X')
-            o.nmap_input_xml = true;
-          else if (*optarg == 'N')
-            o.nmap_input_normal = true;
-          else if (*optarg != 'L')
+        else    
             fatal("You have to specify a specific input format for -i option: "
                 "-iL, -iN or -iX\n");
-          inputfd = fopen((optarg + 2), "r");
-          if (!inputfd) 
-            fatal("Failed to open input file %s for reading", optarg);
-        }
         break;
+#endif
       case 'U':
         if (o.userlist_src)
           fatal("You have already specified the username list source!\n");
