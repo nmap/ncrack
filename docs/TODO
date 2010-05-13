@@ -5,47 +5,67 @@ TODO:
 
 * Fix potentially big memory leak.  See this thread:
   http://seclists.org/nmap-dev/2010/q1/1140
+  o Note, Fyodor can reproduce scanning against localhost ssh with
+    openssh-server-5.2p1-6.fc11.x86_64 on Fedora Core 11 x86_64
 
 * Add to ncrack -h and maybe -V output a list of the modules
   supported.
 
-* Write form auth http module.
-
-* Make 0.02ALPHA release, send to nmap-dev for testing
-
-* If no major issues discovered, promote 0.02ALPHA a bit more widely.
-
 * Add --disable-pcap option to Nsock so that Ncrack and Nmap may share the
   exact same Nsock version all the time.
-
-* Start username-list gathering project. This might be helped from
-  email-harvesting.
-
-* Discuss with nmap-dev about making and distributing a oN2oX converter
-  (Nmap Normal to XML output) so that we drop supporting the -iN option (which
-  seems to change at times) and instead focus on improving the -iX option.
-  The converter program could be in Python (more likely) or Perl and be
-  maintained as a common shared package between Ncrack and Nmap.
-  ---> For now try keeping up-to-date with Nmap's -oN format.
-
-* Discuss with Fyodor and nmap-dev about a compact and clean way of providing
-  additional information (like the credential pairs found so far) in the
-  interactive status message.
-
-* Implement option to make Ncrack stop scanning after finding the first
-  credential pair (there is such an option in Hydra).
-
-* Integrate part of recently leaked hotmail passwords into Ncrack's password
-  database.
 
 * Fix configure-issue where ./configure is initially run twice instead of
   just once. This happens for every library (nbase, nsock, opensshlib). Seems to
   be related with an old issue. (See below)
 
-* Add rdesktop cracking
+* Provide a compact and clean way of providing additional information
+  (like the credential pairs found so far) in the interactive status
+  message.
+  - We may have a key users can press at any time, like 'p' for
+    passwords, to show the currently discovered credential list.
+    Should probably use the same format Ncrack users to print all the
+    credentials at the end of its run.  The normal interactive status
+    message should probably say something like 'press 'p' to list
+    discovered passwords' if at least one valid credential has been
+    discovered.
+  - May warrant nmap-dev discussion
 
-* Perhaps improve option -U so that user can give a comma separated list of
-  files that will be automatically concatenated by Ncrack.
+* Make sure the -v option parsing works well.  Right now, we get:
+  ./ncrack -v -P lists/top50000.pwd localhost:22 scanme.nmap.org:22
+  Invalid argument to -v: "-P".
+  QUITTING!
+
+* Fully update man page to document the latest version of Ncrack.  For
+  example, --user and --pass and --resume options aren't mentioned at
+  all.
+
+* In verbose mode it should tell when a service completes (note that
+  in some case a "completion" is really a failure, for example
+  "scanme.nmap.org 22")
+
+* Add some real-life examples to the ncrack -h output.
+
+* Perhaps improve option -U and -P options
+  so that user can give a comma separated list of files that will be
+  automatically concatenated by Ncrack.
+
+* Make 0.2ALPHA release, send to nmap-dev for testing
+
+------------ONLY TASKS FOR 0.2ALPHA GO ABOVE THIS LINE------------
+
+* Start username-list gathering project. Gathering these from email
+  addresses may be the most powerful technique.
+
+* HTTP-form auth which will be based on the existing HTTP module and
+  will target HTTP forms will have to ideally be able to parse the
+  most common web forms out there. The user will also be given the
+  choice to specify certain form-related arguments that can make
+  Ncrack's job easier.
+
+* Implement option to make Ncrack stop scanning after finding the first
+  credential pair (there is such an option in Hydra).
+
+* Add remote desktop (rdp) cracking
 
 * Make free (misc_info) handlers for HTTP protocol.
 
@@ -76,15 +96,77 @@ TODO:
   So for many errors of 1 connection perhaps just toss service into a special
   list so that we can move on for the time being.
 
+* Wider Ncrack promotion
+
 * Complete dynamic timing engine.
+ - Some details from SoC application:
+   As of yet, the engine is "smart" enough to be able to adapt to some
+   trivial end-cases e.g lower the number of parallel probes when we
+   get more than a certain number of RSTs from our target in a certain
+   amount of time. Of course, the user has the final say on how the
+   engine will behave, depending on whether or not he defined certain
+   time-related arguments during the initial Ncrack invocation.  The
+   engine should ideally be able to adapt more intelligently to the
+   given network conditions and the special characteristics of our
+   targets. This implies that it will be able to deduce on its own the
+   best possible value of parallel probes and other time-related
+   parameters (for example, if it should wait between each
+   authentication try and for how long). Since Ncrack is based on
+   Nsock which is a socket-abstraction layer and we have no access to
+   raw sockets or packet-crafting libraries (the user can invoke
+   Ncrack without root privileges after all), we only have TCP itself
+   as a feedback mechanism for the network conditions. This can prove
+   tricky for our work. Our engine might have to based on
+   trial-and-error and partial statistical analysis to take some of
+   its decisions.
+
+   One idea would be to keep a history of the average performance for
+   each target and for each time-related metric. After some
+   experimentation with each target and depending on the network
+   conditions, our engine will be able to decide which of the
+   different set of saved values are most suitable for the
+   moment. However, this has to be flexible and prone to be
+   dynamically adapted, since network traffic is susceptible to
+   change. The "saved history" will mostly be used as a mechanism for
+   better decision-taking. Ncrack should be as accurate and fast as
+   possible, at the same time. As a result, when increasing the number
+   of parallel probes doesn't lead to further increase in the average
+   rate of authentication tries, it should back off and try with less
+   probes. This is the experimentation-phase we mentioned above. Upon
+   seeing that further reduction of the probes leads to decrease in
+   performance, it should again try to increase them. All of this
+   implies that we define some sort of 'average ideal' performance
+   with which the current performance will be compared. This metric
+   can be derived from a statistical analysis of our 'saved history'
+   so far.
 
 * For -vv verbose mode, possibly save the banner for each service and show it at
   the end. Also we can show a sample session, showing the special patterns used
   in the authentication steps. These may also prove useful for user submissions
   of new exotic patterns for modules, like telnet, that need them.
 
+* SMB support will be quite a demanding and time-consuming task but a
+  lot of research of this protocol has already been conducted by
+  Ron. Thus, a lot of our work can be based on his NSE-scripts.
 
-============================== DONE ==========================================
+* SMTP/IMAP/POP3 - some initial IMAP/POP3 patches have already been
+  provided by Balázs Bucsay. Further development of them, as well as
+  SMTP support should be one goal to cover the existing email
+  infrastructure.
+
+* Discuss with nmap-dev about making and distributing a oN2oX converter
+  (Nmap Normal to XML output) so that we drop supporting the -iN option (which
+  seems to change at times) and instead focus on improving the -iX option.
+  The converter program could be in Python (more likely) or Perl and be
+  maintained as a common shared package between Ncrack and Nmap.
+  ---> For now we will try keeping up-to-date with Nmap's -oN format.
+
+============================= :DONE: =========================================
+
+* Integrate part of recently leaked hotmail passwords into Ncrack's password
+  database.
+
+* Fix -oN importer to work with new Nmap output format
 
 * Integrate nmap's new password lists.
 
