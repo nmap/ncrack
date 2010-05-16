@@ -1450,6 +1450,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       }
     }
     SG->pushServiceToList(serv, &SG->services_finished);
+    if (o.verbose)
+      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
     return ncrack_connection_end(nsp, con);
   }
 
@@ -1510,6 +1512,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   if (serv->isMirrorPoolEmpty() && !serv->active_connections
       && serv->getListFinishing()) {
     SG->pushServiceToList(serv, &SG->services_finished);
+    if (o.verbose)
+      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
     return ncrack_connection_end(nsp, con);
   }
 
@@ -1727,8 +1731,11 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   if (serv->getListFinishing()) {
     if (!serv->isMirrorPoolEmpty())
       SG->popServiceFromList(serv, &SG->services_finishing);
-    else if (!serv->active_connections)
+    else if (!serv->active_connections) {
       SG->pushServiceToList(serv, &SG->services_finished);
+      if (o.verbose)
+        log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+    }
   }
 
   if (o.debugging)
@@ -1739,8 +1746,11 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 
   /* Check if service finished for good. */
   if (serv->loginlist_fini && serv->isMirrorPoolEmpty()
-      && !serv->active_connections && !serv->getListFinished())
+      && !serv->active_connections && !serv->getListFinished()) {
     SG->pushServiceToList(serv, &SG->services_finished);
+    if (o.verbose)
+      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+  }
 
   /* see if we can initiate some more connections */
   if (serv->getListActive())
@@ -1767,6 +1777,8 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   if (serv->timedOut(nsock_gettimeofday())) {
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
+    if (o.verbose)
+      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
     return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_SUCCESS) {
@@ -1849,6 +1861,8 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   if (serv->timedOut(nsock_gettimeofday())) {
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
+    if (o.verbose)
+      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
     return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_SUCCESS)
@@ -1904,6 +1918,8 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   if (serv->timedOut(nsock_gettimeofday())) {
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
+    if (o.verbose)
+      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
     return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_SUCCESS) {
@@ -1941,6 +1957,8 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
      * the service for good. */
     if (serv->just_started) {
       SG->pushServiceToList(serv, &SG->services_finished);
+      if (o.verbose)
+        log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
     }
     if (serv->getListPairfini())
       SG->popServiceFromList(serv, &SG->services_pairfini);
@@ -2047,6 +2065,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     if (serv->timedOut(nsock_gettimeofday())) {
       serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
       SG->pushServiceToList(serv, &SG->services_finished);
+      if (o.verbose)
+        log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
       goto next;
     }
 
@@ -2083,6 +2103,8 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
         && !serv->getListFinished()) {
       if (!serv->active_connections) {
         li = SG->pushServiceToList(serv, &SG->services_finished);
+        if (o.verbose)
+          log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
         goto next;
       } else {
         li = SG->pushServiceToList(serv, &SG->services_finishing);

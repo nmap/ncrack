@@ -17,25 +17,9 @@ TODO:
   just once. This happens for every library (nbase, nsock, opensshlib). Seems to
   be related with an old issue. (See below)
 
-* Provide a compact and clean way of providing additional information
-  (like the credential pairs found so far) in the interactive status
-  message.
-  - We may have a key users can press at any time, like 'p' for
-    passwords, to show the currently discovered credential list.
-    Should probably use the same format Ncrack users to print all the
-    credentials at the end of its run.  The normal interactive status
-    message should probably say something like 'press 'p' to list
-    discovered passwords' if at least one valid credential has been
-    discovered.
-  - May warrant nmap-dev discussion
-
 * Fully update man page to document the latest version of Ncrack.  For
   example, --user and --pass and --resume options aren't mentioned at
   all.
-
-* In verbose mode it should tell when a service completes (note that
-  in some case a "completion" is really a failure, for example
-  "scanme.nmap.org 22")
 
 * Perhaps improve option -U and -P options
   so that user can give a comma separated list of files that will be
@@ -158,6 +142,22 @@ TODO:
   ---> For now we will try keeping up-to-date with Nmap's -oN format.
 
 ============================= :DONE: =========================================
+
+* In verbose mode it should tell when a service completes (note that
+  in some case a "completion" is really a failure, for example
+  "scanme.nmap.org 22")
+
+* Provide a compact and clean way of providing additional information
+  (like the credential pairs found so far) in the interactive status
+  message.
+  - We may have a key users can press at any time, like 'p' for
+    passwords, to show the currently discovered credential list.
+    Should probably use the same format Ncrack users to print all the
+    credentials at the end of its run.  The normal interactive status
+    message should probably say something like 'press 'p' to list
+    discovered passwords' if at least one valid credential has been
+    discovered.
+  - May warrant nmap-dev discussion
 
 * Add some real-life examples to the ncrack -h output.
 
