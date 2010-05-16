@@ -251,7 +251,15 @@ print_usage(void)
       "  -sL or --list: only list hosts and services\n"
       "  --datadir <dirname>: Specify custom Ncrack data file location\n"
       "  -V: Print version number\n"
-      "  -h: Print this help summary page.\n",
+      "  -h: Print this help summary page.\n"
+      "MODULES:\n"
+      "  FTP, SSH, TELNET, HTTP(S), POP3(S)\n"
+      "EXAMPLES:\n"
+      "  ncrack -v --user root localhost:22\n"
+      "  ncrack -v -T5 https://192.168.0.1\n"
+      "  ncrack -v -iX ~/nmap.xml -g CL=5,to=1h\n"
+      "SEE THE MAN PAGE (http://nmap.org/ncrack/man.html) FOR MORE OPTIONS "
+      "AND EXAMPLES\n",
       NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
   exit(EXIT_FAILURE);
 }
@@ -1023,6 +1031,7 @@ ncrack_main(int argc, char **argv)
       case 'V': 
         log_write(LOG_STDOUT, "\n%s version %s ( %s )\n",
             NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
+        log_write(LOG_STDOUT, "Modules: SSH, FTP, TELNET, HTTP(S), POP3(S)\n");
         exit(EXIT_SUCCESS);
         break;
       case 'v':

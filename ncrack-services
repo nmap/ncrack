@@ -6,7 +6,6 @@
 ftp 21/tcp
 ssh 22/tcp
 telnet 23/tcp
-smtp 25/tcp
 http 80/tcp
 pop3 110/tcp
 https 443/tcp

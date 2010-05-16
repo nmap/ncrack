@@ -10,9 +10,6 @@ TODO:
   o Note, Fyodor can reproduce scanning against localhost ssh with
     openssh-server-5.2p1-6.fc11.x86_64 on Fedora Core 11 x86_64
 
-* Add to ncrack -h and maybe -V output a list of the modules
-  supported.
-
 * Add --disable-pcap option to Nsock so that Ncrack and Nmap may share the
   exact same Nsock version all the time.
 
@@ -40,8 +37,6 @@ TODO:
   in some case a "completion" is really a failure, for example
   "scanme.nmap.org 22")
 
-* Add some real-life examples to the ncrack -h output.
-
 * Perhaps improve option -U and -P options
   so that user can give a comma separated list of files that will be
   automatically concatenated by Ncrack.
@@ -49,6 +44,8 @@ TODO:
 * Make 0.2ALPHA release, send to nmap-dev for testing
 
 ------------ONLY TASKS FOR 0.2ALPHA GO ABOVE THIS LINE------------
+
+* Add some real-life examples to the ncrack -h output.
 
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
@@ -159,6 +156,9 @@ TODO:
   ---> For now we will try keeping up-to-date with Nmap's -oN format.
 
 ============================= :DONE: =========================================
+
+* Add to ncrack -h and maybe -V output a list of the modules
+  supported.
 
 * Make sure the -v option parsing works well.  Right now, we get:
   ./ncrack -v -P lists/top50000.pwd localhost:22 scanme.nmap.org:22
