@@ -824,7 +824,7 @@ ncrack_main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "6d::g:hU:P:m:o:p:s:T:v:V",
+  while((arg = getopt_long_only(argc, argv, "6d::g:hU:P:m:o:p:s:T:v::V",
           long_options, &option_index)) != EOF) {
     switch(arg) {
       case 0:
@@ -934,10 +934,19 @@ ncrack_main(int argc, char **argv)
 #endif /* !HAVE_IPV6 */
         break;
       case 'd': 
-        if (optarg)
+        if (optarg && isdigit(optarg[0])) {
           o.debugging = o.verbose = atoi(optarg);
-        else 
-          o.debugging++; o.verbose++;
+        } else {
+          const char *p;
+          o.debugging++;
+          o.verbose++;
+          for (p = optarg != NULL ? optarg : ""; *p == 'd'; p++) {
+            o.debugging++;
+            o.verbose++;
+          }
+          if (*p != '\0')
+            fatal("Invalid argument to -d: \"%s\".", optarg);
+        }
         break;
       case 'g':
         glob_options = strdup(optarg);
@@ -953,8 +962,8 @@ ncrack_main(int argc, char **argv)
         if (!strcmp(optarg, "-"))
           inputfd = stdin;
         else    
-            fatal("You have to specify a specific input format for -i option: "
-                "-iL, -iN or -iX\n");
+          fatal("You have to specify a specific input format for -i option: "
+              "-iL, -iN or -iX\n");
         break;
 #endif
       case 'U':

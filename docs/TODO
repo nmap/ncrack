@@ -32,11 +32,6 @@ TODO:
     discovered.
   - May warrant nmap-dev discussion
 
-* Make sure the -v option parsing works well.  Right now, we get:
-  ./ncrack -v -P lists/top50000.pwd localhost:22 scanme.nmap.org:22
-  Invalid argument to -v: "-P".
-  QUITTING!
-
 * Fully update man page to document the latest version of Ncrack.  For
   example, --user and --pass and --resume options aren't mentioned at
   all.
@@ -164,6 +159,11 @@ TODO:
   ---> For now we will try keeping up-to-date with Nmap's -oN format.
 
 ============================= :DONE: =========================================
+
+* Make sure the -v option parsing works well.  Right now, we get:
+  ./ncrack -v -P lists/top50000.pwd localhost:22 scanme.nmap.org:22
+  Invalid argument to -v: "-P".
+  QUITTING!
 
 * Integrate part of recently leaked hotmail passwords into Ncrack's password
   database.
