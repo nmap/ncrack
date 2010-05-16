@@ -227,10 +227,11 @@ void tty_init()
 
 /* Catches all of the predefined
    keypresses and interpret them, and it will also tell you if you
-   should print anything. A value of true being returned means a
+   should print anything. A value of KEYPRESS_STATUS being returned means a
    nonstandard key has been pressed and the calling method should
-   print a status message */
-bool keyWasPressed()
+   print a status message. A value of KEYPRESS_CREDS means that the
+   credentials found so far should be printed */
+int keyWasPressed()
 {
   /* Where we keep the automatic stats printing schedule. */
   static struct timeval stats_time = { 0, 0 };
@@ -253,15 +254,18 @@ bool keyWasPressed()
       if (o.debugging > 0)
         o.debugging--;
       log_write(LOG_STDOUT, "Debugging Decreased to %d.\n", o.debugging);
+    } else if (c == 'p' || c == 'P') {
+      return KEYPRESS_CREDS;
     } else if (c == '?') {
       log_write(LOG_STDOUT,
           "Interactive keyboard commands:\n"
           "?               Display this information\n"
           "v/V             Increase/decrease verbosity\n"
           "d/D             Increase/decrease debugging\n"
+          "p/P             Display found credentials\n"
           "anything else   Print status\n");
     } else {
-      return true;
+      return KEYPRESS_STATUS;
     }
   }
 
@@ -284,9 +288,9 @@ bool keyWasPressed()
       if (TIMEVAL_AFTER(now, stats_time))
         stats_time = now;
       /* Instruct the caller to print status too. */
-      return true;
+      return KEYPRESS_STATUS;
     }
   }
 
-  return false;
+  return 0;
 }

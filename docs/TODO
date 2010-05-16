@@ -45,7 +45,9 @@ TODO:
 
 ------------ONLY TASKS FOR 0.2ALPHA GO ABOVE THIS LINE------------
 
-* Add some real-life examples to the ncrack -h output.
+* For session saving (--resume) consider going to second granularity in the
+  filename. This avoids occasions when the file is overwritten because the
+  user invoked Ncrack in the same minute and decided to cancel again.
 
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
@@ -156,6 +158,8 @@ TODO:
   ---> For now we will try keeping up-to-date with Nmap's -oN format.
 
 ============================= :DONE: =========================================
+
+* Add some real-life examples to the ncrack -h output.
 
 * Add to ncrack -h and maybe -V output a list of the modules
   supported.

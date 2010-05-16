@@ -381,8 +381,22 @@ printStatusMessage(ServiceGroup *SG)
   log_write(LOG_STDOUT, "Rate: %.2f; Found: %lu; ",
       SG->auth_rate_meter.getCurrentRate(), SG->credentials_found);
   SG->SPM->printStats(SG->getCompletionFraction(), &tv);
+  if (SG->credentials_found)
+    log_write(LOG_STDOUT, "(press 'p' to list discovered credentials)\n");
 }
 
+
+/* Prints all credentials found so far */
+void
+print_creds(ServiceGroup *SG)
+{
+  list <Service *>::iterator li;
+
+  for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
+    if ((*li)->credentials_found.size() != 0)
+      print_service_output(*li);
+  }
+}
 
 
 void

@@ -144,6 +144,9 @@ char *logfilename(const char *str, struct tm *tm);
 /* prints current status */
 void printStatusMessage(ServiceGroup *SG);
 
+/* Prints all credentials found so far */
+void print_creds(ServiceGroup *SG);
+
 void print_final_output(ServiceGroup *SG);
 
 void print_service_output(Service *serv);

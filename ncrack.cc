@@ -1377,6 +1377,7 @@ ncrack_main(int argc, char **argv)
     ncrack(SG);
   }
 
+  log_write(LOG_STDOUT, "\n");
   /* Now print the final results for each service */
   for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
     if ((*li)->credentials_found.size() != 0)
@@ -1968,12 +1969,16 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 static void
 status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
+  int key_ret;
   enum nse_status status = nse_status(nse);
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   mydata = NULL; /* nothing in there */
 
-  if (keyWasPressed())
+  key_ret = keyWasPressed();
+  if (key_ret == KEYPRESS_STATUS)
     printStatusMessage(SG);
+  else if (key_ret == KEYPRESS_CREDS)
+    print_creds(SG);
 
   if (status != NSE_STATUS_SUCCESS)
     error("Nsock status timer handler error!");
