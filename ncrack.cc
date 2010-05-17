@@ -1785,10 +1785,6 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
     str = nse_readbuf(nse, &nbytes);
 
-    if (!con->iobuf)
-      con->iobuf = new Buf();
-    con->iobuf->append(str, nbytes);
-
     if (!con->inbuf)
       con->inbuf = new Buf();
     con->inbuf->append(str, nbytes);

@@ -166,12 +166,12 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
 
     case TELNET_OPTIONS_1:
 
-      recvbufptr = (char *)con->iobuf->get_dataptr();
-      recvbuflen = con->iobuf->get_len();
+      recvbufptr = (char *)con->inbuf->get_dataptr();
+      recvbuflen = con->inbuf->get_len();
 
       /* Telnet Option Parsing */
       while (*recvbufptr == (char) IAC
-          && ((recvbufptr - (char *)con->iobuf->get_dataptr()) < recvbuflen)
+          && ((recvbufptr - (char *)con->inbuf->get_dataptr()) < recvbuflen)
           && ((localbufptr - lbuf) < BUFSIZE - 3)) {
 
         /* For every option other than linemode we reject it */
@@ -226,7 +226,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
           /* We just ignore any suboption we receive */
         } else if (recvbufptr[1] == (char) SB) {
           while (*recvbufptr != (char) SE
-              && (recvbufptr - (char *)con->iobuf->get_dataptr()) < recvbuflen)
+              && (recvbufptr - (char *)con->inbuf->get_dataptr()) < recvbuflen)
             recvbufptr++;
           recvbufptr++;
         }
@@ -247,7 +247,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
         }
       }
 
-      datasize = recvbuflen - (recvbufptr - (char *)con->iobuf->get_dataptr());
+      datasize = recvbuflen - (recvbufptr - (char *)con->inbuf->get_dataptr());
 
       /* Now check for banner and login prompt */
       if (datasize > 0) {
@@ -281,8 +281,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       break;
 
     case TELNET_OPTIONS_2:
-      delete con->iobuf;
-      con->iobuf = NULL;
+      delete con->inbuf;
+      con->inbuf = NULL;
 
       con->state = TELNET_OPTIONS_1;
       nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
@@ -299,9 +299,9 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
          * character of the username in individual packets. We send 1 byte
          * and wait for the server's echo and so on...
          */
-        if (con->iobuf) {
-          recvbufptr = (char *)con->iobuf->get_dataptr();
-          recvbuflen = con->iobuf->get_len();
+        if (con->inbuf) {
+          recvbufptr = (char *)con->inbuf->get_dataptr();
+          recvbuflen = con->inbuf->get_len();
         }
 
         if (!info->userptr)
@@ -314,7 +314,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
          * those options, and wait until we see our character echoed back in
          * order to go on sending the rest of the username.
          */
-        if (con->iobuf && info->userptr > con->user
+        if (con->inbuf && info->userptr > con->user
             && (info->userptr - con->user) != strlen(con->user)) {
           /* Some telnet daemons send the echo reply with a \0 byte in front of
            * the echoed characted. Damn inconsistencies. */
@@ -349,16 +349,16 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       break;
 
     case TELNET_ECHO_USER:
-      delete con->iobuf;
-      con->iobuf = NULL;
+      delete con->inbuf;
+      con->inbuf = NULL;
 
       con->state = TELNET_AUTH;
       nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
       break;
 
     case TELNET_PASS_R:
-      delete con->iobuf;
-      con->iobuf = NULL;
+      delete con->inbuf;
+      con->inbuf = NULL;
 
       con->state = TELNET_PASS_W;
       nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
@@ -374,9 +374,9 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
       break;
 
     case TELNET_FINI:
-      if (con->iobuf) {
-        recvbufptr = (char *)con->iobuf->get_dataptr();
-        recvbuflen = con->iobuf->get_len();
+      if (con->inbuf) {
+        recvbufptr = (char *)con->inbuf->get_dataptr();
+        recvbuflen = con->inbuf->get_len();
       }
 
       if (memsearch(recvbufptr, "incorrect", recvbuflen)
@@ -396,8 +396,8 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
             || memsearch(recvbufptr, "username", recvbuflen))
           con->peer_alive = true;
 
-        delete con->iobuf;
-        con->iobuf = NULL;
+        delete con->inbuf;
+        con->inbuf = NULL;
         
         return ncrack_module_end(nsp, con);
 
@@ -406,15 +406,15 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
           || memsearch(recvbufptr, "#", recvbuflen)) {
         con->auth_success = true;
 
-        delete con->iobuf;
-        con->iobuf = NULL;
+        delete con->inbuf;
+        con->inbuf = NULL;
 
         return ncrack_module_end(nsp, con);
 
       } else {  /* wait for more replies */
 
-        delete con->iobuf;
-        con->iobuf = NULL;
+        delete con->inbuf;
+        con->inbuf = NULL;
 
         con->state = TELNET_FINI;
         nsock_read(nsp, nsi, ncrack_read_handler, 10000, con);
