@@ -336,7 +336,6 @@ MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o ncrack_http.o \
 ncrack_pop3.o"
 AC_SUBST(MODULES_SRCS)
 AC_SUBST(MODULES_OBJS)
-AC_OUTPUT(modules/Makefile)
 
 AC_SUBST(OPENSSHLIB_DIR)
 AC_SUBST(OPENSSHLIB_BUILD)
@@ -347,7 +346,7 @@ CPPFLAGS="$CPPFLAGS -Imodules"
 AC_SUBST(CPPFLAGS)
 AC_SUBST(LDFLAGS)
 
-AC_OUTPUT(Makefile)
+AC_OUTPUT(Makefile modules/Makefile)
 
 if test -f docs/leet-ncrack-ascii-art.txt; then
 	cat docs/leet-ncrack-ascii-art.txt
