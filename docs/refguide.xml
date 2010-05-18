@@ -1196,6 +1196,40 @@ Ncrack finished.
       </varlistentry>
     </variablelist>
 
+     <variablelist>
+      <varlistentry>
+        <term>
+          <option>--user <replaceable>username_list</replaceable></option>
+          (Specify command-line comma-separated username list)
+        </term>
+        <listitem>
+
+        <para>
+          Specify your own usernames directly in the command-line as a
+          comma-separated list.
+        </para>
+                    
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+     <variablelist>
+      <varlistentry>
+        <term>
+          <option>--user <replaceable>username_list</replaceable></option>
+          (Specify command-line comma-separated password list)
+        </term>
+        <listitem>
+
+        <para>
+          Specify your own passwords directly in the command-line as a
+          comma-separated list.
+        </para>
+                    
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
     <variablelist>
       <varlistentry>
         <term>
@@ -1545,6 +1579,28 @@ Ncrack finished.
 
   <variablelist>
 
+  <varlistentry>
+        <term>
+          <option>--resume <replaceable>file</replaceable></option>
+          (Continue previously saved session)
+          <indexterm significance="preferred"><primary><option>--resume
+          </option></primary></indexterm>
+        </term>
+        <listitem>
+
+          <para>Whenever the user cancels a running session (usually by
+            pressing Ctrl+C), Ncrack saves the current state into a file
+            which it can later use to continue from where it had stopped.
+            This file is saved in subdirectory <filename>.ncrack/</filename>
+            of the user's home path with a filename format of 
+            "<filename>restore.YY-MM-DD_hh-mm</filename>". An example would be:
+            <filename>"/home/ithilgore/.ncrack/restore.2010-05-18_04-42
+            </filename>". You can then continue your session, by specifying
+            this file as argument to the <option>--resume</option> option.
+        </para>
+        </listitem>
+      </varlistentry>
+
       <varlistentry>
         <term>
           <option>-6</option> (Enable IPv6 scanning)
@@ -1774,7 +1830,6 @@ Ncrack finished.
 
         </listitem>
       </varlistentry>
-
     </variablelist>
 
 
@@ -1802,7 +1857,6 @@ Ncrack finished.
             
         </listitem>
       </varlistentry>
-
     </variablelist>
 
     <variablelist><title>HTTP(S) Module</title>
@@ -1819,7 +1873,19 @@ Ncrack finished.
             
         </listitem>
       </varlistentry>
+    </variablelist>
 
+      <variablelist><title>POP3(S) Module</title>
+      <varlistentry>
+        <listitem>
+          <para>  
+            POP3 support is still experimental and hasn't been thoroughly
+            tested. You can expect it to work against common mail servers,
+            nevertheless.
+          </para>
+            
+        </listitem>
+      </varlistentry>
     </variablelist>
 
 

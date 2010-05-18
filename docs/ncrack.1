@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 08/26/2009
+.\"      Date: 05/18/2010
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "08/26/2009" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "05/18/2010" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -127,6 +127,8 @@ TIMING AND PERFORMANCE:
 AUTHENTICATION:
   \-U <filename>: username file
   \-P <filename>: password file
+  \-\-user <username_list>: comma\-separated username list
+  \-\-pass <username_list>: comma\-separated password list
   \-\-passwords\-first: Iterate password list for each username\&. Default is opposite\&.
 OUTPUT:
   \-oN/\-oX <file>: Output scan in normal and XML format, respectively, to the given filename\&.
@@ -137,11 +139,19 @@ OUTPUT:
   \-\-log\-errors: Log errors/warnings to the normal\-format output file
   \-\-append\-output: Append to rather than clobber specified output files
 MISC:
+  \-\-resume <file>: Continue previously saved session
   \-6: Enable IPv6 cracking
   \-sL or \-\-list: only list hosts and services
   \-\-datadir <dirname>: Specify custom Ncrack data file location
   \-V: Print version number
   \-h: Print this help summary page\&.
+MODULES:
+  FTP, SSH, TELNET, HTTP(S), POP3(S)
+EXAMPLES:
+  ncrack \-v \-\-user root localhost:22
+  ncrack \-v \-T5 https://192\&.168\&.0\&.1
+  ncrack \-v \-iX ~/nmap\&.xml \-g CL=5,to=1h
+SEE THE MAN PAGE (http://nmap\&.org/ncrack/man\&.html) FOR MORE OPTIONS AND EXAMPLES
 .fi
 .if n \{\
 .RE
@@ -568,7 +578,7 @@ to give Ncrack a total of 8 hours to crack that service\&. Setting up cronjobs f
 .\" -T3
 .\" -T4
 .\" -T5
-While the fine\-grained timing controls discussed in the previous section are powerful and effective, some people find them confusing\&. Moreover, choosing the appropriate values can sometimes take more time than the scan you are trying to optimize\&. So Nmap offers a simpler approach, with six timing templates\&. You can specify them with the
+While the fine\-grained timing controls discussed in the previous section are powerful and effective, some people find them confusing\&. Moreover, choosing the appropriate values can sometimes take more time than the scan you are trying to optimize\&. So Ncrack offers a simpler approach, with six timing templates\&. You can specify them with the
 \fB\-T\fR
 option and their number (0\(en5) or their name\&. The template names are
 \fBparanoid\fR\ \&(\fB0\fR),
@@ -618,6 +628,16 @@ Usernames for specific environments can be gathered in numerous ways including h
 Specify your own password list by giving the path to the filename as argument to this option\&.
 .sp
 Common passwords are usually derived from leaked lists as a result of successful intrusions in public sites such as forums or other social networking places\&. A great deal of them have already been publicly disclosed and some of these have been used to assemble Ncrack\'s own lists\&.
+.RE
+.PP
+\fB\-\-user \fR\fB\fIusername_list\fR\fR (Specify command\-line comma\-separated username list)
+.RS 4
+Specify your own usernames directly in the command\-line as a comma\-separated list\&.
+.RE
+.PP
+\fB\-\-user \fR\fB\fIusername_list\fR\fR (Specify command\-line comma\-separated password list)
+.RS 4
+Specify your own passwords directly in the command\-line as a comma\-separated list\&.
 .RE
 .PP
 \fB\-\-passwords\-first\fR (Reverse the way passwords are iterated)
@@ -768,6 +788,16 @@ option\&. All output filenames specified in that Ncrack execution will then be a
 .PP
 This section describes some important (and not\-so\-important) options that don\'t really fit anywhere else\&.
 .PP
+\fB\-\-resume \fR\fB\fIfile\fR\fR (Continue previously saved session) .\" --resume
+.RS 4
+Whenever the user cancels a running session (usually by pressing Ctrl+C), Ncrack saves the current state into a file which it can later use to continue from where it had stopped\&. This file is saved in subdirectory
+\&.ncrack/
+of the user\'s home path with a filename format of "restore\&.YY\-MM\-DD_hh\-mm"\&. An example would be:
+"/home/ithilgore/\&.ncrack/restore\&.2010\-05\-18_04\-42"\&. You can then continue your session, by specifying this file as argument to the
+\fB\-\-resume\fR
+option\&.
+.RE
+.PP
 \fB\-6\fR (Enable IPv6 scanning) .\" -6 .\" IPv6
 .RS 4
 Warning: This option was just added and it is currently experimental, so please notify us for any problems and bugs related to it\&.
@@ -879,6 +909,12 @@ or at
 .PP
 .RS 4
 The HTTP Module currently supports basic authentication only, however additional methods will be added soon\&. Ncrack tries to use the "Keepalive" HTTP option, whenever possible, which leads to really high speeds, since that allows dozens of attempts to be carried out per connection\&. The HTTP module can also be called over SSL\&.
+.RE
+.PP
+\fBPOP3(S) Module\fR
+.PP
+.RS 4
+POP3 support is still experimental and hasn\'t been thoroughly tested\&. You can expect it to work against common mail servers, nevertheless\&.
 .RE
 .SH "BUGS"
 .\" bugs, reporting

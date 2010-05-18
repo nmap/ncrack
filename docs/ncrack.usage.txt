@@ -35,6 +35,8 @@ TIMING AND PERFORMANCE:
 AUTHENTICATION:
   -U <filename>: username file
   -P <filename>: password file
+  --user <username_list>: comma-separated username list
+  --pass <username_list>: comma-separated password list
   --passwords-first: Iterate password list for each username. Default is opposite.
 OUTPUT:
   -oN/-oX <file>: Output scan in normal and XML format, respectively, to the given filename.
@@ -45,8 +47,16 @@ OUTPUT:
   --log-errors: Log errors/warnings to the normal-format output file
   --append-output: Append to rather than clobber specified output files
 MISC:
+  --resume <file>: Continue previously saved session
   -6: Enable IPv6 cracking
   -sL or --list: only list hosts and services
   --datadir <dirname>: Specify custom Ncrack data file location
   -V: Print version number
   -h: Print this help summary page.
+MODULES:
+  FTP, SSH, TELNET, HTTP(S), POP3(S)
+EXAMPLES:
+  ncrack -v --user root localhost:22
+  ncrack -v -T5 https://192.168.0.1
+  ncrack -v -iX ~/nmap.xml -g CL=5,to=1h
+SEE THE MAN PAGE (http://nmap.org/ncrack/man.html) FOR MORE OPTIONS AND EXAMPLES
