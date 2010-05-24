@@ -403,6 +403,8 @@ ssh_free(Connection *con)
       free(p->kex->peer.buf);
     if (p->kex->my.alloc > 0)
       free(p->kex->my.buf);
+    if (p->kex->session_id)
+      free(p->kex->session_id);
     free(p->kex); 
   }
 
@@ -415,6 +417,12 @@ ssh_free(Connection *con)
       free(p->keys[i]->enc.iv);
       free(p->keys[i]->enc.key);
       free(p->keys[i]->mac.key);
+      if (p->keys[i]->comp.name)
+        free(p->keys[i]->comp.name);
+      if (p->keys[i]->enc.name)
+        free(p->keys[i]->enc.name);
+      if (p->keys[i]->mac.name)
+        free(p->keys[i]->mac.name);
       free(p->keys[i]);
     }
   }
