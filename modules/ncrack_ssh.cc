@@ -398,16 +398,26 @@ ssh_free(Connection *con)
 
   p = (ncrack_ssh_state *)con->misc_info;
 
-  if (p->kex)
+  if (p->kex) {
+    if (p->kex->peer.alloc > 0)
+      free(p->kex->peer.buf);
+    if (p->kex->my.alloc > 0)
+      free(p->kex->my.buf);
     free(p->kex); 
+  }
 
   /* Note that DH *dh has already been freed from
    * the openssh library */
 
-  if (p->keys[0])
-    free(p->keys[0]);
-  if (p->keys[1])
-    free(p->keys[1]);
+  /* 2 keys */
+  for (int i = 0; i < 2; i++) {
+    if (p->keys[i]) {
+      free(p->keys[i]->enc.iv);
+      free(p->keys[i]->enc.key);
+      free(p->keys[i]->mac.key);
+      free(p->keys[i]);
+    }
+  }
 
   EVP_CIPHER_CTX_cleanup(&p->receive_context.evp);
   EVP_CIPHER_CTX_cleanup(&p->send_context.evp);
