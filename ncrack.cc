@@ -2248,6 +2248,8 @@ ncrack(ServiceGroup *SG)
 
   } while (SG->services_finished.size() != SG->total_services);
 
+  nsp_delete(nsp);
+
   if (o.debugging > 4)
     log_write(LOG_STDOUT, "nsock_loop returned %d\n", loopret);
 
