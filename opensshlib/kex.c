@@ -501,23 +501,23 @@ kex_derive_keys(ncrack_ssh_state *nstate,
 
 	debug2("kex_derive_keys");
 	for (mode = 0; mode < MODE_MAX; mode++) {
-		nstate->keys[mode] = nstate->kex->newkeys[mode];
+		nstate->current_keys[mode] = nstate->kex->newkeys[mode];
 		nstate->kex->newkeys[mode] = NULL;
 		ctos = (!nstate->kex->server && mode == MODE_OUT) ||
 		    (nstate->kex->server && mode == MODE_IN);
-		nstate->keys[mode]->enc.iv  = keys[ctos ? 0 : 1];
-		nstate->keys[mode]->enc.key = keys[ctos ? 2 : 3];
-		nstate->keys[mode]->mac.key = keys[ctos ? 4 : 5];
+		nstate->current_keys[mode]->enc.iv  = keys[ctos ? 0 : 1];
+		nstate->current_keys[mode]->enc.key = keys[ctos ? 2 : 3];
+		nstate->current_keys[mode]->mac.key = keys[ctos ? 4 : 5];
 	}
 }
 
 Newkeys *
-kex_get_newkeys(int mode)
+kex_get_newkeys(ncrack_ssh_state *nstate, int mode)
 {
 	Newkeys *ret;
 
-	ret = current_keys[mode];
-	current_keys[mode] = NULL;
+	ret = nstate->current_keys[mode];
+	nstate->current_keys[mode] = NULL;
 	return ret;
 }
 

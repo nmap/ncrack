@@ -125,6 +125,7 @@ typedef struct ncrack_ssh_state {
   DH *dh;
   /* Session key information for Encryption and MAC */
   struct Newkeys *keys[2];
+  struct Newkeys *current_keys[2];
   char *client_version_string;
   char *server_version_string;
   /* Encryption context for receiving data. This is only used for decryption. */

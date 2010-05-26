@@ -139,7 +139,7 @@ struct Kex {
 };
 
 
-Newkeys *kex_get_newkeys(int);
+Newkeys *kex_get_newkeys(ncrack_ssh_state *nstate, int);
 
 
 void kex_dh_hash(char *, char *, char *, int, char *, int, u_char *, int,

@@ -402,7 +402,7 @@ set_newkeys(int mode, ncrack_ssh_state *nstate)
     xfree(comp->name);
     xfree(nstate->keys[mode]);
   }
-  nstate->keys[mode] = kex_get_newkeys(mode);
+  nstate->keys[mode] = kex_get_newkeys(nstate, mode);
 
   if (nstate->keys[mode] == NULL)
     fatal("newkeys: no keys for mode %d", mode);
