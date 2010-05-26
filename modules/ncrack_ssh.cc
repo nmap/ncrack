@@ -107,7 +107,7 @@
 #include "misc.h"
 #include "cipher.h"
 #include "compat.h"
-
+#include "mac.h"
 
 #define SSH_TIMEOUT 20000
 #define CLIENT_VERSION "SSH-2.0-OpenSSH_5.2\n"
@@ -417,6 +417,12 @@ ssh_free(Connection *con)
       free(p->keys[i]->enc.iv);
       free(p->keys[i]->enc.key);
       free(p->keys[i]->mac.key);
+      /* Without this specific call to cleanup the mac environment there
+       * was a big memleak - reported by Valgrind to be starting from
+       * mac_init() (opensshlib/mac.c). For some reason, no proper cleanup
+       * was done and this explicit call for mac_clear() is needed. 
+       */
+      mac_clear(&p->keys[i]->mac);
       if (p->keys[i]->comp.name)
         free(p->keys[i]->comp.name);
       if (p->keys[i]->enc.name)

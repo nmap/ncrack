@@ -23,8 +23,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int	 mac_valid(const char *);
 int	 mac_setup(Mac *, char *);
 int	 mac_init(Mac *);
 u_char	*mac_compute(Mac *, u_int32_t, u_char *, int);
 void	 mac_clear(Mac *);
+
+#ifdef __cplusplus
+} /* End of 'extern "C"' */
+#endif

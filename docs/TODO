@@ -3,12 +3,6 @@ TODO:
 * Windows Ncrack testing -- for example see
   http://seclists.org/nmap-dev/2010/q2/435
 
-* Fix potentially big memory leak.  See this thread:
-  http://seclists.org/nmap-dev/2010/q1/1140
-  o Note, Fyodor can reproduce scanning against localhost ssh with
-    openssh-server-5.2p1-6.fc11.x86_64 on Fedora Core 11 x86_64
-  -- Already partially fixed one generic memory leak.
-
 * Add --disable-pcap option to Nsock so that Ncrack and Nmap may share the
   exact same Nsock version all the time.
 
@@ -133,6 +127,12 @@ TODO:
   ---> For now we will try keeping up-to-date with Nmap's -oN format.
 
 ============================= :DONE: =========================================
+
+* Fix potentially big memory leak.  See this thread:
+  http://seclists.org/nmap-dev/2010/q1/1140
+  o Note, Fyodor can reproduce scanning against localhost ssh with
+    openssh-server-5.2p1-6.fc11.x86_64 on Fedora Core 11 x86_64
+  -- Already partially fixed one generic memory leak.
 
 * Update Ncrack License Terms (for year 2010)
 
