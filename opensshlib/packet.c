@@ -377,15 +377,32 @@ set_newkeys(int mode, ncrack_ssh_state *nstate)
     cc = &nstate->send_context;
     crypt_type = CIPHER_ENCRYPT;
     nstate->p_send.packets = 0;
-	nstate->p_send.blocks = 0;
+    nstate->p_send.blocks = 0;
     max_blocks = &nstate->max_blocks_out;
   } else {
     cc = &nstate->receive_context;
     crypt_type = CIPHER_DECRYPT;
     nstate->p_read.packets = 0;
-	nstate->p_read.blocks = 0;
+	  nstate->p_read.blocks = 0;
     max_blocks = &nstate->max_blocks_in;
   }
+
+  if (nstate->keys[mode] != NULL) {
+    debug("set_newkeys: rekeying");
+    cipher_cleanup(cc);
+    enc  = &nstate->keys[mode]->enc;
+    mac  = &nstate->keys[mode]->mac;
+    comp = &nstate->keys[mode]->comp;
+    mac_clear(mac);
+    xfree(enc->name);
+    xfree(enc->iv);
+    xfree(enc->key);
+    xfree(mac->name);
+    xfree(mac->key);
+    xfree(comp->name);
+    xfree(nstate->keys[mode]);
+  }
+  nstate->keys[mode] = kex_get_newkeys(mode);
 
   if (nstate->keys[mode] == NULL)
     fatal("newkeys: no keys for mode %d", mode);
@@ -468,7 +485,7 @@ packet_send2_wrapped(ncrack_ssh_state *nstate)
 #ifndef WIN32
         rnd = random();
 #else
-		rnd = rand();
+      rnd = rand();
 #endif
       cp[i] = rnd & 0xff;
       rnd >>= 8;
@@ -711,8 +728,8 @@ packet_read_poll2(ncrack_ssh_state *nstate)
   Mac *mac   = NULL;
   Comp *comp = NULL;
 
- // if (packet_discard)
- //   return SSH_MSG_NONE;
+  // if (packet_discard)
+  //   return SSH_MSG_NONE;
 
   if (nstate->keys[MODE_IN] != NULL) {
     enc  = &nstate->keys[MODE_IN]->enc;
