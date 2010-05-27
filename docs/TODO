@@ -10,7 +10,14 @@ TODO:
   so that user can give a comma separated list of files that will be
   automatically concatenated by Ncrack.
 
-* Make 0.2ALPHA release, send to nmap-dev for testing
+* Do a valgrind memory leak and bug audit for all the modules
+  (ssh almost done, remaining: ftp, http, pop3, telnet).
+
+* Make 0.2ALPHA release
+  o Build Windows, Linux, Source packages
+  o Ask David for help with Mac
+  o Update web site
+  o Send to nmap-dev for testing
 
 ------------ONLY TASKS FOR 0.2ALPHA GO ABOVE THIS LINE------------
 
