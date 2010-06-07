@@ -2146,6 +2146,12 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 CXXFLAGS="$CXXFLAGS -O2"
 
 
+# This variable is needed so that PCAP support, which is by default defined
+# for Nsock due to Nmap, is disabled in Ncrack's case.
+export pcap_en=no
+
+
+
 # Check whether --with-localdirs was given.
 if test "${with_localdirs+set}" = set; then :
   withval=$with_localdirs;  case "$with_localdirs" in

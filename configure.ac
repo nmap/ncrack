@@ -7,6 +7,12 @@ AC_INIT(ncrack.cc)
 
 CXXFLAGS="$CXXFLAGS -O2"
 
+
+# This variable is needed so that PCAP support, which is by default defined
+# for Nsock due to Nmap, is disabled in Ncrack's case. 
+export pcap_en=no
+
+
 AC_ARG_WITH(localdirs,
 AC_HELP_STRING([--with-localdirs], [Explicitly ask compiler to use /usr/local/{include,libs} if they exist ]),
   [ case "$with_localdirs" in
