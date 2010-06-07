@@ -237,6 +237,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\modules\ncrack_pop3.cc"
+				>
+			</File>
+			<File
 				RelativePath="..\ncrack_resume.cc"
 				>
 			</File>
