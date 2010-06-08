@@ -4,6 +4,7 @@
 	Version="9,00"
 	Name="ncrack"
 	ProjectGUID="{133C627B-C6FC-438F-853D-66FF7EE484F5}"
+	RootNamespace="ncrack"
 	TargetFrameworkVersion="196613"
 	>
 	<Platforms>
@@ -112,6 +113,191 @@
 			Name="Release|Win32"
 			OutputDirectory=".\$(ConfigurationName)"
 			IntermediateDirectory=".\$(ConfigurationName)"
+			ConfigurationType="1"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				TypeLibraryName=".\Release\ncrack.tlb"
+				HeaderFileName=""
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				InlineFunctionExpansion="1"
+				AdditionalIncludeDirectories=".;..;..\nbase;..\nsock\include;..\opensshlib;..\modules;OpenSSL\include;"
+				PreprocessorDefinitions="WIN32;_CONSOLE"
+				StringPooling="true"
+				RuntimeLibrary="2"
+				UsePrecompiledHeader="0"
+				PrecompiledHeaderFile=".\Release/ncrack.pch"
+				AssemblerListingLocation=".\Release/"
+				ObjectFile=".\Release/"
+				ProgramDataBaseFileName=".\Release/"
+				SuppressStartupBanner="true"
+				CompileAs="2"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="nsock.lib nbase.lib openssh.lib ws2_32.lib advapi32.lib libeay32.lib ssleay32.lib $(NOINHERIT)"
+				OutputFile=".\Release\ncrack.exe"
+				LinkIncremental="2"
+				SuppressStartupBanner="true"
+				AdditionalLibraryDirectories="lib;..\nsock;..\nbase;..\opensshlib;OpenSSL\lib;"
+				IgnoreDefaultLibraryNames=""
+				GenerateDebugInformation="true"
+				ProgramDatabaseFile=".\Release/ncrack.pdb"
+				SubSystem="1"
+				OptimizeForWindows98="0"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
+			/>
+		</Configuration>
+		<Configuration
+			Name="DebugNoPcap|Win32"
+			OutputDirectory=".\Debug"
+			IntermediateDirectory=".\Debug"
+			ConfigurationType="1"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				TypeLibraryName=".\Debug\ncrack.tlb"
+				HeaderFileName=""
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				AdditionalIncludeDirectories=".;..;..\nbase;..\nsock\include;..\opensshlib;..\modules;OpenSSL\include;"
+				PreprocessorDefinitions="WIN32;_CONSOLE"
+				GeneratePreprocessedFile="0"
+				KeepComments="false"
+				BasicRuntimeChecks="3"
+				RuntimeLibrary="1"
+				UsePrecompiledHeader="0"
+				PrecompiledHeaderFile=".\Debug\ncrack.pch"
+				AssemblerListingLocation=".\Debug\"
+				ObjectFile=".\Debug\"
+				ProgramDataBaseFileName=".\Debug\"
+				WarningLevel="2"
+				SuppressStartupBanner="true"
+				DebugInformationFormat="4"
+				CompileAs="2"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="nsock.lib nbase.lib openssh.lib ws2_32.lib advapi32.lib libeay32.lib ssleay32.lib $(NOINHERIT)"
+				OutputFile=".\Debug\ncrack.exe"
+				LinkIncremental="2"
+				SuppressStartupBanner="true"
+				AdditionalLibraryDirectories="lib;..\nsock;..\nbase;..\opensshlib;OpenSSL\lib;"
+				IgnoreDefaultLibraryNames=""
+				GenerateDebugInformation="true"
+				ProgramDatabaseFile=".\Debug\ncrack.pdb"
+				SubSystem="1"
+				OptimizeForWindows98="0"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+				CommandLine="xcopy &quot;$(SolutionDir)\OpenSSL\bin\*.dll&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y &amp;&amp; xcopy &quot;$(SolutionDir)..\ncrack-services&quot; &quot;$(SolutionDir)\$(ConfigurationName)\&quot; /y"
+			/>
+		</Configuration>
+		<Configuration
+			Name="ReleaseNoPcap|Win32"
+			OutputDirectory=".\Release"
+			IntermediateDirectory="\.Release"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -316,6 +502,22 @@
 					</FileConfiguration>
 					<FileConfiguration
 						Name="Release|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							ExceptionHandling="1"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="DebugNoPcap|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							ExceptionHandling="1"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="ReleaseNoPcap|Win32"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
