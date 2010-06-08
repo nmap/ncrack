@@ -3,9 +3,6 @@ TODO:
 * Windows Ncrack testing -- for example see
   http://seclists.org/nmap-dev/2010/q2/435
 
-* Add --disable-pcap option to Nsock so that Ncrack and Nmap may share the
-  exact same Nsock version all the time.
-
 * Perhaps improve option -U and -P options
   so that user can give a comma separated list of files that will be
   automatically concatenated by Ncrack.
@@ -134,6 +131,9 @@ TODO:
   ---> For now we will try keeping up-to-date with Nmap's -oN format.
 
 ============================= :DONE: =========================================
+
+* Add --disable-pcap option to Nsock so that Ncrack and Nmap may share the
+  exact same Nsock version all the time.
 
 * Fix potentially big memory leak.  See this thread:
   http://seclists.org/nmap-dev/2010/q1/1140
