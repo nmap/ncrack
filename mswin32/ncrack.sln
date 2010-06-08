@@ -17,43 +17,25 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
-		DebugNoPcap|Win32 = DebugNoPcap|Win32
 		Release|Win32 = Release|Win32
-		ReleaseNoPcap|Win32 = ReleaseNoPcap|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{133C627B-C6FC-438F-853D-66FF7EE484F5}.Debug|Win32.ActiveCfg = Debug|Win32
 		{133C627B-C6FC-438F-853D-66FF7EE484F5}.Debug|Win32.Build.0 = Debug|Win32
-		{133C627B-C6FC-438F-853D-66FF7EE484F5}.DebugNoPcap|Win32.ActiveCfg = DebugNoPcap|Win32
-		{133C627B-C6FC-438F-853D-66FF7EE484F5}.DebugNoPcap|Win32.Build.0 = DebugNoPcap|Win32
 		{133C627B-C6FC-438F-853D-66FF7EE484F5}.Release|Win32.ActiveCfg = Release|Win32
 		{133C627B-C6FC-438F-853D-66FF7EE484F5}.Release|Win32.Build.0 = Release|Win32
-		{133C627B-C6FC-438F-853D-66FF7EE484F5}.ReleaseNoPcap|Win32.ActiveCfg = ReleaseNoPcap|Win32
-		{133C627B-C6FC-438F-853D-66FF7EE484F5}.ReleaseNoPcap|Win32.Build.0 = ReleaseNoPcap|Win32
 		{B630C8F7-3138-43E8-89ED-78742FA2AC5F}.Debug|Win32.ActiveCfg = Debug|Win32
 		{B630C8F7-3138-43E8-89ED-78742FA2AC5F}.Debug|Win32.Build.0 = Debug|Win32
-		{B630C8F7-3138-43E8-89ED-78742FA2AC5F}.DebugNoPcap|Win32.ActiveCfg = DebugNoPcap|Win32
-		{B630C8F7-3138-43E8-89ED-78742FA2AC5F}.DebugNoPcap|Win32.Build.0 = DebugNoPcap|Win32
 		{B630C8F7-3138-43E8-89ED-78742FA2AC5F}.Release|Win32.ActiveCfg = Release|Win32
 		{B630C8F7-3138-43E8-89ED-78742FA2AC5F}.Release|Win32.Build.0 = Release|Win32
-		{B630C8F7-3138-43E8-89ED-78742FA2AC5F}.ReleaseNoPcap|Win32.ActiveCfg = ReleaseNoPcap|Win32
-		{B630C8F7-3138-43E8-89ED-78742FA2AC5F}.ReleaseNoPcap|Win32.Build.0 = ReleaseNoPcap|Win32
 		{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}.Debug|Win32.ActiveCfg = DebugNoPcap|Win32
 		{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}.Debug|Win32.Build.0 = DebugNoPcap|Win32
-		{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}.DebugNoPcap|Win32.ActiveCfg = DebugNoPcap|Win32
-		{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}.DebugNoPcap|Win32.Build.0 = DebugNoPcap|Win32
 		{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}.Release|Win32.ActiveCfg = ReleaseNoPcap|Win32
 		{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}.Release|Win32.Build.0 = ReleaseNoPcap|Win32
-		{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}.ReleaseNoPcap|Win32.ActiveCfg = ReleaseNoPcap|Win32
-		{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}.ReleaseNoPcap|Win32.Build.0 = ReleaseNoPcap|Win32
 		{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}.Debug|Win32.ActiveCfg = Debug|Win32
 		{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}.Debug|Win32.Build.0 = Debug|Win32
-		{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}.DebugNoPcap|Win32.ActiveCfg = DebugNoPcap|Win32
-		{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}.DebugNoPcap|Win32.Build.0 = DebugNoPcap|Win32
 		{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}.Release|Win32.ActiveCfg = Release|Win32
 		{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}.Release|Win32.Build.0 = Release|Win32
-		{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}.ReleaseNoPcap|Win32.ActiveCfg = ReleaseNoPcap|Win32
-		{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}.ReleaseNoPcap|Win32.Build.0 = ReleaseNoPcap|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
