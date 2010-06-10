@@ -1,4 +1,4 @@
-Ncrack 0.01ALPHA ( http://ncrack.org )
+Ncrack 0.2ALPHA ( http://ncrack.org )
 Usage: ncrack [Options] {target and service specification}
 TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc.
@@ -21,8 +21,8 @@ SERVICE SPECIFICATION:
     ssl: enable SSL over this service
     path <name>: used in modules like HTTP ('=' needs escaping if used)
 TIMING AND PERFORMANCE:
-  Options which take <time> are in milliseconds, unless you append 's'
-  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).
+  Options which take <time> are in seconds, unless you append 'ms'
+  (miliseconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).
   Service-specific options:
     cl (min connection limit): minimum number of concurrent parallel connections
     CL (max connection limit): maximum number of concurrent parallel connections

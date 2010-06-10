@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 05/18/2010
+.\"      Date: 06/11/2010
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "05/18/2010" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "06/11/2010" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -90,7 +90,7 @@ This options summary is printed when Ncrack is run with no arguments\&. It helps
 .RS 4
 .\}
 .nf
-Ncrack 0\&.01ALPHA ( http://ncrack\&.org )
+Ncrack 0\&.2ALPHA ( http://ncrack\&.org )
 Usage: ncrack [Options] {target and service specification}
 TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc\&.
@@ -113,8 +113,8 @@ SERVICE SPECIFICATION:
     ssl: enable SSL over this service
     path <name>: used in modules like HTTP (\'=\' needs escaping if used)
 TIMING AND PERFORMANCE:
-  Options which take <time> are in milliseconds, unless you append \'s\'
-  (seconds), \'m\' (minutes), or \'h\' (hours) to the value (e\&.g\&. 30m)\&.
+  Options which take <time> are in seconds, unless you append \'ms\'
+  (miliseconds), \'m\' (minutes), or \'h\' (hours) to the value (e\&.g\&. 30m)\&.
   Service\-specific options:
     cl (min connection limit): minimum number of concurrent parallel connections
     CL (max connection limit): maximum number of concurrent parallel connections
@@ -494,10 +494,10 @@ The timing engine is perhaps the most important part of any serious network auth
 .PP
 Some options accept a
 time
-parameter\&. This is specified in milliseconds by default, though you can append \(oqs\(cq, \(oqm\(cq, or \(oqh\(cq to the value to specify seconds, minutes, or hours\&. So the
+parameter\&. This is specified in seconds by default, though you can append \(oqms\(cq, \(oqm\(cq, or \(oqh\(cq to the value to specify milliseconds, minutes, or hours (\(oqs\(cq for seconds is redundant)\&. So the
 \fBcd\fR
 (connection delay) arguments
-900000,
+900000ms,
 900s, and
 15m
 all do the same thing\&.
@@ -565,7 +565,7 @@ Define how much time Ncrack is going to spend cracking the service, before givin
 .sp
 Sometimes, you have a limited time window to scan/crack your hosts\&. This might occur for various reasons\&. A common one would be that normal user activity mustn\'t be interrupted and since Ncrack can become very aggressive, it might be allowed to scan the hosts only at during certain time period like the night hours\&. Scanning during certain such hours is also likely to make an attack less detectable\&.
 .sp
-Don\'t forget that Ncrack allows you to specify the time unit of measure by appending \(oqs\(cq, \(oqm\(cq, or \(oqh\(cq for seconds, minutes or hours\&. Using them in this particular option, is really convenient as you can specify something like
+Don\'t forget that Ncrack allows you to specify the time unit of measure by appending \(oqms\(cq, \(oqm\(cq, or \(oqh\(cq for milliseconds, minutes or hours (seconds is the default time unit)\&. Using them in this particular option, is really convenient as you can specify something like
 \fBto=8h\fR
 to give Ncrack a total of 8 hours to crack that service\&. Setting up cronjobs for scheduled scans in combination with this option, might also be a good idea\&.
 .RE

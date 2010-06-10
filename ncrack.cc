@@ -210,9 +210,9 @@ print_usage(void)
       "    path <name>: used in modules like HTTP ('=' needs escaping if "
            "used)\n"
       "TIMING AND PERFORMANCE:\n"
-      "  Options which take <time> are in milliseconds, unless you append "
-         "'s'\n"
-      "  (seconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).\n"
+      "  Options which take <time> are in seconds, unless you append 'ms'\n"
+      "  (miliseconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m)."
+      "\n"
       "  Service-specific options:\n"
       "    cl (min connection limit): minimum number of concurrent parallel "
            "connections\n"
@@ -1323,7 +1323,7 @@ ncrack_main(int argc, char **argv)
       for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
         if ((*li)->target == Targets[i]) 
           log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, "
-              "cr=%ld, to=%lld, ssl=%s, path=%s\n", 
+              "cr=%ld, to=%lldms, ssl=%s, path=%s\n", 
               (*li)->name, (*li)->portno, (*li)->min_connection_limit,
               (*li)->max_connection_limit, (*li)->auth_tries, 
               (*li)->connection_delay, (*li)->connection_retries,

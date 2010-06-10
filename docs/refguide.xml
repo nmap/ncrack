@@ -802,11 +802,11 @@ Ncrack finished.
 
     <para>
       Some options accept a <literal>time</literal> parameter. This
-      is specified in milliseconds by default, though you can append
-      &lsquo;s&rsquo;, &lsquo;m&rsquo;, or &lsquo;h&rsquo; to the value to
-      specify seconds, minutes, or hours. So the 
-      <option>cd</option> (connection delay) arguments
-      <literal>900000</literal>, <literal>900s</literal>, and
+      is specified in seconds by default, though you can append
+      &lsquo;ms&rsquo;, &lsquo;m&rsquo;, or &lsquo;h&rsquo; to the value to
+      specify milliseconds, minutes, or hours (&lsquo;s&rsquo; for seconds
+      is redundant). So the <option>cd</option> (connection delay) arguments
+      <literal>900000ms</literal>, <literal>900s</literal>, and
       <literal>15m</literal> all do the same thing.   
     </para>
 
@@ -1011,8 +1011,9 @@ Ncrack finished.
       <para>
         Don't forget that Ncrack allows you to specify the time unit
         of measure by appending 
-        &lsquo;s&rsquo;, &lsquo;m&rsquo;, or &lsquo;h&rsquo; 
-        for seconds, minutes or hours. Using them in this particular
+        &lsquo;ms&rsquo;, &lsquo;m&rsquo;, or &lsquo;h&rsquo; 
+        for milliseconds, minutes or hours (seconds is the default time unit).
+        Using them in this particular
         option, is really convenient as you can specify something like
         <option>to=8h</option> to give Ncrack a total of 8 hours to crack
         that service. Setting up cronjobs for scheduled scans
