@@ -197,6 +197,7 @@ Service(const Service& ref)
   
   module_data = NULL;
   hostinfo = NULL;
+  memset(&last, 0, sizeof(last));
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
   htn.toclock_running = false;
   htn.host_start = htn.host_end = 0;
