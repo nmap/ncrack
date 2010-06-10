@@ -1455,11 +1455,6 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     return ncrack_connection_end(nsp, con);
   }
 
-  if (con->iobuf) {
-    delete con->iobuf;
-    con->iobuf = NULL;
-  }
-
   if (con->auth_success) {
     serv->addCredential(con->user, con->pass);
     SG->credentials_found++;

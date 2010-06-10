@@ -114,7 +114,6 @@ Connection(Service *serv)
   login_attempts = 0;
   misc_info = NULL;
   close_reason = -1;
-  iobuf = NULL;
   inbuf = NULL;
   outbuf = NULL;
   login_attempts = 0;
@@ -125,8 +124,6 @@ Connection(Service *serv)
 Connection::
 ~Connection()
 {
-  if (iobuf)
-    delete iobuf;
   if (inbuf)
     delete inbuf;
   if (outbuf)

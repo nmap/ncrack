@@ -151,7 +151,6 @@ class Connection
 
 		int state;          /* module state-machine's current state */
 
-    Buf *iobuf;
     Buf *inbuf;         /* buffer for inbound data */
     Buf *outbuf;        /* buffer for outbound data */
 
