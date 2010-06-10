@@ -212,6 +212,8 @@ Service::
     free(module_data);
   if (hostinfo)
     free(hostinfo);
+  if (end.reason)
+    free(end.reason);
 }
 
 const char *Service::
