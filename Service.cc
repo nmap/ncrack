@@ -143,6 +143,7 @@ Service()
   hostinfo = NULL;
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
 
+  htn.msecs_used = 0;
   htn.toclock_running = false;
   htn.host_start = htn.host_end = 0;
 }
@@ -199,6 +200,8 @@ Service(const Service& ref)
   hostinfo = NULL;
   memset(&last, 0, sizeof(last));
   memset(&last_auth_rate, 0, sizeof(last_auth_rate));
+
+  htn.msecs_used = 0;
   htn.toclock_running = false;
   htn.host_start = htn.host_end = 0;
 }
@@ -501,7 +504,8 @@ timedOut(const struct timeval *now) {
       tv = *now;
     else
       gettimeofday(&tv, NULL);
-    used += TIMEVAL_MSEC_SUBTRACT(tv, htn.toclock_start);
+
+    used += timeval_msec_subtract(tv, htn.toclock_start);
   }
 
   return (used > (unsigned long)timeout)? true : false;

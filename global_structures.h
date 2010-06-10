@@ -114,7 +114,7 @@ typedef struct timing_options {
   /* number of connection retries after connection failure */
   long connection_retries;
   /* maximum cracking time regardless of success so far */
-  long timeout; 
+  long long timeout; 
 
 } timing_options;
 

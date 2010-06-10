@@ -244,7 +244,7 @@ class Service
     /* number of connection retries after connection failure */
 		long connection_retries;
     /* maximum cracking time regardless of success so far */
-    long timeout;
+    long long timeout;
 
 		/* misc options */
 		bool ssl;   /* true -> SSL enabled over this service */

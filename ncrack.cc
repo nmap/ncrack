@@ -1229,7 +1229,7 @@ ncrack_main(int argc, char **argv)
   if (o.list_only) {
     if (o.debugging) {
       log_write(LOG_PLAIN, "----- [ Timing Template ] -----\n");
-      log_write(LOG_PLAIN, "cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld, to=%ld\n",
+      log_write(LOG_PLAIN, "cl=%ld, CL=%ld, at=%ld, cd=%ld, cr=%ld, to=%lld\n",
           timing.min_connection_limit, timing.max_connection_limit,
           timing.auth_tries, timing.connection_delay,
           timing.connection_retries, timing.timeout);
@@ -1323,7 +1323,7 @@ ncrack_main(int argc, char **argv)
       for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
         if ((*li)->target == Targets[i]) 
           log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, "
-              "cr=%ld, to=%ld, ssl=%s, path=%s\n", 
+              "cr=%ld, to=%lld, ssl=%s, path=%s\n", 
               (*li)->name, (*li)->portno, (*li)->min_connection_limit,
               (*li)->max_connection_limit, (*li)->auth_tries, 
               (*li)->connection_delay, (*li)->connection_retries,
@@ -1771,7 +1771,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   assert(type == NSE_TYPE_READ);
 
-  if (serv->timedOut(nsock_gettimeofday())) {
+  if (serv->timedOut(NULL)) {
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
@@ -1851,7 +1851,7 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   const char *hostinfo = serv->HostInfo();
   int err;
 
-  if (serv->timedOut(nsock_gettimeofday())) {
+  if (serv->timedOut(NULL)) {
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
@@ -1908,7 +1908,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
 
-  if (serv->timedOut(nsock_gettimeofday())) {
+  if (serv->timedOut(NULL)) {
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
@@ -2069,7 +2069,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     serv = *li;
     hostinfo = serv->HostInfo();
 
-    if (serv->timedOut(nsock_gettimeofday())) {
+    if (serv->timedOut(NULL)) {
       serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
       SG->pushServiceToList(serv, &SG->services_finished);
       if (o.verbose)
