@@ -183,13 +183,17 @@ ncrack_http(nsock_pool nsp, Connection *con)
       con->outbuf->append("GET ", 4);
       if (serv->path[0] != '/')
         con->outbuf->append("/", 1);
-      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ", serv->path);
+      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+          serv->path);
       if (serv->target->targetname)
-        con->outbuf->append(serv->target->targetname, strlen(serv->target->targetname));
+        con->outbuf->append(serv->target->targetname,
+            strlen(serv->target->targetname));
       else 
-        con->outbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
+        con->outbuf->append(serv->target->NameIP(),
+            strlen(serv->target->NameIP()));
 
-      con->outbuf->snprintf(115, "\r\nUser-Agent: %sConnection: close\r\n\r\n", USER_AGENT);
+      con->outbuf->snprintf(115, "\r\nUser-Agent: %sConnection: close\r\n\r\n",
+          USER_AGENT);
 
       nsock_write(nsp, nsi, ncrack_write_handler, HTTP_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
@@ -398,11 +402,14 @@ http_basic(nsock_pool nsp, Connection *con)
       if (serv->path[0] != '/')
         con->outbuf->append("/", 1);
 
-      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ", serv->path);
+      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+          serv->path);
       if (serv->target->targetname)
-        con->outbuf->append(serv->target->targetname, strlen(serv->target->targetname));
+        con->outbuf->append(serv->target->targetname, 
+            strlen(serv->target->targetname));
       else 
-        con->outbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
+        con->outbuf->append(serv->target->NameIP(),
+            strlen(serv->target->NameIP()));
 
       con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
 
