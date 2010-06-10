@@ -484,13 +484,23 @@ http_basic(nsock_pool nsp, Connection *con)
 static void
 http_free(Connection *con)
 {
-  http_info *p;
+  http_info *p = NULL;
+  http_state *s = NULL;
   if (!con->misc_info)
     return;
 
   p = (http_info *)con->misc_info;
+  if (con->service->module_data)
+    s = (http_state *)con->service->module_data;
 
-  if (p->auth_scheme)
+  /* We only deallocate the 'auth_scheme' string from the http_info struct
+   * when it hasn't been assigned from the module http_state (thus we check
+   * that the pointers are different). If we freed it, when the two
+   * pointers referred to the same memory address, then the http_state's
+   * would be deallocated as well, something we don't want to happen.
+   */
+  if (p->auth_scheme && s && s->auth_scheme 
+      && p->auth_scheme != s->auth_scheme)
     free(p->auth_scheme);
 
 }
