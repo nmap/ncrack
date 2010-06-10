@@ -1750,6 +1750,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   /* see if we can initiate some more connections */
   if (serv->getListActive())
     return ncrack_probes(nsp, SG);
+
+  return;
 }
 
 
@@ -1989,8 +1991,14 @@ status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   else if (key_ret == KEYPRESS_CREDS)
     print_creds(SG);
 
-  if (status != NSE_STATUS_SUCCESS)
-    error("Nsock status timer handler error!");
+  if (status != NSE_STATUS_SUCCESS) {
+    /* Don't reschedule timer again, since nsp seems to have been
+     * deleted (NSE_STATUS_KILL sent) and we are done. */
+    if (status == NSE_STATUS_KILL)
+      return;
+    else 
+      error("Nsock status timer handler error: %s\n", nse_status2str(status));
+  }
 
   /* Reschedule timer for the next polling. */
   nsock_timer_create(nsp, status_timer_handler, KEYPRESSED_INTERVAL, NULL);
@@ -2004,8 +2012,16 @@ signal_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   mydata = NULL; /* nothing in there */
 
-  if (status != NSE_STATUS_SUCCESS)
-    error("Nsock signal timer handler error!");
+  if (status != NSE_STATUS_SUCCESS) {
+    /* Don't reschedule timer again, since nsp seems to have been
+     * deleted (NSE_STATUS_KILL sent) and we are done. */
+    if (status == NSE_STATUS_KILL) {
+      sigcheck(SG);
+      return;
+    }
+    else 
+      error("Nsock status timer handler error: %s\n", nse_status2str(status));
+  }
 
   /* Reschedule timer for the next polling. */
   nsock_timer_create(nsp, signal_timer_handler, SIGNAL_CHECK_INTERVAL, NULL);
