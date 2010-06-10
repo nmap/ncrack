@@ -103,17 +103,21 @@ Connection(Service *serv)
 {
   state = 0;
   service = serv;
-  check_closed = false;
-  auth_complete = false;
-  auth_success = false;
-  peer_alive = false;
   peer_might_close = false;
   finished_normally = false;
+  check_closed = false;
+  peer_alive = false;
+  auth_complete = false;
+  from_pool = false;
+  closed = false;
+  auth_success = false;
   login_attempts = 0;
   misc_info = NULL;
+  close_reason = -1;
   iobuf = NULL;
   inbuf = NULL;
   outbuf = NULL;
+  login_attempts = 0;
   ssl_session = NULL;
   ops_free = NULL;
 }
