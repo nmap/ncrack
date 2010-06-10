@@ -1,15 +1,5 @@
 TODO:
 
-* Windows Ncrack testing -- for example see
-  http://seclists.org/nmap-dev/2010/q2/435
-
-* Perhaps improve option -U and -P options
-  so that user can give a comma separated list of files that will be
-  automatically concatenated by Ncrack.
-
-* Do a valgrind memory leak and bug audit for all the modules
-  (ssh almost done, remaining: ftp, http, pop3, telnet).
-
 * Make 0.2ALPHA release
   o Build Windows, Linux, Source packages
   o Ask David for help with Mac
@@ -30,6 +20,10 @@ TODO:
   most common web forms out there. The user will also be given the
   choice to specify certain form-related arguments that can make
   Ncrack's job easier.
+
+* Perhaps improve option -U and -P options
+  so that user can give a comma separated list of files that will be
+  automatically concatenated by Ncrack.
 
 * Implement option to make Ncrack stop scanning after finding the first
   credential pair (there is such an option in Hydra).
@@ -131,6 +125,16 @@ TODO:
   ---> For now we will try keeping up-to-date with Nmap's -oN format.
 
 ============================= :DONE: =========================================
+
+* Do a valgrind memory leak and bug audit for all the modules
+  (ssh almost done, remaining: ftp, http, pop3, telnet).
+  There are still some minor/trivial errors reported by valgrind but most
+  of them are 'possibly lost' memory leaks related to Nsock and others are in
+  libcrypto (in which we don't have any access and surely don't want to
+  manually patch).
+
+* Windows Ncrack testing -- for example see
+  http://seclists.org/nmap-dev/2010/q2/435
 
 * Add --disable-pcap option to Nsock so that Ncrack and Nmap may share the
   exact same Nsock version all the time.
