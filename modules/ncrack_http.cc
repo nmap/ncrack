@@ -125,6 +125,8 @@ static void http_basic(nsock_pool nsp, Connection *con);
 static void http_set_error(Service *serv, const char *reply);
 static char *http_decode(int http_code);
 
+static void http_free(Connection *con);
+
 
 enum states { HTTP_INIT, HTTP_GET_AUTH, HTTP_BASIC_AUTH };
 
@@ -155,7 +157,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
   Service *serv = con->service;
   http_info *info = NULL;
   http_state *hstate = NULL;
-  //con->ops_free = &http_free;
+  con->ops_free = &http_free;
 
   if (con->misc_info) {
     info = (http_info *) con->misc_info;
@@ -478,5 +480,19 @@ http_basic(nsock_pool nsp, Connection *con)
   }
 }
 
+
+static void
+http_free(Connection *con)
+{
+  http_info *p;
+  if (!con->misc_info)
+    return;
+
+  p = (http_info *)con->misc_info;
+
+  if (p->auth_scheme)
+    free(p->auth_scheme);
+
+}
 
 
