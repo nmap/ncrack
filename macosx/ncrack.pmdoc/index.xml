@@ -14,7 +14,7 @@
     <choice title="Ncrack" id="choice92" starts_selected="true"
     description="Ncrack executables, scripts, and support files."
     starts_enabled="true" starts_hidden="false">
-      <pkgref id="org.insecure.ncrack.ncrack.pkg" />
+      <pkgref id="org.insecure.ncrack.Ncrack.pkg" />
     </choice>
   </contents>
   <resources bg-scale="none" bg-align="topleft">
