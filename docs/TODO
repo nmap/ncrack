@@ -1,7 +1,9 @@
 TODO:
 
+* Make a CHANGELOG showing the differences between 0.01ALPHA and 0.2ALPHA
+
 * Make 0.2ALPHA release
-  o Build Windows, Linux, Source packages
+  o Build Windows, Mac, Source packages
   o Ask David for help with Mac
   o Update web site
   o Send to nmap-dev for testing
@@ -116,6 +118,8 @@ TODO:
   provided by Balázs Bucsay. Further development of them, as well as
   SMTP support should be one goal to cover the existing email
   infrastructure.
+
+* Consider adding a spec file for distributing RPMs.
 
 * Discuss with nmap-dev about making and distributing a oN2oX converter
   (Nmap Normal to XML output) so that we drop supporting the -iN option (which
