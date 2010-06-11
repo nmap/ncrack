@@ -23,6 +23,10 @@ TODO:
   choice to specify certain form-related arguments that can make
   Ncrack's job easier.
 
+* We should probably put an Ncrack logo atop the Ncrack page
+  (http://nmap.org/ncrack/).  For example, look at the Nping page at
+  http://nmap.org/nping/.
+
 * Perhaps improve option -U and -P options
   so that user can give a comma separated list of files that will be
   automatically concatenated by Ncrack.
