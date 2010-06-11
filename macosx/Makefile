@@ -19,16 +19,22 @@ PACKAGEMAKER = /Developer/usr/bin/packagemaker
 
 EXTRA_DIST_FILES = $(addprefix $(IMAGE_STAGING_DIR)/,COPYING README)
 
-CONFIGURE_ARGS = --prefix="$(PREFIX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)"
+CONFIGURE_ARGS = --prefix="$(PREFIX)" CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)"
 
 # Flags for building universal binaries. See
 # http://developer.apple.com/documentation/Porting/Conceptual/PortingUnix/compiling/chapter_4_section_3.html.
 UNIVERSAL_CONFIGURE_ARGS = --disable-dependency-tracking
+# gcc-4.0 is used to avoid an error with stdarg.h ("No such file or directory")
+# when building against the 10.4u SDK on OS X 10.6.
+UNIVERSAL_CC = gcc-4.0
+UNIVERSAL_CXX = g++-4.0
 UNIVERSAL_CPPFLAGS = -isysroot /Developer/SDKs/MacOSX10.4u.sdk
 UNIVERSAL_CFLAGS = $(UNIVERSAL_CPPFLAGS) -mmacosx-version-min=10.4 -arch ppc -arch i386
 UNIVERSAL_CXXFLAGS = $(UNIVERSAL_CFLAGS)
 UNIVERSAL_LDFLAGS = -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk -mmacosx-version-min=10.4 -arch ppc -arch i386
 
+CC = $(UNIVERSAL_CC)
+CXX = $(UNIVERSAL_CXX)
 CONFIGURE_ARGS += $(UNIVERSAL_CONFIGURE_ARGS)
 CPPFLAGS += $(UNIVERSAL_CPPFLAGS)
 CFLAGS += $(UNIVERSAL_CFLAGS)
