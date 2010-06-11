@@ -21,8 +21,8 @@
   ;Get installation folder from registry if available 
   InstallDirRegKey HKCU "Software\Ncrack" "" 
  
-  !define VERSION "0.01ALPHA"  
-  VIProductVersion "0.0.0.1"
+  !define VERSION "0.2ALPHA"  
+  VIProductVersion "0.2"
   VIAddVersionKey /LANG=1033 "FileVersion" "${VERSION}"
   VIAddVersionKey /LANG=1033 "ProductName" "Ncrack" 
   VIAddVersionKey /LANG=1033 "CompanyName" "Insecure.org" 
