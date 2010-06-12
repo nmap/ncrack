@@ -22,7 +22,7 @@
   InstallDirRegKey HKCU "Software\Ncrack" "" 
  
   !define VERSION "0.2ALPHA"  
-  VIProductVersion "0.2"
+  VIProductVersion "0.2.0.0"
   VIAddVersionKey /LANG=1033 "FileVersion" "${VERSION}"
   VIAddVersionKey /LANG=1033 "ProductName" "Ncrack" 
   VIAddVersionKey /LANG=1033 "CompanyName" "Insecure.org" 
