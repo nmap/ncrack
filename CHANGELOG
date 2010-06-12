@@ -105,7 +105,9 @@ o Added --resume option, which allows users to pause (usually be pressing
 
 o Integrated Solar Designer's list as a separate file and compiled optimal
   default password list by merging the top 500 myspace 
-  and top 500 phpbb passwords with Solar Designer's jtr list.
+  and top 500 phpbb passwords with Solar Designer's jtr list. Finally,
+  updated the default.pwd which now holds the top 5000 passwords of Nmap's
+  merged main password list.
 
 o Added --user and --pass options for command-line wordlist specification.
 
