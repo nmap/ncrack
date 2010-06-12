@@ -48,7 +48,7 @@ o Made changes to Nsock so that Nmap and Ncrack can share it as an external svn
   previously, rather it gets a fully updated version straight from the svn
   repository each time. The modifications needed had to do with Ncrack being
   able to give Nsock an option so as not to compile with libpcap (since Ncrack
-  doesn't rely or need libpcap).
+  doesn't rely on or need libpcap).
 
 o Fixed error with timeout (to) as reported at
   http://seclists.org/nmap-dev/2010/q2/450 . It appears that
