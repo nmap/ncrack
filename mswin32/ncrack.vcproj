@@ -168,7 +168,7 @@
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="lib;..\nsock;..\nbase;..\opensshlib;OpenSSL\lib;"
-				IgnoreDefaultLibraryNames=""
+				IgnoreDefaultLibraryNames="libcmtd.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release/ncrack.pdb"
 				SubSystem="1"
