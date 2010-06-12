@@ -15,7 +15,8 @@ TODO:
 
 * We should probably put an Ncrack logo atop the Ncrack page
   (http://nmap.org/ncrack/).  For example, look at the Nping page at
-  http://nmap.org/nping/.
+  http://nmap.org/nping/. 
+  o Improve current scorpion logo. Perhaps make a SVG file.
 
 * Perhaps improve option -U and -P options
   so that user can give a comma separated list of files that will be
@@ -25,6 +26,8 @@ TODO:
   credential pair (there is such an option in Hydra).
 
 * Add remote desktop (rdp) cracking
+
+* Write Ncrack Developer's Guide. 
 
 * Make free (misc_info) handlers for HTTP protocol.
 
