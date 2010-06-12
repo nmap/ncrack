@@ -1,0 +1,133 @@
+                 
+               ~00000                                       
+              00000000                                      
+             ,000$ 0$+~                                     
+             $=0=  .0+0                                     
+             000    000                                     
+            :000    0~0                                     
+            0000.    0                                      
+            00000     .                                     
+           .000000                                          
+           0?= +.,.                                         
+          ,?00.$000                                         
+          00000~.:~0                                        
+          .$+00~?~000                                       
+          :00000.=0000                                      
+          ?00?00+=:  ,0,                                    
+     00000..0000~ 000000.   $0                              
+    00..0~0?0::00,?0::?$0.  00 ~                            
+   .0.   ,0?00000.0$,+,000.00 $00                           
+   0.   00.?00=00000~0+0:0000?0,~0?.                        
+  .0  +00   0+0000 0000=?~0000?00 00                        
+ .: .~~   .000=00000~00=000000+0.0~0$$.                     
+ 00 ,    ?00.. 000~000000000000.:0.0:0~   0$00.+            
+00.0    00   00?~000~000000000+00   + ~0000000000=$0000     
+   $   00   00.   .00,000000000000$.00000.    .0000+$+~00   
+  0   00  .0       000000000?~0000000.   0.   .0$000000+$0  
+ 0    0   0     000:$~0000=0.0000,$.       00   0000000000  
+     0   00    ?.0000      $0 0 .                     .0000 
+   .     $    ?000.                                     0 0 
+        0     +~?000                                        
+       0.    :000000?0     |=------=[ Ncrack ]=------=| 
+             0000$?+00                                      
+             00+0:~0$0+                                     
+             .0$000?00                                      
+               0?000000                                     
+                  .000~0  
+
+
+                  -- [ Ncrack Changelog ] --
+
+
+Ncrack 0.2ALPHA [2010-06-12]
+
+o Added this CHANGELOG file to the distribution.
+
+o Made changes to Nsock so that Nmap and Ncrack can share it as an external svn
+  object. Now Ncrack doesn't need to have a separate copy of Nsock like
+  previously, rather it gets a fully updated version straight from the svn
+  repository each time. The modifications needed had to do with Ncrack being
+  able to give Nsock an option so as not to compile with libpcap (since Ncrack
+  doesn't rely or need libpcap).
+
+o Fixed error with timeout (to) as reported at
+  http://seclists.org/nmap-dev/2010/q2/450 . It appears that
+  nsock_gettimeofday() was the culprit as nsock doesn't record the time as
+  frequently and as a result, the 'now' time was a bit behind than the real
+  one. This led to a negative value as a result of the timeval subtraction.
+ 
+o Fixed bug which caused an endless loop before Ncrack could exit properly.
+  This bug was reported at http://seclists.org/nmap-dev/2010/q2/746
+
+o Fixed several memory leaks with the help of Valgrind. Also conducted a
+  Valgrind test for all modules. A report on a big memleak was made here:
+  http://seclists.org/nmap-dev/2010/q1/1140
+
+o Fixed configure-script issue where it was called twice for each of the
+  libraries on which Ncrack relies. The fix has really sped up installation
+  speed.
+
+o Ncrack now has the capability of interactively printing the credentials
+  found so far whenever the user presses the 'p' key. It will print the
+  username/password pairs in a way similar to the one it uses to print the
+  results when it finishes cracking. Also, when -v (verbose) mode has been
+  specified, Ncrack prints any credentials found at the time they are
+  discovered.
+
+o Added real-life examples to -h. Ncrack now prints supported modules with
+  -h and -V (manually added).
+
+o Updated Ncrack license terms for year 2010.
+
+o Added experimental pop3(s) support - patch initially made by Bucsay Balazs
+  and then modified by me
+
+o Added cleanup function for modules. This is made possible by a function
+  pointer (ops_free) in the Connection class, that deallocates all internal
+  struct members of misc_info . Since these are module-specific data, each
+  module should initialize this function upon first invokation.
+
+o Added snprintf function to Buf class. This is really handy, because you can
+  now do multiple I/O operations in one go.
+
+o Added two separate iobufs for Connection class, 1 for inbound and 1 for
+  outbound data. Removed older iobuf system and replaced it with the inbuf and
+  outbuf systems for every module. These buffers allow differentiation between
+  data that is inbound and outbound respectively.
+
+o Added --resume option, which allows users to pause (usually be pressing
+  Ctrl+C) and later restore a cracking session through a file with the saved
+  state. The ncrack restoration file will be saved at .ncrack/ under the home
+  user's directory for *nix systems and inside the user's profile directory 
+  (normally under C:\Documents and Settings\<user>\.ncrack\) in Windows. The
+  name format is restore.<date>_<time> e.g: restore.2009-11-1_10-10 . The time
+  cannot be in XX:XX format because Windows doesn't allow colons in filenames.
+
+o Integrated Solar Designer's list as a separate file and compiled optimal
+  default password list by merging the top 500 myspace 
+  and top 500 phpbb passwords with Solar Designer's jtr list.
+
+o Added --user and --pass options for command-line wordlist specification.
+
+o Microsoft couldn't reproduce the issue with the Windows RST bug as described
+  at http://seclists.org/nmap-dev/2009/q2/774 . Its response is in the bug
+  ticket I opened here:
+  https://connect.microsoft.com/WNDP/feedback/ViewFeedback.aspx?FeedbackID=479640
+  According to them, it's the antivirus messing with the network stack, so
+  disabling it is the only solution.
+
+o Implemented -iN option, through which Ncrack can get target input from Nmap's
+  -oN normal output format. This has also been later updated to take account of
+  the latest Nmap -oN format.
+
+o Implemented -iX option, which allows Ncrack to get target input from Nmap's
+  -oX XML output format.
+
+o Fixed issue where compilation would fail at linking phase when OpenSSL is
+  not installed in system, due to undefined reference of ncrack_ssh()
+
+
+Ncrack 0.01ALPHA [2009-08-10]
+
+o First public release of Ncrack.
+
