@@ -1,15 +1,5 @@
 TODO:
 
-* Make a CHANGELOG showing the differences between 0.01ALPHA and 0.2ALPHA
-
-* Make 0.2ALPHA release
-  o Build Windows, Mac, Source packages
-  o Ask David for help with Mac
-  o Update web site
-  o Send to nmap-dev for testing
-
-------------ONLY TASKS FOR 0.2ALPHA GO ABOVE THIS LINE------------
-
 * For session saving (--resume) consider going to second granularity in the
   filename. This avoids occasions when the file is overwritten because the
   user invoked Ncrack in the same minute and decided to cancel again.
@@ -133,6 +123,14 @@ TODO:
   ---> For now we will try keeping up-to-date with Nmap's -oN format.
 
 ============================= :DONE: =========================================
+
+* Make a CHANGELOG showing the differences between 0.01ALPHA and 0.2ALPHA
+
+* Make 0.2ALPHA release
+  o Build Windows, Mac, Source packages
+  o Ask David for help with Mac
+  o Update web site
+  o Send to nmap-dev for testing
 
 * Do a valgrind memory leak and bug audit for all the modules
   (ssh almost done, remaining: ftp, http, pop3, telnet).
