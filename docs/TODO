@@ -1,5 +1,13 @@
 TODO:
 
+* Discuss improvements on password/username-list manipulation.
+  e.g combo-lists, special format with which you could specify the
+  username/password to be tried reversed, or a username to be tested
+  as password, like this for example:
+  %username% #to test the user name as a password
+  %rev username% #username reversed
+  %%username%% #to test for %username% 
+
 * For session saving (--resume) consider going to second granularity in the
   filename. This avoids occasions when the file is overwritten because the
   user invoked Ncrack in the same minute and decided to cancel again.
