@@ -7,10 +7,21 @@ TODO:
   %username% #to test the user name as a password
   %rev username% #username reversed
   %%username%% #to test for %username% 
+  We also should find a special way for treating the 'blank' password.
 
-* For session saving (--resume) consider going to second granularity in the
-  filename. This avoids occasions when the file is overwritten because the
-  user invoked Ncrack in the same minute and decided to cancel again.
+* Implement option to make Ncrack stop scanning after finding the first
+  credential pair (there is such an option in Hydra).
+  We should probably provide 2 different versions of the option. One would
+  finish Ncrack after finding 1 password regardless of how many services it is
+  cracking in parallel. The other would finish Ncrack after finding 1 password
+  for every service it is cracking. We have two ways of doing this:
+  either with a separate switch (e.g -f and -F) or using the already existing
+  module option subsystem (-m, -g, per-host e.g $ ncrack 127.0.0.1:22,f=yes)
+
+* Discuss whether Ncrack should use different default username/password lists
+  based on the protocol/service it is trying to crack.
+  
+* Start collecting/assemblying protocol-optimized username/password lists.
 
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
@@ -30,18 +41,16 @@ TODO:
   so that user can give a comma separated list of files that will be
   automatically concatenated by Ncrack.
 
-* Implement option to make Ncrack stop scanning after finding the first
-  credential pair (there is such an option in Hydra).
-
 * Add remote desktop (rdp) cracking
+
+* SMB support will be quite a demanding and time-consuming task but a
+  lot of research of this protocol has already been conducted by
+  Ron. Thus, a lot of our work can be based on his NSE-scripts.
 
 * Write Ncrack Developer's Guide. 
 
-* Make free (misc_info) handlers for HTTP protocol.
-
 * Convert telnet module to use new inbuf/outbuf system.
-
-* Take care of portability (endian) issues for --resume option.
+  --> It already does, but needs some fixes.
 
 * Think about packet trace. Obviously without pcap or something similar,
   we can only print info about TCP payloads or connection
@@ -50,6 +59,12 @@ TODO:
 
 * Extend opensshlib to support SSH version 1, as well as additional
   diffie-hellman algorithms.
+
+* For session saving (--resume) consider going to second granularity in the
+  filename. This avoids occasions when the file is overwritten because the
+  user invoked Ncrack in the same minute and decided to cancel again.
+
+* Take care of portability (endian) issues for --resume option.
 
 * Complete output engine. The main thing left is support for XML output using
   the option -oX.
@@ -115,10 +130,6 @@ TODO:
   in the authentication steps. These may also prove useful for user submissions
   of new exotic patterns for modules, like telnet, that need them.
 
-* SMB support will be quite a demanding and time-consuming task but a
-  lot of research of this protocol has already been conducted by
-  Ron. Thus, a lot of our work can be based on his NSE-scripts.
-
 * SMTP/IMAP/POP3 - some initial IMAP/POP3 patches have already been
   provided by Balázs Bucsay. Further development of them, as well as
   SMTP support should be one goal to cover the existing email
@@ -152,6 +163,8 @@ TODO:
 
 * Windows Ncrack testing -- for example see
   http://seclists.org/nmap-dev/2010/q2/435
+
+* Make free (misc_info) handlers for HTTP protocol.
 
 * Add --disable-pcap option to Nsock so that Ncrack and Nmap may share the
   exact same Nsock version all the time.
