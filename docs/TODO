@@ -1,5 +1,40 @@
 TODO:
 
+* We also should find a special way for treating the 'blank' password.
+  We decided to treat it the same way as Nmap--use a blank line in the
+  file as the designator for a blank password.
+
+* Implement option to make Ncrack stop scanning after finding the
+  first credential pair (there is such an option in Hydra).  We should
+  probably provide 2 different versions of the option. One would
+  finish Ncrack after finding 1 password regardless of how many
+  services it is cracking in parallel. The other would finish Ncrack
+  after finding 1 password for every service it is cracking. We have
+  two ways of doing this: either with a separate switch (e.g -f and
+  -F) or using the already existing module option subsystem (-m, -g,
+  per-host e.g $ ncrack 127.0.0.1:22,f=yes) [we decided on -f to mean
+  "quit each service after one credential found" and -f -f for "quit
+  after any credential is found on any service".
+
+* Improve the font on the current Ncrack page logo so it isn't so
+  lumpy (it's been resized or something which is causing the problem).
+
+* SMB support will be quite a demanding and time-consuming task but a
+  lot of research of this protocol has already been conducted by
+  Ron. Thus, a lot of our work can be based on his NSE-scripts.
+
+* Start username-list gathering project. Gathering these from email
+  addresses may be the most powerful technique.
+
+* HTTP-form auth which will be based on the existing HTTP module and
+  will target HTTP forms will have to ideally be able to parse the
+  most common web forms out there. The user will also be given the
+  choice to specify certain form-related arguments that can make
+  Ncrack's job easier.
+
+* Add remote desktop (rdp) cracking. Ithilgore says there are few
+  rdesktop crackers out there.
+
 * Discuss improvements on password/username-list manipulation.
   e.g combo-lists, special format with which you could specify the
   username/password to be tried reversed, or a username to be tested
@@ -7,16 +42,23 @@ TODO:
   %username% #to test the user name as a password
   %rev username% #username reversed
   %%username%% #to test for %username% 
-  We also should find a special way for treating the 'blank' password.
 
-* Implement option to make Ncrack stop scanning after finding the first
-  credential pair (there is such an option in Hydra).
-  We should probably provide 2 different versions of the option. One would
-  finish Ncrack after finding 1 password regardless of how many services it is
-  cracking in parallel. The other would finish Ncrack after finding 1 password
-  for every service it is cracking. We have two ways of doing this:
-  either with a separate switch (e.g -f and -F) or using the already existing
-  module option subsystem (-m, -g, per-host e.g $ ncrack 127.0.0.1:22,f=yes)
+o Improve current scorpion logo on the Ncrack page. An SVG file would be best.
+
+* Perhaps improve option -U and -P options
+  so that user can give a comma separated list of files that will be
+  automatically concatenated by Ncrack.
+
+
+* Write Ncrack Developer's Guide. 
+
+* Convert telnet module to use new inbuf/outbuf system.
+  --> It already does, but needs some fixes.
+
+* Think about packet trace. Obviously without pcap or something similar,
+  we can only print info about TCP payloads or connection
+  initiations/endings.
+  How can I get the unique connection id from nsock? --> With nsi_id() 
 
 * Discuss about an option that will make Ncrack do a round-robin attack when
   targeting many hosts in parallel. For example, suppose you crack 5 different
@@ -30,45 +72,6 @@ TODO:
   different 'connection-delay' for each host (so as to emulate the round-robin
   behaviour).
 
-* Discuss whether Ncrack should use different default username/password lists
-  based on the protocol/service it is trying to crack.
-  
-* Start collecting/assemblying protocol-optimized username/password lists.
-
-* Start username-list gathering project. Gathering these from email
-  addresses may be the most powerful technique.
-
-* HTTP-form auth which will be based on the existing HTTP module and
-  will target HTTP forms will have to ideally be able to parse the
-  most common web forms out there. The user will also be given the
-  choice to specify certain form-related arguments that can make
-  Ncrack's job easier.
-
-* We should probably put an Ncrack logo atop the Ncrack page
-  (http://nmap.org/ncrack/).  For example, look at the Nping page at
-  http://nmap.org/nping/. 
-  o Improve current scorpion logo. Perhaps make a SVG file.
-
-* Perhaps improve option -U and -P options
-  so that user can give a comma separated list of files that will be
-  automatically concatenated by Ncrack.
-
-* Add remote desktop (rdp) cracking
-
-* SMB support will be quite a demanding and time-consuming task but a
-  lot of research of this protocol has already been conducted by
-  Ron. Thus, a lot of our work can be based on his NSE-scripts.
-
-* Write Ncrack Developer's Guide. 
-
-* Convert telnet module to use new inbuf/outbuf system.
-  --> It already does, but needs some fixes.
-
-* Think about packet trace. Obviously without pcap or something similar,
-  we can only print info about TCP payloads or connection
-  initiations/endings.
-  How can I get the unique connection id from nsock? --> With nsi_id() 
-
 * Extend opensshlib to support SSH version 1, as well as additional
   diffie-hellman algorithms.
 
@@ -77,6 +80,8 @@ TODO:
   user invoked Ncrack in the same minute and decided to cancel again.
 
 * Take care of portability (endian) issues for --resume option.
+  Currently it stores integers and the like in the system binary
+  format.
 
 * Complete output engine. The main thing left is support for XML output using
   the option -oX.
@@ -149,6 +154,14 @@ TODO:
 
 * Consider adding a spec file for distributing RPMs.
 
+* Discuss whether Ncrack should use different default username/password lists
+  based on the protocol/service it is trying to crack.
+  
+* Consider collecting/assemblying protocol-optimized username/password lists.
+
+
+============================= :DONE: =========================================
+
 * Discuss with nmap-dev about making and distributing a oN2oX converter
   (Nmap Normal to XML output) so that we drop supporting the -iN option (which
   seems to change at times) and instead focus on improving the -iX option.
@@ -156,7 +169,9 @@ TODO:
   maintained as a common shared package between Ncrack and Nmap.
   ---> For now we will try keeping up-to-date with Nmap's -oN format.
 
-============================= :DONE: =========================================
+* We should probably put an Ncrack logo atop the Ncrack page
+  (http://nmap.org/ncrack/).  For example, look at the Nping page at
+  http://nmap.org/nping/. 
 
 * Make a CHANGELOG showing the differences between 0.01ALPHA and 0.2ALPHA
 
