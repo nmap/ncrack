@@ -18,6 +18,18 @@ TODO:
   either with a separate switch (e.g -f and -F) or using the already existing
   module option subsystem (-m, -g, per-host e.g $ ncrack 127.0.0.1:22,f=yes)
 
+* Discuss about an option that will make Ncrack do a round-robin attack when
+  targeting many hosts in parallel. For example, suppose you crack 5 different
+  services (perhaps from the same subnet): then Ncrack will do 1 authentication
+  attempt against the 1st host, then the 2nd, then the 3rd, ... and then start
+  from the 1st again. This is to avoid possible lockout mechanisms. Note,
+  that you could emulate this behaviour (but not in the exact same way) by
+  configuring the option of 'connection-delay' for all hosts. However this will
+  result in bursts of packets if the connection-delay is the same for all hosts
+  and it would be too much of a trouble to assign and calculate a
+  different 'connection-delay' for each host (so as to emulate the round-robin
+  behaviour).
+
 * Discuss whether Ncrack should use different default username/password lists
   based on the protocol/service it is trying to crack.
   
