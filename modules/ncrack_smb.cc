@@ -1,8 +1,6 @@
 
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_smb.cc -- ncrack module for the SMB protocol                     *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -89,17 +87,34 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef MODULES_H 
-#define MODULES_H 1
-
+#include "ncrack.h"
 #include "nsock.h"
-
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
-void ncrack_smb(nsock_pool nsp, Connection *con);
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
+#include <list>
 
 
-#endif
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
+    void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+
+void
+ncrack_smb(nsock_pool nsp, Connection *con)
+{
+
+
+ printf("TEST\n");
+
+
+
+
+
+
+
+
+
+}
