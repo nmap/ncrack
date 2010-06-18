@@ -16,9 +16,6 @@ TODO:
   "quit each service after one credential found" and -f -f for "quit
   after any credential is found on any service".
 
-* Improve the font on the current Ncrack page logo so it isn't so
-  lumpy (it's been resized or something which is causing the problem).
-
 * SMB support will be quite a demanding and time-consuming task but a
   lot of research of this protocol has already been conducted by
   Ron. Thus, a lot of our work can be based on his NSE-scripts.
@@ -161,6 +158,9 @@ o Improve current scorpion logo on the Ncrack page. An SVG file would be best.
 
 
 ============================= :DONE: =========================================
+
+* Improve the font on the current Ncrack page logo so it isn't so
+  lumpy (it's been resized or something which is causing the problem).
 
 * Discuss with nmap-dev about making and distributing a oN2oX converter
   (Nmap Normal to XML output) so that we drop supporting the -iN option (which
