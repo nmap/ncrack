@@ -246,6 +246,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\modules\ncrack_smb.cc"
+				>
+			</File>
+			<File
 				RelativePath="..\modules\ncrack_ssh.cc"
 				>
 			</File>
