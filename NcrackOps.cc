@@ -123,7 +123,7 @@ NcrackOps() {
   setaf(AF_INET);
   gettimeofday(&start_time, NULL);
   resume = false;
-
+  finish = 0;
 }
 
 NcrackOps::

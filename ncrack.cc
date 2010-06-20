@@ -247,6 +247,7 @@ print_usage(void)
          "files\n"
       "MISC:\n"
       "  --resume <file>: Continue previously saved session\n"
+      "  -f: quit cracking service after one found credential\n"
       "  -6: Enable IPv6 cracking\n"
       "  -sL or --list: only list hosts and services\n"
       "  --datadir <dirname>: Specify custom Ncrack data file location\n"
@@ -846,7 +847,7 @@ ncrack_main(int argc, char **argv)
 
   /* Argument parsing */
   optind = 1;
-  while((arg = getopt_long_only(argc, argv, "6d::g:hU:P:m:o:p:s:T:v::V",
+  while((arg = getopt_long_only(argc, argv, "6d::f::g:hU:P:m:o:p:s:T:v::V",
           long_options, &option_index)) != EOF) {
     switch(arg) {
       case 0:
@@ -968,6 +969,19 @@ ncrack_main(int argc, char **argv)
           }
           if (*p != '\0')
             fatal("Invalid argument to -d: \"%s\".", optarg);
+        }
+        break;
+      case 'f':
+        if (optarg && isdigit(optarg[0])) {
+          o.finish = atoi(optarg);
+        } else {
+          const char *p;
+          o.finish++;
+          for (p = optarg != NULL ? optarg : ""; *p == 'd'; p++) {
+            o.finish++;
+          }
+          if (*p != '\0')
+            fatal("Invalid argument to -f: \"%s\".", optarg);
         }
         break;
       case 'g':
@@ -1476,6 +1490,15 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     if (o.verbose)
       log_write(LOG_PLAIN, "Discovered credentials on %s '%s' '%s'\n",
           hostinfo, con->user, con->pass);
+
+    /* Quit cracking service if '-f' has been specified. */
+    if (o.finish == 1) {
+      SG->pushServiceToList(serv, &SG->services_finished);
+      if (o.verbose)
+        log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+      return ncrack_connection_end(nsp, con);
+    }
+
   } else {
     if (!serv->more_rounds) {
       if (o.debugging > 6)

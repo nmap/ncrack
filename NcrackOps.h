@@ -143,6 +143,11 @@ class NcrackOps {
     int nsock_trace;      /* nsock debugging level (range is 0-10) */
     int timing_level;     /* timing template number: T(0-5) */
     int debugging;        /* valid for range 0-10 */
+    int finish;           /* 0 -> disabled
+                           * 1 -> quit each service after one credential is found
+                           * 2 -> quit after any credential is found on any
+                           * service
+                           */
     int verbose;
     int numhosts_scanned;
     long connection_limit;/* global maximum total connections */
