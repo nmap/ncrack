@@ -660,8 +660,20 @@ load_login_file(const char *filename, int mode)
     /* Note that supporting comment lines starting with '#' automatically
      * entails not being able to get passwords that start with '#'.
      */
-    if (*line == '\n' || *line == '#')
+    if (*line == '#')
       continue;
+
+    /* A blank line (just the '\n' char) in a wordlist file means that a
+     * blank entry will be tested. Strndup allocates an entry that is at least
+     * of 1 size ('\0'), so supplying it with the length of each line minus the
+     * '\n' character of the line will universally work in all cases.
+     * However, we need to take into account the possibility that the user
+     * supplies Windows-derived wordlists which use CRLF termination.
+     * In that case, just drop the 1 extra character.
+     */
+    if (!strncmp(line, "\r\n", 2))
+      line[1] = '\0';
+
     tmp = Strndup(line, strlen(line) - 1);
     p->push_back(tmp);
   }
@@ -1462,12 +1474,12 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     SG->credentials_found++;
 
     if (o.verbose)
-      log_write(LOG_PLAIN, "Discovered credentials on %s %s %s\n",
+      log_write(LOG_PLAIN, "Discovered credentials on %s '%s' '%s'\n",
           hostinfo, con->user, con->pass);
   } else {
     if (!serv->more_rounds) {
       if (o.debugging > 6)
-        log_write(LOG_STDOUT, "%s Login failed: %s %s\n", hostinfo,
+        log_write(LOG_STDOUT, "%s Login failed: '%s' '%s'\n", hostinfo,
             con->user, con->pass);
     } else {
       serv->appendToPool(con->user, con->pass);
@@ -1616,7 +1628,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       serv->finished_attempts++;
 
       if (o.debugging > 6)
-        log_write(LOG_STDOUT, "%s Failed %s %s\n", hostinfo, con->user,
+        log_write(LOG_STDOUT, "%s Failed '%s' '%s'\n", hostinfo, con->user,
             con->pass);
 
     } else if (serv->more_rounds) {

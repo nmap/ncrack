@@ -412,7 +412,7 @@ print_service_output(Service *serv)
   log_write(LOG_PLAIN, "%hu/%s:\n", serv->portno, proto2str(serv->proto));
   for (vi = serv->credentials_found.begin();
       vi != serv->credentials_found.end(); vi++) {
-    log_write(LOG_PLAIN, "%s %hu/%s %s: %s %s\n",
+    log_write(LOG_PLAIN, "%s %hu/%s %s: '%s' '%s'\n",
         ip, serv->portno, proto2str(serv->proto), serv->name,
         vi->user, vi->pass);
   }

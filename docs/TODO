@@ -1,9 +1,5 @@
 TODO:
 
-* We also should find a special way for treating the 'blank' password.
-  We decided to treat it the same way as Nmap--use a blank line in the
-  file as the designator for a blank password.
-
 * Implement option to make Ncrack stop scanning after finding the
   first credential pair (there is such an option in Hydra).  We should
   probably provide 2 different versions of the option. One would
@@ -40,12 +36,11 @@ TODO:
   %rev username% #username reversed
   %%username%% #to test for %username% 
 
-o Improve current scorpion logo on the Ncrack page. An SVG file would be best.
+* Improve current scorpion logo on the Ncrack page. An SVG file would be best.
 
 * Perhaps improve option -U and -P options
   so that user can give a comma separated list of files that will be
   automatically concatenated by Ncrack.
-
 
 * Write Ncrack Developer's Guide. 
 
@@ -158,6 +153,10 @@ o Improve current scorpion logo on the Ncrack page. An SVG file would be best.
 
 
 ============================= :DONE: =========================================
+
+* We also should find a special way for treating the 'blank' password.
+  We decided to treat it the same way as Nmap--use a blank line in the
+  file as the designator for a blank password.
 
 * Improve the font on the current Ncrack page logo so it isn't so
   lumpy (it's been resized or something which is causing the problem).
