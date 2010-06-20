@@ -672,7 +672,7 @@ load_login_file(const char *filename, int mode)
      * supplies Windows-derived wordlists which use CRLF termination.
      * In that case, just drop the 1 extra character.
      */
-    if (!strncmp(line, "\r\n", 2))
+    if (strlen(line) == 2 && !strncmp(line, "\r\n", 2))
       line[1] = '\0';
 
     tmp = Strndup(line, strlen(line) - 1);
