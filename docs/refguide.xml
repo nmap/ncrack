@@ -1217,7 +1217,7 @@ Ncrack finished.
      <variablelist>
       <varlistentry>
         <term>
-          <option>--user <replaceable>username_list</replaceable></option>
+          <option>--pass <replaceable>password_list</replaceable></option>
           (Specify command-line comma-separated password list)
         </term>
         <listitem>
