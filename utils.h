@@ -160,12 +160,6 @@ char *chomp(char *string);
 char *memsearch(const char *haystack, const char *pneedle, size_t bytes);
 
 
-/* Compare a canonical option name (e.g. "max-scan-delay") with a
-   user-generated option such as "max_scan_delay" and returns 0 if the
-   two values are considered equivalant (for example, - and _ are
-   considered to be the same), nonzero otherwise. */
-int optcmp(const char *a, const char *b);
-
 /* convert string to protocol number */
 u8 str2proto(char *str);
 
