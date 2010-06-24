@@ -21,6 +21,13 @@ TODO:
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
 
+* Handle username validation for services.  For example, if an FTP
+  server is anon only or if we enumerate SMB users, or some service
+  gives a user does not exist error, we should probably not waste time
+  trying to crack such users against those services.  We need to
+  figure out how this works when multiple services/hosts are being
+  cracked at the same time.
+
 * HTTP-form auth which will be based on the existing HTTP module and
   will target HTTP forms will have to ideally be able to parse the
   most common web forms out there. The user will also be given the
@@ -82,9 +89,6 @@ TODO:
 
 * Solve the ssh username/password special iteration challenge as mentioned here:
   http://seclists.org/nmap-dev/2009/q3/0119.html
-
-* Handle the case where ftp tells us that it accepts anonymous login only so
-  that we don't waste time cracking it.
 
 * If a connection times out continuously for 1 service and the rest of the
   services need to poll for new events through nsock_loop, the fact that
