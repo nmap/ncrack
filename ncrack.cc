@@ -232,7 +232,7 @@ print_usage(void)
       "  -U <filename>: username file\n"
       "  -P <filename>: password file\n"
       "  --user <username_list>: comma-separated username list\n"
-      "  --pass <username_list>: comma-separated password list\n"
+      "  --pass <password_list>: comma-separated password list\n"
       "  --passwords-first: Iterate password list for each username. "
         "Default is opposite.\n"
       "OUTPUT:\n"

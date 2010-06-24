@@ -36,7 +36,7 @@ AUTHENTICATION:
   -U <filename>: username file
   -P <filename>: password file
   --user <username_list>: comma-separated username list
-  --pass <username_list>: comma-separated password list
+  --pass <password_list>: comma-separated password list
   --passwords-first: Iterate password list for each username. Default is opposite.
 OUTPUT:
   -oN/-oX <file>: Output scan in normal and XML format, respectively, to the given filename.
@@ -48,6 +48,7 @@ OUTPUT:
   --append-output: Append to rather than clobber specified output files
 MISC:
   --resume <file>: Continue previously saved session
+  -f: quit cracking service after one found credential
   -6: Enable IPv6 cracking
   -sL or --list: only list hosts and services
   --datadir <dirname>: Specify custom Ncrack data file location
