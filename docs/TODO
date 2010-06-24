@@ -12,6 +12,8 @@ TODO:
   "quit each service after one credential found" and -f -f for "quit
   after any credential is found on any service".
 
+* Find a way to parse a 'blank' password from the command-line (--pass option).
+
 * SMB support will be quite a demanding and time-consuming task but a
   lot of research of this protocol has already been conducted by
   Ron. Thus, a lot of our work can be based on his NSE-scripts.
