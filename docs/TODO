@@ -1,17 +1,5 @@
 TODO:
 
-* Implement option to make Ncrack stop scanning after finding the
-  first credential pair (there is such an option in Hydra).  We should
-  probably provide 2 different versions of the option. One would
-  finish Ncrack after finding 1 password regardless of how many
-  services it is cracking in parallel. The other would finish Ncrack
-  after finding 1 password for every service it is cracking. We have
-  two ways of doing this: either with a separate switch (e.g -f and
-  -F) or using the already existing module option subsystem (-m, -g,
-  per-host e.g $ ncrack 127.0.0.1:22,f=yes) [we decided on -f to mean
-  "quit each service after one credential found" and -f -f for "quit
-  after any credential is found on any service".
-
 * SMB support will be quite a demanding and time-consuming task but a
   lot of research of this protocol has already been conducted by
   Ron. Thus, a lot of our work can be based on his NSE-scripts.
@@ -157,6 +145,18 @@ TODO:
 
 
 ============================= :DONE: =========================================
+
+* Implement option to make Ncrack stop scanning after finding the
+  first credential pair (there is such an option in Hydra).  We should
+  probably provide 2 different versions of the option. One would
+  finish Ncrack after finding 1 password regardless of how many
+  services it is cracking in parallel. The other would finish Ncrack
+  after finding 1 password for every service it is cracking. We have
+  two ways of doing this: either with a separate switch (e.g -f and
+  -F) or using the already existing module option subsystem (-m, -g,
+  per-host e.g $ ncrack 127.0.0.1:22,f=yes) [we decided on -f to mean
+  "quit each service after one credential found" and -f -f for "quit
+  after any credential is found on any service".
 
 * Find a way to parse a 'blank' password from the command-line (--pass option).
 

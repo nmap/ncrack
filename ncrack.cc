@@ -1498,9 +1498,24 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
     /* Quit cracking service if '-f' has been specified. */
     if (o.finish == 1) {
+
       SG->pushServiceToList(serv, &SG->services_finished);
       if (o.verbose)
         log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+      return ncrack_connection_end(nsp, con);
+
+    } else if (o.finish > 1) {
+      /* Quit cracking every service if '-f -f' or greater has been
+       * specified.
+       */
+      list <Service *>::iterator li;
+      for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
+        SG->pushServiceToList(*li, &SG->services_finished);
+        if (o.verbose)
+          log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+      }
+      /* Now quit nsock_loop */
+      nsock_loop_quit(nsp);
       return ncrack_connection_end(nsp, con);
     }
 
@@ -1813,6 +1828,15 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   assert(type == NSE_TYPE_READ);
 
+  /* If service has already finished (probably due to the -f option), then
+   * cancel this event and return immediately. The same happens with the rest
+   * of the event handlers.
+   */
+  if (serv->getListFinished()) {
+    nsock_event_cancel(nsp, nse_id(nse), 0);
+    return;
+  }
+
   if (serv->timedOut(NULL)) {
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
@@ -1871,11 +1895,13 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       SG->popServiceFromList(serv, &SG->services_pairfini);
 
   } else if (status == NSE_STATUS_KILL) {
-    error("%s nsock READ nse_status_kill", hostinfo);
+    if (o.debugging > 2)
+      error("%s nsock READ nse_status_kill", hostinfo);
 
   } else
-    error("%s WARNING: nsock READ unexpected status %d", hostinfo,
-        (int) status);
+    if (o.debugging > 2)
+      error("%s WARNING: nsock READ unexpected status %d", hostinfo,
+          (int) status);
 
   return ncrack_connection_end(nsp, con);
 }
@@ -1892,6 +1918,11 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
   int err;
+
+  if (serv->getListFinished()) {
+    nsock_event_cancel(nsp, nse_id(nse), 0);
+    return;
+  }
 
   if (serv->timedOut(NULL)) {
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
@@ -1924,6 +1955,11 @@ ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
 
+  if (serv->getListFinished()) {
+    nsock_event_cancel(nsp, nse_id(nse), 0);
+    return;
+  }
+
   if (status == NSE_STATUS_SUCCESS) {
     call_module(nsp, con);
   }
@@ -1949,6 +1985,11 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   int err;
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
+
+  if (serv->getListFinished()) {
+    nsock_event_cancel(nsp, nse_id(nse), 0);
+    return;
+  }
 
   if (serv->timedOut(NULL)) {
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
