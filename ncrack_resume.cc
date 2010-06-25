@@ -92,6 +92,8 @@
 #include "ncrack_resume.h"
 #include "NcrackOps.h"
 
+#define BLANK_ENTRY "<BLANK>"
+
 extern NcrackOps o;
 
 
@@ -191,6 +193,8 @@ ncrack_save(ServiceGroup *SG)
   time_t now;
   char path[256];
   char filename[128];
+  bool cmd_user_pass = false; /* boolean used for handling the blank username/password
+                                 in the --user or --pass option */
 
 
   /* First find user home directory to save current session file
@@ -258,11 +262,36 @@ ncrack_save(ServiceGroup *SG)
 
   /* Store the exact way Ncrack was invoked by writing the argv array */
   for (argiter = 0; argiter < o.saved_argc; argiter++) {
-    if (fwrite(o.saved_argv[argiter], strlen(o.saved_argv[argiter]), 1,
-          outfile) != 1)
-      fatal("%s: couldn't write argv array to file!\n", __func__);
+
+    /* Special handling in case the user has passed a blank password to either
+     * --user "" or --pass "" (or both). We are going to write a placeholder
+     *  when saving this particular argument, so that the .restore file can be
+     *  properly parsed in this case. 
+     */
+    if (cmd_user_pass 
+        && (!strlen(o.saved_argv[argiter]) 
+          || ((strlen(o.saved_argv[argiter]) == 1)
+              && !strncmp(o.saved_argv[argiter], ",", 1)))) {
+      /* If --user or --pass option argument is blank or a plain ",", then
+       * write BLANK_ENTRY magic keyword to indicate this special case */
+        if (fwrite(BLANK_ENTRY, strlen(BLANK_ENTRY), 1, outfile) != 1)
+          fatal("%s: couldn't write %s to file!\n", __func__, BLANK_ENTRY);
+        cmd_user_pass = false;
+    } else {
+      if (fwrite(o.saved_argv[argiter], strlen(o.saved_argv[argiter]), 1,
+            outfile) != 1)
+        fatal("%s: couldn't write argv array to file!\n", __func__);
+    }
     if (fwrite(" ", 1, 1, outfile) != 1)
       fatal("%s: can't even write space!\n", __func__);
+
+    if (cmd_user_pass)
+      cmd_user_pass = false;
+
+    if (!strncmp(o.saved_argv[argiter], "--user", strlen(o.saved_argv[argiter]))
+        || !strncmp(o.saved_argv[argiter], "--pass", strlen(o.saved_argv[argiter])))
+      cmd_user_pass = true; /* prepare for next iteration parsing */
+
   }
 
   if (fwrite("\n", 1, 1, outfile) != 1)
@@ -292,6 +321,7 @@ ncrack_save(ServiceGroup *SG)
     index = (*li)->getPasslistIndex();
     if (fwrite(&index, sizeof(index), 1, outfile) != 1)
       fatal("%s: couldn't write passlist index to file!\n", __func__);
+
 
     /*
      * Now store any credentials found for this service. First store a 32bit
@@ -350,6 +380,8 @@ ncrack_resume(char *fname, int *myargc, char ***myargv)
   loginpair tmp_pair;
   char *p, *q; /* I love C! Oh yes indeed. */
 
+  memset(&tmp_info, 0, sizeof(tmp_info));
+
   filestr = mmapfile(fname, &filelen, O_RDONLY);
   if (!filestr) {
     fatal("Could not mmap() %s read", fname);
@@ -392,6 +424,16 @@ ncrack_resume(char *fname, int *myargc, char ***myargv)
     fatal("Unable to parse supposed restore file %s . Sorry", fname);
   }
 
+  /* Now if there is a BLANK_ENTRY placeholder in the .restore file, just place
+   * '\0' over it, so that it seems as if the user had typed --user "" or
+   * --pass "".
+   */
+  for (int i = 0; i < *myargc; i++) {
+    if (!strncmp(*(*myargv+i), BLANK_ENTRY, strlen(BLANK_ENTRY))) {
+      memset(*(*myargv+i), '\0', strlen(BLANK_ENTRY));
+    }
+  }
+
   q++;
   /* Now start reading in the services info. */
   while (q - filestr < filelen) {
@@ -399,22 +441,23 @@ ncrack_resume(char *fname, int *myargc, char ***myargv)
     uid = (uint32_t)*q;
     q += sizeof(uint32_t);
     if (q - filestr >= filelen)
-      fatal("Corrupted file!\n");
+      fatal("Corrupted file! Error 1\n");
 
-    tmp_info.user_index = (uint32_t)*q;
+    memcpy(&tmp_info.user_index, q, sizeof(uint32_t));
+
     q += sizeof(uint32_t);
     if (q - filestr >= filelen)
-      fatal("Corrupted file!\n");
+      fatal("Corrupted file! Error 2\n");
 
-    tmp_info.pass_index = (uint32_t)*q;
+    memcpy(&tmp_info.pass_index, q, sizeof(uint32_t));
     q += sizeof(uint32_t);
     if (q - filestr >= filelen)
-      fatal("Corrupted file!\n");
+      fatal("Corrupted file! Error 3\n");
 
-    cred_num = (uint32_t)*q;
+    memcpy(&cred_num, q, sizeof(uint32_t));
     q += sizeof(uint32_t);
     if (cred_num > 0 && (q - filestr >= filelen))
-      fatal("Corrupted file!\n");
+      fatal("Corrupted file! Error 4\n");
 
     uint32_t i;
     size_t j;
@@ -426,7 +469,7 @@ ncrack_resume(char *fname, int *myargc, char ***myargv)
       while (q != '\0' && j < sizeof(buf)) {
         q++;
         if (q - filestr >= filelen)
-          fatal("Corrupted file!\n");
+          fatal("Corrupted file! Error 5\n");
         buf[j++] = *q;
       }
 
@@ -436,13 +479,13 @@ ncrack_resume(char *fname, int *myargc, char ***myargv)
         user = false;
         tmp_pair.user = Strndup(buf, j - 1);
         if (q - filestr >= filelen)
-          fatal("Corrupted file!\n");
+          fatal("Corrupted file! Error 6\n");
       } else {
         user = true;
         tmp_pair.pass = Strndup(buf, j - 1);
         tmp_info.credentials_found.push_back(tmp_pair);
         if ((i != (cred_num * 2) - 1) && (q - filestr >= filelen))
-          fatal("Corrupted file!\n");
+          fatal("Corrupted file! Error 7\n");
       }
 
     }

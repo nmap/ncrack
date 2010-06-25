@@ -605,8 +605,7 @@ static void
 parse_login_list(char *const arg, int mode)
 {
   vector <char *> *p = NULL;
-  size_t i = 0;
-  char *tmp;
+  size_t i, j, arg_len;
   char *word;
 
   if (mode == USER)
@@ -616,23 +615,29 @@ parse_login_list(char *const arg, int mode)
   else 
     fatal("%s invalid mode specified!", __func__);
 
-  while (1) {
-    if (i == 0)
-      tmp = strtok(arg, ",");
-    else
-      tmp = strtok(NULL, ",");
-
-    if (tmp == NULL)
-      break;
-
-    word = Strndup(tmp, strlen(tmp));
-    p->push_back(word);
+  arg_len = strlen(arg);
+  j = i = 0;
+  while (i < arg_len) {
+    if (arg[i] == ',') {
+      word = Strndup(&arg[j], i - j);
+      p->push_back(word);
+      j = i + 1;
+    }
 
     i++;
-  }
+ }
 
+  /* In case, user just typed --user "," or --pass "," don't add two blank
+   * passwords as there is no point in that.
+   */
+  if (arg[0] == ',' && arg_len == 1)
+    return;
+
+  word = Strndup(&arg[j], i - j);
+  p->push_back(word);
 
 }
+
 
 static void
 load_login_file(const char *filename, int mode)
@@ -941,8 +946,8 @@ ncrack_main(int argc, char **argv)
           free(tmp);
         } else if (strcmp(long_options[option_index].name, "resume") == 0) {
           fatal("--resume <file> can only be used as sole command-line "
-                "option to Ncrack! Invoke Ncrack without any other "
-                "arguments.\n");
+              "option to Ncrack! Invoke Ncrack without any other "
+              "arguments.\n");
         } else if (strcmp(long_options[option_index].name, "vv") == 0) {
           /* Compatability hack ... ugly */
           o.verbose += 2;    
