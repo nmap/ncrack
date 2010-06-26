@@ -331,15 +331,17 @@ CPPFLAGS="$CPPFLAGS -I$OPENSSHLIB_DIR"
 OPENSSH_LIB="-lopenssh"
 AC_CONFIG_SUBDIRS(opensshlib)
 
-MODULES_SRCS="ncrack_ssh.cc"
-MODULES_OBJS="ncrack_ssh.o"
+# SSH module and SMB module rely on crypto functions which rely on OpenSSL, so
+# build them only in case the system has OpenSSL.
+MODULES_SRCS="ncrack_ssh.cc ncrack_smb.cc"
+MODULES_OBJS="ncrack_ssh.o ncrack_smb.o"
 
 fi
 
 MODULES_SRCS="$MODULES_SRCS ncrack_ftp.cc ncrack_telnet.cc ncrack_http.cc \
-ncrack_pop3.cc ncrack_smb.cc"
+ncrack_pop3.cc"
 MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o ncrack_http.o \
-ncrack_pop3.o ncrack_smb.o"
+ncrack_pop3.o"
 AC_SUBST(MODULES_SRCS)
 AC_SUBST(MODULES_OBJS)
 

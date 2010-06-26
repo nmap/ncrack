@@ -716,8 +716,10 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_pop3(nsp, con);
   else if (!strcmp(name, "pop3s"))
     ncrack_pop3(nsp, con);
+#if HAVE_OPENSSL
   else if (!strcmp(name, "smb"))
     ncrack_smb(nsp, con);
+#endif
   else
     fatal("Invalid service module: %s", name);
 }
