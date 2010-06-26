@@ -107,6 +107,9 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 enum states { SMB_INIT, SMB_NEG, SMB_FINI };
 
 static void smb_encode_header(Buf *buf, char command);
+static void smb_encode_negotiate_protocol(Buf *buf);
+static void smb_prepend_length(Buf *buf);
+
 static void smb_free(Connection *con);
 
 typedef struct smb_state {
@@ -168,7 +171,7 @@ smb_encode_header(Buf *buf, char command)
    * For now allocate space in the buffer, and when everything is done go fill
    * in the actual length before this function ends.
    */
-  buf->snprintf(4, "%c%c%c%c", 0, 0, 0, 49);
+  buf->snprintf(4, "%c%c%c%c", 0, 0, 0, 0);
 
   /* -- SMB packet follows -- */
 
@@ -210,12 +213,40 @@ smb_encode_header(Buf *buf, char command)
 
   /* MID */
   buf->snprintf(2, "%c%c", 0, 0);
-  
-  
-  /* Now caluclate total length */
-  u_int len = buf->get_len();
-  void *ptr = buf->get_dataptr();
 
+}
+
+
+static void
+smb_encode_negotiate_protocol(Buf *buf)
+{
+  uint16_t byte_count = 14;
+
+  /* word count */
+  buf->snprintf(1, "%c", 0);
+  
+  /* byte count */
+  buf->append(&byte_count, 2);
+
+  /* List of strings */
+  buf->snprintf(12, "%c%s%", 2, "NT LM 0.12");
+  buf->snprintf(2, "%c%c", 2, 0);
+
+}
+
+static void
+smb_prepend_length(Buf *buf)
+{
+  u_int len;
+  void *ptr;
+  uint32_t nbt_len;
+
+  /* Now caluclate total length */
+  len = buf->get_len();
+  ptr = buf->get_dataptr();
+
+  nbt_len = htonl(len - 4);
+  memcpy(ptr, &nbt_len, sizeof(uint32_t));
 
 }
 
@@ -237,6 +268,8 @@ ncrack_smb(nsock_pool nsp, Connection *con)
 
       con->outbuf = new Buf();
       smb_encode_header(con->outbuf, SMB_COM_NEGOTIATE);
+      smb_encode_negotiate_protocol(con->outbuf);
+      smb_prepend_length(con->outbuf);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SMB_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
