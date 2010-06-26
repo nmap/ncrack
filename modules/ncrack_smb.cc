@@ -94,6 +94,9 @@
 #include "modules.h"
 #include <list>
 
+#define SMB_TIMEOUT 20000
+
+extern NcrackOps o;
 
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
@@ -101,20 +104,167 @@ extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
     void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
+enum states { SMB_INIT, SMB_NEG, SMB_FINI };
+
+static void smb_encode_header(Buf *buf, char command);
+static void smb_free(Connection *con);
+
+typedef struct smb_state {
+  int login_mechanism;
+} smb_state;
+
+/* SMB commands */
+#define SMB_COM_NEGOTIATE 0x72
+#define SMB_COM_SESSION_SETUP_ANDX 0x73
+
+/* SMB Flags */
+#define SMB_FLAGS_CANONICAL_PATHNAMES 0x10
+#define SMB_FLAGS_CASELESS_PATHNAMES 0x08
+
+/* SMB Flags2 */
+#define SMB_FLAGS2_32BIT_STATUS 0x4000
+#define SMB_FLAGS2_EXECUTE_ONLY_READS 0x2000
+#define SMB_FLAGS2_IS_LONG_NAME 0x0040
+#define SMB_FLAGS2_KNOWS_LONG_NAMES 0x0001
+
+
+/* Creates a string containing a SMB packet header. The header looks like this:
+ *
+ *
+ * --------------------------------------------------------------------------------------------------
+ * | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9  8  7  6  5  4  3  2  1  0 |
+ * --------------------------------------------------------------------------------------------------
+ * |         0xFF           |          'S'          |        'M'            |         'B'           |
+ * --------------------------------------------------------------------------------------------------
+ * |        Command         |                             Status...                                 |
+ * --------------------------------------------------------------------------------------------------
+ * |    ...Status           |        Flags          |                    Flags2                     |
+ * --------------------------------------------------------------------------------------------------
+ * |                    PID_high                    |                  Signature.....               |
+ * --------------------------------------------------------------------------------------------------
+ * |                                        ....Signature....                                       |
+ * --------------------------------------------------------------------------------------------------
+ * |              ....Signature                     |                    Unused                     |
+ * --------------------------------------------------------------------------------------------------
+ * |                      TID                       |                     PID                       |
+ * --------------------------------------------------------------------------------------------------
+ * |                      UID                       |                     MID                       |
+ * ------------------------------------------------------------------------------------------------- 
+
+ * All fields are, incidentally, encoded in little endian byte order.
+
+ For the purposes here, the program doesn't care about most of the fields so they're given default 
+ values. The "command" field is the only one we ever have to set manually, in my experience. The TID
+ and UID need to be set, but those are stored in the smb state and don't require user intervention. 
+*/
+static void
+smb_encode_header(Buf *buf, char command)
+{
+
+  /* Every SMB packet needs a NetBIOS Session Service Header prepended which
+   * is the length of the packet in 4 bytes in big endian. The length field is
+   * 17 or 24 bits depending on whether or not it is raw (SMB over TCP).
+   *
+   * For now allocate space in the buffer, and when everything is done go fill
+   * in the actual length before this function ends.
+   */
+  buf->snprintf(4, "%c%c%c%c", 0, 0, 0, 49);
+
+  /* -- SMB packet follows -- */
+
+  /* SMB header: 0xFF SMB */
+  buf->snprintf(4, "%cSMB", 0xFF);
+
+  /* Command */
+  buf->append(&command, 1);
+
+  /* Status */
+  buf->snprintf(4, "%c%c%c%c", 0, 0, 0, 0);
+
+  /* Flags */
+  char flags = SMB_FLAGS_CANONICAL_PATHNAMES | SMB_FLAGS_CASELESS_PATHNAMES;
+  buf->append(&flags, 1);
+
+  /* Flags2 */
+  uint16_t flags2 = SMB_FLAGS2_32BIT_STATUS | SMB_FLAGS2_EXECUTE_ONLY_READS |
+    SMB_FLAGS2_IS_LONG_NAME | SMB_FLAGS2_KNOWS_LONG_NAMES;
+  buf->append(&flags2, 2);
+
+  /* PID_high */
+  buf->snprintf(2, "%c%c", 0, 0);
+
+  /* Signature */
+  buf->snprintf(8, "%c%c%c%c%c%c%c%c", 0, 0, 0, 0, 0, 0, 0, 0);
+
+  /* Unused */
+  buf->snprintf(2, "%c%c", 0, 0);
+
+  /* TID */
+  buf->snprintf(2, "%c%c", 0, 0);
+
+  /* PID */
+  buf->snprintf(2, "%c%c", 0, 0);
+
+  /* UID */
+  buf->snprintf(2, "%c%c", 0, 0);
+
+  /* MID */
+  buf->snprintf(2, "%c%c", 0, 0);
+  
+  
+  /* Now caluclate total length */
+  u_int len = buf->get_len();
+  void *ptr = buf->get_dataptr();
+
+
+}
+
+
 
 void
 ncrack_smb(nsock_pool nsp, Connection *con)
 {
+  nsock_iod nsi = con->niod;
+  Service *serv = con->service;
+  void *ioptr;
+  con->ops_free = &smb_free;
+
+  switch (con->state)
+  {
+    case SMB_INIT:
+
+      con->state = SMB_NEG;
+
+      con->outbuf = new Buf();
+      smb_encode_header(con->outbuf, SMB_COM_NEGOTIATE);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SMB_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
 
 
- printf("TEST\n");
+    case SMB_NEG:
+
+
+      break;
+
+
+    case SMB_FINI:
+
+      break;
+
+
+  }
 
 
 
+}
 
 
 
-
+static void
+smb_free(Connection *con)
+{
 
 
 }

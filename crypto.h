@@ -137,7 +137,6 @@ void lmv2_create_response(const uint8_t ntlm[16],   const char *username,
     uint8_t *result_size);
 
 
-
 /* Create the NTLMv2 hash, which is based on the NTLMv1 hash (for easy
  * upgrading), the username, and the domain. Essentially, the NTLM hash
  * is used as a HMAC-MD5 key, which is used to hash the unicode domain
