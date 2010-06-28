@@ -106,15 +106,84 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 enum states { SMB_INIT, SMB_NEG, SMB_FINI };
 
+static int smb_loop_read(nsock_pool nsp, Connection *con);
 static void smb_encode_header(Buf *buf, char command);
 static void smb_encode_negotiate_protocol(Buf *buf);
 static void smb_prepend_length(Buf *buf);
+static int smb_decode_header(Connection *con);
+static int smb_decode_negresp(Connection *con);
+
+
 
 static void smb_free(Connection *con);
 
 typedef struct smb_state {
   int login_mechanism;
+  uint32_t session_key; /* value needs to be echoed back */
+  u_char server_challenge[8]; /* random string for challenge/response */
+  uint16_t max_mpx; /* maximum multiplexed connections */
+  uint16_t pid; /* process id */
+
 } smb_state;
+
+
+/* 
+ * SMB header based on Microsoft's struct:
+ * http://msdn.microsoft.com/en-us/library/dd327707.aspx
+ */
+typedef struct smb_header {
+
+  u_char protocol[4]; /* Contains 0xFF, 'SMB' */
+  u_char command;     /* Command code */
+  union {
+    struct {
+      u_char error_class; /* Error class */
+      u_char reserved;    /* Reserved for future use */
+      uint16_t error;     /* Error code */
+    } __attribute__((__packed__)) dos_error;
+    uint32_t status;
+  } status;
+
+  u_char flags;
+  uint16_t flags2;
+  union {
+    uint16_t pad[6];              /* Ensure section is 12 bytes long */
+    struct {
+      uint16_t pid_high;          /* high part of PID */
+      u_char security_signature[8]; /* reserved for security */
+    }  __attribute__((__packed__)) extra;
+  };
+
+  uint16_t tid; /* Tree identifier */
+  uint16_t pid; /* Caller's process id */
+  uint16_t uid; /* Unauthenticated user id */
+  uint16_t mid; /* mutliplex id */
+
+} __attribute__((__packed__)) smb_header;
+
+
+/* 
+ * Negotiate Response header 
+ */
+typedef struct smb_negresp_header {
+  u_char word_count;              /* Always 17 for this struct */
+  struct {
+    ushort dialect_index;         /* Selected dialect index    */
+    u_char security_mode;         /* Server security flags     */
+    uint16_t max_mpx_count;       /* Maximum Multiplex Count   */
+    uint16_t max_num_vc;          /* Maximum Virtual Circuits  */
+    uint32_t max_buffer_size;     /* Maximum SMB message size  */
+    uint32_t max_raw_size;        /* Obsolete                  */
+    uint32_t session_key;         /* Unique session ID         */
+    uint32_t capabilities;        /* Server capabilities flags */
+    uint32_t system_time_low;     /* Server time; low bytes    */
+    uint32_t system_time_high;    /* Server time; high bytes   */
+    int16_t server_time_zone;     /* Minutes from UTC; signed  */
+    u_char encryption_key_length; /* 0 or 8                    */
+  } __attribute__((__packed__)) words;
+}  __attribute__((__packed__)) smb_negresp_header;
+
+
 
 /* SMB commands */
 #define SMB_COM_NEGOTIATE 0x72
@@ -129,6 +198,48 @@ typedef struct smb_state {
 #define SMB_FLAGS2_EXECUTE_ONLY_READS 0x2000
 #define SMB_FLAGS2_IS_LONG_NAME 0x0040
 #define SMB_FLAGS2_KNOWS_LONG_NAMES 0x0001
+
+
+static int
+smb_loop_read(nsock_pool nsp, Connection *con)
+{
+  uint32_t netbios_length, total_length;
+  void *ioptr;
+
+  printf("SMB LOOP READ START\n");
+
+  /* Make sure we get at least 4 bytes: these are the NetBIOS header which
+   * contains the total size of the message
+   */
+  if (con->inbuf == NULL || con->inbuf->get_len() < 4) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, SMB_TIMEOUT, con);
+    return -1;
+  }
+
+  /* Get message length from NetBIOS header. It is in big-endian byte order and
+   * 24 bits in total, so do necessary conversions */
+  ioptr = con->inbuf->get_dataptr();
+  memcpy(&netbios_length, ioptr, sizeof(uint32_t));
+  netbios_length = ntohl(netbios_length); /* convert to host-byte order */
+  netbios_length &= 0x00FFFFFF; /* make it 24 bits */
+  /* total length = netbios length + 4 (for the length itself) */
+  total_length = netbios_length + 4; 
+
+  printf("%u\n", total_length);
+
+
+  /* If we haven't received all the bytes of the message, according to the
+   * total length that we calculated, then try and get the rest */
+  if (con->inbuf == NULL || con->inbuf->get_len() < total_length) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, SMB_TIMEOUT, con);
+    return -1;
+  }
+
+  return 0;
+
+}
+
+
 
 
 /* Creates a string containing a SMB packet header. The header looks like this:
@@ -159,60 +270,43 @@ typedef struct smb_state {
  For the purposes here, the program doesn't care about most of the fields so they're given default 
  values. The "command" field is the only one we ever have to set manually, in my experience. The TID
  and UID need to be set, but those are stored in the smb state and don't require user intervention. 
-*/
+ */
 static void
 smb_encode_header(Buf *buf, char command)
 {
+
+  smb_header header;
 
   /* Every SMB packet needs a NetBIOS Session Service Header prepended which
    * is the length of the packet in 4 bytes in big endian. The length field is
    * 17 or 24 bits depending on whether or not it is raw (SMB over TCP).
    *
    * For now allocate space in the buffer, and when everything is done go fill
-   * in the actual length before this function ends.
+   * in the actual length with smb_prepend_length()
    */
   buf->snprintf(4, "%c%c%c%c", 0, 0, 0, 0);
 
   /* -- SMB packet follows -- */
-
+  
   /* SMB header: 0xFF SMB */
-  buf->snprintf(4, "%cSMB", 0xFF);
+  header.protocol[0] = 0xFF;
+  strncpy((char *)&header.protocol[1], "SMB", 3);
 
-  /* Command */
-  buf->append(&command, 1);
-
-  /* Status */
-  buf->snprintf(4, "%c%c%c%c", 0, 0, 0, 0);
-
-  /* Flags */
-  char flags = SMB_FLAGS_CANONICAL_PATHNAMES | SMB_FLAGS_CASELESS_PATHNAMES;
-  buf->append(&flags, 1);
-
-  /* Flags2 */
-  uint16_t flags2 = SMB_FLAGS2_32BIT_STATUS | SMB_FLAGS2_EXECUTE_ONLY_READS |
+  header.command = command; 
+  header.status.status = 0; 
+  header.flags = SMB_FLAGS_CANONICAL_PATHNAMES | SMB_FLAGS_CASELESS_PATHNAMES;
+  header.flags2 = SMB_FLAGS2_32BIT_STATUS | SMB_FLAGS2_EXECUTE_ONLY_READS |
     SMB_FLAGS2_IS_LONG_NAME | SMB_FLAGS2_KNOWS_LONG_NAMES;
-  buf->append(&flags2, 2);
+  memset(header.pad, 0, 2);
+  header.extra.pid_high = 0;
+  memset(&header.extra.security_signature, 0,
+      sizeof(header.extra.security_signature));
+  header.tid = 0;
+  header.pid = 0;
+  header.uid = 0;
+  header.mid = 0;
 
-  /* PID_high */
-  buf->snprintf(2, "%c%c", 0, 0);
-
-  /* Signature */
-  buf->snprintf(8, "%c%c%c%c%c%c%c%c", 0, 0, 0, 0, 0, 0, 0, 0);
-
-  /* Unused */
-  buf->snprintf(2, "%c%c", 0, 0);
-
-  /* TID */
-  buf->snprintf(2, "%c%c", 0, 0);
-
-  /* PID */
-  buf->snprintf(2, "%c%c", 0, 0);
-
-  /* UID */
-  buf->snprintf(2, "%c%c", 0, 0);
-
-  /* MID */
-  buf->snprintf(2, "%c%c", 0, 0);
+  buf->append(&header, sizeof(smb_header));
 
 }
 
@@ -224,7 +318,7 @@ smb_encode_negotiate_protocol(Buf *buf)
 
   /* word count */
   buf->snprintf(1, "%c", 0);
-  
+
   /* byte count */
   buf->append(&byte_count, 2);
 
@@ -251,6 +345,57 @@ smb_prepend_length(Buf *buf)
 }
 
 
+/* 
+ * Decodes SMB packet and stores the most improtant fields in smb_state
+ */
+static int
+smb_decode_header(Connection *con)
+{
+  smb_state *info;
+  smb_header *header;
+
+  info = (smb_state *) con->misc_info;
+
+  /* Point to SMB header, 4 bytes after the beginning of NetBIOS header.
+   * Without any need for additional memory-copy operations, just have the
+   * smb_header pointer point to the incoming data.
+   */ 
+  header = (smb_header *) ((const char *)(con->inbuf->get_dataptr()) + 4);
+
+  printf("%x%c%c%c\n", header->protocol[0], header->protocol[1], header->protocol[2], header->protocol[3]);
+
+  /* First check if protocol magic number is correct */
+  if (header->protocol[0] != 0xFF
+      || strncmp((const char *)&header->protocol[1], "SMB", 3)) {
+    return -1;
+  }
+
+  /* Store important values in smb_state for future reference */
+  info->pid = header->pid;
+
+  return 0;
+
+}
+
+
+static int
+smb_decode_negresp(Connection *con)
+{
+  smb_negresp_header *neg;
+  smb_state *info;
+
+  info = (smb_state *) con->misc_info;
+
+  /* Point to Negotiate Protocol Response Header */
+  neg = (smb_negresp_header *) ((const char *)(con->inbuf->get_dataptr())
+    + sizeof(smb_header));
+
+  info->session_key = neg->words.session_key;
+  info->max_mpx = neg->words.max_mpx_count;
+
+}
+
+
 
 void
 ncrack_smb(nsock_pool nsp, Connection *con)
@@ -259,6 +404,10 @@ ncrack_smb(nsock_pool nsp, Connection *con)
   Service *serv = con->service;
   void *ioptr;
   con->ops_free = &smb_free;
+  smb_state *info = NULL;
+
+  if (con->misc_info)
+    info = (smb_state *) con->misc_info;
 
   switch (con->state)
   {
@@ -266,6 +415,7 @@ ncrack_smb(nsock_pool nsp, Connection *con)
 
       con->state = SMB_NEG;
 
+      con->misc_info = (smb_state *)safe_zalloc(sizeof(smb_state));  
       con->outbuf = new Buf();
       smb_encode_header(con->outbuf, SMB_COM_NEGOTIATE);
       smb_encode_negotiate_protocol(con->outbuf);
@@ -278,6 +428,13 @@ ncrack_smb(nsock_pool nsp, Connection *con)
 
     case SMB_NEG:
 
+      if (smb_loop_read(nsp, con) < 0)
+        break;
+
+      smb_decode_header(con);
+
+
+      con->state = SMB_FINI;
 
       break;
 
