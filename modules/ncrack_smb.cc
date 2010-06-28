@@ -94,6 +94,13 @@
 #include "modules.h"
 #include <list>
 
+#ifdef WIN32
+#ifndef __attribute__
+# define __attribute__(x)
+#endif
+# pragma pack(1)
+#endif
+
 #define SMB_TIMEOUT 20000
 
 extern NcrackOps o;
@@ -168,7 +175,7 @@ typedef struct smb_header {
 typedef struct smb_negresp_header {
   u_char word_count;              /* Always 17 for this struct */
   struct {
-    ushort dialect_index;         /* Selected dialect index    */
+    uint16_t dialect_index;         /* Selected dialect index    */
     u_char security_mode;         /* Server security flags     */
     uint16_t max_mpx_count;       /* Maximum Multiplex Count   */
     uint16_t max_num_vc;          /* Maximum Virtual Circuits  */

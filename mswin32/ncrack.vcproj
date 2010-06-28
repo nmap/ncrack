@@ -218,6 +218,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\crypto.cc"
+				>
+			</File>
+			<File
 				RelativePath="..\ncrack.cc"
 				>
 			</File>
@@ -357,6 +361,10 @@
 			</File>
 			<File
 				RelativePath="..\Connection.h"
+				>
+			</File>
+			<File
+				RelativePath="..\crypto.h"
 				>
 			</File>
 			<File
