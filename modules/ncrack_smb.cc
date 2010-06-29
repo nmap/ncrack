@@ -175,7 +175,7 @@ typedef struct smb_header {
 typedef struct smb_negresp_header {
   u_char word_count;              /* Always 17 for this struct */
   struct {
-    uint16_t dialect_index;         /* Selected dialect index    */
+    uint16_t dialect_index;       /* Selected dialect index    */
     u_char security_mode;         /* Server security flags     */
     uint16_t max_mpx_count;       /* Maximum Multiplex Count   */
     uint16_t max_num_vc;          /* Maximum Virtual Circuits  */
@@ -369,8 +369,6 @@ smb_decode_header(Connection *con)
    */ 
   header = (smb_header *) ((const char *)(con->inbuf->get_dataptr()) + 4);
 
-  printf("%x%c%c%c\n", header->protocol[0], header->protocol[1], header->protocol[2], header->protocol[3]);
-
   /* First check if protocol magic number is correct */
   if (header->protocol[0] != 0xFF
       || strncmp((const char *)&header->protocol[1], "SMB", 3)) {
@@ -390,16 +388,24 @@ smb_decode_negresp(Connection *con)
 {
   smb_negresp_header *neg;
   smb_state *info;
+  char *ptr;
 
   info = (smb_state *) con->misc_info;
 
   /* Point to Negotiate Protocol Response Header */
   neg = (smb_negresp_header *) ((const char *)(con->inbuf->get_dataptr())
-    + sizeof(smb_header));
+    + sizeof(smb_header) + 4);
 
   info->session_key = neg->words.session_key;
   info->max_mpx = neg->words.max_mpx_count;
 
+  if (!neg->words.encryption_key_length)
+    return -1;
+
+  /* Get encryption key */
+  ptr = (char*)neg + sizeof(smb_negresp_header) + 2;
+  memcpy(info->server_challenge, ptr, 8);
+ 
 }
 
 
@@ -439,7 +445,7 @@ ncrack_smb(nsock_pool nsp, Connection *con)
         break;
 
       smb_decode_header(con);
-
+      smb_decode_negresp(con);
 
       con->state = SMB_FINI;
 
