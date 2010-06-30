@@ -191,6 +191,58 @@ typedef struct smb_negresp_header {
 }  __attribute__((__packed__)) smb_negresp_header;
 
 
+/* 
+ * Session Setup AndX Request header
+ */
+typedef struct
+{
+  u_char word_count;  /* 12 or 13 words */
+  struct
+  {
+    struct
+    {
+      u_char command;
+      u_char reserved;
+      uint16_t offset;
+    } andx;
+    uint16_t max_buffer_size;
+    uint16_t max_mpx_count;
+    uint16_t vc_number;
+    uint32_t session_key;
+    uint16_t lengths[];  /* 1 or 2 elements */
+    uint32_t reserved;
+    uint32_t capabilities;
+  } __attribute__((__packed__)) words;
+} __attribute__((__packed__)) smb_andx_req_header;
+
+
+/* 
+ * Session Setup AndX Request data
+ */
+typedef struct
+{
+  uint16_t byte_count;
+  struct
+  {
+    union
+    {
+      u_char security_blob[];
+      struct
+      {
+        u_char case_insensitive_password[];
+        u_char case_sensitive_password[];
+        u_char pad[];
+        u_char account_name[];
+        u_char primary_domain[];
+      } __attribute__((__packed__)) non_ext_sec;
+    } auth_stuff;
+    u_char native_os[];
+    u_char native_LanMan[];
+    u_char pad2[];
+  } __attribute__((__packed__)) bytes;
+} __attribute__((__packed__)) smb_andx_req_data;
+
+
 
 /* SMB commands */
 #define SMB_COM_NEGOTIATE 0x72
@@ -294,7 +346,7 @@ smb_encode_header(Buf *buf, char command)
   buf->snprintf(4, "%c%c%c%c", 0, 0, 0, 0);
 
   /* -- SMB packet follows -- */
-  
+
   /* SMB header: 0xFF SMB */
   header.protocol[0] = 0xFF;
   strncpy((char *)&header.protocol[1], "SMB", 3);
@@ -394,7 +446,7 @@ smb_decode_negresp(Connection *con)
 
   /* Point to Negotiate Protocol Response Header */
   neg = (smb_negresp_header *) ((const char *)(con->inbuf->get_dataptr())
-    + sizeof(smb_header) + 4);
+      + sizeof(smb_header) + 4);
 
   info->session_key = neg->words.session_key;
   info->max_mpx = neg->words.max_mpx_count;
@@ -405,7 +457,7 @@ smb_decode_negresp(Connection *con)
   /* Get encryption key */
   ptr = (char*)neg + sizeof(smb_negresp_header) + 2;
   memcpy(info->server_challenge, ptr, 8);
- 
+
 }
 
 
