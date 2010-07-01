@@ -7,6 +7,10 @@ TODO:
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
 
+* Add remote desktop (rdp) cracking. Ithilgore says there are few
+  rdesktop crackers out there.  Need to think about whether this makes
+  most sense in Ncrack, NSE, or both.
+
 * Handle username validation for services.  For example, if an FTP
   server is anon only or if we enumerate SMB users, or some service
   gives a user does not exist error, we should probably not waste time
@@ -14,14 +18,12 @@ TODO:
   figure out how this works when multiple services/hosts are being
   cracked at the same time.
 
+
 * HTTP-form auth which will be based on the existing HTTP module and
   will target HTTP forms will have to ideally be able to parse the
   most common web forms out there. The user will also be given the
   choice to specify certain form-related arguments that can make
   Ncrack's job easier.
-
-* Add remote desktop (rdp) cracking. Ithilgore says there are few
-  rdesktop crackers out there.
 
 * Discuss improvements on password/username-list manipulation.
   e.g combo-lists, special format with which you could specify the
