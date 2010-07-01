@@ -210,4 +210,10 @@ int win32_munmap(char *filestr, int filelen);
 #endif /* WIN32 */
 
 
+/* Create a UNICODE string based on an ASCII one. Be sure to free the memory! */
+char *unicode_alloc(const char *string);
+/* Same as unicode_alloc(), except convert the string to uppercase first. */
+char *unicode_alloc_upper(const char *string);
+
+
 #endif /* UTILS_H */

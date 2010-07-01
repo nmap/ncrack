@@ -494,4 +494,46 @@ int win32_munmap(char *filestr, int filelen)
 
 #endif
 
+char *
+unicode_alloc(const char *string)
+{
+	size_t i;
+	char *unicode;
+	size_t unicode_length = (strlen(string) + 1) * 2;
+
+	if(unicode_length < strlen(string))
+		fatal("%s Overflow.", __func__);
+
+	unicode = (char *)safe_malloc(unicode_length);
+
+	memset(unicode, 0, unicode_length);
+	for(i = 0; i < strlen(string); i++)
+	{
+		unicode[(i * 2)] = string[i];
+	}
+
+	return unicode;
+}
+
+
+char *
+unicode_alloc_upper(const char *string)
+{
+	size_t i;
+	char *unicode;
+	size_t unicode_length = (strlen(string) + 1) * 2;
+
+	if(unicode_length < strlen(string))
+		fatal("%s Overflow.", __func__);
+
+	unicode = (char *)safe_malloc(unicode_length);
+
+	memset(unicode, 0, unicode_length);
+	for(i = 0; i < strlen(string); i++)
+	{
+		unicode[(i * 2)] = toupper(string[i]);
+	}
+
+	return unicode;
+}
 
