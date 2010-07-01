@@ -122,7 +122,7 @@ static int smb_decode_header(Connection *con);
 static int smb_decode_negresp(Connection *con);
 static void smb_encode_session_header(Connection *con);
 static void smb_get_password(Connection *con);
-
+static void smb_encode_session_data(Connection *con);
 
 
 static void smb_free(Connection *con);
@@ -301,7 +301,6 @@ smb_loop_read(nsock_pool nsp, Connection *con)
   total_length = netbios_length + 4; 
 
   printf("%u\n", total_length);
-
 
   /* If we haven't received all the bytes of the message, according to the
    * total length that we calculated, then try and get the rest */
@@ -489,6 +488,8 @@ smb_encode_session_header(Connection *con)
 
   info = (smb_state *) con->misc_info;
 
+  andx.word_count = 13; // TODO: probably dynamic
+
   andx.words.andx.command = 0xFF;       /* ANDX - No further commands */
   andx.words.andx.reserved = 0x00;      /* ANDX - Reserved (0) */
   andx.words.andx.offset = 0x0000;      /* ANDX - next offset */
@@ -496,10 +497,27 @@ smb_encode_session_header(Connection *con)
   andx.words.max_mpx_count = 0x0001;    /* Max multiplexes */
   andx.words.vc_number = 0x0000;        /* Virtual circuit number */
   andx.words.session_key = info->session_key; /* Session key from earlier */
-
-
+  andx.words.lengths[0] = info->lm.length;
+  andx.words.lengths[1] = info->ntlm.length;
   andx.words.reserved = 0x00000000;     /* Reserved */
   andx.words.capabilities = 0x00000050; /* Capabilities */
+
+  con->outbuf->append(&andx, sizeof(andx));
+
+}
+
+
+static void
+smb_encode_session_data(Connection *con)
+{
+
+  smb_andx_req_data data;
+  smb_state *info;
+
+  info = (smb_state *) con->misc_info;
+
+
+
 
 }
 
@@ -519,8 +537,11 @@ smb_get_password(Connection *con)
     default:
       lm_create_response(info->lm.hash, info->server_challenge,
           info->lm.response);
+      info->lm.length = sizeof(info->lm.response);
+
       ntlm_create_response(info->ntlm.hash, info->server_challenge,
           info->ntlm.response);
+      info->ntlm.length = sizeof(info->ntlm.response);
 
   }
 
@@ -568,6 +589,8 @@ ncrack_smb(nsock_pool nsp, Connection *con)
       smb_decode_header(con);
       smb_decode_negresp(con);
 
+      con->state = SMB_FINI;
+
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
@@ -575,9 +598,10 @@ ncrack_smb(nsock_pool nsp, Connection *con)
       smb_get_password(con);
       smb_encode_header(con, SMB_COM_SESSION_SETUP_ANDX);
       smb_encode_session_header(con);
+      smb_prepend_length(con->outbuf);
 
-      con->state = SMB_FINI;
-
+      nsock_write(nsp, nsi, ncrack_write_handler, SMB_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
 
