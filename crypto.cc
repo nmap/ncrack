@@ -87,27 +87,43 @@
  *                                                                         *
  ***************************************************************************/
 
-#if HAVE_OPENSSL
+//#if HAVE_OPENSSL
 
 #include <openssl/des.h>
 #include <openssl/hmac.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
+#include <stdint.h>
 #include "crypto.h"
 #include "ncrack_error.h"
+#include "utils.h"
+
+
+static void password_to_key(const uint8_t password[7], uint8_t key[8])
+{
+  /* make room for parity bits */
+  key[0] =                        (password[0] >> 0);
+  key[1] = ((password[0]) << 7) | (password[1] >> 1);
+  key[2] = ((password[1]) << 6) | (password[2] >> 2);
+  key[3] = ((password[2]) << 5) | (password[3] >> 3);
+  key[4] = ((password[3]) << 4) | (password[4] >> 4);
+  key[5] = ((password[4]) << 3) | (password[5] >> 5);
+  key[6] = ((password[5]) << 2) | (password[6] >> 6);
+  key[7] = ((password[6]) << 1);
+}
 
 
 static void
 des(const uint8_t password[7], const uint8_t data[8], uint8_t result[])
 {
-	DES_cblock key;
-	DES_key_schedule schedule;
+  DES_cblock key;
+  DES_key_schedule schedule;
 
-	password_to_key(password, key);
+  password_to_key(password, key);
 
-	DES_set_odd_parity(&key);
-	DES_set_key_unchecked(&key, &schedule);
-	DES_ecb_encrypt((DES_cblock*)data, (DES_cblock*)result, &schedule, DES_ENCRYPT);
+  DES_set_odd_parity(&key);
+  DES_set_key_unchecked(&key, &schedule);
+  DES_ecb_encrypt((DES_cblock*)data, (DES_cblock*)result, &schedule, DES_ENCRYPT);
 }
 
 
@@ -121,33 +137,32 @@ des(const uint8_t password[7], const uint8_t data[8], uint8_t result[])
 void
 lm_create_hash(const char *password, uint8_t result[16])
 {
-	size_t           i;
-	uint8_t          password1[7];
-	uint8_t          password2[7];
-	uint8_t          kgs[] = "KGS!@#$%";
-	uint8_t          hash1[8];
-	uint8_t          hash2[8];
+  size_t           i;
+  uint8_t          password1[7];
+  uint8_t          password2[7];
+  uint8_t          kgs[] = "KGS!@#$%";
+  uint8_t          hash1[8];
+  uint8_t          hash2[8];
 
-	/* Initialize passwords to NULLs. */
-	memset(password1, 0, 7);
-	memset(password2, 0, 7);
+  /* Initialize passwords to NULLs. */
+  memset(password1, 0, 7);
+  memset(password2, 0, 7);
 
-	/* Copy passwords over, convert to uppercase, they're automatically padded with NULLs. */
-	for(i = 0; i < 7; i++)
-	{
-		if(i < strlen(password))
-			password1[i] = toupper(password[i]);
-		if(i + 7 < strlen(password))
-			password2[i] = toupper(password[i + 7]);
-	}
+  /* Copy passwords over, convert to uppercase, they're automatically padded with NULLs. */
+  for (i = 0; i < 7; i++) {
+    if (i < strlen(password))
+      password1[i] = toupper(password[i]);
+    if (i + 7 < strlen(password))
+      password2[i] = toupper(password[i + 7]);
+  }
 
-	/* Do the encryption. */
-	des(password1, kgs, hash1);
-	des(password2, kgs, hash2);
+  /* Do the encryption. */
+  des(password1, kgs, hash1);
+  des(password2, kgs, hash2);
 
-	/* Copy the result to the return parameter. */
-	memcpy(result + 0, hash1, 8);
-	memcpy(result + 8, hash2, 8);
+  /* Copy the result to the return parameter. */
+  memcpy(result + 0, hash1, 8);
+  memcpy(result + 8, hash2, 8);
 }
 
 
@@ -160,38 +175,37 @@ lm_create_hash(const char *password, uint8_t result[16])
 void
 lm_create_response(const uint8_t lanman[16], const uint8_t challenge[8], uint8_t result[24])
 {
-	size_t i;
+  size_t i;
 
-	uint8_t password1[7];
-	uint8_t password2[7];
-	uint8_t password3[7];
+  uint8_t password1[7];
+  uint8_t password2[7];
+  uint8_t password3[7];
 
-	uint8_t hash1[8];
-	uint8_t hash2[8];
-	uint8_t hash3[8];
+  uint8_t hash1[8];
+  uint8_t hash2[8];
+  uint8_t hash3[8];
 
-	/* Initialize passwords. */
-	memset(password1, 0, 7);
-	memset(password2, 0, 7);
-	memset(password3, 0, 7);
+  /* Initialize passwords. */
+  memset(password1, 0, 7);
+  memset(password2, 0, 7);
+  memset(password3, 0, 7);
 
-	/* Copy data over. */
-	for(i = 0; i < 7; i++)
-	{
-		password1[i] = lanman[i];
-		password2[i] = lanman[i + 7];
-		password3[i] = (i + 14 < 16) ? lanman[i + 14] : 0;
-	}
+  /* Copy data over. */
+  for (i = 0; i < 7; i++) {
+    password1[i] = lanman[i];
+    password2[i] = lanman[i + 7];
+    password3[i] = (i + 14 < 16) ? lanman[i + 14] : 0;
+  }
 
-	/* do the encryption. */
-	des(password1, challenge, hash1);
-	des(password2, challenge, hash2);
-	des(password3, challenge, hash3);
+  /* do the encryption. */
+  des(password1, challenge, hash1);
+  des(password2, challenge, hash2);
+  des(password3, challenge, hash3);
 
-	/* Copy the result to the return parameter. */
-	memcpy(result + 0,  hash1, 8);
-	memcpy(result + 8,  hash2, 8);
-	memcpy(result + 16, hash3, 8);
+  /* Copy the result to the return parameter. */
+  memcpy(result + 0,  hash1, 8);
+  memcpy(result + 8,  hash2, 8);
+  memcpy(result + 16, hash3, 8);
 }
 
 
@@ -202,15 +216,15 @@ lm_create_response(const uint8_t lanman[16], const uint8_t challenge[8], uint8_t
 void
 ntlm_create_hash(const char *password, uint8_t result[16])
 {
-	char *unicode = unicode_alloc(password);
-	MD4_CTX ntlm;
+  char *unicode = unicode_alloc(password);
+  MD4_CTX ntlm;
 
-	if(!unicode)
-		fatal();
+  if(!unicode)
+    fatal("%s non unicode", __func__);
 
-	MD4_Init(&ntlm);
-	MD4_Update(&ntlm, unicode, strlen(password) * 2);
-	MD4_Final(result, &ntlm);
+  MD4_Init(&ntlm);
+  MD4_Update(&ntlm, unicode, strlen(password) * 2);
+  MD4_Final(result, &ntlm);
 }
 
 
@@ -222,7 +236,7 @@ void
 ntlm_create_response(const uint8_t ntlm[16], const uint8_t challenge[8],
     uint8_t result[24])
 {
-	lm_create_response(ntlm, challenge, result);
+  lm_create_response(ntlm, challenge, result);
 }
 
 
@@ -236,33 +250,33 @@ void
 ntlmv2_create_hash(const uint8_t ntlm[16], const char *username,
     const char *domain, uint8_t hash[16])
 {
-	/* Convert username to unicode. */
-	size_t username_length = strlen(username);
-	size_t domain_length   = strlen(domain);
-	char    *combined;
-	uint8_t *combined_unicode;
+  /* Convert username to unicode. */
+  size_t username_length = strlen(username);
+  size_t domain_length   = strlen(domain);
+  char    *combined;
+  uint8_t *combined_unicode;
 
-	/* Probably shouldn't do this, but this is all prototype so eh? */
-	if(username_length > 256 || domain_length > 256)
-		fatal("username or domain too long.");
+  /* Probably shouldn't do this, but this is all prototype so eh? */
+  if (username_length > 256 || domain_length > 256)
+    fatal("username or domain too long.");
 
-	/* Combine the username and domain into one string. */
-	combined = safe_malloc(username_length + domain_length + 1);
-	memset(combined, 0, username_length + domain_length + 1);
+  /* Combine the username and domain into one string. */
+  combined = (char *)safe_malloc(username_length + domain_length + 1);
+  memset(combined, 0, username_length + domain_length + 1);
 
-	memcpy(combined,                   username, username_length);
-	memcpy(combined + username_length, domain,   domain_length);
+  memcpy(combined,                   username, username_length);
+  memcpy(combined + username_length, domain,   domain_length);
 
-	/* Convert to Unicode. */
-	combined_unicode = (uint8_t*)unicode_alloc_upper(combined);
-	if(!combined_unicode)
-		fatal("Out of memory");
+  /* Convert to Unicode. */
+  combined_unicode = (uint8_t*)unicode_alloc_upper(combined);
+  if (!combined_unicode)
+    fatal("Out of memory");
 
-	/* Perform the Hmac-MD5. */
-	HMAC(EVP_md5(), ntlm, 16, combined_unicode, (username_length + domain_length) * 2, hash, NULL);
+  /* Perform the Hmac-MD5. */
+  HMAC(EVP_md5(), ntlm, 16, combined_unicode, (username_length + domain_length) * 2, hash, NULL);
 
-	free(combined_unicode);
-	free(combined);
+  free(combined_unicode);
+  free(combined);
 }
 
 
@@ -281,7 +295,7 @@ lmv2_create_response(const uint8_t ntlm[16], const char *username,
     const char *domain, const uint8_t challenge[8], uint8_t *result,
     uint8_t *result_size)
 {
-	ntlmv2_create_response(ntlm, username, domain, challenge, result, result_size);
+  ntlmv2_create_response(ntlm, username, domain, challenge, result, result_size);
 }
 
 
@@ -296,62 +310,58 @@ ntlmv2_create_response(const uint8_t ntlm[16], const char *username,
     const char *domain, const uint8_t challenge[8], uint8_t *result,
     uint8_t *result_size)
 {
-	size_t  i;
-	uint8_t v2hash[16];
-	uint8_t *data;
+  size_t  i;
+  uint8_t v2hash[16];
+  uint8_t *data;
 
-	uint8_t blip[8];
-	uint8_t *blob;
-	uint8_t blob_length;
+  uint8_t blip[8];
+  uint8_t *blob = NULL;
+  uint8_t blob_length = 0;
 
 
-	/* Create the 'blip'. TODO: Do I care if this is random? */
-	for(i = 0; i < 8; i++)
-		blip[i] = i;
+  /* Create the 'blip'. TODO: Do I care if this is random? */
+  for (i = 0; i < 8; i++)
+    blip[i] = i;
 
-	if(*result_size < 24)
-	{
-		/* Result can't be less than 24 bytes. */
-		fatal("Result size is too low!");
-	}
-	else if(*result_size == 24)
-	{
-		/* If they're looking for 24 bytes, then it's just the raw blob. */
-		blob = safe_malloc(8);
-		memcpy(blob, blip, 8);
-		blob_length = 8;
-	}
-	else
-	{
-		blob = safe_malloc(24);
-		for(i = 0; i < 24; i++)
-			blob[i] = i;
-		blob_length = 24;
-	}
+  if (*result_size < 24)
+  {
+    /* Result can't be less than 24 bytes. */
+    fatal("Result size is too low!");
+  } else if (*result_size == 24) {
+    /* If they're looking for 24 bytes, then it's just the raw blob. */
+    blob = (uint8_t *)safe_malloc(8);
+    memcpy(blob, blip, 8);
+    blob_length = 8;
+  } else {
+    blob = (uint8_t *)safe_malloc(24);
+    for (i = 0; i < 24; i++)
+      blob[i] = i;
+    blob_length = 24;
+  }
 
-	/* Allocate room enough for the server challenge and the client blob. */
-	data = safe_malloc(8 + blob_length);
+  /* Allocate room enough for the server challenge and the client blob. */
+  data = (uint8_t *)safe_malloc(8 + blob_length);
 
-	/* Copy the challenge into the memory. */
-	memcpy(data, challenge, 8);
-	/* Copy the blob into the memory. */
-	memcpy(data + 8, blob, blob_length);
+  /* Copy the challenge into the memory. */
+  memcpy(data, challenge, 8);
+  /* Copy the blob into the memory. */
+  memcpy(data + 8, blob, blob_length);
 
-	/* Get the v2 hash. */
-	ntlmv2_create_hash(ntlm, username, domain, v2hash);
+  /* Get the v2 hash. */
+  ntlmv2_create_hash(ntlm, username, domain, v2hash);
 
-	/* Generate the v2 response. */
-	HMAC(EVP_md5(), v2hash, 16, data, 8 + blob_length, result, NULL);
+  /* Generate the v2 response. */
+  HMAC(EVP_md5(), v2hash, 16, data, 8 + blob_length, result, NULL);
 
-	/* Copy the blob onto the end of the v2 response. */
-	memcpy(result + 16, blob, blob_length);
+  /* Copy the blob onto the end of the v2 response. */
+  memcpy(result + 16, blob, blob_length);
 
-	/* Store the result size. */
-	*result_size = blob_length + 16;
+  /* Store the result size. */
+  *result_size = blob_length + 16;
 
-	/* Finally, free up some memory. */
-	free(data);
-	free(blob);
+  /* Finally, free up some memory. */
+  free(data);
+  free(blob);
 }
 
-#endif /* HAVE_OPENSSL */
+//#endif /* HAVE_OPENSSL */
