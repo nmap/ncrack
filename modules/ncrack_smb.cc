@@ -92,6 +92,7 @@
 #include "NcrackOps.h"
 #include "Service.h"
 #include "modules.h"
+#include "crypto.h"
 #include <list>
 
 #ifdef WIN32
@@ -114,22 +115,37 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 enum states { SMB_INIT, SMB_NEG, SMB_FINI };
 
 static int smb_loop_read(nsock_pool nsp, Connection *con);
-static void smb_encode_header(Buf *buf, char command);
+static void smb_encode_header(Connection *con, char command);
 static void smb_encode_negotiate_protocol(Buf *buf);
 static void smb_prepend_length(Buf *buf);
 static int smb_decode_header(Connection *con);
 static int smb_decode_negresp(Connection *con);
+static void smb_encode_session_header(Connection *con);
+static void smb_get_password(Connection *con);
 
 
 
 static void smb_free(Connection *con);
 
+enum hash_types { HASH_V1, HASH_LM, HASH_NTLM, HASH_V2, HASH_LMV2 };
+
 typedef struct smb_state {
-  int login_mechanism;
+  int hash_type;  /* v1, lm, ntlm, v2, lmv2 */
   uint32_t session_key; /* value needs to be echoed back */
   u_char server_challenge[8]; /* random string for challenge/response */
   uint16_t max_mpx; /* maximum multiplexed connections */
   uint16_t pid; /* process id */
+
+  struct {
+    uint8_t hash[16];
+    uint16_t length; /* ANSI Password length (LanMan) */ 
+    uint8_t response[24];
+  } lm;
+  struct {
+    uint8_t hash[16];
+    uint16_t length;   /* Unicode Password length (NTLM) */
+    uint8_t response[24];
+  } ntlm;
 
 } smb_state;
 
@@ -209,7 +225,7 @@ typedef struct
     uint16_t max_mpx_count;
     uint16_t vc_number;
     uint32_t session_key;
-    uint16_t lengths[];  /* 1 or 2 elements */
+    uint16_t lengths[2];  /* 1 or 2 elements */
     uint32_t reserved;
     uint32_t capabilities;
   } __attribute__((__packed__)) words;
@@ -331,10 +347,13 @@ smb_loop_read(nsock_pool nsp, Connection *con)
  and UID need to be set, but those are stored in the smb state and don't require user intervention. 
  */
 static void
-smb_encode_header(Buf *buf, char command)
+smb_encode_header(Connection *con, char command)
 {
 
   smb_header header;
+  smb_state *info;
+
+  info = (smb_state *) con->misc_info;
 
   /* Every SMB packet needs a NetBIOS Session Service Header prepended which
    * is the length of the packet in 4 bytes in big endian. The length field is
@@ -343,7 +362,7 @@ smb_encode_header(Buf *buf, char command)
    * For now allocate space in the buffer, and when everything is done go fill
    * in the actual length with smb_prepend_length()
    */
-  buf->snprintf(4, "%c%c%c%c", 0, 0, 0, 0);
+  con->outbuf->snprintf(4, "%c%c%c%c", 0, 0, 0, 0);
 
   /* -- SMB packet follows -- */
 
@@ -361,11 +380,11 @@ smb_encode_header(Buf *buf, char command)
   memset(&header.extra.security_signature, 0,
       sizeof(header.extra.security_signature));
   header.tid = 0;
-  header.pid = 0;
+  header.pid = info->pid ? info->pid : 0;
   header.uid = 0;
   header.mid = 0;
 
-  buf->append(&header, sizeof(smb_header));
+  con->outbuf->append(&header, sizeof(smb_header));
 
 }
 
@@ -461,6 +480,56 @@ smb_decode_negresp(Connection *con)
 }
 
 
+static void
+smb_encode_session_header(Connection *con)
+{
+
+  smb_andx_req_header andx;
+  smb_state *info;
+
+  info = (smb_state *) con->misc_info;
+
+  andx.words.andx.command = 0xFF;       /* ANDX - No further commands */
+  andx.words.andx.reserved = 0x00;      /* ANDX - Reserved (0) */
+  andx.words.andx.offset = 0x0000;      /* ANDX - next offset */
+  andx.words.max_buffer_size = 0xFFFF;  /* Max buffer size */
+  andx.words.max_mpx_count = 0x0001;    /* Max multiplexes */
+  andx.words.vc_number = 0x0000;        /* Virtual circuit number */
+  andx.words.session_key = info->session_key; /* Session key from earlier */
+
+
+  andx.words.reserved = 0x00000000;     /* Reserved */
+  andx.words.capabilities = 0x00000050; /* Capabilities */
+
+}
+
+
+
+static void
+smb_get_password(Connection *con)
+{
+  smb_state *info = (smb_state *) con->misc_info;
+
+  /* Create the hashes */
+  lm_create_hash(con->pass, info->lm.hash);
+  ntlm_create_hash(con->pass, info->ntlm.hash);
+
+  switch (info->hash_type)
+  {
+    default:
+      lm_create_response(info->lm.hash, info->server_challenge,
+          info->lm.response);
+      ntlm_create_response(info->ntlm.hash, info->server_challenge,
+          info->ntlm.response);
+
+  }
+
+
+
+}
+
+
+
 
 void
 ncrack_smb(nsock_pool nsp, Connection *con)
@@ -482,7 +551,7 @@ ncrack_smb(nsock_pool nsp, Connection *con)
 
       con->misc_info = (smb_state *)safe_zalloc(sizeof(smb_state));  
       con->outbuf = new Buf();
-      smb_encode_header(con->outbuf, SMB_COM_NEGOTIATE);
+      smb_encode_header(con, SMB_COM_NEGOTIATE);
       smb_encode_negotiate_protocol(con->outbuf);
       smb_prepend_length(con->outbuf);
 
@@ -498,6 +567,14 @@ ncrack_smb(nsock_pool nsp, Connection *con)
 
       smb_decode_header(con);
       smb_decode_negresp(con);
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      smb_get_password(con);
+      smb_encode_header(con, SMB_COM_SESSION_SETUP_ANDX);
+      smb_encode_session_header(con);
 
       con->state = SMB_FINI;
 
