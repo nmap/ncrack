@@ -112,7 +112,7 @@ extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
     void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
-enum states { SMB_INIT, SMB_NEG, SMB_FINI };
+enum states { SMB_INIT, SMB_NEGOTIATE, SMB_SESSION_AUTH, SMB_FINI };
 
 static int smb_loop_read(nsock_pool nsp, Connection *con);
 static void smb_encode_header(Connection *con, char command);
@@ -123,6 +123,8 @@ static int smb_decode_negresp(Connection *con);
 static void smb_encode_session_header(Connection *con);
 static void smb_get_password(Connection *con);
 static void smb_encode_session_data(Connection *con);
+static int smb_check_auth(Connection *con);
+
 
 
 static void smb_free(Connection *con);
@@ -233,7 +235,7 @@ typedef struct
 
 
 /* 
- * Session Setup AndX Request data
+ * Session Setup AndX Request data // not used atm
  */
 typedef struct
 {
@@ -274,14 +276,14 @@ typedef struct
 #define SMB_FLAGS2_IS_LONG_NAME 0x0040
 #define SMB_FLAGS2_KNOWS_LONG_NAMES 0x0001
 
+#define NT_STATUS_SUCCESS 0x00000000
+
 
 static int
 smb_loop_read(nsock_pool nsp, Connection *con)
 {
   uint32_t netbios_length, total_length;
   void *ioptr;
-
-  printf("SMB LOOP READ START\n");
 
   /* Make sure we get at least 4 bytes: these are the NetBIOS header which
    * contains the total size of the message
@@ -299,8 +301,6 @@ smb_loop_read(nsock_pool nsp, Connection *con)
   netbios_length &= 0x00FFFFFF; /* make it 24 bits */
   /* total length = netbios length + 4 (for the length itself) */
   total_length = netbios_length + 4; 
-
-  printf("%u\n", total_length);
 
   /* If we haven't received all the bytes of the message, according to the
    * total length that we calculated, then try and get the rest */
@@ -449,8 +449,42 @@ smb_decode_header(Connection *con)
   info->pid = header->pid;
 
   return 0;
+}
+
+/*
+ * This is similar to the smb_decode_header but specifically checks if we
+ * succeeded in the authentication.
+ * Returns 0 for success, < 0 for errors.
+ */
+static int
+smb_check_auth(Connection *con)
+{
+
+  smb_state *info;
+  smb_header *header;
+
+  info = (smb_state *) con->misc_info;
+
+  /* Point to SMB header, 4 bytes after the beginning of NetBIOS header.
+   * Without any need for additional memory-copy operations, just have the
+   * smb_header pointer point to the incoming data.
+   */ 
+  header = (smb_header *) ((const char *)(con->inbuf->get_dataptr()) + 4);
+
+  /* First check if protocol magic number is correct */
+  if (header->protocol[0] != 0xFF
+      || strncmp((const char *)&header->protocol[1], "SMB", 3)) {
+    return -1;
+  }
+
+  if (header->status.status == NT_STATUS_SUCCESS) {
+    return 0;
+  }
+
+  return -1;
 
 }
+
 
 
 static int
@@ -510,14 +544,39 @@ smb_encode_session_header(Connection *con)
 static void
 smb_encode_session_data(Connection *con)
 {
-
-  smb_andx_req_data data;
   smb_state *info;
+  char *ptr;
+  uint16_t byte_count = 0;
 
   info = (smb_state *) con->misc_info;
 
+  ptr = (char *)con->outbuf->get_dataptr() + 4 
+    + sizeof(smb_header) + sizeof(smb_andx_req_header);
 
+  /* Allocate first space for the byte count field. Calculate at the end the
+   * actual value, after we know the lengths of the rest of the fields */
+  con->outbuf->append(&byte_count, sizeof(byte_count));
 
+  /* ANSI and Unicode passwords */
+  con->outbuf->append(&info->lm.response, info->lm.length);
+  con->outbuf->append(&info->ntlm.response, info->ntlm.length);
+
+  /* User account (trailing '\0' included) */
+  con->outbuf->append(con->user, strlen(con->user) + 1);
+
+  /* Primary domain */
+  con->outbuf->snprintf(1, "%c", 0);
+
+  /* Native OS */
+  con->outbuf->snprintf(7, "%s", "Ncrack");
+
+  /* Native LAN Manager */
+  con->outbuf->snprintf(14, "%s", "Native Lanman");
+
+  /* Now write the byte count, by calculating the above lengths */
+  byte_count = info->lm.length + info->ntlm.length + strlen(con->user) + 1
+    + 1 + 5 + 14;
+  memcpy(ptr, &byte_count, sizeof(byte_count));
 
 }
 
@@ -546,9 +605,7 @@ smb_get_password(Connection *con)
   }
 
 
-
 }
-
 
 
 
@@ -568,7 +625,7 @@ ncrack_smb(nsock_pool nsp, Connection *con)
   {
     case SMB_INIT:
 
-      con->state = SMB_NEG;
+      con->state = SMB_NEGOTIATE;
 
       con->misc_info = (smb_state *)safe_zalloc(sizeof(smb_state));  
       con->outbuf = new Buf();
@@ -581,13 +638,21 @@ ncrack_smb(nsock_pool nsp, Connection *con)
       break;
 
 
-    case SMB_NEG:
+    case SMB_NEGOTIATE:
 
       if (smb_loop_read(nsp, con) < 0)
         break;
 
+      con->state = SMB_SESSION_AUTH;
+
       smb_decode_header(con);
       smb_decode_negresp(con);
+
+      /* Change state without any read or write */
+      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+      break;
+
+    case SMB_SESSION_AUTH:
 
       con->state = SMB_FINI;
 
@@ -598,7 +663,11 @@ ncrack_smb(nsock_pool nsp, Connection *con)
       smb_get_password(con);
       smb_encode_header(con, SMB_COM_SESSION_SETUP_ANDX);
       smb_encode_session_header(con);
+      smb_encode_session_data(con);
       smb_prepend_length(con->outbuf);
+
+      delete con->inbuf;
+      con->inbuf = NULL;
 
       nsock_write(nsp, nsi, ncrack_write_handler, SMB_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
@@ -607,11 +676,20 @@ ncrack_smb(nsock_pool nsp, Connection *con)
 
     case SMB_FINI:
 
-      break;
+      if (smb_loop_read(nsp, con) < 0)
+        break;
 
+      con->state = SMB_SESSION_AUTH;
 
+      if (!smb_check_auth(con)) {
+        con->auth_success = true;
+      }
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      return ncrack_module_end(nsp, con);
   }
-
 
 
 }
