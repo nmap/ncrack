@@ -93,7 +93,9 @@
 #include <openssl/hmac.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
-//#include <stdint.h>
+#ifndef WIN32
+  #include <stdint.h>
+#endif
 #include "crypto.h"
 #include "ncrack_error.h"
 #include "utils.h"

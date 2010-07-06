@@ -183,6 +183,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
   Service *serv = con->service;
   void *ioptr;
 
+  return;
+
 
   switch (con->state)
   {
