@@ -237,6 +237,7 @@ typedef struct
 /* 
  * Session Setup AndX Request data // not used atm
  */
+ #if 0
 typedef struct
 {
   uint16_t byte_count;
@@ -259,7 +260,7 @@ typedef struct
     u_char pad2[];
   } __attribute__((__packed__)) bytes;
 } __attribute__((__packed__)) smb_andx_req_data;
-
+#endif
 
 
 /* SMB commands */
@@ -510,6 +511,7 @@ smb_decode_negresp(Connection *con)
   ptr = (char*)neg + sizeof(smb_negresp_header) + 2;
   memcpy(info->server_challenge, ptr, 8);
 
+  return 0;
 }
 
 

@@ -90,6 +90,9 @@
 #ifndef CRYPTO_H
 #define CRYPTO_H
 
+#ifdef WIN32
+  #include "winfix.h"
+#endif
 
 /* Generate the Lanman v1 hash (LMv1). The generated hash is incredibly easy to
  * reverse, because the input is padded or truncated to 14 characters, then 
