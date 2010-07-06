@@ -700,6 +700,7 @@ call_module(nsock_pool nsp, Connection *con)
   con->finished_normally = false;
   con->close_reason = -1;
 
+
   if (!strcmp(name, "ftp"))
     ncrack_ftp(nsp, con);
   else if (!strcmp(name, "telnet"))
@@ -716,6 +717,8 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_pop3(nsp, con);
   else if (!strcmp(name, "pop3s"))
     ncrack_pop3(nsp, con);
+  else if (!strcmp(name, "rdp")) 
+    ncrack_rdp(nsp, con);
 #if HAVE_OPENSSL
   else if (!strcmp(name, "smb"))
     ncrack_smb(nsp, con);

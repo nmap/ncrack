@@ -246,6 +246,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\modules\ncrack_rdp.cc"
+				>
+			</File>
+			<File
 				RelativePath="..\ncrack_resume.cc"
 				>
 			</File>

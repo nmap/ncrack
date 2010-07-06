@@ -1,8 +1,6 @@
 
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_rdp.cc -- ncrack module for RDP                                  *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -89,18 +87,131 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef MODULES_H 
-#define MODULES_H 1
-
+#include "ncrack.h"
 #include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
+#include <list>
 
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
-void ncrack_smb(nsock_pool nsp, Connection *con);
-void ncrack_rdp(nsock_pool nsp, Connection *con);
-
-
+#ifdef WIN32
+#ifndef __attribute__
+# define __attribute__(x)
 #endif
+# pragma pack(1)
+#endif
+
+#define RDP_TIMEOUT 20000
+
+extern NcrackOps o;
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
+    void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+
+static void rdp_iso(Connection *con, uint8_t code);
+
+
+
+/* ISO PDU codes */
+enum ISO_PDU_CODE
+{
+	ISO_PDU_CR = 0xE0,	/* Connection Request */
+	ISO_PDU_CC = 0xD0,	/* Connection Confirm */
+	ISO_PDU_DR = 0x80,	/* Disconnect Request */
+	ISO_PDU_DT = 0xF0,	/* Data */
+	ISO_PDU_ER = 0x70	/* Error */
+};
+
+enum states { RDP_INIT, RDP_FINI };
+
+
+typedef struct rdp_iso_pkt {
+
+  /* TPKT header */
+  struct {
+    uint8_t version;  /* default version = 3 */
+    uint8_t reserved; /* 0 */
+    uint16_t length;  /* total length in big endian */
+  } __attribute__((__packed__)) tpkt;
+
+  /* ITU-T header */
+  struct {
+    uint8_t hdrlen;   /* ITU-T header length */
+    uint8_t code;     /* ISO_PDU_CODE */
+    uint16_t dst_ref; /* 0 */
+    uint16_t src_ref; /* 0 */
+    uint8_t class_num;    /* 0 */
+  } __attribute__((__packed__)) itu_t;
+
+} __attribute__((__packed__)) rdp_iso_pkt;
+
+
+
+
+static void
+rdp_iso(Connection *con, uint8_t code)
+{
+
+  rdp_iso_pkt iso;
+
+  iso.tpkt.version = 3;
+  iso.tpkt.reserved = 0;
+  iso.tpkt.length = htons(sizeof(iso));
+
+  iso.itu_t.hdrlen = sizeof(iso.itu_t);
+  iso.itu_t.code = code;
+  iso.itu_t.dst_ref = 0;
+  iso.itu_t.src_ref = 0;
+  iso.itu_t.class_num = 0;
+
+  con->outbuf->append(&iso, sizeof(rdp_iso_pkt));
+
+
+}
+
+
+
+
+void
+ncrack_rdp(nsock_pool nsp, Connection *con)
+{
+  nsock_iod nsi = con->niod;
+  Service *serv = con->service;
+  void *ioptr;
+
+
+  switch (con->state)
+  {
+    case RDP_INIT:
+
+      con->state = RDP_FINI;
+
+      con->outbuf = new Buf();
+      rdp_iso(con, ISO_PDU_CR);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case RDP_FINI:
+
+
+      printf("fini\n");
+
+      break;
+
+
+
+  }
+
+
+
+
+}
+
+
+
