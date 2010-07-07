@@ -102,6 +102,7 @@
 #endif
 
 #define RDP_TIMEOUT 20000
+#define COOKIE_USERNAME "NCRACK_USER"
 
 extern NcrackOps o;
 
@@ -157,18 +158,25 @@ rdp_iso(Connection *con, uint8_t code)
 {
 
   rdp_iso_pkt iso;
+  uint16_t length = 30 + strlen(COOKIE_USERNAME);
 
   iso.tpkt.version = 3;
   iso.tpkt.reserved = 0;
-  iso.tpkt.length = htons(sizeof(iso));
+  iso.tpkt.length = htons(length);
 
-  iso.itu_t.hdrlen = sizeof(iso.itu_t);
+  iso.itu_t.hdrlen = length - 5;
   iso.itu_t.code = code;
   iso.itu_t.dst_ref = 0;
   iso.itu_t.src_ref = 0;
   iso.itu_t.class_num = 0;
 
   con->outbuf->append(&iso, sizeof(rdp_iso_pkt));
+
+  /* It appears that we need to send a username cookie */
+  con->outbuf->snprintf(strlen("Cookie: mstshash="), "%s",
+      "Cookie: mstshash=");
+  con->outbuf->snprintf(strlen(COOKIE_USERNAME), "%s", COOKIE_USERNAME);
+  con->outbuf->snprintf(2, "%c%c", '\r', '\n');
 
 
 }
@@ -182,8 +190,6 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   void *ioptr;
-
-  return;
 
 
   switch (con->state)
@@ -201,7 +207,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
     case RDP_FINI:
 
-
+      sleep(10);
       printf("fini\n");
 
       break;
