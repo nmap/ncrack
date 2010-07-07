@@ -292,6 +292,8 @@ lookup_init(const char *const filename)
     if (*line == '\n' || *line == '#')
       continue;
 
+    temp.misc.ssl = false;
+
     if (sscanf(line, "%127s %hu/%15s", servicename, &portno, proto) != 3)
       fatal("invalid ncrack-services file: %s", filename);
 
