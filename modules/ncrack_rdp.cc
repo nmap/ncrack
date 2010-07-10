@@ -103,6 +103,7 @@
 
 #define RDP_TIMEOUT 20000
 #define COOKIE_USERNAME "NCRACK_USER"
+#define FAKE_HOSTNAME "NCRACK"
 
 extern NcrackOps o;
 
@@ -112,9 +113,10 @@ extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
     void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
-
-static void rdp_iso(Connection *con, uint8_t code);
-
+static int rdp_loop_read(nsock_pool nsp, Connection *con);
+static void rdp_iso_connection_request(Connection *con);
+static int rdp_iso_connection_confirm(Connection *con);
+static int rdp_mcs_connect(Connection *con);
 
 
 /* ISO PDU codes */
@@ -124,10 +126,10 @@ enum ISO_PDU_CODE
 	ISO_PDU_CC = 0xD0,	/* Connection Confirm */
 	ISO_PDU_DR = 0x80,	/* Disconnect Request */
 	ISO_PDU_DT = 0xF0,	/* Data */
-	ISO_PDU_ER = 0x70	/* Error */
+	ISO_PDU_ER = 0x70	  /* Error */
 };
 
-enum states { RDP_INIT, RDP_FINI };
+enum states { RDP_INIT, RDP_CON, RDP_FINI };
 
 
 typedef struct rdp_iso_pkt {
@@ -151,10 +153,112 @@ typedef struct rdp_iso_pkt {
 } __attribute__((__packed__)) rdp_iso_pkt;
 
 
+/* Generic Conference Control (T.124) ConferenceCreateRequest 
+ * T124 Section 8.7: http://www.itu.int/rec/T-REC-T.124-200701-I/en 
+ */
+typedef struct gcc_conference_create_request {
+  /* be = big endian, le = little endian */
+  // TODO: find the actual names of each var 
+
+  /* be */
+  uint16_t conf_num;  /* 5 */
+  uint16_t word1;     /* 0x14 */
+  uint8_t word2;      /* 0x7c */
+  uint16_t word3;     /* 1 */
+  uint16_t word4;     /* remaining length: length | 0x8000 */
+  uint16_t word5;     /* 8, length? */
+  uint16_t word6;     /* 16 */
+  uint8_t word7;      /* 0 */
+  uint16_t word8;     /* 0xc001 */
+  uint8_t word9;      /* 0 */
+  uint32_t word10;    /* OEM ID: (le) */
+  uint16_t word11;    /* remaining length: length - 14 | 0x8000 */
+
+} __attribute__((__packed__)) gcc_ccr;
+
+/* 
+ * Client Core Data (TS_UD_CS_CORE)
+ * http://msdn.microsoft.com/en-us/library/cc240510%28v=PROT.10%29.aspx
+ */
+typedef struct client_core_data {
+
+  struct {
+    uint16_t type;  /* CS_CORE (0xC001) */
+    uint16_t length;/* 212 */
+  } __attribute__((__packed__)) hdr;
+
+  uint16_t version1;  /* rdp version: 1 == RDP4, 4 == RD5 */
+  uint16_t version2;  /* always 8 */
+
+  uint16_t width;   /* desktop width */
+  uint16_t height;  /* desktop height */
+  uint16_t depth;   /* color depth: 0xca00 = 4bits per pixel, 0xca01 8bpp */
+  uint16_t sassequence; /* always: RNS_UD_SAS_DEL (0xAA03) */
+  uint32_t kb_layout;   /* 0x409: US keyboard layout */
+  uint32_t client_build;/* build number of client, 2600 */
+  uint32_t client_name; /* unicode name, padded to 32 bytes */
+  uint32_t kb_type;
+  uint32_t kb_subtype;
+  uint32_t kb_fn;
+  uint64_t ime;         /* Input Method Editor file, 0 */
+
+} __attribute__((__packed__)) client_core_data;
+
+
+/*
+ * Client Security Data (TS_UD_CS_SEC)
+ * http://msdn.microsoft.com/en-us/library/cc240511%28v=PROT.10%29.aspx
+ */
+typedef struct client_security_data {
+
+  struct {
+    uint16_t type;  /* CS_SECURITY (0xC002) */
+    uint16_t length;/* 12 */
+  } __attribute__((__packed__)) hdr;
+
+  // TODO: rdesktop sets this field (enc_methods) to 0x3 for some reason
+  // microsoft doesn't mention 3 as a possible value
+  uint32_t enc_methods; /* 0 for no enc, 2 for 128-bit */
+  uint32_t ext_enc; /* 0 for non-french locale clients */
+    
+} __attribute__((__packed__)) client_security_data;
+
+
+
+static int
+rdp_loop_read(nsock_pool nsp, Connection *con)
+{
+  uint16_t total_length;
+  void *ioptr;
+
+  /* Make sure we get at least 4 bytes: this is the TPKT header which
+   * contains the total size of the message
+   */
+  if (con->inbuf == NULL || con->inbuf->get_len() < 4) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, RDP_TIMEOUT, con);
+    return -1;
+  }
+
+  /* Get message length from TPKT header. It is in big-endian byte order */
+  ioptr = con->inbuf->get_dataptr();
+  memcpy(&total_length, ioptr, sizeof(total_length));
+
+  total_length = ntohl(total_length); /* convert to host-byte order */
+
+  /* If we haven't received all the bytes of the message, according to the
+   * total length that we calculated, then try and get the rest */
+  if (con->inbuf == NULL || con->inbuf->get_len() < total_length) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, RDP_TIMEOUT, con);
+    return -1;
+  }
+
+  return 0;
+
+}
 
 
 static void
-rdp_iso(Connection *con, uint8_t code)
+rdp_iso_connection_request(Connection *con)
 {
 
   rdp_iso_pkt iso;
@@ -165,7 +269,7 @@ rdp_iso(Connection *con, uint8_t code)
   iso.tpkt.length = htons(length);
 
   iso.itu_t.hdrlen = length - 5;
-  iso.itu_t.code = code;
+  iso.itu_t.code = ISO_PDU_CR;
   iso.itu_t.dst_ref = 0;
   iso.itu_t.src_ref = 0;
   iso.itu_t.class_num = 0;
@@ -177,6 +281,79 @@ rdp_iso(Connection *con, uint8_t code)
       "Cookie: mstshash=");
   con->outbuf->snprintf(strlen(COOKIE_USERNAME), "%s", COOKIE_USERNAME);
   con->outbuf->snprintf(2, "%c%c", '\r', '\n');
+
+
+}
+
+
+static int
+rdp_iso_connection_confirm(Connection *con)
+{
+
+  rdp_iso_pkt *iso;
+
+  iso = (rdp_iso_pkt *) ((const char *)con->inbuf->get_dataptr());
+
+  if (iso->tpkt.version != 3)
+    fatal("rdp_module: not supported version: %d\n", iso->tpkt.version);
+
+  if (iso->itu_t.code != ISO_PDU_CC)
+    return -1;
+
+  return 0;
+}
+
+
+/* 
+ * Client MCS Connect Initial PDU with GCC Conference Create Request
+ * Constructs the packet which is is described at:
+ * http://msdn.microsoft.com/en-us/library/cc240508%28v=PROT.10%29.aspx
+ */
+static int
+rdp_mcs_connect(Connection *con)
+{
+  Buf *iso = new Buf();
+  Buf *mcs = new Buf(); 
+  /* TODO: consider instead of creating separate Bufs and merging them at the
+   * end, to extend the Buf()'s class functions where you can push and pop data
+   * out of it.
+   */
+  gcc_ccr ccr;
+    
+  int length = 158 + 76 + 12 + 4;
+  unsigned int num_channels = 1;
+
+  length += num_channels * 12 + 8;
+
+  /* Fill in the mcs_data first:
+   * This consists of a variable-length PER-encoded GCC Connect Data structure
+   * which encapsulates a Connect GCC PDU that contains a GCC Conference Create
+   * Request. The userData field of this struct contains a user data set
+   * consisting of concatenated Client Data Blocks: clientCoreData,
+   * clientSecurityData etc
+   */
+
+  /* Generic Conference Control (T.124) ConferenceCreateRequest 
+   * T124 Section 8.7: http://www.itu.int/rec/T-REC-T.124-200701-I/en 
+   */
+  ccr.conf_num = htons(5);
+  ccr.word1 = htons(0x14);
+  ccr.word2 = 0x7c;
+  ccr.word3 = htons(1);
+  ccr.word4 = htons(length | 0x8000);
+  ccr.word5 = htons(8);
+  ccr.word6 = htons(16);
+  ccr.word7 = 0;
+  ccr.word8 = htons(0xc001);
+  ccr.word9 = 0;
+  ccr.word10 = 0x61637544;  /* OEM ID: "Duca" TODO: change this */
+  ccr.word11 = htons((length - 14) | 0x8000);
+
+
+  /* http://msdn.microsoft.com/en-us/library/cc240510%28v=PROT.10%29.aspx */
+
+
+  con->outbuf->append(&ccr, sizeof(ccr));
 
 
 }
@@ -196,18 +373,41 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
   {
     case RDP_INIT:
 
-      con->state = RDP_FINI;
+      con->state = RDP_CON;
 
       con->outbuf = new Buf();
-      rdp_iso(con, ISO_PDU_CR);
+      rdp_iso_connection_request(con);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
+
+    case RDP_CON:
+
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = RDP_FINI;
+
+      if (rdp_iso_connection_confirm(con) < 0) {
+        serv->end.reason = Strndup("TPKT Connection denied.",
+            sizeof("TPKT Connection denied." - 1));
+        return ncrack_module_end(nsp, con);
+      }
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      rdp_mcs_connect(con);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+
+
     case RDP_FINI:
 
-      sleep(10);
       printf("fini\n");
 
       break;
