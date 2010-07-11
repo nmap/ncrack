@@ -129,6 +129,9 @@ enum ISO_PDU_CODE
 	ISO_PDU_ER = 0x70	  /* Error */
 };
 
+#define CS_CORE 0xC001;
+#define CS_SECURITY 0xC002;
+
 enum states { RDP_INIT, RDP_CON, RDP_FINI };
 
 
@@ -197,9 +200,9 @@ typedef struct client_core_data {
   uint32_t kb_layout;   /* 0x409: US keyboard layout */
   uint32_t client_build;/* build number of client, 2600 */
   uint32_t client_name; /* unicode name, padded to 32 bytes */
-  uint32_t kb_type;
-  uint32_t kb_subtype;
-  uint32_t kb_fn;
+  uint32_t kb_type;     /* 0x4 for US kb type */
+  uint32_t kb_subtype;  /* 0x0 for US kb subtype */
+  uint32_t kb_fn;       /* 0xc for US kb function keys */
   uint64_t ime;         /* Input Method Editor file, 0 */
 
 } __attribute__((__packed__)) client_core_data;
@@ -319,6 +322,8 @@ rdp_mcs_connect(Connection *con)
    * out of it.
    */
   gcc_ccr ccr;
+  client_core_data ccd;
+  client_security_data csd;
     
   int length = 158 + 76 + 12 + 4;
   unsigned int num_channels = 1;
@@ -350,10 +355,36 @@ rdp_mcs_connect(Connection *con)
   ccr.word11 = htons((length - 14) | 0x8000);
 
 
-  /* http://msdn.microsoft.com/en-us/library/cc240510%28v=PROT.10%29.aspx */
+  /* Client Core Data (TS_UD_CS_CORE)
+   * http://msdn.microsoft.com/en-us/library/cc240510%28v=PROT.10%29.aspx
+   */
+  ccd.hdr.type = CS_CORE;
+  ccd.hdr.length = 212;
+  ccd.version1 = 1; //TODO: this is RD4 for now, change later
+  ccd.version2 = 8;
+  ccd.width = 800;
+  ccd.height = 600;
+  ccd.depth = 0xca01;
+  ccd.sassequence = 0xaa03;
+  ccd.kb_layout = 0x409;
+  ccd.client_build = 2600;
+  Strncpy(&ccd.client_name, FAKE_HOSTNAME, sizeof(FAKE_HOSTNAME));
+  ccd.kb_type = 0x4;
+  ccd.kb_fn = 0xc;
+  ccd.ime = 0;
+
+  /* Client Security Data (TS_UD_CS_SEC)
+   * http://msdn.microsoft.com/en-us/library/cc240511%28v=PROT.10%29.aspx
+   */
+  csd.hdr.type = CS_SECURITY;
+  csd.hdr.length = 12;
+  csd.enc_methods = 3;
+  csd.ext_enc = 0;
 
 
   con->outbuf->append(&ccr, sizeof(ccr));
+  con->outbuf->append(&ccd, sizeof(ccd));
+  con->outbuf->append(&csd, sizeof(csd));
 
 
 }
