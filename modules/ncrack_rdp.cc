@@ -131,29 +131,64 @@ enum ISO_PDU_CODE
 
 #define CS_CORE 0xC001;
 #define CS_SECURITY 0xC002;
+#define CS_NET 0xC003;
+
+#define MCS_CONNECT_INITIAL	0x7f65
+#define MCS_CONNECT_RESPONSE	0x7f66
+
+#define BER_TAG_BOOLEAN		1
+#define BER_TAG_INTEGER		2
+#define BER_TAG_OCTET_STRING	4
+#define BER_TAG_RESULT		10
+#define MCS_TAG_DOMAIN_PARAMS	0x30
+
+/* Virtual channel options */
+#define CHANNEL_OPTION_INITIALIZED	0x80000000
+#define CHANNEL_OPTION_ENCRYPT_RDP	0x40000000
+#define CHANNEL_OPTION_COMPRESS_RDP	0x00800000
+#define CHANNEL_OPTION_SHOW_PROTOCOL	0x00200000
+
 
 enum states { RDP_INIT, RDP_CON, RDP_FINI };
 
 
-typedef struct rdp_iso_pkt {
+/* TPKT header */
+typedef struct iso_tpkt {
 
-  /* TPKT header */
-  struct {
     uint8_t version;  /* default version = 3 */
-    uint8_t reserved; /* 0 */
+    uint8_t reserved;
     uint16_t length;  /* total length in big endian */
-  } __attribute__((__packed__)) tpkt;
 
-  /* ITU-T header */
-  struct {
+} __attribute__((__packed__)) iso_tpkt;
+
+
+/* ITU-T header */
+typedef struct iso_itu_t {
+
     uint8_t hdrlen;   /* ITU-T header length */
     uint8_t code;     /* ISO_PDU_CODE */
     uint16_t dst_ref; /* 0 */
     uint16_t src_ref; /* 0 */
-    uint8_t class_num;    /* 0 */
-  } __attribute__((__packed__)) itu_t;
+    uint8_t class_num;/* 0 */
 
-} __attribute__((__packed__)) rdp_iso_pkt;
+} __attribute__((__packed__)) iso_itu_t;
+
+
+/* ITU-T header - data case */
+typedef struct iso_itu_t_data {
+
+  uint8_t hdrlen;
+  uint8_t code;
+  uint8_t eot;
+
+  iso_itu_t_data() { 
+    hdrlen = 2;
+    code = ISO_PDU_DT;
+    eot = 0x80;
+  }
+
+} __attribute__((__packed__)) iso_itu_t_data;
+
 
 
 /* Generic Conference Control (T.124) ConferenceCreateRequest 
@@ -186,8 +221,8 @@ typedef struct gcc_conference_create_request {
 typedef struct client_core_data {
 
   struct {
-    uint16_t type;  /* CS_CORE (0xC001) */
-    uint16_t length;/* 212 */
+    uint16_t type;
+    uint16_t length;
   } __attribute__((__packed__)) hdr;
 
   uint16_t version1;  /* rdp version: 1 == RDP4, 4 == RD5 */
@@ -199,7 +234,7 @@ typedef struct client_core_data {
   uint16_t sassequence; /* always: RNS_UD_SAS_DEL (0xAA03) */
   uint32_t kb_layout;   /* 0x409: US keyboard layout */
   uint32_t client_build;/* build number of client, 2600 */
-  uint32_t client_name; /* unicode name, padded to 32 bytes */
+  char client_name[32]; /* unicode name, padded to 32 bytes */
   uint32_t kb_type;     /* 0x4 for US kb type */
   uint32_t kb_subtype;  /* 0x0 for US kb subtype */
   uint32_t kb_fn;       /* 0xc for US kb function keys */
@@ -215,7 +250,7 @@ typedef struct client_core_data {
 typedef struct client_security_data {
 
   struct {
-    uint16_t type;  /* CS_SECURITY (0xC002) */
+    uint16_t type;
     uint16_t length;/* 12 */
   } __attribute__((__packed__)) hdr;
 
@@ -225,6 +260,127 @@ typedef struct client_security_data {
   uint32_t ext_enc; /* 0 for non-french locale clients */
     
 } __attribute__((__packed__)) client_security_data;
+
+
+/*
+ * Client Network Data (TS_UD_CS_NET)
+ * http://msdn.microsoft.com/en-us/library/cc240512%28v=PROT.10%29.aspx
+ * This is only for 1 channel or else you need as many 
+ * channel structs as the number of channels.
+ */
+typedef struct client_network_data {
+
+  struct {
+    uint16_t type;
+    uint16_t length;
+  } __attribute__((__packed__)) hdr;
+
+  uint32_t channel_count;
+  struct {
+    char name[8];   /* null-terminated array of ANSI chars for channel id */
+    uint32_t flags; /* channel option flags */
+  } __attribute__((__packed__)) channel;
+
+} __attribute__((__packed__)) client_network_data;
+
+
+typedef struct ber_integer {
+  uint8_t tag;
+  uint8_t length;
+  uint16_t value;
+  ber_integer() { 
+    tag = BER_TAG_INTEGER;
+    length = 2;
+  }
+} __attribute__((__packed__)) ber_integer;
+
+
+typedef struct ber_string_small {
+  uint8_t tag;
+  uint8_t length;
+  uint8_t value;
+  ber_string_small() {
+    tag = BER_TAG_OCTET_STRING;
+    length = 1;
+  }
+} __attribute__((__packed__)) ber_string_small;
+
+
+typedef struct ber_boolean {
+  uint8_t tag;
+  uint8_t length;
+  uint8_t value;
+  ber_boolean() {
+    tag = BER_TAG_BOOLEAN;
+    length = 1;
+  }
+} __attribute__((__packed__)) ber_boolean;
+
+
+/* Each MCS Connect Initial struct is followed by 3 mcs_domain_params structs:
+ * target_params, min_params and max_params. Then the mcs data follow.
+ */
+typedef struct mcs_domain_params {
+
+  uint8_t tag;
+  uint8_t length;
+  ber_integer max_channels;
+  ber_integer max_users;
+  ber_integer max_tokens;
+  ber_integer num_priorities;
+  ber_integer min_throughput;
+  ber_integer max_height;
+  ber_integer max_pdusize;
+  ber_integer ver_protocol;
+
+  mcs_domain_params() {
+    tag = MCS_TAG_DOMAIN_PARAMS;
+    length = 32;
+  }
+
+} __attribute__((__packed__)) mcs_domain_params;
+
+
+/* 
+ * Variable-length Basic Encoding Rules encoded (BER-encoded)
+ * MCS Connect Initial structure (using definite-length encoding)
+ * as described in [T125] sections 10.1 and I.2 
+ * (the ASN.1  structure definition is detailed in [T125] section 7, part 2).
+ */
+typedef struct mcs_connect_initial {
+  
+  uint16_t mcs_tag;
+  uint8_t length_tag;
+  uint16_t total_length;  /* total length (be) */
+
+  ber_string_small calling_dom; /* calling domain */
+  ber_string_small called_dom;  /* called domain */
+  ber_boolean upward_flag;      /* upward flag */
+
+  /* domain parameters */
+  mcs_domain_params target;
+  mcs_domain_params min;
+  mcs_domain_params max;
+
+  struct mcs_data {
+    uint8_t tag;
+    uint8_t length_tag;
+    uint16_t datalength;
+    
+    mcs_data() { 
+      tag = BER_TAG_OCTET_STRING;
+      length_tag = 0x82;
+    }
+  } __attribute__((__packed__)) mcs_data;
+
+  mcs_connect_initial() {
+    mcs_tag = MCS_CONNECT_INITIAL;
+    length_tag = 0x82;
+  }
+
+} __attribute__((__packed__)) mcs_connect_initial;
+ 
+
 
 
 
@@ -264,27 +420,35 @@ static void
 rdp_iso_connection_request(Connection *con)
 {
 
-  rdp_iso_pkt iso;
+  iso_tpkt tpkt;
+  iso_itu_t itu_t;
   uint16_t length = 30 + strlen(COOKIE_USERNAME);
 
-  iso.tpkt.version = 3;
-  iso.tpkt.reserved = 0;
-  iso.tpkt.length = htons(length);
+  tpkt.version = 3;
+  tpkt.reserved = 0;
+  tpkt.length = htons(length);
 
-  iso.itu_t.hdrlen = length - 5;
-  iso.itu_t.code = ISO_PDU_CR;
-  iso.itu_t.dst_ref = 0;
-  iso.itu_t.src_ref = 0;
-  iso.itu_t.class_num = 0;
+  printf("%x %x %x \n", tpkt.version, tpkt.reserved, tpkt.length);
 
-  con->outbuf->append(&iso, sizeof(rdp_iso_pkt));
+  itu_t.hdrlen = length - 5;
+  itu_t.code = ISO_PDU_CR;
+  itu_t.dst_ref = 0;
+  itu_t.src_ref = 0;
+  itu_t.class_num = 0;
+
+  con->outbuf->append(&tpkt, 4);
+
+  char *shat = (char *)con->outbuf->get_dataptr();
+  printf("SHAT: %x %x %x %x\n", *shat, *(shat + 1), *(shat +2), *(shat +3));
+
+
+  con->outbuf->append(&itu_t, sizeof(iso_itu_t));
 
   /* It appears that we need to send a username cookie */
   con->outbuf->snprintf(strlen("Cookie: mstshash="), "%s",
       "Cookie: mstshash=");
   con->outbuf->snprintf(strlen(COOKIE_USERNAME), "%s", COOKIE_USERNAME);
   con->outbuf->snprintf(2, "%c%c", '\r', '\n');
-
 
 }
 
@@ -293,17 +457,37 @@ static int
 rdp_iso_connection_confirm(Connection *con)
 {
 
-  rdp_iso_pkt *iso;
+  iso_tpkt *tpkt;
+  iso_itu_t *itu_t;
 
-  iso = (rdp_iso_pkt *) ((const char *)con->inbuf->get_dataptr());
+  tpkt = (iso_tpkt *) ((const char *)con->inbuf->get_dataptr());
+  itu_t = (iso_itu_t *) ((const char *)tpkt + sizeof(iso_tpkt));
 
-  if (iso->tpkt.version != 3)
-    fatal("rdp_module: not supported version: %d\n", iso->tpkt.version);
+  printf("itu_t: %x \n", itu_t->code);
 
-  if (iso->itu_t.code != ISO_PDU_CC)
+  if (tpkt->version != 3)
+    fatal("rdp_module: not supported version: %d\n", tpkt->version);
+
+  if (itu_t->code != ISO_PDU_CC)
     return -1;
 
   return 0;
+}
+
+
+static void
+rdp_iso_data(Connection *con, uint16_t length)
+{
+
+  iso_tpkt tpkt;
+  iso_itu_t_data itu_t_data;
+
+  tpkt.version = 3;
+  tpkt.length = htons(length);
+
+  con->outbuf->append(&tpkt, 4);
+  con->outbuf->append(&itu_t_data, 3);
+
 }
 
 
@@ -315,22 +499,75 @@ rdp_iso_connection_confirm(Connection *con)
 static int
 rdp_mcs_connect(Connection *con)
 {
-  Buf *iso = new Buf();
-  Buf *mcs = new Buf(); 
   /* TODO: consider instead of creating separate Bufs and merging them at the
    * end, to extend the Buf()'s class functions where you can push and pop data
    * out of it.
    */
+  mcs_connect_initial mcs;
+
   gcc_ccr ccr;
   client_core_data ccd;
   client_security_data csd;
-    
-  int length = 158 + 76 + 12 + 4;
-  unsigned int num_channels = 1;
 
-  length += num_channels * 12 + 8;
+  uint16_t datalen = sizeof(ccr) + sizeof(ccd) + sizeof(csd);
+  uint16_t total_length = datalen + sizeof(mcs);
 
-  /* Fill in the mcs_data first:
+  // sizeof(mcs) = 9 + 3 * 34 + 4 = 115
+  printf("mcs_size=%d \n", sizeof(mcs));
+
+  rdp_iso_data(con, total_length);
+
+  /* 
+   * MCS Connect Initial structure 
+   */
+  mcs.total_length = htons(total_length);
+  mcs.calling_dom.value = 1;
+  mcs.called_dom.value = 1;
+  mcs.upward_flag.value = 0xff;
+  
+  /* target params */
+  mcs.target.max_channels.value = htons(34);
+  mcs.target.max_users.value = htons(2);
+  mcs.target.max_tokens.value = 0;
+  mcs.target.num_priorities.value = htons(1);
+  mcs.target.min_throughput.value = htons(0);
+  mcs.target.max_height.value = htons(1);
+  mcs.target.max_pdusize.value = htons(0xffff);
+  mcs.target.ver_protocol.value = htons(2);
+  
+  /* min params */
+  mcs.min.max_channels.value = htons(1);
+  mcs.min.max_users.value = htons(1);
+  mcs.min.max_tokens.value = htons(1);
+  mcs.min.num_priorities.value = htons(1);
+  mcs.min.min_throughput.value = htons(0);
+  mcs.min.max_height.value = htons(1);
+  mcs.min.max_pdusize.value = htons(0x420);
+  mcs.min.ver_protocol.value = htons(2);
+
+  /* max params */
+  mcs.max.max_channels.value = htons(0xffff);
+  mcs.max.max_users.value = htons(0xfc17);
+  mcs.max.max_tokens.value = htons(0xffff);
+  mcs.max.num_priorities.value = htons(1);
+  mcs.max.min_throughput.value = htons(0);
+  mcs.max.max_height.value = htons(1);
+  mcs.max.max_pdusize.value = htons(0xffff);
+  mcs.max.ver_protocol.value = htons(2);
+
+  /* MCS data */
+  mcs.mcs_data.datalength = htons(datalen);
+
+
+  /* first remaining length - it is on word4 so subtract the size of all the
+   * previous words + the size of word4 (2+2+1+2+2 = 9). The rest is the size
+   * of the whole remaining packet
+   */
+  int length = datalen - 9;
+  printf("ccr=%d ccd=%d csd=%d\n", sizeof(ccr), sizeof(ccd), sizeof(csd));
+
+
+  /* Fill in the mcs_data:
    * This consists of a variable-length PER-encoded GCC Connect Data structure
    * which encapsulates a Connect GCC PDU that contains a GCC Conference Create
    * Request. The userData field of this struct contains a user data set
@@ -345,7 +582,7 @@ rdp_mcs_connect(Connection *con)
   ccr.word1 = htons(0x14);
   ccr.word2 = 0x7c;
   ccr.word3 = htons(1);
-  ccr.word4 = htons(length | 0x8000);
+  ccr.word4 = htons(length | 0x8000); /* remaining length */
   ccr.word5 = htons(8);
   ccr.word6 = htons(16);
   ccr.word7 = 0;
@@ -359,8 +596,8 @@ rdp_mcs_connect(Connection *con)
    * http://msdn.microsoft.com/en-us/library/cc240510%28v=PROT.10%29.aspx
    */
   ccd.hdr.type = CS_CORE;
-  ccd.hdr.length = 212;
-  ccd.version1 = 1; //TODO: this is RD4 for now, change later
+  ccd.hdr.length = sizeof(ccd);
+  ccd.version1 = 4;   /* RDP 5 by default */
   ccd.version2 = 8;
   ccd.width = 800;
   ccd.height = 600;
@@ -368,7 +605,7 @@ rdp_mcs_connect(Connection *con)
   ccd.sassequence = 0xaa03;
   ccd.kb_layout = 0x409;
   ccd.client_build = 2600;
-  Strncpy(&ccd.client_name, FAKE_HOSTNAME, sizeof(FAKE_HOSTNAME));
+  strncpy(ccd.client_name, FAKE_HOSTNAME, sizeof(FAKE_HOSTNAME));
   ccd.kb_type = 0x4;
   ccd.kb_fn = 0xc;
   ccd.ime = 0;
@@ -381,7 +618,19 @@ rdp_mcs_connect(Connection *con)
   csd.enc_methods = 3;
   csd.ext_enc = 0;
 
+#if 0
+  /*
+   * Client Network Data (TS_UD_CS_NET)
+   * http://msdn.microsoft.com/en-us/library/cc240512%28v=PROT.10%29.aspx
+   */
+  cnd.hdr.length = 1 * 12 + 8;  /* only 1 channel */
+  cnd.channel_count = 1;
+  strncpy(cnd.channel.name, "rdpdr", sizeof("rdpdr"));
+  cnd.channel.flags = CHANNEL_OPTION_INITIALIZED | CHANNEL_OPTION_COMPRESS_RDP;
+#endif
 
+
+  con->outbuf->append(&mcs, sizeof(mcs));
   con->outbuf->append(&ccr, sizeof(ccr));
   con->outbuf->append(&ccd, sizeof(ccd));
   con->outbuf->append(&csd, sizeof(csd));
@@ -430,6 +679,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
+
+      printf("rdp connect \n");
 
       rdp_mcs_connect(con);
 
