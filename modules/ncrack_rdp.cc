@@ -103,7 +103,7 @@
 
 #define RDP_TIMEOUT 20000
 #define COOKIE_USERNAME "NCRACK_USER"
-#define FAKE_HOSTNAME "NCRACK"
+
 
 extern NcrackOps o;
 
@@ -132,6 +132,7 @@ enum ISO_PDU_CODE
 #define CS_CORE 0xC001;
 #define CS_SECURITY 0xC002;
 #define CS_NET 0xC003;
+#define CS_CLUSTER 0xC004;
 
 #define MCS_CONNECT_INITIAL	0x7f65
 #define MCS_CONNECT_RESPONSE	0x7f66
@@ -157,7 +158,7 @@ typedef struct iso_tpkt {
 
     uint8_t version;  /* default version = 3 */
     uint8_t reserved;
-    uint16_t length;  /* total length in big endian */
+    uint16_t length;  /* total packet length (including this header) - be */
 
 } __attribute__((__packed__)) iso_tpkt;
 
@@ -207,7 +208,7 @@ typedef struct gcc_conference_create_request {
   uint16_t word5;     /* 8, length? */
   uint16_t word6;     /* 16 */
   uint8_t word7;      /* 0 */
-  uint16_t word8;     /* 0xc001 */
+  uint16_t word8;     /* 0xc001 (le) */
   uint8_t word9;      /* 0 */
   uint32_t word10;    /* OEM ID: (le) */
   uint16_t word11;    /* remaining length: length - 14 | 0x8000 */
@@ -234,11 +235,19 @@ typedef struct client_core_data {
   uint16_t sassequence; /* always: RNS_UD_SAS_DEL (0xAA03) */
   uint32_t kb_layout;   /* 0x409: US keyboard layout */
   uint32_t client_build;/* build number of client, 2600 */
-  char client_name[32]; /* unicode name, padded to 32 bytes */
+  u_char client_name[32]; /* unicode name, padded to 32 bytes */
   uint32_t kb_type;     /* 0x4 for US kb type */
   uint32_t kb_subtype;  /* 0x0 for US kb subtype */
   uint32_t kb_fn;       /* 0xc for US kb function keys */
-  uint64_t ime;         /* Input Method Editor file, 0 */
+  uint8_t ime[64];         /* Input Method Editor file, 0 */
+  uint16_t color_depth; /* 0xca01 */
+  uint16_t client_id;   /* 1 */
+  uint32_t serial_num;  /* 0 */
+  uint8_t server_depth; /* 8 */
+  uint16_t word1; /* 0x0700 */
+  uint8_t word2;  /* 0 */
+  uint32_t word3; /* 1 */
+  uint8_t product_id[64]; /* all 0 */
 
 } __attribute__((__packed__)) client_core_data;
 
@@ -282,6 +291,23 @@ typedef struct client_network_data {
   } __attribute__((__packed__)) channel;
 
 } __attribute__((__packed__)) client_network_data;
+
+
+/* Client Cluster Data (TS_UD_CS_CLUSTER)
+ * http://msdn.microsoft.com/en-us/library/cc240514%28v=PROT.10%29.aspx
+ */
+typedef struct client_cluster_data {
+
+  struct {
+    uint16_t type;
+    uint16_t length;
+  } __attribute__((__packed__)) hdr;
+
+  uint32_t redir_id;
+  uint32_t pad; /* ? rdesktop seems to send another 32 zero bits */
+
+} __attribute__((__packed__)) client_cluster_data;
+    
 
 
 typedef struct ber_integer {
@@ -374,7 +400,7 @@ typedef struct mcs_connect_initial {
   } __attribute__((__packed__)) mcs_data;
 
   mcs_connect_initial() {
-    mcs_tag = MCS_CONNECT_INITIAL;
+    mcs_tag = htons(MCS_CONNECT_INITIAL);
     length_tag = 0x82;
   }
 
@@ -428,20 +454,13 @@ rdp_iso_connection_request(Connection *con)
   tpkt.reserved = 0;
   tpkt.length = htons(length);
 
-  printf("%x %x %x \n", tpkt.version, tpkt.reserved, tpkt.length);
-
   itu_t.hdrlen = length - 5;
   itu_t.code = ISO_PDU_CR;
   itu_t.dst_ref = 0;
   itu_t.src_ref = 0;
   itu_t.class_num = 0;
 
-  con->outbuf->append(&tpkt, 4);
-
-  char *shat = (char *)con->outbuf->get_dataptr();
-  printf("SHAT: %x %x %x %x\n", *shat, *(shat + 1), *(shat +2), *(shat +3));
-
-
+  con->outbuf->append(&tpkt, sizeof(tpkt));
   con->outbuf->append(&itu_t, sizeof(iso_itu_t));
 
   /* It appears that we need to send a username cookie */
@@ -463,8 +482,6 @@ rdp_iso_connection_confirm(Connection *con)
   tpkt = (iso_tpkt *) ((const char *)con->inbuf->get_dataptr());
   itu_t = (iso_itu_t *) ((const char *)tpkt + sizeof(iso_tpkt));
 
-  printf("itu_t: %x \n", itu_t->code);
-
   if (tpkt->version != 3)
     fatal("rdp_module: not supported version: %d\n", tpkt->version);
 
@@ -483,6 +500,7 @@ rdp_iso_data(Connection *con, uint16_t length)
   iso_itu_t_data itu_t_data;
 
   tpkt.version = 3;
+  tpkt.reserved = 0;
   tpkt.length = htons(length);
 
   con->outbuf->append(&tpkt, 4);
@@ -508,14 +526,18 @@ rdp_mcs_connect(Connection *con)
   gcc_ccr ccr;
   client_core_data ccd;
   client_security_data csd;
+  client_cluster_data cluster;
 
-  uint16_t datalen = sizeof(ccr) + sizeof(ccd) + sizeof(csd);
-  uint16_t total_length = datalen + sizeof(mcs);
+  uint16_t datalen = 259;
+  uint16_t total_length = datalen + 115;
 
-  // sizeof(mcs) = 9 + 3 * 34 + 4 = 115
+  // sizeof(mcs) = 5 + (9 + 3 * 34 + 4) = 120
   printf("mcs_size=%d \n", sizeof(mcs));
+  printf("total_length: mcs=%d ccr=%d ccd=%d csd=%d cluster=%d total:%d \n",
+      sizeof(mcs), sizeof(ccr), sizeof(ccd), sizeof(csd), sizeof(cluster), 
+      sizeof(mcs) + sizeof(ccr) + sizeof(ccd) + sizeof(csd) + sizeof(cluster));
 
-  rdp_iso_data(con, total_length);
+  rdp_iso_data(con, 386);
 
   /* 
    * MCS Connect Initial structure 
@@ -563,8 +585,7 @@ rdp_mcs_connect(Connection *con)
    * previous words + the size of word4 (2+2+1+2+2 = 9). The rest is the size
    * of the whole remaining packet
    */
-  int length = datalen - 9;
-  printf("ccr=%d ccd=%d csd=%d\n", sizeof(ccr), sizeof(ccd), sizeof(csd));
+  int length = 250;
 
 
   /* Fill in the mcs_data:
@@ -586,7 +607,7 @@ rdp_mcs_connect(Connection *con)
   ccr.word5 = htons(8);
   ccr.word6 = htons(16);
   ccr.word7 = 0;
-  ccr.word8 = htons(0xc001);
+  ccr.word8 = 0xc001;
   ccr.word9 = 0;
   ccr.word10 = 0x61637544;  /* OEM ID: "Duca" TODO: change this */
   ccr.word11 = htons((length - 14) | 0x8000);
@@ -596,8 +617,8 @@ rdp_mcs_connect(Connection *con)
    * http://msdn.microsoft.com/en-us/library/cc240510%28v=PROT.10%29.aspx
    */
   ccd.hdr.type = CS_CORE;
-  ccd.hdr.length = sizeof(ccd);
-  ccd.version1 = 4;   /* RDP 5 by default */
+  ccd.hdr.length = 212;
+  ccd.version1 = 1;   /* RDP 5 by default */
   ccd.version2 = 8;
   ccd.width = 800;
   ccd.height = 600;
@@ -605,10 +626,30 @@ rdp_mcs_connect(Connection *con)
   ccd.sassequence = 0xaa03;
   ccd.kb_layout = 0x409;
   ccd.client_build = 2600;
-  strncpy(ccd.client_name, FAKE_HOSTNAME, sizeof(FAKE_HOSTNAME));
+  u_char hostname[] = { 0x4E, 0x00, 0x43, 0x00, 0x52, 0x00, 0x41,
+    0x00, 0x43, 0x00, 0x4B, 0x00 };
+  memset(ccd.client_name, 0, 32);
+  memcpy(ccd.client_name, hostname, sizeof(hostname));
   ccd.kb_type = 0x4;
+  ccd.kb_subtype = 0x0;
   ccd.kb_fn = 0xc;
-  ccd.ime = 0;
+  memset(&ccd.ime, 0, 64);
+  ccd.color_depth = 0xca01;
+  ccd.client_id = 1;
+  ccd.serial_num = 0;
+  ccd.server_depth = 8;
+  ccd.word1 = 0x0700;
+  ccd.word2 = 0;
+  ccd.word3 = 1;
+  memset(&ccd.product_id, 0, 64);
+
+  /* Client Cluster Data (TS_UD_CS_CLUSTER)
+   * http://msdn.microsoft.com/en-us/library/cc240514%28v=PROT.10%29.aspx
+   */
+  cluster.hdr.type = CS_CLUSTER;
+  cluster.hdr.length = 12;
+  cluster.redir_id = 9;
+  cluster.pad = 0;
 
   /* Client Security Data (TS_UD_CS_SEC)
    * http://msdn.microsoft.com/en-us/library/cc240511%28v=PROT.10%29.aspx
@@ -617,6 +658,7 @@ rdp_mcs_connect(Connection *con)
   csd.hdr.length = 12;
   csd.enc_methods = 3;
   csd.ext_enc = 0;
+
 
 #if 0
   /*
@@ -630,9 +672,10 @@ rdp_mcs_connect(Connection *con)
 #endif
 
 
-  con->outbuf->append(&mcs, sizeof(mcs));
+  con->outbuf->append(&mcs, 120);
   con->outbuf->append(&ccr, sizeof(ccr));
   con->outbuf->append(&ccd, sizeof(ccd));
+  con->outbuf->append(&cluster, sizeof(cluster));
   con->outbuf->append(&csd, sizeof(csd));
 
 
