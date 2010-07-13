@@ -117,6 +117,8 @@ static int rdp_loop_read(nsock_pool nsp, Connection *con);
 static void rdp_iso_connection_request(Connection *con);
 static int rdp_iso_connection_confirm(Connection *con);
 static int rdp_mcs_connect(Connection *con);
+static int rdp_mcs_connect_response(Connection *con);
+
 
 
 /* ISO PDU codes */
@@ -150,7 +152,7 @@ enum ISO_PDU_CODE
 #define CHANNEL_OPTION_SHOW_PROTOCOL	0x00200000
 
 
-enum states { RDP_INIT, RDP_CON, RDP_FINI };
+enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_FINI };
 
 
 /* TPKT header */
@@ -215,6 +217,8 @@ typedef struct gcc_conference_create_request {
 
 } __attribute__((__packed__)) gcc_ccr;
 
+
+
 /* 
  * Client Core Data (TS_UD_CS_CORE)
  * http://msdn.microsoft.com/en-us/library/cc240510%28v=PROT.10%29.aspx
@@ -226,20 +230,20 @@ typedef struct client_core_data {
     uint16_t length;
   } __attribute__((__packed__)) hdr;
 
-  uint16_t version1;  /* rdp version: 1 == RDP4, 4 == RD5 */
-  uint16_t version2;  /* always 8 */
+  uint16_t version1;/* rdp version: 1 == RDP4, 4 == RD5 */
+  uint16_t version2;/* always 8 */
 
   uint16_t width;   /* desktop width */
   uint16_t height;  /* desktop height */
   uint16_t depth;   /* color depth: 0xca00 = 4bits per pixel, 0xca01 8bpp */
-  uint16_t sassequence; /* always: RNS_UD_SAS_DEL (0xAA03) */
-  uint32_t kb_layout;   /* 0x409: US keyboard layout */
-  uint32_t client_build;/* build number of client, 2600 */
+  uint16_t sassequence;   /* always: RNS_UD_SAS_DEL (0xAA03) */
+  uint32_t kb_layout;     /* 0x409: US keyboard layout */
+  uint32_t client_build;  /* build number of client, 2600 */
   u_char client_name[32]; /* unicode name, padded to 32 bytes */
   uint32_t kb_type;     /* 0x4 for US kb type */
   uint32_t kb_subtype;  /* 0x0 for US kb subtype */
   uint32_t kb_fn;       /* 0xc for US kb function keys */
-  uint8_t ime[64];         /* Input Method Editor file, 0 */
+  uint8_t ime[64];      /* Input Method Editor file, 0 */
   uint16_t color_depth; /* 0xca01 */
   uint16_t client_id;   /* 1 */
   uint32_t serial_num;  /* 0 */
@@ -250,6 +254,7 @@ typedef struct client_core_data {
   uint8_t product_id[64]; /* all 0 */
 
 } __attribute__((__packed__)) client_core_data;
+
 
 
 /*
@@ -269,6 +274,7 @@ typedef struct client_security_data {
   uint32_t ext_enc; /* 0 for non-french locale clients */
     
 } __attribute__((__packed__)) client_security_data;
+
 
 
 /*
@@ -293,7 +299,9 @@ typedef struct client_network_data {
 } __attribute__((__packed__)) client_network_data;
 
 
-/* Client Cluster Data (TS_UD_CS_CLUSTER)
+
+/*
+ * Client Cluster Data (TS_UD_CS_CLUSTER)
  * http://msdn.microsoft.com/en-us/library/cc240514%28v=PROT.10%29.aspx
  */
 typedef struct client_cluster_data {
@@ -343,6 +351,7 @@ typedef struct ber_boolean {
 } __attribute__((__packed__)) ber_boolean;
 
 
+
 /* Each MCS Connect Initial struct is followed by 3 mcs_domain_params structs:
  * target_params, min_params and max_params. Then the mcs data follow.
  */
@@ -365,6 +374,7 @@ typedef struct mcs_domain_params {
   }
 
 } __attribute__((__packed__)) mcs_domain_params;
+
 
 
 /* 
@@ -406,6 +416,33 @@ typedef struct mcs_connect_initial {
 
 } __attribute__((__packed__)) mcs_connect_initial;
  
+
+
+/* 
+ * Variable-length BER-encoded MCS Connect Response structure
+ * (using definite-length encoding) as described in [T125] sections 10.2 and I.2
+ * (the ASN.1  structure definition is detailed in [T125] section 7, part 2).
+ * The userData field of the MCS Connect Response encapsulates the GCC
+ * Conference Create Response data (contained in the gccCCrsp and
+ * subsequent fields).
+ */
+typedef struct mcs_response { 
+
+  uint16_t mcs_tag;
+  uint8_t length_tag;
+  uint16_t total_length;
+
+  uint8_t result_tag;
+  uint8_t result_len;
+  uint8_t result_value;
+
+  uint8_t connectid_tag;
+  uint8_t connectid_len;
+  uint8_t connectid_value;
+
+
+
+}  __attribute__((__packed__)) mcs_response;
 
 
 
@@ -531,11 +568,11 @@ rdp_mcs_connect(Connection *con)
   uint16_t datalen = 259;
   uint16_t total_length = datalen + 115;
 
-  // sizeof(mcs) = 5 + (9 + 3 * 34 + 4) = 120
-  printf("mcs_size=%d \n", sizeof(mcs));
+#if 0
   printf("total_length: mcs=%d ccr=%d ccd=%d csd=%d cluster=%d total:%d \n",
       sizeof(mcs), sizeof(ccr), sizeof(ccd), sizeof(csd), sizeof(cluster), 
       sizeof(mcs) + sizeof(ccr) + sizeof(ccd) + sizeof(csd) + sizeof(cluster));
+#endif
 
   rdp_iso_data(con, 386);
 
@@ -678,8 +715,57 @@ rdp_mcs_connect(Connection *con)
   con->outbuf->append(&cluster, sizeof(cluster));
   con->outbuf->append(&csd, sizeof(csd));
 
+}
+
+
+static int
+rdp_iso_recv_data(Connection *con)
+{
+  iso_tpkt *tpkt;
+  iso_itu_t *itu_t;
+  char error[64];
+
+  tpkt = (iso_tpkt *) ((const char *)con->inbuf->get_dataptr());
+  itu_t = (iso_itu_t *) ((const char *)tpkt + sizeof(iso_tpkt));
+
+  if (tpkt->version != 3)
+    fatal("rdp_module: not supported version: %d\n", tpkt->version);
+
+  if (tpkt->length < 4) {
+    con->service->end.reason = Strndup("Bad tptk packet header.", 23);
+    return -1;
+  }
+
+  if (itu_t->code != ISO_PDU_DT) {
+    snprintf(error, sizeof(error), "Expected data packet, but got 0x%x.",
+        itu_t->code);
+    con->service->end.reason = Strndup(error, strlen(error));
+    return -1;
+  }
+
+  return 0;
 
 }
+
+
+
+
+static int
+rdp_mcs_connect_response(Connection *con)
+{
+  mcs_response mcs;
+
+  if (rdp_iso_recv_data(con) < 0)
+    return -1;
+
+
+
+
+
+
+  return 0;
+}
+
 
 
 
@@ -711,11 +797,10 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
-      con->state = RDP_FINI;
+      con->state = RDP_MCS_RESP;
 
       if (rdp_iso_connection_confirm(con) < 0) {
-        serv->end.reason = Strndup("TPKT Connection denied.",
-            sizeof("TPKT Connection denied." - 1));
+        serv->end.reason = Strndup("TPKT Connection denied.", 23);
         return ncrack_module_end(nsp, con);
       }
 
@@ -723,20 +808,31 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      printf("rdp connect \n");
-
       rdp_mcs_connect(con);
+
+      delete con->inbuf;
+      con->inbuf = NULL;
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
 
+    case RDP_MCS_RESP:
+
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = RDP_FINI;
+
+      if (rdp_mcs_connect_response(con) < 0)
+        return ncrack_module_end(nsp, con);
+
+
+      break;
 
     case RDP_FINI:
 
       printf("fini\n");
-
       break;
-
 
 
   }
