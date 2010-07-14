@@ -151,6 +151,9 @@ enum ISO_PDU_CODE
 #define CHANNEL_OPTION_COMPRESS_RDP	0x00800000
 #define CHANNEL_OPTION_SHOW_PROTOCOL	0x00200000
 
+#define SEC_TAG_SRV_INFO	0x0c01
+#define SEC_TAG_SRV_CRYPT	0x0c02
+#define SEC_TAG_SRV_CHANNELS	0x0c03
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_FINI };
 
@@ -440,8 +443,6 @@ typedef struct mcs_response {
   uint8_t connectid_len;
   uint8_t connectid_value;
 
-
-
 }  __attribute__((__packed__)) mcs_response;
 
 
@@ -722,16 +723,17 @@ static int
 rdp_iso_recv_data(Connection *con)
 {
   iso_tpkt *tpkt;
-  iso_itu_t *itu_t;
+  iso_itu_t_data *itu_t;
   char error[64];
 
   tpkt = (iso_tpkt *) ((const char *)con->inbuf->get_dataptr());
-  itu_t = (iso_itu_t *) ((const char *)tpkt + sizeof(iso_tpkt));
+  itu_t = (iso_itu_t_data *) ((const char *)tpkt + sizeof(iso_tpkt));
 
   if (tpkt->version != 3)
     fatal("rdp_module: not supported version: %d\n", tpkt->version);
 
   if (tpkt->length < 4) {
+    con->service->end.orly = true;
     con->service->end.reason = Strndup("Bad tptk packet header.", 23);
     return -1;
   }
@@ -739,6 +741,7 @@ rdp_iso_recv_data(Connection *con)
   if (itu_t->code != ISO_PDU_DT) {
     snprintf(error, sizeof(error), "Expected data packet, but got 0x%x.",
         itu_t->code);
+    con->service->end.orly = true;
     con->service->end.reason = Strndup(error, strlen(error));
     return -1;
   }
@@ -753,15 +756,91 @@ rdp_iso_recv_data(Connection *con)
 static int
 rdp_mcs_connect_response(Connection *con)
 {
-  mcs_response mcs;
+  mcs_response *mcs;
+  u_char *p;
+  char error[64];
 
   if (rdp_iso_recv_data(con) < 0)
     return -1;
 
+  p = ((u_char *)con->inbuf->get_dataptr() + sizeof(iso_tpkt)
+      + sizeof(iso_itu_t_data));
+
+  mcs = (mcs_response *)p;
+
+  /* Check result parameter */
+  if (mcs->result_value != 0) {
+    snprintf(error, sizeof(error), "MCS connect result: %x\n", mcs->result_value);
+    con->service->end.orly = true;
+    con->service->end.reason = Strndup(error, strlen(error));
+    return -1;
+  }
+
+  /* Now parse MCS_TAG_DOMAIN_PARAMS header and ignore as many bytes as the
+   * length of this header.
+   */
+  p += sizeof(mcs_response);
+  if (*p != MCS_TAG_DOMAIN_PARAMS) {
+    con->service->end.orly = true;
+    con->service->end.reason = Strndup(
+        "MCS connect no MCS_TAG_DOMAIN_PARAMS tag found where expected.", 62);
+    return -1;
+  }
+
+  p++; /* now p should point to length of the header */
+  uint8_t mcs_domain_len = *p;
+  p += mcs_domain_len; /* ignore that many bytes */
+
+  /* Now p points to the BER header of mcs_data - ignore header */
+  p += 5;
+
+  /* Ignore the 21 bytes of the T.124 ConferenceCreateResponse */
+  p += 21;
+
+  /* Now parse Server Data Blocks (serverCoreData, serverNetworkData,
+   * serverSecurityData) 
+   */
+  uint8_t len = *++p;
+  if (len & 0x80)
+    len = *++p;
+
+  uint16_t tag, length;
+  u_char *end = (u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len();
+
+  while (p < end) {
+
+    tag = *(uint16_t *)p;
+    p += 2;
+    length = *(uint16_t *)p;
+    p += 2;
+
+    if (length <= 4) {
+      return 0;
+      //con->service->end.orly = true;
+      //con->service->end.reason = Strndup("MCS response: corrupted packet.", 31);
+      //return -1;
+    }
+
+    switch (tag)
+    {
+      case SEC_TAG_SRV_INFO:
+        printf("srv info\n");
+
+        break;
+
+      case SEC_TAG_SRV_CRYPT:
+        printf("srv crypt\n");
+
+        break;
+
+      default:
+        break;
+    }
+
+    p += length - 4;
 
 
-
-
+  } 
 
   return 0;
 }
@@ -800,6 +879,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->state = RDP_MCS_RESP;
 
       if (rdp_iso_connection_confirm(con) < 0) {
+        serv->end.orly = true;
         serv->end.reason = Strndup("TPKT Connection denied.", 23);
         return ncrack_module_end(nsp, con);
       }
