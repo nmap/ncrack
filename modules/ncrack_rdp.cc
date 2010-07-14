@@ -92,6 +92,7 @@
 #include "NcrackOps.h"
 #include "Service.h"
 #include "modules.h"
+#include "crypto.h"
 #include <list>
 
 #ifdef WIN32
@@ -118,7 +119,7 @@ static void rdp_iso_connection_request(Connection *con);
 static int rdp_iso_connection_confirm(Connection *con);
 static int rdp_mcs_connect(Connection *con);
 static int rdp_mcs_connect_response(Connection *con);
-static int rdp_parse_crypto(Connection *con, u_char *p);
+static int rdp_get_crypto(Connection *con, u_char *p);
 
 
 
@@ -157,8 +158,16 @@ enum ISO_PDU_CODE
 #define SEC_TAG_SRV_CHANNELS	0x0c03
 #define SEC_TAG_PUBKEY		0x0006
 #define SEC_TAG_KEYSIG		0x0008
+#define SEC_RSA_MAGIC		0x31415352	/* RSA1 */
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_FINI };
+
+typedef struct rpd_state {
+
+  uint8_t crypted_random[256];
+
+} rdp_state;
+
 
 
 /* TPKT header */
@@ -755,11 +764,12 @@ rdp_iso_recv_data(Connection *con)
 
 
 /*
- * Parses the Server Security Data (TS_UD_SC_SEC1) from MCS connect response
+ * Parses and gets the Server Security Data (TS_UD_SC_SEC1) from MCS connect
+ * response. Saves everything that will be needed later into rdp_state.
  * http://msdn.microsoft.com/en-us/library/cc240518%28v=PROT.10%29.aspx
  */
 static int
-rdp_parse_crypto(Connection *con, u_char *p)
+rdp_get_crypto(Connection *con, u_char *p)
 {
   uint8_t client_random[32];
   uint8_t mod[256];
@@ -769,7 +779,12 @@ rdp_parse_crypto(Connection *con, u_char *p)
   uint32_t rc4_size;  
   uint32_t encryption_level;
   uint32_t rsa_len;
+  uint32_t mod_len;
   char error[128];
+  rdp_state *info;
+
+  /* rdp_state must have already been initialized! */
+  info = (rdp_state *)con->misc_info;
 
   memset(mod, 0, sizeof(mod));
   memset(exp, 0, sizeof(exp));
@@ -841,6 +856,7 @@ rdp_parse_crypto(Connection *con, u_char *p)
 
   uint16_t tag, hdr_length;
   u_char *saved_p;
+  uint32_t rsa_magic;
   while (p < end) {
 
     tag = *(uint16_t *)p;
@@ -853,11 +869,42 @@ rdp_parse_crypto(Connection *con, u_char *p)
     switch (tag)
     {
       case SEC_TAG_PUBKEY:
-        printf("pubkey\n");
+
+        rsa_magic = *(uint32_t *)p;
+        p += 4;
+
+        if (rsa_magic != SEC_RSA_MAGIC) {
+          con->service->end.orly = true;
+          snprintf(error, sizeof(error), "Server security data: Expected %d "
+              "for RSA magic but got %d.", SEC_RSA_MAGIC, rsa_magic);
+          con->service->end.reason = Strndup(error, strlen(error));
+          return -1;
+        }
+
+        mod_len = *(uint32_t *)p;
+        p += 4;
+
+        /* subtract padding size 8 */
+        mod_len -= 8;
+        if (mod_len < 64 || mod_len > 256) {
+          con->service->end.orly = true;
+          snprintf(error, sizeof(error), "Server security data: Expected "
+              "modulus size to be between 64 and 256 but was %d", mod_len);
+          con->service->end.reason = Strndup(error, strlen(error));
+          return -1;
+        }
+        p += 8; /* skip 8 bytes */
+        memcpy(exp, p, 4);
+        p += 4;
+        memcpy(mod, p, mod_len);
+        p += mod_len;
+        p += 8; /* skip padding */
+
         break;
 
       case SEC_TAG_KEYSIG:
-        printf("pubsig\n");
+        //TODO: we don't check for signatures now, but perhaps we should to
+        //detect MITM attacks
         break;
 
       default:
@@ -867,6 +914,18 @@ rdp_parse_crypto(Connection *con, u_char *p)
 
     p = saved_p;
   }
+
+  /* 
+   * This is not strong randomness since it uses nbase's relatively weak algo
+   * to get the 32 bytes needed.
+   */
+  get_random_bytes(client_random, sizeof(client_random));
+  rsa_encrypt(client_random, info->crypted_random, 32, mod, mod_len, exp);
+
+  printf("generate keys\n");
+
+
+
 
   return 0;
 }
@@ -948,12 +1007,10 @@ rdp_mcs_connect_response(Connection *con)
     switch (tag)
     {
       case SEC_TAG_SRV_INFO:
-        printf("srv info\n");
         break;
 
       case SEC_TAG_SRV_CRYPT:
-        printf("srv crypt\n");
-        if (rdp_parse_crypto(con, p) < 0)
+        if (rdp_get_crypto(con, p) < 0)
           return -1;
         break;
 
@@ -977,7 +1034,10 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   void *ioptr;
+  rdp_state *info = NULL;
 
+  if (con->misc_info)
+    info = (rdp_state *) con->misc_info;
 
   switch (con->state)
   {
@@ -1024,6 +1084,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
         break;
 
       con->state = RDP_FINI;
+
+      con->misc_info = (rdp_state *)safe_zalloc(sizeof(rdp_state));
 
       if (rdp_mcs_connect_response(con) < 0)
         return ncrack_module_end(nsp, con);
