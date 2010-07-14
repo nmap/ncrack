@@ -155,6 +155,8 @@ enum ISO_PDU_CODE
 #define SEC_TAG_SRV_INFO	0x0c01
 #define SEC_TAG_SRV_CRYPT	0x0c02
 #define SEC_TAG_SRV_CHANNELS	0x0c03
+#define SEC_TAG_PUBKEY		0x0006
+#define SEC_TAG_KEYSIG		0x0008
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_FINI };
 
@@ -766,9 +768,11 @@ rdp_parse_crypto(Connection *con, u_char *p)
   uint32_t server_random_len;
   uint32_t rc4_size;  
   uint32_t encryption_level;
+  uint32_t rsa_len;
+  char error[128];
 
   memset(mod, 0, sizeof(mod));
-  memset(exp, 0, sizeof(mod));
+  memset(exp, 0, sizeof(exp));
 
   /* Get encryption method: 
    * 0x00000000: None
@@ -797,6 +801,72 @@ rdp_parse_crypto(Connection *con, u_char *p)
   server_random_len = *(uint32_t *)p;
   p += 4;
 
+  /* According to the specs, this field value MUST be 32 bytes, as long as both the
+   * encryption method and level are not 0.
+   */
+  if (server_random_len != 32) {
+    con->service->end.orly = true;
+    snprintf(error, sizeof(error), "Server security data: "
+        "server random len was %d but should be 32.", server_random_len);
+    con->service->end.reason = Strndup(error, strlen(error));
+    return -1;
+  }
+
+  /* Get rsa len */
+  rsa_len = *(uint32_t *)p;
+  p += 4;
+
+  /* Store pointer for the serverRandom field and move it forward so far as
+   * specified by the serverRandomLen field which we parsed earlier.
+   */
+  server_random = p;
+  p += server_random_len;
+
+  u_char *real_end = (u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len();
+  u_char *end = p + rsa_len;
+  if (end > real_end) {
+    con->service->end.orly = true;
+    snprintf(error, sizeof(error), "Server security data: possibly corrupted "
+        " packet. %d more bytes specified", end - real_end);
+    con->service->end.reason = Strndup(error, strlen(error));
+    return -1;
+  }
+
+  uint32_t flags = *(uint32_t *)p;
+  /* RDP4 encryption */
+  if (!(flags & 1))
+    fatal("rdp_module: not supported rdp5 encryption\n");
+
+  p += 8; /* skip 8 bytes */
+
+  uint16_t tag, hdr_length;
+  u_char *saved_p;
+  while (p < end) {
+
+    tag = *(uint16_t *)p;
+    p += 2;
+    hdr_length = *(uint16_t *)p;
+    p += 2;
+
+    saved_p = p + hdr_length;
+
+    switch (tag)
+    {
+      case SEC_TAG_PUBKEY:
+        printf("pubkey\n");
+        break;
+
+      case SEC_TAG_KEYSIG:
+        printf("pubsig\n");
+        break;
+
+      default:
+        break;
+
+    }
+
+    p = saved_p;
+  }
 
   return 0;
 }
@@ -855,17 +925,20 @@ rdp_mcs_connect_response(Connection *con)
   if (len & 0x80)
     len = *++p;
 
-  uint16_t tag, length;
+  uint16_t tag, hdr_length;
+  u_char *saved_p;
   u_char *end = (u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len();
 
   while (p < end) {
 
     tag = *(uint16_t *)p;
     p += 2;
-    length = *(uint16_t *)p;
+    hdr_length = *(uint16_t *)p;
     p += 2;
 
-    if (length <= 4) {
+    saved_p = p + hdr_length - 4;
+
+    if (hdr_length <= 4) {
       return 0;
       //con->service->end.orly = true;
       //con->service->end.reason = Strndup("MCS response: corrupted packet.", 31);
@@ -880,14 +953,15 @@ rdp_mcs_connect_response(Connection *con)
 
       case SEC_TAG_SRV_CRYPT:
         printf("srv crypt\n");
-        rdp_parse_crypto(con, p);
+        if (rdp_parse_crypto(con, p) < 0)
+          return -1;
         break;
 
       default:
         break;
     }
 
-    p += length - 4;
+    p = saved_p;
   } 
 
   return 0;
