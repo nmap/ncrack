@@ -118,6 +118,7 @@ static void rdp_iso_connection_request(Connection *con);
 static int rdp_iso_connection_confirm(Connection *con);
 static int rdp_mcs_connect(Connection *con);
 static int rdp_mcs_connect_response(Connection *con);
+static int rdp_parse_crypto(Connection *con, u_char *p);
 
 
 
@@ -751,6 +752,56 @@ rdp_iso_recv_data(Connection *con)
 }
 
 
+/*
+ * Parses the Server Security Data (TS_UD_SC_SEC1) from MCS connect response
+ * http://msdn.microsoft.com/en-us/library/cc240518%28v=PROT.10%29.aspx
+ */
+static int
+rdp_parse_crypto(Connection *con, u_char *p)
+{
+  uint8_t client_random[32];
+  uint8_t mod[256];
+  uint8_t exp[4];
+  uint8_t *server_random = NULL;
+  uint32_t server_random_len;
+  uint32_t rc4_size;  
+  uint32_t encryption_level;
+
+  memset(mod, 0, sizeof(mod));
+  memset(exp, 0, sizeof(mod));
+
+  /* Get encryption method: 
+   * 0x00000000: None
+   * 0x00000001: 40 bit
+   * 0x00000002: 128 bit
+   * 0x00000008: 56 bit 
+   * 0x00000010: FIPS 140-1 compliant
+   */
+  rc4_size = *(uint32_t *)p;
+  p += 4;
+
+  /* Get encryption level:
+   * 0x00000000: None
+   * 0x00000001: low 
+   * 0x00000002: client compatible
+   * 0x00000003: high
+   * 0x00000004: fips
+   */
+  encryption_level = *(uint32_t *)p;
+  p += 4;
+
+  if (encryption_level == 0)
+    return -1;
+
+  /* Now get the serverRandomLen */
+  server_random_len = *(uint32_t *)p;
+  p += 4;
+
+
+  return 0;
+}
+
+
 
 
 static int
@@ -825,12 +876,11 @@ rdp_mcs_connect_response(Connection *con)
     {
       case SEC_TAG_SRV_INFO:
         printf("srv info\n");
-
         break;
 
       case SEC_TAG_SRV_CRYPT:
         printf("srv crypt\n");
-
+        rdp_parse_crypto(con, p);
         break;
 
       default:
@@ -838,8 +888,6 @@ rdp_mcs_connect_response(Connection *con)
     }
 
     p += length - 4;
-
-
   } 
 
   return 0;

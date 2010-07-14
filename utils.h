@@ -215,5 +215,10 @@ char *unicode_alloc(const char *string);
 /* Same as unicode_alloc(), except convert the string to uppercase first. */
 char *unicode_alloc_upper(const char *string);
 
+/* Reverses the order of the bytes in the memory pointed for the designated
+ * length. 
+ */
+void mem_reverse(uint8_t *p, unsigned int len);
+
 
 #endif /* UTILS_H */

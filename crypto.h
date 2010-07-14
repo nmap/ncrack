@@ -94,6 +94,7 @@
   #include "winfix.h"
 #endif
 
+
 /* Generate the Lanman v1 hash (LMv1). The generated hash is incredibly easy to
  * reverse, because the input is padded or truncated to 14 characters, then 
  * split into two 7-character strings. Each of these strings are used as a key
@@ -157,6 +158,13 @@ void ntlmv2_create_hash(const uint8_t ntlm[16], const char *username,
 void ntlmv2_create_response(const uint8_t ntlm[16], const char *username,
     const char *domain, const uint8_t challenge[8], uint8_t *result,
     uint8_t *result_size);
+
+
+/*
+ * Uses the RSA algorithm to encrypt the input into the output.
+ */
+void rsa_encrypt(uint8_t *input, uint8_t *output, int length,
+    uint8_t *mod_bin, uint32_t mod_size, uint8_t *exp_bin);
 
 
 

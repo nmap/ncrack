@@ -494,6 +494,8 @@ int win32_munmap(char *filestr, int filelen)
 
 #endif
 
+
+/* Create a UNICODE string based on an ASCII one. Be sure to free the memory! */
 char *
 unicode_alloc(const char *string)
 {
@@ -516,6 +518,7 @@ unicode_alloc(const char *string)
 }
 
 
+/* Same as unicode_alloc(), except convert the string to uppercase first. */
 char *
 unicode_alloc_upper(const char *string)
 {
@@ -536,4 +539,26 @@ unicode_alloc_upper(const char *string)
 
 	return unicode;
 }
+
+
+/* Reverses the order of the bytes in the memory pointed for the designated
+ * length. 
+ */
+void
+mem_reverse(uint8_t *p, unsigned int len)
+{
+  unsigned int i, j;
+  uint8_t temp;
+
+  if (len < 1)
+    return;
+
+  for (i = 0, j = len - 1; i < j; i++, j--) {
+    temp = p[i];
+    p[i] = p[j];
+    p[j] = temp;
+  }
+
+}
+
 
