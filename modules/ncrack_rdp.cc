@@ -117,7 +117,7 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 static int rdp_loop_read(nsock_pool nsp, Connection *con);
 static void rdp_iso_connection_request(Connection *con);
 static int rdp_iso_connection_confirm(Connection *con);
-static int rdp_mcs_connect(Connection *con);
+static void rdp_mcs_connect(Connection *con);
 static int rdp_mcs_connect_response(Connection *con);
 static int rdp_get_crypto(Connection *con, u_char *p);
 
@@ -564,7 +564,7 @@ rdp_iso_data(Connection *con, uint16_t length)
  * Constructs the packet which is is described at:
  * http://msdn.microsoft.com/en-us/library/cc240508%28v=PROT.10%29.aspx
  */
-static int
+static void
 rdp_mcs_connect(Connection *con)
 {
   /* TODO: consider instead of creating separate Bufs and merging them at the
