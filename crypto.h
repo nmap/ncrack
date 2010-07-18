@@ -167,5 +167,18 @@ void rsa_encrypt(uint8_t *input, uint8_t *output, int length,
     uint8_t *mod_bin, uint32_t mod_size, uint8_t *exp_bin);
 
 
+/* 
+ * Uses MD5 and SHA1 hash functions, using 3 salts to compute a message
+ * digest (saved into 'output')
+ */
+void hash48(uint8_t *output, uint8_t *input, uint8_t salt, uint8_t *sha_salt1,
+    uint8_t *sha_salt2);
+
+/* 
+ * MD5 crypt 'input' into 'output' by using 2 salts
+ */
+void hash16(uint8_t *output, uint8_t *input, uint8_t *md5_salt1,
+    uint8_t *md5_salt2);
+
 
 #endif

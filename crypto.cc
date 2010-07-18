@@ -93,6 +93,7 @@
 #include <openssl/hmac.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
+#include <openssl/sha.h>
 #ifndef WIN32
   #include <stdint.h>
 #endif
@@ -401,7 +402,51 @@ void rsa_encrypt(uint8_t *input, uint8_t *output, int length,
 }
 
 
+/* 
+ * Uses MD5 and SHA1 hash functions, using 3 salts to compute a message
+ * digest (saved into 'output')
+ */
+void
+hash48(uint8_t *output, uint8_t *input, uint8_t salt, uint8_t *sha_salt1,
+    uint8_t *sha_salt2)
+{
+  SHA_CTX sha1_ctx;
+  MD5_CTX md5_ctx;
+  u_char padding[4];
+  u_char sig[20];
 
+  for (int i = 0; i < 3; i++) {
+    memset(padding, salt + i, i +1);
+
+    SHA1_Init(&sha1_ctx);
+    MD5_Init(&md5_ctx);
+
+    SHA1_Update(&sha1_ctx, padding, i + 1);
+    SHA1_Update(&sha1_ctx, input, 48);
+    SHA1_Update(&sha1_ctx, sha_salt1, 32);
+    SHA1_Update(&sha1_ctx, sha_salt2, 32);
+    SHA1_Final(sig, &sha1_ctx);
+
+    MD5_Update(&md5_ctx, input, 48);
+    MD5_Update(&md5_ctx, sig, 20);
+    MD5_Final(&output[i*16], &md5_ctx);
+  }
+
+}
+
+/* 
+ * MD5 crypt 'input' into 'output' by using 2 salts
+ */
+void
+hash16(uint8_t *output, uint8_t *input, uint8_t *md5_salt1, uint8_t *md5_salt2)
+{
+  MD5_CTX md5_ctx;
+  MD5_Init(&md5_ctx);
+  MD5_Update(&md5_ctx, input, 16);
+  MD5_Update(&md5_ctx, md5_salt1, 32);
+  MD5_Update(&md5_ctx, md5_salt2, 32);
+  MD5_Final(output, &md5_ctx);
+}
 
 
 //#endif /* HAVE_OPENSSL */
