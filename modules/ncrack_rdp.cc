@@ -126,6 +126,8 @@ static void rdp_iso_data(Connection *con, uint16_t datalen);
 static void rdp_mcs_attach_user_request(Connection *con);
 static int rdp_mcs_attach_user_confirm(Connection *con);
 static int rdp_iso_recv_data(Connection *con);
+static void rdp_mcs_channel_join_request(Connection *con, uint16_t channel_id);
+static int rdp_mcs_channel_join_confirm(Connection *con);
 
 /* ISO PDU codes */
 enum ISO_PDU_CODE
@@ -143,29 +145,31 @@ enum ISO_PDU_CODE
 #define CS_CLUSTER 0xC004;
 
 #define MCS_CONNECT_INITIAL	0x7f65
-#define MCS_CONNECT_RESPONSE	0x7f66
+#define MCS_CONNECT_RESPONSE 0x7f66
+#define MCS_GLOBAL_CHANNEL 1003
+#define MCS_USERCHANNEL_BASE 1001
 
-#define BER_TAG_BOOLEAN		1
-#define BER_TAG_INTEGER		2
-#define BER_TAG_OCTET_STRING	4
-#define BER_TAG_RESULT		10
+#define BER_TAG_BOOLEAN 1
+#define BER_TAG_INTEGER	2
+#define BER_TAG_OCTET_STRING 4
+#define BER_TAG_RESULT 10
 #define MCS_TAG_DOMAIN_PARAMS	0x30
 
 /* Virtual channel options */
-#define CHANNEL_OPTION_INITIALIZED	0x80000000
-#define CHANNEL_OPTION_ENCRYPT_RDP	0x40000000
+#define CHANNEL_OPTION_INITIALIZED 0x80000000
+#define CHANNEL_OPTION_ENCRYPT_RDP 0x40000000
 #define CHANNEL_OPTION_COMPRESS_RDP	0x00800000
-#define CHANNEL_OPTION_SHOW_PROTOCOL	0x00200000
+#define CHANNEL_OPTION_SHOW_PROTOCOL 0x00200000
 
-#define SEC_TAG_SRV_INFO	0x0c01
+#define SEC_TAG_SRV_INFO 0x0c01
 #define SEC_TAG_SRV_CRYPT	0x0c02
-#define SEC_TAG_SRV_CHANNELS	0x0c03
-#define SEC_TAG_PUBKEY		0x0006
-#define SEC_TAG_KEYSIG		0x0008
-#define SEC_RSA_MAGIC		0x31415352	/* RSA1 */
+#define SEC_TAG_SRV_CHANNELS 0x0c03
+#define SEC_TAG_PUBKEY 0x0006
+#define SEC_TAG_KEYSIG 0x0008
+#define SEC_RSA_MAGIC 0x31415352	/* RSA1 */
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
-  RDP_FINI };
+  RDP_MCS_CJ_USER, RDP_MCS_CJ_GLOBAL, RDP_FINI };
 
 typedef struct rpd_state {
 
@@ -182,7 +186,6 @@ typedef struct rpd_state {
   uint16_t mcs_userid;
 
 } rdp_state;
-
 
 
 /* TPKT header */
@@ -264,9 +267,38 @@ typedef struct mcs_attach_user_confirm {
 
   uint8_t tag;    /* must be 44 */
   uint8_t result; /* must be 0 */
-  uint16_t userid;/* (be) */
+  uint16_t user_id;/* (be) */
 
 } __attribute__((__packed__)) mcs_attach_user_confirm;
+
+/* 
+ * Client MCS Channel Join Request PDU
+ * http://msdn.microsoft.com/en-us/library/cc240526%28v=PROT.10%29.aspx
+ */
+typedef struct mcs_channel_join_request {
+
+  uint8_t tag;
+  uint16_t user_id;
+  uint16_t channel_id;
+  mcs_channel_join_request() {
+    tag = 56;
+  }
+
+} __attribute__((__packed__)) mcs_channel_join_request;
+
+/* 
+ * Server MCS Channel Join Confirm PDU
+ * http://msdn.microsoft.com/en-us/library/cc240527%28v=PROT.10%29.aspx
+ */
+typedef struct mcs_channel_join_confirm {
+
+  uint8_t tag;
+  uint8_t result;
+  uint16_t user_id;
+  uint16_t req_channel_id;
+  uint16_t channel_id;
+
+} __attribute__((__packed__)) mcs_channel_join_confirm;
 
 
 /* Generic Conference Control (T.124) ConferenceCreateRequest 
@@ -674,7 +706,7 @@ rdp_mcs_attach_user_confirm(Connection *con)
   }
 
   if (aucf->tag & 2)
-    info->mcs_userid = ntohs(aucf->userid);
+    info->mcs_userid = ntohs(aucf->user_id);
 
   return 0;
 
@@ -685,6 +717,61 @@ mcs_aucf_error:
   return -1;
 
 }
+
+
+static void
+rdp_mcs_channel_join_request(Connection *con, uint16_t channel_id)
+{
+  mcs_channel_join_request cjrq;
+  rdp_state *info = (rdp_state *)con->misc_info;
+
+  rdp_iso_data(con, sizeof(cjrq));
+
+  cjrq.user_id = htons(info->mcs_userid);
+  cjrq.channel_id = htons(channel_id);
+
+  con->outbuf->append(&cjrq, sizeof(cjrq));
+}
+
+
+static int
+rdp_mcs_channel_join_confirm(Connection *con)
+{
+  mcs_channel_join_confirm *cjcf;
+  u_char *p;
+  char error[64];
+  
+   if (rdp_iso_recv_data(con) < 0)
+    return -1;
+
+  p = ((u_char *)con->inbuf->get_dataptr() + sizeof(iso_tpkt)
+      + sizeof(iso_itu_t_data));
+
+  cjcf = (mcs_channel_join_confirm *)p;
+
+  /* Check opcode */
+  if ((cjcf->tag >> 2) != 15) {
+    snprintf(error, sizeof(error), "MCS channel join confirm opcode: %u\n",
+        cjcf->tag);
+    goto mcs_cjcf_error;
+  }
+
+  /* Check result parameter */
+  if (cjcf->result != 0) {
+    snprintf(error, sizeof(error), "MCS channel join confirm result: %u\n",
+        cjcf->result);
+    goto mcs_cjcf_error;
+  }
+
+  return 0;
+
+mcs_cjcf_error:
+
+  con->service->end.orly = true;
+  con->service->end.reason = Strndup(error, strlen(error));
+  return -1;
+}
+
 
 
 /* 
@@ -1280,9 +1367,57 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
-      con->state = RDP_FINI;
+      con->state = RDP_MCS_CJ_USER;
 
       if (rdp_mcs_attach_user_confirm(con) < 0)
+        return ncrack_module_end(nsp, con);
+
+      /* Now send User Channel Join request */
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      rdp_mcs_channel_join_request(con, info->mcs_userid +
+          MCS_USERCHANNEL_BASE);
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case RDP_MCS_CJ_USER:
+
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = RDP_MCS_CJ_GLOBAL;
+
+      if (rdp_mcs_channel_join_confirm(con) < 0)
+        return ncrack_module_end(nsp, con);
+
+      /* Now send Global Channel Join request */
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      rdp_mcs_channel_join_request(con, MCS_GLOBAL_CHANNEL);
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case RDP_MCS_CJ_GLOBAL:
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = RDP_FINI;
+
+      if (rdp_mcs_channel_join_confirm(con) < 0)
         return ncrack_module_end(nsp, con);
 
       break;
