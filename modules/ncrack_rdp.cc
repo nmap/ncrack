@@ -93,6 +93,7 @@
 #include "Service.h"
 #include "modules.h"
 #include "crypto.h"
+#include <openssl/rc4.h>
 #include <list>
 
 #ifdef WIN32
@@ -120,8 +121,11 @@ static int rdp_iso_connection_confirm(Connection *con);
 static void rdp_mcs_connect(Connection *con);
 static int rdp_mcs_connect_response(Connection *con);
 static int rdp_get_crypto(Connection *con, u_char *p);
-
-
+static void rdp_mcs_erect_domain_request(Connection *con);
+static void rdp_iso_data(Connection *con, uint16_t datalen);
+static void rdp_mcs_attach_user_request(Connection *con);
+static int rdp_mcs_attach_user_confirm(Connection *con);
+static int rdp_iso_recv_data(Connection *con);
 
 /* ISO PDU codes */
 enum ISO_PDU_CODE
@@ -160,11 +164,22 @@ enum ISO_PDU_CODE
 #define SEC_TAG_KEYSIG		0x0008
 #define SEC_RSA_MAGIC		0x31415352	/* RSA1 */
 
-enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_FINI };
+enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
+  RDP_FINI };
 
 typedef struct rpd_state {
 
   uint8_t crypted_random[256];
+  uint8_t sign_key[16];
+  uint8_t encrypt_key[16];
+  uint8_t decrypt_key[16];
+  uint8_t encrypt_update_key[16];
+  uint8_t decrypt_update_key[16];
+  RC4_KEY rc4_encrypt_key;
+  RC4_KEY rc4_decrypt_key;
+  int rc4_keylen;
+
+  uint16_t mcs_userid;
 
 } rdp_state;
 
@@ -207,6 +222,51 @@ typedef struct iso_itu_t_data {
 
 } __attribute__((__packed__)) iso_itu_t_data;
 
+
+/* 
+ * Client MCS Erect Domain Request PDU 
+ * http://msdn.microsoft.com/en-us/library/cc240523%28v=PROT.10%29.aspx
+ */
+typedef struct mcs_erect_domain_rq {
+
+  uint8_t tag;
+  uint16_t sub_height;
+  uint16_t sub_interval;
+
+  mcs_erect_domain_rq() {
+    tag = 4;
+    sub_height = htons(1);
+    sub_interval = htons(1);
+  }
+
+} __attribute__((__packed__)) mcs_erect_domain_rq;
+
+
+/*
+ * Client MCS Attach User Request PDU
+ * http://msdn.microsoft.com/en-us/library/cc240524%28v=PROT.10%29.aspx
+ */
+typedef struct mcs_attach_user_rq {
+
+  uint8_t tag;
+  mcs_attach_user_rq() {
+    tag = 40;
+  }
+
+} mcs_attach_user_rq;
+
+
+/* 
+ * Server MCS Attach User Confirm PDU
+ * http://msdn.microsoft.com/en-us/library/cc240525%28v=PROT.10%29.aspx
+ */
+typedef struct mcs_attach_user_confirm {
+
+  uint8_t tag;    /* must be 44 */
+  uint8_t result; /* must be 0 */
+  uint16_t userid;/* (be) */
+
+} __attribute__((__packed__)) mcs_attach_user_confirm;
 
 
 /* Generic Conference Control (T.124) ConferenceCreateRequest 
@@ -495,7 +555,6 @@ rdp_loop_read(nsock_pool nsp, Connection *con)
 static void
 rdp_iso_connection_request(Connection *con)
 {
-
   iso_tpkt tpkt;
   iso_itu_t itu_t;
   uint16_t length = 30 + strlen(COOKIE_USERNAME);
@@ -543,7 +602,7 @@ rdp_iso_connection_confirm(Connection *con)
 
 
 static void
-rdp_iso_data(Connection *con, uint16_t length)
+rdp_iso_data(Connection *con, uint16_t datalen)
 {
 
   iso_tpkt tpkt;
@@ -551,10 +610,79 @@ rdp_iso_data(Connection *con, uint16_t length)
 
   tpkt.version = 3;
   tpkt.reserved = 0;
-  tpkt.length = htons(length);
+  tpkt.length = htons(sizeof(tpkt) + sizeof(itu_t_data) + datalen);
 
   con->outbuf->append(&tpkt, 4);
   con->outbuf->append(&itu_t_data, 3);
+
+}
+
+
+static void
+rdp_mcs_erect_domain_request(Connection *con)
+{
+  mcs_erect_domain_rq edrq;
+
+  rdp_iso_data(con, sizeof(edrq));
+
+  con->outbuf->append(&edrq, sizeof(edrq));
+}
+
+
+static void
+rdp_mcs_attach_user_request(Connection *con)
+{
+  mcs_attach_user_rq aurq;
+
+  rdp_iso_data(con, sizeof(aurq));
+
+  con->outbuf->append(&aurq, sizeof(aurq));
+}
+
+
+static int
+rdp_mcs_attach_user_confirm(Connection *con)
+{
+  mcs_attach_user_confirm *aucf;
+  u_char *p;
+  char error[64];
+  rdp_state *info;
+
+  /* rdp_state must have already been initialized! */
+  info = (rdp_state *)con->misc_info;
+
+  if (rdp_iso_recv_data(con) < 0)
+    return -1;
+
+  p = ((u_char *)con->inbuf->get_dataptr() + sizeof(iso_tpkt)
+      + sizeof(iso_itu_t_data));
+
+  aucf = (mcs_attach_user_confirm *)p;
+
+  /* Check opcode */
+  if ((aucf->tag >> 2) != 11) {
+    snprintf(error, sizeof(error), "MCS attach user confirm opcode: %u\n",
+        aucf->tag);
+    goto mcs_aucf_error;
+  }
+
+  /* Check result parameter */
+  if (aucf->result != 0) {
+    snprintf(error, sizeof(error), "MCS attach user confirm result: %u\n",
+        aucf->result);
+    goto mcs_aucf_error;
+  }
+
+  if (aucf->tag & 2)
+    info->mcs_userid = ntohs(aucf->userid);
+
+  return 0;
+
+mcs_aucf_error:
+
+  con->service->end.orly = true;
+  con->service->end.reason = Strndup(error, strlen(error));
+  return -1;
 
 }
 
@@ -587,7 +715,7 @@ rdp_mcs_connect(Connection *con)
       sizeof(mcs) + sizeof(ccr) + sizeof(ccd) + sizeof(csd) + sizeof(cluster));
 #endif
 
-  rdp_iso_data(con, 386);
+  rdp_iso_data(con, 379);
 
   /* 
    * MCS Connect Initial structure 
@@ -596,7 +724,7 @@ rdp_mcs_connect(Connection *con)
   mcs.calling_dom.value = 1;
   mcs.called_dom.value = 1;
   mcs.upward_flag.value = 0xff;
-  
+
   /* target params */
   mcs.target.max_channels.value = htons(34);
   mcs.target.max_users.value = htons(2);
@@ -606,7 +734,7 @@ rdp_mcs_connect(Connection *con)
   mcs.target.max_height.value = htons(1);
   mcs.target.max_pdusize.value = htons(0xffff);
   mcs.target.ver_protocol.value = htons(2);
-  
+
   /* min params */
   mcs.min.max_channels.value = htons(1);
   mcs.min.max_users.value = htons(1);
@@ -816,8 +944,8 @@ rdp_get_crypto(Connection *con, u_char *p)
   server_random_len = *(uint32_t *)p;
   p += 4;
 
-  /* According to the specs, this field value MUST be 32 bytes, as long as both the
-   * encryption method and level are not 0.
+  /* According to the specs, this field value MUST be 32 bytes, as long as both
+   * the encryption method and level are not 0.
    */
   if (server_random_len != 32) {
     con->service->end.orly = true;
@@ -922,10 +1050,38 @@ rdp_get_crypto(Connection *con, u_char *p)
   get_random_bytes(client_random, sizeof(client_random));
   rsa_encrypt(client_random, info->crypted_random, 32, mod, mod_len, exp);
 
-  printf("generate keys\n");
+  uint8_t premaster_secret[48];
+  uint8_t master_secret[48];
+  uint8_t key[48];
 
+  /* pre master secret */
+  memcpy(premaster_secret, client_random, 24);
+  memcpy(premaster_secret + 24, server_random, 24);
 
+  /* master secret and key */
+  hash48(master_secret, premaster_secret, 'A', client_random, server_random);
+  hash48(key, master_secret, 'X', client_random, server_random);
 
+  /* create key used for signing */
+  memcpy(info->sign_key, key, 16);
+
+  /* export keys */
+  hash16(info->decrypt_key, &key[16], client_random, server_random);
+  hash16(info->encrypt_key, &key[32], client_random, server_random);
+
+  //TODO: check for case of 40bit enc 
+  if (rc4_size == 1) {
+    /* 40 bit enc */
+    info->rc4_keylen = 8;
+  } else 
+    info->rc4_keylen = 16; /* 128 bit encryption */
+
+  /* update keys */
+  memcpy(info->encrypt_update_key, info->encrypt_key, 16);
+  memcpy(info->decrypt_update_key, info->decrypt_key, 16);
+
+  RC4_set_key(&info->rc4_encrypt_key, info->rc4_keylen, info->encrypt_key);
+  RC4_set_key(&info->rc4_decrypt_key, info->rc4_keylen, info->decrypt_key);
 
   return 0;
 }
@@ -1083,28 +1239,62 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
-      con->state = RDP_FINI;
+      con->state = RDP_MCS_AURQ;
 
       con->misc_info = (rdp_state *)safe_zalloc(sizeof(rdp_state));
 
       if (rdp_mcs_connect_response(con) < 0)
         return ncrack_module_end(nsp, con);
 
+      /* Now send Erection Domain Request */
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      rdp_mcs_erect_domain_request(con);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case RDP_MCS_AURQ:
+
+      con->state = RDP_MCS_AUCF;
+
+      /* Now send Attach User Request */
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      rdp_mcs_attach_user_request(con);
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case RDP_MCS_AUCF:
+
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = RDP_FINI;
+
+      if (rdp_mcs_attach_user_confirm(con) < 0)
+        return ncrack_module_end(nsp, con);
 
       break;
 
     case RDP_FINI:
 
       printf("fini\n");
+      exit(0);
       break;
-
 
   }
 
 
-
-
 }
-
-
 
