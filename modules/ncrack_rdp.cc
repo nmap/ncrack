@@ -70,22 +70,22 @@
  * distribution.  By sending these changes to Fyodor or one of the         *
  * Insecure.Org development mailing lists, it is assumed that you are      *
  * offering the Nmap Project (Insecure.Com LLC) the unlimited,             *
- * non-exclusive right to reuse, modify, and relicense the code.  Nmap     *
- * will always be available Open Source, but this is important because the *
- * inability to relicense code has caused devastating problems for other   *
- * Free Software projects (such as KDE and NASM).  We also occasionally    *
- * relicense the code to third parties as discussed above.  If you wish to *
- * specify special license conditions of your contributions, just say so   *
- * when you send them.                                                     *
- *                                                                         *
- * This program is distributed in the hope that it will be useful, but     *
- * WITHOUT ANY WARRANTY; without even the implied warranty of              *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
- * General Public License v2.0 for more details at                         *
- * http://www.gnu.org/licenses/gpl-2.0.html , or in the COPYING file       *
- * included with Nmap.                                                     *
- *                                                                         *
- ***************************************************************************/
+* non-exclusive right to reuse, modify, and relicense the code.  Nmap     *
+* will always be available Open Source, but this is important because the *
+* inability to relicense code has caused devastating problems for other   *
+* Free Software projects (such as KDE and NASM).  We also occasionally    *
+* relicense the code to third parties as discussed above.  If you wish to *
+* specify special license conditions of your contributions, just say so   *
+* when you send them.                                                     *
+*                                                                         *
+* This program is distributed in the hope that it will be useful, but     *
+* WITHOUT ANY WARRANTY; without even the implied warranty of              *
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
+* General Public License v2.0 for more details at                         *
+* http://www.gnu.org/licenses/gpl-2.0.html , or in the COPYING file       *
+* included with Nmap.                                                     *
+*                                                                         *
+***************************************************************************/
 
 #include "ncrack.h"
 #include "nsock.h"
@@ -94,6 +94,8 @@
 #include "modules.h"
 #include "crypto.h"
 #include <openssl/rc4.h>
+#include <openssl/md5.h>
+#include <openssl/sha.h>
 #include <list>
 
 #ifdef WIN32
@@ -128,15 +130,16 @@ static int rdp_mcs_attach_user_confirm(Connection *con);
 static int rdp_iso_recv_data(Connection *con);
 static void rdp_mcs_channel_join_request(Connection *con, uint16_t channel_id);
 static int rdp_mcs_channel_join_confirm(Connection *con);
+static void rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen);
 
 /* ISO PDU codes */
 enum ISO_PDU_CODE
 {
-	ISO_PDU_CR = 0xE0,	/* Connection Request */
-	ISO_PDU_CC = 0xD0,	/* Connection Confirm */
-	ISO_PDU_DR = 0x80,	/* Disconnect Request */
-	ISO_PDU_DT = 0xF0,	/* Data */
-	ISO_PDU_ER = 0x70	  /* Error */
+  ISO_PDU_CR = 0xE0,  /* Connection Request */
+  ISO_PDU_CC = 0xD0,  /* Connection Confirm */
+  ISO_PDU_DR = 0x80,  /* Disconnect Request */
+  ISO_PDU_DT = 0xF0,  /* Data */
+  ISO_PDU_ER = 0x70   /* Error */
 };
 
 #define CS_CORE 0xC001;
@@ -144,29 +147,31 @@ enum ISO_PDU_CODE
 #define CS_NET 0xC003;
 #define CS_CLUSTER 0xC004;
 
-#define MCS_CONNECT_INITIAL	0x7f65
+#define MCS_CONNECT_INITIAL 0x7f65
 #define MCS_CONNECT_RESPONSE 0x7f66
 #define MCS_GLOBAL_CHANNEL 1003
 #define MCS_USERCHANNEL_BASE 1001
 
 #define BER_TAG_BOOLEAN 1
-#define BER_TAG_INTEGER	2
+#define BER_TAG_INTEGER 2
 #define BER_TAG_OCTET_STRING 4
 #define BER_TAG_RESULT 10
-#define MCS_TAG_DOMAIN_PARAMS	0x30
+#define MCS_TAG_DOMAIN_PARAMS 0x30
 
 /* Virtual channel options */
 #define CHANNEL_OPTION_INITIALIZED 0x80000000
 #define CHANNEL_OPTION_ENCRYPT_RDP 0x40000000
-#define CHANNEL_OPTION_COMPRESS_RDP	0x00800000
+#define CHANNEL_OPTION_COMPRESS_RDP 0x00800000
 #define CHANNEL_OPTION_SHOW_PROTOCOL 0x00200000
 
 #define SEC_TAG_SRV_INFO 0x0c01
-#define SEC_TAG_SRV_CRYPT	0x0c02
+#define SEC_TAG_SRV_CRYPT 0x0c02
 #define SEC_TAG_SRV_CHANNELS 0x0c03
 #define SEC_TAG_PUBKEY 0x0006
 #define SEC_TAG_KEYSIG 0x0008
-#define SEC_RSA_MAGIC 0x31415352	/* RSA1 */
+#define SEC_RSA_MAGIC 0x31415352  /* RSA1 */
+
+#define SEC_ENCRYPT 0x0008
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
   RDP_MCS_CJ_USER, RDP_MCS_CJ_GLOBAL, RDP_FINI };
@@ -182,6 +187,7 @@ typedef struct rpd_state {
   RC4_KEY rc4_encrypt_key;
   RC4_KEY rc4_decrypt_key;
   int rc4_keylen;
+  int encrypt_use_count;
 
   uint16_t mcs_userid;
 
@@ -191,9 +197,9 @@ typedef struct rpd_state {
 /* TPKT header */
 typedef struct iso_tpkt {
 
-    uint8_t version;  /* default version = 3 */
-    uint8_t reserved;
-    uint16_t length;  /* total packet length (including this header) - be */
+  uint8_t version;  /* default version = 3 */
+  uint8_t reserved;
+  uint16_t length;  /* total packet length (including this header) - be */
 
 } __attribute__((__packed__)) iso_tpkt;
 
@@ -201,11 +207,11 @@ typedef struct iso_tpkt {
 /* ITU-T header */
 typedef struct iso_itu_t {
 
-    uint8_t hdrlen;   /* ITU-T header length */
-    uint8_t code;     /* ISO_PDU_CODE */
-    uint16_t dst_ref; /* 0 */
-    uint16_t src_ref; /* 0 */
-    uint8_t class_num;/* 0 */
+  uint8_t hdrlen;   /* ITU-T header length */
+  uint8_t code;     /* ISO_PDU_CODE */
+  uint16_t dst_ref; /* 0 */
+  uint16_t src_ref; /* 0 */
+  uint8_t class_num;/* 0 */
 
 } __attribute__((__packed__)) iso_itu_t;
 
@@ -301,6 +307,31 @@ typedef struct mcs_channel_join_confirm {
 } __attribute__((__packed__)) mcs_channel_join_confirm;
 
 
+typedef struct mcs_data {
+
+  uint8_t tag;
+  uint16_t user_id; /* be */
+  uint16_t channel; /* be */
+  uint8_t flags;
+  uint16_t length;  /* be */
+
+  mcs_data() {
+    tag = 100;
+    channel = ntohs(MCS_GLOBAL_CHANNEL);
+    flags = 0x70;
+  }
+
+} __attribute__((__packed__)) mcs_data;
+
+
+typedef struct sec_header {
+
+  uint32_t flags; /* normally SEC_ENCRYPT */
+  uint8_t sig[8]; /* signature */
+
+} __attribute__((__packed__)) sec_header;
+
+
 /* Generic Conference Control (T.124) ConferenceCreateRequest 
  * T124 Section 8.7: http://www.itu.int/rec/T-REC-T.124-200701-I/en 
  */
@@ -379,7 +410,7 @@ typedef struct client_security_data {
   // microsoft doesn't mention 3 as a possible value
   uint32_t enc_methods; /* 0 for no enc, 2 for 128-bit */
   uint32_t ext_enc; /* 0 for non-french locale clients */
-    
+
 } __attribute__((__packed__)) client_security_data;
 
 
@@ -422,7 +453,7 @@ typedef struct client_cluster_data {
   uint32_t pad; /* ? rdesktop seems to send another 32 zero bits */
 
 } __attribute__((__packed__)) client_cluster_data;
-    
+
 
 
 typedef struct ber_integer {
@@ -491,7 +522,7 @@ typedef struct mcs_domain_params {
  * (the ASN.1  structure definition is detailed in [T125] section 7, part 2).
  */
 typedef struct mcs_connect_initial {
-  
+
   uint16_t mcs_tag;
   uint8_t length_tag;
   uint16_t total_length;  /* total length (be) */
@@ -509,7 +540,7 @@ typedef struct mcs_connect_initial {
     uint8_t tag;
     uint8_t length_tag;
     uint16_t datalength;
-    
+
     mcs_data() { 
       tag = BER_TAG_OCTET_STRING;
       length_tag = 0x82;
@@ -522,7 +553,7 @@ typedef struct mcs_connect_initial {
   }
 
 } __attribute__((__packed__)) mcs_connect_initial;
- 
+
 
 
 /* 
@@ -550,6 +581,17 @@ typedef struct mcs_response {
 }  __attribute__((__packed__)) mcs_response;
 
 
+static uint8_t pad54[40] = {
+  54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54,
+  54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54,
+  54, 54, 54, 54, 54, 54
+};
+
+static uint8_t pad92[48] = {
+  92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92,
+  92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92,
+  92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92
+};
 
 
 static int
@@ -649,6 +691,26 @@ rdp_iso_data(Connection *con, uint16_t datalen)
 
 }
 
+static void
+rdp_mcs_data(Connection *con, uint16_t datalen)
+{
+  mcs_data mcs;
+  rdp_state *info = (rdp_state *)con->misc_info;
+
+  mcs.user_id = htons(info->mcs_userid);
+
+  /* The length in the MCS header doesn't include the size of the header
+   * itself, rather all the data following the header: the security header
+   * and RDP data (if any) following it.
+   */
+  mcs.length = htons(datalen | 0x8000);
+
+  printf("mcs-size %u \n", sizeof(mcs));
+  con->outbuf->append(&mcs, sizeof(mcs));
+
+}
+
+
 
 static void
 rdp_mcs_erect_domain_request(Connection *con)
@@ -740,8 +802,8 @@ rdp_mcs_channel_join_confirm(Connection *con)
   mcs_channel_join_confirm *cjcf;
   u_char *p;
   char error[64];
-  
-   if (rdp_iso_recv_data(con) < 0)
+
+  if (rdp_iso_recv_data(con) < 0)
     return -1;
 
   p = ((u_char *)con->inbuf->get_dataptr() + sizeof(iso_tpkt)
@@ -1267,6 +1329,59 @@ rdp_mcs_connect_response(Connection *con)
   return 0;
 }
 
+
+static void
+rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen)
+{
+  rdp_state *info = (rdp_state *)con->misc_info;
+  sec_header sec;
+
+  sec.flags = SEC_ENCRYPT;
+
+  /* Now sign the data */
+  SHA_CTX sha1_ctx;
+  uint8_t sha1_sig[20];
+  MD5_CTX md5_ctx;
+  uint8_t md5_sig[16];
+  uint8_t len_header[4];
+
+  SHA1_Init(&sha1_ctx);
+  MD5_Init(&md5_ctx);
+
+  len_header[0] = (datalen) & 0xFF;
+  len_header[1] = (datalen >> 8) & 0xFF;
+  len_header[2] = (datalen >> 16) & 0xFF;
+  len_header[3] = (datalen >> 24) & 0xFF;
+
+  SHA1_Update(&sha1_ctx, info->sign_key, info->rc4_keylen);
+  SHA1_Update(&sha1_ctx, pad54, 40);
+  SHA1_Update(&sha1_ctx, len_header, 4);
+  SHA1_Update(&sha1_ctx, data, datalen);
+  SHA1_Final(sha1_sig, &sha1_ctx);
+
+  MD5_Update(&md5_ctx, info->sign_key, info->rc4_keylen);
+  MD5_Update(&md5_ctx, pad92, 48);
+  MD5_Update(&md5_ctx, sha1_sig, 20);
+  MD5_Final(md5_sig, &md5_ctx);
+
+  memcpy(sec.sig, md5_sig, sizeof(sec.sig));
+
+  /* Encrypt the data */
+
+  // UPDATE KEY
+  if (info->encrypt_use_count == 4096) {
+    info->encrypt_use_count = 0;
+
+  }
+  RC4(&info->rc4_encrypt_key, datalen, data, data);
+  info->encrypt_use_count++;
+
+  /* This is the security header, which is after the ISO and MCS headers */
+  con->outbuf->append(&sec, sizeof(sec));
+  /* Everything below the security header is the encrypted data. */
+  con->outbuf->append(data, datalen);
+
+}
 
 
 
