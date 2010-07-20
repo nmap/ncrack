@@ -70,22 +70,22 @@
  * distribution.  By sending these changes to Fyodor or one of the         *
  * Insecure.Org development mailing lists, it is assumed that you are      *
  * offering the Nmap Project (Insecure.Com LLC) the unlimited,             *
-* non-exclusive right to reuse, modify, and relicense the code.  Nmap     *
-* will always be available Open Source, but this is important because the *
-* inability to relicense code has caused devastating problems for other   *
-* Free Software projects (such as KDE and NASM).  We also occasionally    *
-* relicense the code to third parties as discussed above.  If you wish to *
-* specify special license conditions of your contributions, just say so   *
-* when you send them.                                                     *
-*                                                                         *
-* This program is distributed in the hope that it will be useful, but     *
-* WITHOUT ANY WARRANTY; without even the implied warranty of              *
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
-* General Public License v2.0 for more details at                         *
-* http://www.gnu.org/licenses/gpl-2.0.html , or in the COPYING file       *
-* included with Nmap.                                                     *
-*                                                                         *
-***************************************************************************/
+ * non-exclusive right to reuse, modify, and relicense the code.  Nmap     *
+ * will always be available Open Source, but this is important because the *
+ * inability to relicense code has caused devastating problems for other   *
+ * Free Software projects (such as KDE and NASM).  We also occasionally    *
+ * relicense the code to third parties as discussed above.  If you wish to *
+ * specify special license conditions of your contributions, just say so   *
+ * when you send them.                                                     *
+ *                                                                         *
+ * This program is distributed in the hope that it will be useful, but     *
+ * WITHOUT ANY WARRANTY; without even the implied warranty of              *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
+ * General Public License v2.0 for more details at                         *
+ * http://www.gnu.org/licenses/gpl-2.0.html , or in the COPYING file       *
+ * included with Nmap.                                                     *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "ncrack.h"
 #include "nsock.h"
