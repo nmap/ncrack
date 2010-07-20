@@ -130,10 +130,11 @@ static int rdp_mcs_attach_user_confirm(Connection *con);
 static int rdp_iso_recv_data(Connection *con);
 static void rdp_mcs_channel_join_request(Connection *con, uint16_t channel_id);
 static int rdp_mcs_channel_join_confirm(Connection *con);
-static void rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen);
+static void rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen,
+    uint32_t flags);
 static void rdp_mcs_data(Connection *con, uint16_t datalen);
 static void rdp_security_exchange(Connection *con);
-
+static void rdp_client_info(Connection *con);
 
 /* ISO PDU codes */
 enum ISO_PDU_CODE
@@ -175,9 +176,10 @@ enum ISO_PDU_CODE
 #define SEC_RSA_MAGIC 0x31415352  /* RSA1 */
 #define SEC_CLIENT_RANDOM 0x0001
 #define SEC_ENCRYPT 0x0008
+#define SEC_LOGON_INFO 0x0040
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
-  RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_FINI };
+  RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, RDP_FINI };
 
 typedef struct rpd_state {
 
@@ -329,7 +331,7 @@ typedef struct mcs_data {
 
 typedef struct sec_header {
 
-  uint32_t flags; /* normally SEC_ENCRYPT */
+  uint32_t flags; /* normally SEC_ENCRYPT etc */
   uint8_t sig[8]; /* signature */
 
 } __attribute__((__packed__)) sec_header;
@@ -957,7 +959,7 @@ rdp_mcs_connect(Connection *con)
    */
   ccd.hdr.type = CS_CORE;
   ccd.hdr.length = 212;
-  ccd.version1 = 1;   /* RDP 5 by default */
+  ccd.version1 = 1;   /* RDP 4 by default */
   ccd.version2 = 8;
   ccd.width = 800;
   ccd.height = 600;
@@ -1345,12 +1347,13 @@ rdp_mcs_connect_response(Connection *con)
 
 
 static void
-rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen)
+rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen,
+    uint32_t flags)
 {
   rdp_state *info = (rdp_state *)con->misc_info;
   sec_header sec;
 
-  sec.flags = SEC_ENCRYPT;
+  sec.flags = flags;
 
   /* Now sign the data */
   SHA_CTX sha1_ctx;
@@ -1421,9 +1424,10 @@ rdp_security_exchange(Connection *con)
   sec_length = info->server_public_key_length + 8; /* padding size = 8 */
 
   /* 4 is the length field itself and another 4 for the security header
-   * (which has only the 32bit flags field 
+   * (which has only the 32bit flags field)
    */
-  total_length = sec_length + 4 + 4; 
+  total_length = sec_length + 4 + 4;
+
   total_length += sizeof(mcs_data);
   rdp_iso_data(con, total_length);
   total_length -= sizeof(mcs_data);
@@ -1437,6 +1441,83 @@ rdp_security_exchange(Connection *con)
   con->outbuf->append(&sec_length, sizeof(sec_length));
   con->outbuf->append(info->crypted_random, info->server_public_key_length);
   con->outbuf->append(pad0, 8); /* paddding */
+
+}
+
+
+/* 
+ * Prepares a Client Info PDU 
+ * http://msdn.microsoft.com/en-us/library/cc240473%28v=PROT.10%29.aspx
+ * http://msdn.microsoft.com/en-us/library/cc240474%28v=PROT.10%29.aspx
+ * http://msdn.microsoft.com/en-us/library/cc240475%28v=PROT.10%29.aspx
+ */
+static void
+rdp_client_info(Connection *con)
+{
+  Buf *data; 
+  char domain[16];
+  char shell[256];
+  char workingdir[256];
+  uint16_t username_length, password_length, domain_length,
+           shell_length, workingdir_length;
+  uint32_t total_length;
+  uint32_t flags = SEC_ENCRYPT | SEC_LOGON_INFO;
+
+  data = new Buf();
+  domain[0] = shell[0] = workingdir[0] = 0;
+
+  /* We need to convert every string data to its unicode equivalent.
+   * unicode_alloc() dynamically allocates the data, so be sure to free the
+   * memory later.
+   */
+  char *u_domain = unicode_alloc(domain);
+  char *u_username = unicode_alloc(con->user);
+  char *u_password = unicode_alloc(con->pass);
+  char *u_shell = unicode_alloc(shell);
+  char *u_workdingdir = unicode_alloc(workingdir);
+
+  domain_length = strlen(domain) * 2;
+  username_length = strlen(con->user) * 2;
+  password_length = strlen(con->pass) * 2;
+  shell_length = strlen(shell) * 2;
+  workingdir_length = strlen(workingdir) * 2;
+
+  /* Now fill in the data to our temporary buffer. These will be later
+   * encrypted by rdp_encrypt_data()
+   */
+  data->append(pad0, 4);
+  data->append(&flags, sizeof(flags));
+  data->append(&domain_length, sizeof(domain_length));
+  data->append(&username_length, sizeof(username_length));
+  data->append(&password_length, sizeof(password_length));
+  data->append(&shell_length, sizeof(shell_length));
+  data->append(&workingdir_length, sizeof(workingdir_length));
+  data->append(u_domain, domain_length);
+  data->append(u_username, username_length);
+  data->append(u_password, password_length);
+  data->append(u_shell, shell_length);
+  data->append(u_workdingdir, workingdir_length);
+
+  /* 18 = the size of all above fields (pad0, flags and the lengths of each
+   * variable
+   */
+  total_length = 18 + domain_length + username_length + password_length +
+    shell_length + workingdir_length + 12;
+  //TODO: why does rdesktop add 10 to the above length?
+
+  total_length += sizeof(mcs_data);
+  rdp_iso_data(con, total_length);
+  total_length -= sizeof(mcs_data);
+  rdp_mcs_data(con, total_length);
+  
+  rdp_encrypt_data(con, (uint8_t *)data->get_dataptr(), data->get_len(), flags);
+
+  delete data;
+  free(u_domain);
+  free(u_username);
+  free(u_password);
+  free(u_shell);
+  free(u_workdingdir);
 
 }
 
@@ -1586,7 +1667,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
-      con->state = RDP_FINI;
+      con->state = RDP_CLIENT_INFO;
 
       if (rdp_mcs_channel_join_confirm(con) < 0)
         return ncrack_module_end(nsp, con);
@@ -1601,10 +1682,23 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
+    case RDP_CLIENT_INFO:
+
+      con->state = RDP_FINI;
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+  
+      rdp_client_info(con);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
     case RDP_FINI:
 
       printf("fini\n");
-      exit(0);
       break;
 
   }
