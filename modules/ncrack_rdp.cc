@@ -131,6 +131,9 @@ static int rdp_iso_recv_data(Connection *con);
 static void rdp_mcs_channel_join_request(Connection *con, uint16_t channel_id);
 static int rdp_mcs_channel_join_confirm(Connection *con);
 static void rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen);
+static void rdp_mcs_data(Connection *con, uint16_t datalen);
+static void rdp_security_exchange(Connection *con);
+
 
 /* ISO PDU codes */
 enum ISO_PDU_CODE
@@ -170,11 +173,11 @@ enum ISO_PDU_CODE
 #define SEC_TAG_PUBKEY 0x0006
 #define SEC_TAG_KEYSIG 0x0008
 #define SEC_RSA_MAGIC 0x31415352  /* RSA1 */
-
+#define SEC_CLIENT_RANDOM 0x0001
 #define SEC_ENCRYPT 0x0008
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
-  RDP_MCS_CJ_USER, RDP_MCS_CJ_GLOBAL, RDP_FINI };
+  RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_FINI };
 
 typedef struct rpd_state {
 
@@ -188,7 +191,7 @@ typedef struct rpd_state {
   RC4_KEY rc4_decrypt_key;
   int rc4_keylen;
   int encrypt_use_count;
-
+  uint32_t server_public_key_length;
   uint16_t mcs_userid;
 
 } rdp_state;
@@ -580,6 +583,9 @@ typedef struct mcs_response {
 
 }  __attribute__((__packed__)) mcs_response;
 
+static uint8_t pad0[8] = {
+  0, 0, 0, 0, 0, 0, 0, 0
+};
 
 static uint8_t pad54[40] = {
   54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54,
@@ -675,6 +681,13 @@ rdp_iso_connection_confirm(Connection *con)
 }
 
 
+/* 
+ * Prepares an ISO header (TPKT and ITU_T) 
+ * the 'datalen' is the number of bytes following this header.
+ * This usually means the size of the MCS header + the size of the
+ * security header (if it exists) + the size of any additional data
+ * (rdp_data)
+ */
 static void
 rdp_iso_data(Connection *con, uint16_t datalen)
 {
@@ -705,7 +718,6 @@ rdp_mcs_data(Connection *con, uint16_t datalen)
    */
   mcs.length = htons(datalen | 0x8000);
 
-  printf("mcs-size %u \n", sizeof(mcs));
   con->outbuf->append(&mcs, sizeof(mcs));
 
 }
@@ -1176,6 +1188,8 @@ rdp_get_crypto(Connection *con, u_char *p)
         memcpy(mod, p, mod_len);
         p += mod_len;
         p += 8; /* skip padding */
+        /* store modulus length for later use */
+        info->server_public_key_length = mod_len;
 
         break;
 
@@ -1384,6 +1398,48 @@ rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen)
 }
 
 
+/* 
+ * Prepares a Client Security Exchange PDU
+ * http://msdn.microsoft.com/en-us/library/cc240471%28v=PROT.10%29.aspx
+ */
+static void
+rdp_security_exchange(Connection *con)
+{
+  /* This is the length of the data of this specific portion of the packet 
+   * Things like the lengths of the rest of the headers (MCS, ISO) aren't
+   * included.
+   */
+  uint32_t sec_length; 
+  uint32_t total_length;
+  uint32_t flags;
+  rdp_state *info = (rdp_state *)con->misc_info;
+
+  /* We don't use the sec_header struct here, since the security header
+   * now includes only the flags field (32 bit). We also don't call
+   * rdp_encrypt_data(), since the data aren't encrypted for this packet.
+   */
+  sec_length = info->server_public_key_length + 8; /* padding size = 8 */
+
+  /* 4 is the length field itself and another 4 for the security header
+   * (which has only the 32bit flags field 
+   */
+  total_length = sec_length + 4 + 4; 
+  total_length += sizeof(mcs_data);
+  rdp_iso_data(con, total_length);
+  total_length -= sizeof(mcs_data);
+  rdp_mcs_data(con, total_length);
+
+  flags = SEC_CLIENT_RANDOM;
+  /* Security header part */
+  con->outbuf->append(&flags, sizeof(flags));
+
+  /* Client Security Exchange part */
+  con->outbuf->append(&sec_length, sizeof(sec_length));
+  con->outbuf->append(info->crypted_random, info->server_public_key_length);
+  con->outbuf->append(pad0, 8); /* paddding */
+
+}
+
 
 
 void
@@ -1507,7 +1563,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
-      con->state = RDP_MCS_CJ_GLOBAL;
+      con->state = RDP_SEC_EXCHANGE;
 
       if (rdp_mcs_channel_join_confirm(con) < 0)
         return ncrack_module_end(nsp, con);
@@ -1526,7 +1582,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
-    case RDP_MCS_CJ_GLOBAL:
+    case RDP_SEC_EXCHANGE:
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
@@ -1535,6 +1591,14 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_mcs_channel_join_confirm(con) < 0)
         return ncrack_module_end(nsp, con);
 
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      rdp_security_exchange(con);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
     case RDP_FINI:
