@@ -1492,20 +1492,28 @@ rdp_client_info(Connection *con)
   data->append(&password_length, sizeof(password_length));
   data->append(&shell_length, sizeof(shell_length));
   data->append(&workingdir_length, sizeof(workingdir_length));
-  data->append(u_domain, domain_length);
-  data->append(u_username, username_length);
-  data->append(u_password, password_length);
-  data->append(u_shell, shell_length);
-  data->append(u_workdingdir, workingdir_length);
+
+  /* Make sure the minimum length is 2, which means only the unicode NULL
+   * (2 bytes) character is sent. Note, that this is not the special
+   * additional NULL character that follows every string for this header,
+   * but the string itself denoting it is empty.
+   */
+  data->append(u_domain, domain_length ? domain_length : 2);
+  data->append(u_username, username_length ? username_length : 2);
+  data->append(u_password, password_length ? password_length : 2);
+  data->append(u_shell, shell_length ? shell_length : 2);
+  data->append(u_workdingdir, workingdir_length ? workingdir_length : 2);
 
   /* 18 = the size of all above fields (pad0, flags and the lengths of each
    * variable
+   * 10 = the size of the unicode NULL terminators for each of the above 5
+   * strings, which are not included in the lengths 
+   * see: http://msdn.microsoft.com/en-us/library/cc240475%28v=PROT.10%29.aspx
    */
   total_length = 18 + domain_length + username_length + password_length +
-    shell_length + workingdir_length + 12;
-  //TODO: why does rdesktop add 10 to the above length?
+    shell_length + workingdir_length + 10;
 
-  total_length += sizeof(mcs_data);
+  total_length += sizeof(mcs_data) + sizeof(sec_header);
   rdp_iso_data(con, total_length);
   total_length -= sizeof(mcs_data);
   rdp_mcs_data(con, total_length);
