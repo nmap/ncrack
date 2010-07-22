@@ -135,7 +135,7 @@ static void rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen,
 static void rdp_mcs_data(Connection *con, uint16_t datalen);
 static void rdp_security_exchange(Connection *con);
 static void rdp_client_info(Connection *con);
-
+static int rdp_mcs_recv_data(Connection *con, uint16_t *channel);
 
 /* ISO PDU codes */
 enum ISO_PDU_CODE
@@ -156,6 +156,8 @@ enum ISO_PDU_CODE
 #define MCS_CONNECT_RESPONSE 0x7f66
 #define MCS_GLOBAL_CHANNEL 1003
 #define MCS_USERCHANNEL_BASE 1001
+#define MCS_SDIN 26 /* Send Data Indication */
+#define	MCS_DPUM 8 /* Disconnect Provider Ultimatum */
 
 #define BER_TAG_BOOLEAN 1
 #define BER_TAG_INTEGER 2
@@ -1023,6 +1025,55 @@ rdp_mcs_connect(Connection *con)
 
 
 static int
+rdp_mcs_recv_data(Connection *con, uint16_t *channel)
+{
+  u_char *p;
+  char error[64];
+  uint8_t opcode;
+  
+  if (rdp_iso_recv_data(con) < 1)
+    return -1;
+
+  p = ((u_char *)con->inbuf->get_dataptr() + sizeof(iso_tpkt)
+      + sizeof(iso_itu_t_data));
+
+  /* Check opcode */
+  opcode = (*(uint8_t *)p) >> 2;
+  p += 1;
+
+  if (opcode == MCS_SDIN) {
+    if (opcode != MCS_DPUM) {
+      snprintf(error, sizeof(error), "Expected data packet, but got 0x%x.",
+          opcode);
+      con->service->end.orly = true;
+      con->service->end.reason = Strndup(error, strlen(error));
+      return -1;
+    }
+    return 1;
+  }
+
+  /* Skip userid */
+  p += 2;
+
+  /* Store channel for later use */
+  *channel = *(uint16_t *)p; 
+  p += 2;
+
+  /* Skip flags */
+  p += 1;
+
+  /* Skip length */
+  if (*(uint8_t *)p & 0x80)
+    p += 1;
+  p += 1;
+
+  return 0;
+
+}
+
+
+
+static int
 rdp_iso_recv_data(Connection *con)
 {
   iso_tpkt *tpkt;
@@ -1033,7 +1084,7 @@ rdp_iso_recv_data(Connection *con)
   itu_t = (iso_itu_t_data *) ((const char *)tpkt + sizeof(iso_tpkt));
 
   if (tpkt->version != 3)
-    fatal("rdp_module: not supported version: %d\n", tpkt->version);
+    fatal("rdp_module: not supported TPKT version: %d\n", tpkt->version);
 
   if (tpkt->length < 4) {
     con->service->end.orly = true;
@@ -1050,7 +1101,6 @@ rdp_iso_recv_data(Connection *con)
   }
 
   return 0;
-
 }
 
 
