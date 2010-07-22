@@ -1,9 +1,5 @@
 TODO:
 
-* SMB support will be quite a demanding and time-consuming task but a
-  lot of research of this protocol has already been conducted by
-  Ron. Thus, a lot of our work can be based on his NSE-scripts.
-
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
 
@@ -138,6 +134,8 @@ TODO:
   SMTP support should be one goal to cover the existing email
   infrastructure.
 
+* Improve SMB module, adding NetBIOS support etc.
+
 * Consider adding a spec file for distributing RPMs.
 
 * Discuss whether Ncrack should use different default username/password lists
@@ -145,8 +143,17 @@ TODO:
   
 * Consider collecting/assemblying protocol-optimized username/password lists.
 
+* Consider extending Buf()'s class functions so that you can push and pop
+  data in layers. Right now, you can only append data, but for example 
+  you cannot leave some empty space and come and fill it in later. 
+
+* Think about making Ncrack distributed (e.g with one master, several agents)
 
 ============================= :DONE: =========================================
+
+* SMB support will be quite a demanding and time-consuming task but a
+  lot of research of this protocol has already been conducted by
+  Ron. Thus, a lot of our work can be based on his NSE-scripts.
 
 * Implement option to make Ncrack stop scanning after finding the
   first credential pair (there is such an option in Hydra).  We should
