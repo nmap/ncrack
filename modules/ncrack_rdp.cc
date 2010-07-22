@@ -136,6 +136,7 @@ static void rdp_mcs_data(Connection *con, uint16_t datalen);
 static void rdp_security_exchange(Connection *con);
 static void rdp_client_info(Connection *con);
 
+
 /* ISO PDU codes */
 enum ISO_PDU_CODE
 {
@@ -676,8 +677,11 @@ rdp_iso_connection_confirm(Connection *con)
   if (tpkt->version != 3)
     fatal("rdp_module: not supported version: %d\n", tpkt->version);
 
-  if (itu_t->code != ISO_PDU_CC)
+  if (itu_t->code != ISO_PDU_CC) {
+    con->service->end.orly = true;
+    con->service->end.reason = Strndup("TPKT Connection denied.", 23);
     return -1;
+  }
 
   return 0;
 }
@@ -858,10 +862,6 @@ mcs_cjcf_error:
 static void
 rdp_mcs_connect(Connection *con)
 {
-  /* TODO: consider instead of creating separate Bufs and merging them at the
-   * end, to extend the Buf()'s class functions where you can push and pop data
-   * out of it.
-   */
   mcs_connect_initial mcs;
 
   gcc_ccr ccr;
@@ -1446,7 +1446,7 @@ rdp_security_exchange(Connection *con)
 
 
 /* 
- * Prepares a Client Info PDU 
+ * Prepares a Client Info PDU. Secure Settings Exchange phase.
  * http://msdn.microsoft.com/en-us/library/cc240473%28v=PROT.10%29.aspx
  * http://msdn.microsoft.com/en-us/library/cc240474%28v=PROT.10%29.aspx
  * http://msdn.microsoft.com/en-us/library/cc240475%28v=PROT.10%29.aspx
@@ -1517,7 +1517,7 @@ rdp_client_info(Connection *con)
   rdp_iso_data(con, total_length);
   total_length -= sizeof(mcs_data);
   rdp_mcs_data(con, total_length);
-  
+
   rdp_encrypt_data(con, (uint8_t *)data->get_dataptr(), data->get_len(), flags);
 
   delete data;
@@ -1563,11 +1563,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       con->state = RDP_MCS_RESP;
 
-      if (rdp_iso_connection_confirm(con) < 0) {
-        serv->end.orly = true;
-        serv->end.reason = Strndup("TPKT Connection denied.", 23);
+      if (rdp_iso_connection_confirm(con) < 0)
         return ncrack_module_end(nsp, con);
-      }
 
       if (con->outbuf)
         delete con->outbuf;
@@ -1697,7 +1694,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
-  
+
       rdp_client_info(con);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
