@@ -135,7 +135,8 @@ static void rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen,
 static void rdp_mcs_data(Connection *con, uint16_t datalen);
 static void rdp_security_exchange(Connection *con);
 static void rdp_client_info(Connection *con);
-static int rdp_mcs_recv_data(Connection *con, uint16_t *channel);
+static u_char *rdp_mcs_recv_data(Connection *con, uint16_t *channel);
+static int rdp_secure_recv_data(Connection *con);
 
 /* ISO PDU codes */
 enum ISO_PDU_CODE
@@ -180,6 +181,7 @@ enum ISO_PDU_CODE
 #define SEC_CLIENT_RANDOM 0x0001
 #define SEC_ENCRYPT 0x0008
 #define SEC_LOGON_INFO 0x0040
+#define SEC_LICENCE_NEG 0x0080
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
   RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, RDP_FINI };
@@ -196,6 +198,7 @@ typedef struct rpd_state {
   RC4_KEY rc4_decrypt_key;
   int rc4_keylen;
   int encrypt_use_count;
+  int decrypt_use_count;
   uint32_t server_public_key_length;
   uint16_t mcs_userid;
 
@@ -1024,7 +1027,59 @@ rdp_mcs_connect(Connection *con)
 }
 
 
+
 static int
+rdp_secure_recv_data(Connection *con)
+{
+  u_char *p;
+  uint16_t channel;
+  uint32_t flags;
+  rdp_state *info = (rdp_state *)con->misc_info;
+  uint32_t datalen;
+
+  while ((p = rdp_mcs_recv_data(con, &channel)) != NULL) {
+
+    flags = *(uint32_t *)p;
+    p += 4;
+
+    if (flags & SEC_ENCRYPT) {
+
+      /* Skip signature */
+      p += 8;
+
+      /* Decrypt Data */
+      if (info->decrypt_use_count == 4096) {
+        //TODO: update
+        info->decrypt_use_count = 0;
+      }
+
+      datalen = (ptrdiff_t)p - (ptrdiff_t)con->inbuf->get_dataptr();
+      RC4(&info->rc4_decrypt_key, datalen, p, p);
+      info->decrypt_use_count++;
+    }
+
+    if (flags & SEC_LICENCE_NEG) {
+      printf("LICENSE\n");
+      continue;
+    }
+
+    if (channel != MCS_GLOBAL_CHANNEL) {
+      printf("non-global channel\n");
+
+    }
+
+    return 0;
+  }
+
+  return -1;
+
+}
+
+
+
+
+
+static u_char *
 rdp_mcs_recv_data(Connection *con, uint16_t *channel)
 {
   u_char *p;
@@ -1032,7 +1087,7 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   uint8_t opcode;
   
   if (rdp_iso_recv_data(con) < 1)
-    return -1;
+    return NULL;
 
   p = ((u_char *)con->inbuf->get_dataptr() + sizeof(iso_tpkt)
       + sizeof(iso_itu_t_data));
@@ -1047,16 +1102,15 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
           opcode);
       con->service->end.orly = true;
       con->service->end.reason = Strndup(error, strlen(error));
-      return -1;
     }
-    return 1;
+    return NULL;
   }
 
   /* Skip userid */
   p += 2;
 
-  /* Store channel for later use */
-  *channel = *(uint16_t *)p; 
+  /* Store channel for later use (big endian value) */
+  *channel = ntohs(*(uint16_t *)p);
   p += 2;
 
   /* Skip flags */
@@ -1067,7 +1121,7 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
     p += 1;
   p += 1;
 
-  return 0;
+  return p;
 
 }
 
