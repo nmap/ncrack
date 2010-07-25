@@ -244,7 +244,7 @@ typedef struct rdp_hdr_data {
   uint16_t length;
   uint16_t code;
   uint16_t mcs_userid;
-  uint16_t shareid;
+  uint32_t shareid;
   uint8_t pad;
   uint8_t streamid;
   uint16_t remaining_length;
@@ -1829,7 +1829,7 @@ rdp_data(Connection *con, Buf *data, uint8_t pdu_type)
   Buf *rdp = new Buf();
   uint32_t total_length;
 
-  hdr.length = data->get_len();
+  hdr.length = data->get_len() + sizeof(hdr);
   hdr.mcs_userid = info->mcs_userid + 1001;
   hdr.shareid = info->shareid;
   hdr.remaining_length = hdr.length - 14;
