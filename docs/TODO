@@ -14,7 +14,6 @@ TODO:
   figure out how this works when multiple services/hosts are being
   cracked at the same time.
 
-
 * HTTP-form auth which will be based on the existing HTTP module and
   will target HTTP forms will have to ideally be able to parse the
   most common web forms out there. The user will also be given the
@@ -28,8 +27,6 @@ TODO:
   %username% #to test the user name as a password
   %rev username% #username reversed
   %%username%% #to test for %username% 
-
-* Improve current scorpion logo on the Ncrack page. An SVG file would be best.
 
 * Perhaps improve option -U and -P options
   so that user can give a comma separated list of files that will be
@@ -150,6 +147,8 @@ TODO:
 * Think about making Ncrack distributed (e.g with one master, several agents)
 
 ============================= :DONE: =========================================
+
+* Improve current scorpion logo on the Ncrack page. An SVG file would be best.
 
 * SMB support will be quite a demanding and time-consuming task but a
   lot of research of this protocol has already been conducted by
