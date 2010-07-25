@@ -136,7 +136,35 @@ static void rdp_mcs_data(Connection *con, uint16_t datalen);
 static void rdp_security_exchange(Connection *con);
 static void rdp_client_info(Connection *con);
 static u_char *rdp_mcs_recv_data(Connection *con, uint16_t *channel);
-static int rdp_secure_recv_data(Connection *con);
+static u_char *rdp_secure_recv_data(Connection *con);
+static u_char *rdp_recv_data(Connection *con, uint8_t *pdu_type);
+static void rdp_data(Connection *con, Buf *data, uint8_t pdu_type);
+static void rdp_synchronize(Connection *con);
+static void rdp_control(Connection *con, uint16_t action);
+
+/* RDP PDU codes */
+enum RDP_PDU_TYPE
+{
+	RDP_PDU_DEMAND_ACTIVE = 1,
+	RDP_PDU_CONFIRM_ACTIVE = 3,
+	RDP_PDU_DEACTIVATE = 6,
+	RDP_PDU_DATA = 7
+};
+
+
+enum RDP_DATA_PDU_TYPE
+{
+	RDP_DATA_PDU_UPDATE = 2,
+	RDP_DATA_PDU_CONTROL = 20,
+	RDP_DATA_PDU_POINTER = 27,
+	RDP_DATA_PDU_INPUT = 28,
+	RDP_DATA_PDU_SYNCHRONIZE = 31,
+	RDP_DATA_PDU_BELL = 34,
+	RDP_DATA_PDU_LOGON = 38,
+	RDP_DATA_PDU_FONT2 = 39,
+	RDP_DATA_PDU_KEYBOARD_INDICATORS = 41,
+	RDP_DATA_PDU_DISCONNECT = 47
+};
 
 /* ISO PDU codes */
 enum ISO_PDU_CODE
@@ -184,7 +212,7 @@ enum ISO_PDU_CODE
 #define SEC_LICENCE_NEG 0x0080
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
-  RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, RDP_FINI };
+  RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, RDP_LOOP, RDP_FINI };
 
 typedef struct rpd_state {
 
@@ -201,8 +229,63 @@ typedef struct rpd_state {
   int decrypt_use_count;
   uint32_t server_public_key_length;
   uint16_t mcs_userid;
+  uint16_t shareid;
+
+  u_char *rdp_packet;
+  u_char *rdp_next_packet;
+
 
 } rdp_state;
+
+
+/* RDP header */
+typedef struct rdp_hdr_data {
+
+  uint16_t length;
+  uint16_t code;
+  uint16_t mcs_userid;
+  uint16_t shareid;
+  uint8_t pad;
+  uint8_t streamid;
+  uint16_t remaining_length;
+  uint8_t type;
+  uint8_t compress_type;
+  uint16_t compress_len;
+
+  rdp_hdr_data() {
+    code = RDP_PDU_DATA | 0x10;
+    pad = 0;
+    streamid = 1;
+    compress_type = 0;
+    compress_len = 0;
+  }
+
+} __attribute__((__packed__)) rdp_hdr_data;
+
+
+typedef struct rdp_sync {
+
+  uint16_t type;
+  uint16_t type2;
+
+  rdp_sync() {
+    type = 1;
+    type2 = 1002;
+  }
+} __attribute__((__packed__)) rdp_sync;
+
+
+typedef struct rdp_ctrl {
+
+  uint16_t action;
+  uint16_t user_id;
+  uint32_t control_id;
+
+  rdp_ctrl() {
+    user_id = 0;
+    control_id = 0;
+  }
+} __attribute__((__packed__)) rdp_ctrl;
 
 
 /* TPKT header */
@@ -1027,8 +1110,85 @@ rdp_mcs_connect(Connection *con)
 }
 
 
+static void
+rdp_demand_active(Connection *con, u_char *p)
+{
 
+
+
+}
+
+
+
+enum { LOOP_WRITE, LOOP_END, LOOP_NOTH };
 static int
+rdp_process_loop(Connection *con)
+{
+  bool loop = true;
+  uint8_t pdu_type;
+  rdp_state *info = (rdp_state *)con->misc_info;
+  u_char *end = (u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len();
+  u_char *p;
+
+  while (loop) {
+
+    p = rdp_recv_data(con, &pdu_type);
+
+    switch (pdu_type) {
+      case RDP_PDU_DEMAND_ACTIVE:
+        rdp_demand_active(con, p);
+        return LOOP_WRITE;
+      case RDP_PDU_DATA:
+        ;
+
+    }
+
+    loop = info->rdp_next_packet < end;
+
+  }
+
+
+}
+
+
+
+
+static u_char *
+rdp_recv_data(Connection *con, uint8_t *pdu_type)
+{
+  rdp_state *info = (rdp_state *)con->misc_info;
+  u_char *end = (u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len();
+  uint16_t length;
+
+  /* WARNING: This only supports RDP version 4 */
+
+  if (info->rdp_packet == NULL || (end >= info->rdp_packet)) {
+    info->rdp_packet = rdp_secure_recv_data(con);
+    if (info->rdp_packet == NULL)
+      return NULL;
+
+    info->rdp_packet = info->rdp_next_packet;
+  }
+  
+  /* Get the length */
+  length = *(uint16_t *)info->rdp_packet;
+  info->rdp_packet += 2;
+
+  /* Get pdu type */
+  *pdu_type = *(uint16_t *)info->rdp_packet & 0xf;
+  info->rdp_packet += 2;
+
+  /* Skip userid */
+  info->rdp_packet += 1;
+
+  info->rdp_next_packet += length;
+
+  return info->rdp_packet;
+}
+
+
+
+static u_char*
 rdp_secure_recv_data(Connection *con)
 {
   u_char *p;
@@ -1053,7 +1213,7 @@ rdp_secure_recv_data(Connection *con)
         info->decrypt_use_count = 0;
       }
 
-      datalen = (ptrdiff_t)p - (ptrdiff_t)con->inbuf->get_dataptr();
+      datalen = (ptrdiff_t)con->inbuf->get_len() - (ptrdiff_t)p;
       RC4(&info->rc4_decrypt_key, datalen, p, p);
       info->decrypt_use_count++;
     }
@@ -1068,15 +1228,12 @@ rdp_secure_recv_data(Connection *con)
 
     }
 
-    return 0;
+    return p;
   }
 
-  return -1;
+  return NULL;
 
 }
-
-
-
 
 
 static u_char *
@@ -1632,6 +1789,67 @@ rdp_client_info(Connection *con)
   free(u_workdingdir);
 
 }
+  
+
+static void
+rdp_synchronize(Connection *con)
+{
+  Buf *data = new Buf();
+  rdp_sync sync;
+  data->append(&sync, sizeof(sync));
+
+  rdp_data(con, data, RDP_DATA_PDU_SYNCHRONIZE);
+
+}
+
+
+static void
+rdp_control(Connection *con, uint16_t action)
+{
+  Buf *data = new Buf();
+  rdp_ctrl control;
+
+  control.action = action;
+
+  rdp_data(con, data, RDP_DATA_PDU_CONTROL);
+
+}
+
+
+
+/* 
+ * must free data after completion 
+ */
+static void
+rdp_data(Connection *con, Buf *data, uint8_t pdu_type)
+{
+  rdp_hdr_data hdr;
+  rdp_state *info = (rdp_state *)con->misc_info;
+  uint16_t flags = SEC_ENCRYPT;
+  Buf *rdp = new Buf();
+  uint32_t total_length;
+
+  hdr.length = data->get_len();
+  hdr.mcs_userid = info->mcs_userid + 1001;
+  hdr.shareid = info->shareid;
+  hdr.remaining_length = hdr.length - 14;
+  hdr.type = pdu_type;
+
+  rdp->append(data->get_dataptr(), data->get_len());
+  rdp->append(&hdr, sizeof(hdr));
+
+  total_length = sizeof(hdr) + data->get_len();  
+  total_length += sizeof(mcs_data) + sizeof(sec_header);
+  rdp_iso_data(con, total_length);
+  total_length -= sizeof(mcs_data);
+  rdp_mcs_data(con, total_length);
+
+  rdp_encrypt_data(con, (uint8_t *)rdp->get_dataptr(), rdp->get_len(), flags);
+
+  delete rdp;
+  delete data;
+
+}
 
 
 
@@ -1642,6 +1860,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
   Service *serv = con->service;
   void *ioptr;
   rdp_state *info = NULL;
+  int loop_val;
 
   if (con->misc_info)
     info = (rdp_state *) con->misc_info;
@@ -1773,6 +1992,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       break;
 
     case RDP_SEC_EXCHANGE:
+
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
@@ -1793,7 +2013,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
     case RDP_CLIENT_INFO:
 
-      con->state = RDP_FINI;
+      con->state = RDP_LOOP;
 
       if (con->outbuf)
         delete con->outbuf;
@@ -1803,6 +2023,32 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case RDP_LOOP:
+
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = RDP_LOOP;
+
+      loop_val = rdp_process_loop(con);
+      switch (loop_val) {
+        case LOOP_WRITE:
+          nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+            (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+          break;
+        case LOOP_END:
+          ;
+          break;
+        case LOOP_NOTH:
+          nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+          break;
+        default:
+          nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+          break;
+      }
+
       break;
 
     case RDP_FINI:
