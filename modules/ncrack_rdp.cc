@@ -288,6 +288,160 @@ typedef struct rdp_ctrl {
 } __attribute__((__packed__)) rdp_ctrl;
 
 
+/* 
+ * Client Confirm Active PDU
+ * http://msdn.microsoft.com/en-us/library/cc240487%28v=PROT.10%29.aspx
+ */
+#define RDP_SOURCE "MSTSC"
+typedef struct rdp_confirm_active_pdu {
+
+  uint16_t length;
+  uint16_t type;
+  uint16_t mcs_userid;
+  uint32_t shareid;
+  uint16_t userid;
+  uint16_t source_len;
+  uint16_t caplen;
+  u_char source[sizeof(RDP_SOURCE)];
+  uint16_t num_caps;
+  uint16_t pad;
+
+  rdp_confirm_active_pdu() {
+
+    type = RDP_PDU_CONFIRM_ACTIVE | 0x10;
+    userid = 0x3ea;
+    source_len = sizeof(RDP_SOURCE);
+    memcpy(source, RDP_SOURCE, sizeof(RDP_SOURCE));
+    num_caps = 0xd;
+    memset(&pad, 0, sizeof(pad));
+  } 
+
+} __attribute__((__packed__)) rdp_confirm_active_pdu;
+
+
+/* RDP capabilities */
+#define RDP_CAPSET_GENERAL 1	/* generalCapabilitySet in T.128 p.138 */
+#define RDP_CAPLEN_GENERAL 0x18
+typedef struct rdp_general_caps {
+
+  uint16_t type;
+  uint16_t len;
+
+  uint16_t os_major;
+  uint16_t os_minor;
+  uint16_t protocol_version;
+  uint16_t pad;
+  uint16_t compression_type;
+  uint16_t pad2; /* careful with this, might trigger rdp5 */
+  uint16_t update_cap;
+  uint16_t remote_unshare_cap;
+  uint16_t compression_level;
+  uint16_t pad3;
+
+  rdp_general_caps() {
+
+    type = RDP_CAPSET_GENERAL;
+    len = RDP_CAPLEN_GENERAL;
+    os_major = 1;
+    os_minor = 3;
+    protocol_version = 0x200;
+    pad = 0;
+    compression_type = 0;
+    pad2 = 0;
+    update_cap = 0;
+    remote_unshare_cap = 0;
+    compression_level = 0;
+    pad3 = 0;
+  }
+
+} __attribute__((__packed__)) rdp_general_caps;
+
+
+#define RDP_CAPSET_BITMAP	2
+#define RDP_CAPLEN_BITMAP	0x1C
+typedef struct rdp_bitmap_caps { 
+
+  uint16_t type;
+  uint16_t len;
+  uint16_t bpp;
+  uint16_t bpp1;
+  uint16_t bpp2;
+  uint16_t bpp3;
+  uint16_t width;
+  uint16_t height;
+  uint16_t pad;
+  uint16_t allow_resize;
+  uint16_t compression;
+  uint16_t unknown1;
+  uint16_t unknown2;
+  uint16_t pad2;
+
+  rdp_bitmap_caps() {
+    type = RDP_CAPSET_BITMAP;
+    len = RDP_CAPLEN_BITMAP;
+    bpp = 8;
+    bpp1 = 1;
+    bpp2 = 1;
+    bpp3 = 1;
+    width = 800;
+    height = 600;
+    pad = 0;
+    allow_resize = 1;
+    compression = 0;
+    unknown1 = 0;
+    unknown2 = 0;
+    pad2 = 0;
+  } 
+
+} __attribute__((__packed__)) rdp_bitmap_caps;
+
+
+typedef struct rdp_order_caps {
+
+  uint8_t term_desc[20];
+  uint16_t cache_x;
+  uint16_t cache_y;
+  uint16_t pad;
+  uint16_t max_order;
+  uint16_t num_fonts;
+  uint16_t cap_flags;
+  uint16_t orders_supported;
+
+  struct order {
+
+    uint8_t dest_blt;
+    uint8_t pat_blt;
+    uint8_t screen_blt;
+    uint8_t mem_blt;
+    uint8_t tri_blt;
+    uint8_t pad[3];
+    uint8_t line1;
+    uint8_t line2;
+    uint8_t rect;
+    uint8_t desksave;
+    uint8_t pad2;
+    uint8_t mem_blt2;
+    uint8_t tri_blt2;
+    uint8_t pad3[5];
+    uint8_t polygon1;
+    uint8_t polygon2;
+    uint8_t polyline;
+    uint8_t pad4[2];
+    uint8_t ellipse1;
+    uint8_t ellipse2;
+    uint8_t text2;
+    uint8_t pad5[4];
+  } __attribute__((__packed__)) order;
+  
+  uint16_t text_cap_flags;
+  uint8_t pad2[6];
+  uint32_t desk_cache_size;
+  uint32_t unknown1;
+  uint32_t unknown2;
+
+} __attribute__((__packed__)) rdp_order_caps;
+
+
 /* TPKT header */
 typedef struct iso_tpkt {
 
@@ -1169,7 +1323,7 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
 
     info->rdp_packet = info->rdp_next_packet;
   }
-  
+
   /* Get the length */
   length = *(uint16_t *)info->rdp_packet;
   info->rdp_packet += 2;
@@ -1242,7 +1396,7 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   u_char *p;
   char error[64];
   uint8_t opcode;
-  
+
   if (rdp_iso_recv_data(con) < 1)
     return NULL;
 
@@ -1789,7 +1943,7 @@ rdp_client_info(Connection *con)
   free(u_workdingdir);
 
 }
-  
+
 
 static void
 rdp_synchronize(Connection *con)
@@ -1814,6 +1968,24 @@ rdp_control(Connection *con, uint16_t action)
   rdp_data(con, data, RDP_DATA_PDU_CONTROL);
 
 }
+
+
+static void
+rdp_confirm_active(Connection *con)
+{
+  rdp_state *info = (rdp_state *)con->misc_info;
+
+  rdp_confirm_active_pdu pdu;
+  uint16_t caplen;
+
+  pdu.mcs_userid = info->mcs_userid;
+  pdu.shareid = info->shareid;
+
+
+
+
+
+} 
 
 
 
@@ -2036,7 +2208,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       switch (loop_val) {
         case LOOP_WRITE:
           nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
-            (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+              (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
           break;
         case LOOP_END:
           ;
