@@ -491,7 +491,7 @@ typedef struct rdp_order_caps {
 
 #define RDP_CAPSET_BMPCACHE	4
 #define RDP_CAPLEN_BMPCACHE	0x28
-typedef struct bmpcache_caps {
+typedef struct rdp_bmpcache_caps {
 
   uint16_t type;
   uint16_t len;
@@ -503,7 +503,7 @@ typedef struct bmpcache_caps {
   uint16_t entries3;
   uint16_t max_cell_size3;
 
-  bmpcache_caps() {
+  rdp_bmpcache_caps() {
     type = RDP_CAPSET_BMPCACHE;
     len = RDP_CAPLEN_BMPCACHE;
     memset(&unused, 0, sizeof(unused));
@@ -515,27 +515,110 @@ typedef struct bmpcache_caps {
     max_cell_size3 = 0x1000 * ((8 + 7) / 8);
   }
 
-} __attribute__((__packed__)) bmpcache_caps;
+} __attribute__((__packed__)) rdp_bmpcache_caps;
 
 
 #define RDP_CAPSET_COLCACHE	10
 #define RDP_CAPLEN_COLCACHE	0x08
-typedef struct colcache_caps {
+typedef struct rdp_colcache_caps {
 
   uint16_t type;
   uint16_t len;
   uint16_t cache_size;
   uint16_t pad;
 
-  colcache_caps() {
+  rdp_colcache_caps() {
     type = RDP_CAPSET_COLCACHE;
     len = RDP_CAPLEN_COLCACHE;
     cache_size = 6;
     pad = 0;
   }
 
-} __attribute__((__packed__)) colcache_caps;
+} __attribute__((__packed__)) rdp_colcache_caps;
 
+
+#define RDP_CAPSET_ACTIVATE	7
+#define RDP_CAPLEN_ACTIVATE	0x0C
+typedef struct rdp_activate_caps { 
+
+  uint16_t type;
+  uint16_t len;
+  uint16_t help_key;
+  uint16_t help_index_key;
+  uint16_t extended_help_key;
+  uint16_t windows_activate;
+
+  rdp_activate_caps() {
+    type = RDP_CAPSET_ACTIVATE;
+    len = RDP_CAPLEN_ACTIVATE;
+    help_key = 0;
+    help_index_key = 0;
+    extended_help_key = 0;
+    windows_activate = 0;
+  }
+
+} __attribute__((__packed__)) rdp_activate_caps;
+
+
+#define RDP_CAPSET_CONTROL 5
+#define RDP_CAPLEN_CONTROL 0x0C
+typedef struct rdp_control_caps {
+
+  uint16_t type;
+  uint16_t len;
+  uint16_t control_caps;
+  uint16_t remote_detach;
+  uint16_t control_interest;
+  uint16_t detach_interest;
+
+  rdp_control_caps() {
+    type = RDP_CAPSET_CONTROL;
+    len = RDP_CAPLEN_CONTROL;
+    control_caps = 0;
+    remote_detach = 0;
+    control_interest = 2;
+    detach_interest = 2;
+  }
+
+} __attribute__((__packed__)) rdp_control_caps;
+
+
+#define RDP_CAPSET_POINTER 8
+#define RDP_CAPLEN_POINTER 0x08
+typedef struct rdp_pointer_caps {
+  
+  uint16_t type;
+  uint16_t len;
+  uint16_t color_ptr;
+  uint16_t cache_size;
+
+  rdp_pointer_caps() {
+    type = RDP_CAPSET_POINTER;
+    len = RDP_CAPLEN_POINTER;
+    color_ptr = 0;
+    cache_size = 20;
+  }
+
+} __attribute__((__packed__)) rdp_pointer_caps;
+
+
+#define RDP_CAPSET_SHARE 9
+#define RDP_CAPLEN_SHARE 0x08
+typedef struct rdp_share_caps { 
+
+  uint16_t type;
+  uint16_t len;
+  uint16_t userid;
+  uint16_t pad;
+
+  rdp_share_caps() {
+    type = RDP_CAPSET_SHARE;
+    len = RDP_CAPLEN_SHARE;
+    userid = 0;
+    pad = 0;
+  } 
+
+} __attribute__((__packed__)) rdp_share_caps;
 
 
 /* TPKT header */
