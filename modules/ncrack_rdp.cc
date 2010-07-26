@@ -304,7 +304,7 @@ typedef struct rdp_confirm_active_pdu {
   uint16_t caplen;
   u_char source[sizeof(RDP_SOURCE)];
   uint16_t num_caps;
-  uint16_t pad;
+  uint8_t pad[2];
 
   rdp_confirm_active_pdu() {
 
@@ -2246,12 +2246,17 @@ rdp_confirm_active(Connection *con)
   rdp_order_caps order;
   rdp_bmpcache_caps bmpcache;
   rdp_colcache_caps colcache;
+  rdp_control_caps control;
+  rdp_activate_caps activate;
   rdp_pointer_caps pointer;
   rdp_share_caps share;
   rdp_caps_0x0d caps1;
   rdp_caps_0x0c caps2;
   rdp_caps_0x0e caps3;
   rdp_caps_0x10 caps4;
+  uint16_t total_length;
+  uint32_t flags = 0x0030 | SEC_ENCRYPT;
+  Buf *data = new Buf();
 
   caplen = RDP_CAPLEN_GENERAL + RDP_CAPLEN_BITMAP + RDP_CAPLEN_ORDER
     + RDP_CAPLEN_BMPCACHE + RDP_CAPLEN_COLCACHE + RDP_CAPLEN_ACTIVATE
@@ -2264,9 +2269,30 @@ rdp_confirm_active(Connection *con)
   pdu.shareid = info->shareid;
   pdu.caplen = caplen;
 
+  total_length = 6 + 14 + caplen + sizeof(RDP_SOURCE);
+  total_length += sizeof(mcs_data) + sizeof(sec_header);
+  rdp_iso_data(con, total_length);
+  total_length -= sizeof(mcs_data);
+  rdp_mcs_data(con, total_length);
 
+  data->append(&pdu, sizeof(pdu));
+  data->append(&general, sizeof(general));
+  data->append(&bitmap, sizeof(bitmap));
+  data->append(&order, sizeof(order));
+  data->append(&bmpcache, sizeof(bmpcache));
+  data->append(&colcache, sizeof(colcache));
+  data->append(&control, sizeof(control));
+  data->append(&activate, sizeof(activate));
+  data->append(&pointer, sizeof(pointer));
+  data->append(&share, sizeof(share));
+  data->append(&caps1, sizeof(caps1));
+  data->append(&caps2, sizeof(caps2));
+  data->append(&caps3, sizeof(caps3));
+  data->append(&caps4, sizeof(caps4));
 
+  rdp_encrypt_data(con, (uint8_t *)data->get_dataptr(), data->get_len(), flags);
 
+  delete data;
 
 } 
 
