@@ -141,6 +141,10 @@ static u_char *rdp_recv_data(Connection *con, uint8_t *pdu_type);
 static void rdp_data(Connection *con, Buf *data, uint8_t pdu_type);
 static void rdp_synchronize(Connection *con);
 static void rdp_control(Connection *con, uint16_t action);
+static void rdp_confirm_active(Connection *con);
+static void rdp_input_msg(Connection *con, uint32_t time, uint16_t message_type,
+    uint16_t device_flags, uint16_t param1, uint16_t param2);
+
 
 /* RDP PDU codes */
 enum RDP_PDU_TYPE
@@ -261,6 +265,24 @@ typedef struct rdp_hdr_data {
   }
 
 } __attribute__((__packed__)) rdp_hdr_data;
+
+
+typedef struct rdp_input_event {
+
+  uint16_t num_events;
+  uint16_t pad;
+  uint32_t time;
+  uint16_t message_type;
+  uint16_t device_flags;
+  uint16_t param1;
+  uint16_t param2;
+
+  rdp_input_event() {
+    num_events = 1;
+    pad = 0;
+  }
+
+} __attribute__((__packed__)) rdp_input_event;
 
 
 typedef struct rdp_sync {
@@ -2208,6 +2230,26 @@ rdp_client_info(Connection *con)
   free(u_workdingdir);
 
 }
+
+
+static void
+rdp_input_msg(Connection *con, uint32_t time, uint16_t message_type,
+    uint16_t device_flags, uint16_t param1, uint16_t param2)
+{
+  rdp_input_event input;
+  Buf *data = new Buf();
+
+  input.time = time;
+  input.message_type = message_type;
+  input.device_flags = device_flags;
+  input.param1 = param1;
+  input.param2 = param2;
+
+  data->append(&input, sizeof(input));
+
+  rdp_data(con, data, RDP_DATA_PDU_INPUT);
+}
+
 
 
 static void
