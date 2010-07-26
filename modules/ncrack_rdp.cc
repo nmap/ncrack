@@ -396,8 +396,12 @@ typedef struct rdp_bitmap_caps {
 } __attribute__((__packed__)) rdp_bitmap_caps;
 
 
+#define RDP_CAPSET_ORDER 3
+#define RDP_CAPLEN_ORDER 0x58
 typedef struct rdp_order_caps {
 
+  uint16_t type;
+  uint16_t len;
   uint8_t term_desc[20];
   uint16_t cache_x;
   uint16_t cache_y;
@@ -405,7 +409,6 @@ typedef struct rdp_order_caps {
   uint16_t max_order;
   uint16_t num_fonts;
   uint16_t cap_flags;
-  uint16_t orders_supported;
 
   struct order {
 
@@ -431,6 +434,32 @@ typedef struct rdp_order_caps {
     uint8_t ellipse2;
     uint8_t text2;
     uint8_t pad5[4];
+    
+    order() {
+      dest_blt = 1;
+      pat_blt = 1;
+      screen_blt = 1;
+      mem_blt = 0;
+      tri_blt = 0;
+      memset(&pad, 0, sizeof(pad));
+      line1 = 1;
+      line2 = 1;
+      rect = 1;
+      desksave = 0;
+      pad2 = 0;
+      mem_blt2 = 1;
+      tri_blt2 = 1;
+      memset(&pad3, 0, sizeof(pad3));
+      polygon1 = 0;
+      polygon2 = 0;
+      polyline = 1;
+      memset(&pad4, 0, sizeof(pad4));
+      ellipse1 = 0;
+      ellipse2 = 0;
+      text2 = 1;
+      memset(&pad5, 0, sizeof(pad5));
+    }
+
   } __attribute__((__packed__)) order;
   
   uint16_t text_cap_flags;
@@ -439,7 +468,74 @@ typedef struct rdp_order_caps {
   uint32_t unknown1;
   uint32_t unknown2;
 
+  rdp_order_caps() {
+    type = RDP_CAPSET_ORDER;
+    len = RDP_CAPLEN_ORDER;
+    memset(&term_desc, 0, sizeof(term_desc));
+    cache_x = 1;
+    cache_y = 20;
+    pad = 0;
+    max_order = 1;
+    num_fonts = 0x147;
+    cap_flags = 0x2a;
+    order;
+    text_cap_flags = 0x6a1;
+    memset(&pad2, 0, sizeof(pad2));
+    desk_cache_size = 0;
+    unknown1 = 0;
+    unknown2 = 0x4e4;
+  }
+
 } __attribute__((__packed__)) rdp_order_caps;
+
+
+#define RDP_CAPSET_BMPCACHE	4
+#define RDP_CAPLEN_BMPCACHE	0x28
+typedef struct bmpcache_caps {
+
+  uint16_t type;
+  uint16_t len;
+  uint8_t unused[24];
+  uint16_t entries1;
+  uint16_t max_cell_size1;
+  uint16_t entries2;
+  uint16_t max_cell_size2;
+  uint16_t entries3;
+  uint16_t max_cell_size3;
+
+  bmpcache_caps() {
+    type = RDP_CAPSET_BMPCACHE;
+    len = RDP_CAPLEN_BMPCACHE;
+    memset(&unused, 0, sizeof(unused));
+    entries1 = 0x258;
+    max_cell_size1 = 0x100 * ((8 + 7) / 8);
+    entries2 = 0x12c;
+    max_cell_size2 = 0x400 * ((8 + 7) / 8);
+    entries3 = 0x106;
+    max_cell_size3 = 0x1000 * ((8 + 7) / 8);
+  }
+
+} __attribute__((__packed__)) bmpcache_caps;
+
+
+#define RDP_CAPSET_COLCACHE	10
+#define RDP_CAPLEN_COLCACHE	0x08
+typedef struct colcache_caps {
+
+  uint16_t type;
+  uint16_t len;
+  uint16_t cache_size;
+  uint16_t pad;
+
+  colcache_caps() {
+    type = RDP_CAPSET_COLCACHE;
+    len = RDP_CAPLEN_COLCACHE;
+    cache_size = 6;
+    pad = 0;
+  }
+
+} __attribute__((__packed__)) colcache_caps;
+
 
 
 /* TPKT header */
