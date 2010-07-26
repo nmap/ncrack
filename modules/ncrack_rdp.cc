@@ -144,6 +144,8 @@ static void rdp_control(Connection *con, uint16_t action);
 static void rdp_confirm_active(Connection *con);
 static void rdp_input_msg(Connection *con, uint32_t time, uint16_t message_type,
     uint16_t device_flags, uint16_t param1, uint16_t param2);
+static void rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
+    uint8_t scancode);
 
 
 /* RDP PDU codes */
@@ -179,6 +181,17 @@ enum ISO_PDU_CODE
   ISO_PDU_DT = 0xF0,  /* Data */
   ISO_PDU_ER = 0x70   /* Error */
 };
+
+enum RDP_INPUT_DEVICE
+{
+	RDP_INPUT_SYNCHRONIZE = 0,
+	RDP_INPUT_CODEPOINT = 1,
+	RDP_INPUT_VIRTKEY = 2,
+	RDP_INPUT_SCANCODE = 4,
+	RDP_INPUT_MOUSE = 0x8001
+};
+
+#define RDP_KEYPRESS 0
 
 #define CS_CORE 0xC001;
 #define CS_SECURITY 0xC002;
@@ -1554,6 +1567,9 @@ rdp_mcs_connect(Connection *con)
 static void
 rdp_demand_active(Connection *con, u_char *p)
 {
+  
+
+
 
 
 
@@ -2228,6 +2244,14 @@ rdp_client_info(Connection *con)
   free(u_password);
   free(u_shell);
   free(u_workdingdir);
+
+}
+
+static void
+rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
+    uint8_t scancode)
+{
+  rdp_input_msg(con, time, RDP_INPUT_SCANCODE, flags, scancode, 0);
 
 }
 
