@@ -298,6 +298,22 @@ typedef struct rdp_input_event {
 } __attribute__((__packed__)) rdp_input_event;
 
 
+typedeft struct rdp_fonts {
+
+  uint16_t num_fonts;
+  uint16_t pad;
+  uint16_t seq;
+  uint16_t entry_size;
+
+  rdp_fonts() {
+    num_fonts = 0;
+    pad = 0;
+    entry_size = x032;
+  }
+
+} __attribute__((__packed__)) rdp_fonts;
+
+
 typedef struct rdp_sync {
 
   uint16_t type;
@@ -2554,13 +2570,16 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       rdp_security_exchange(con);
 
+      delete con->inbuf;
+      con->inbuf = NULL;
+
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
     case RDP_CLIENT_INFO:
 
-      con->state = RDP_LOOP;
+      con->state = RDP_DEMAND_ACTIVE;
 
       if (con->outbuf)
         delete con->outbuf;
@@ -2571,6 +2590,22 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
+
+    case RDP_DEMAND_ACTIVE:
+
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+
+
+
+
+      break;
+
 
     case RDP_LOOP:
 
