@@ -146,6 +146,7 @@ static void rdp_input_msg(Connection *con, uint32_t time, uint16_t message_type,
     uint16_t device_flags, uint16_t param1, uint16_t param2);
 static void rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
     uint8_t scancode);
+static void rdp_demand_active_confirm(Connection *con, u_char *p);
 
 
 /* RDP PDU codes */
@@ -191,6 +192,15 @@ enum RDP_INPUT_DEVICE
 	RDP_INPUT_MOUSE = 0x8001
 };
 
+
+enum RDP_CONTROL_PDU_TYPE
+{
+	RDP_CTL_REQUEST_CONTROL = 1,
+	RDP_CTL_GRANT_CONTROL = 2,
+	RDP_CTL_DETACH = 3,
+	RDP_CTL_COOPERATE = 4
+};
+
 #define RDP_KEYPRESS 0
 
 #define CS_CORE 0xC001;
@@ -229,7 +239,12 @@ enum RDP_INPUT_DEVICE
 #define SEC_LICENCE_NEG 0x0080
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
-  RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, RDP_LOOP, RDP_FINI };
+  RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, 
+  RDP_DEMAND_ACTIVE, RDP_DEMAND_ACTIVE_SYNC, RDP_DEMAND_ACTIVE_CONTROL_1,
+  RDP_DEMAND_ACTIVE_CONTROL_2, RDP_DEMAND_ACTIVE_RECV_SYNC, 
+  RDP_DEMAND_ACTIVE_RECV_CONTROL_1, RDP_DEMAND_ACTIVE_RECV_CONTROL_2,
+  RDP_DEMAND_ACTIVE_SEND_INPUT,
+  RDP_LOOP, RDP_FINI };
 
 typedef struct rpd_state {
 
@@ -298,7 +313,7 @@ typedef struct rdp_input_event {
 } __attribute__((__packed__)) rdp_input_event;
 
 
-typedeft struct rdp_fonts {
+typedef struct rdp_fonts {
 
   uint16_t num_fonts;
   uint16_t pad;
@@ -308,7 +323,7 @@ typedeft struct rdp_fonts {
   rdp_fonts() {
     num_fonts = 0;
     pad = 0;
-    entry_size = x032;
+    entry_size = 0x32;
   }
 
 } __attribute__((__packed__)) rdp_fonts;
@@ -1581,15 +1596,18 @@ rdp_mcs_connect(Connection *con)
 
 
 static void
-rdp_demand_active(Connection *con, u_char *p)
+rdp_demand_active_confirm(Connection *con, u_char *p)
 {
   
+  rdp_state *info = (rdp_state *)con->misc_info;
 
+  /* Store the shareid and ingore the rest of the data in this packet */
+  info->shareid = *(uint32_t *)p;
 
-
-
-
+  /* Now prepare the confirm active egress data */
+  rdp_confirm_active(con);
 }
+
 
 
 
@@ -1609,7 +1627,7 @@ rdp_process_loop(Connection *con)
 
     switch (pdu_type) {
       case RDP_PDU_DEMAND_ACTIVE:
-        rdp_demand_active(con, p);
+        rdp_demand_active_confirm(con, p);
         return LOOP_WRITE;
       case RDP_PDU_DATA:
         ;
@@ -2596,16 +2614,93 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
+      con->state = RDP_DEMAND_ACTIVE;
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+    
+      loop_val = rdp_process_loop(con);
+      if (loop_val != LOOP_WRITE) {
+        nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+        break;
+      }
+
+      con->state = RDP_DEMAND_ACTIVE_SYNC;
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case RDP_DEMAND_ACTIVE_SYNC:
+
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
 
+      con->state = RDP_DEMAND_ACTIVE_CONTROL_1;
+  
+      rdp_synchronize(con);
 
-
-
-
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
+    case RDP_DEMAND_ACTIVE_CONTROL_1:
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      con->state = RDP_DEMAND_ACTIVE_CONTROL_2;
+  
+      rdp_control(con, RDP_CTL_COOPERATE);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+    
+    case RDP_DEMAND_ACTIVE_CONTROL_2:
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      con->state = RDP_DEMAND_ACTIVE_RECV_SYNC;
+  
+      rdp_control(con, RDP_CTL_REQUEST_CONTROL);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+
+    case RDP_DEMAND_ACTIVE_RECV_SYNC:
+
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = RDP_DEMAND_ACTIVE_RECV_CONTROL_1;
+      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+      break;
+
+    case RDP_DEMAND_ACTIVE_RECV_CONTROL_1:
+
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = RDP_DEMAND_ACTIVE_RECV_CONTROL_2;
+      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+      break;
+
+    case RDP_DEMAND_ACTIVE_RECV_CONTROL_2:
+
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = RDP_DEMAND_ACTIVE_SEND_INPUT;
+      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+      break;
 
     case RDP_LOOP:
 
