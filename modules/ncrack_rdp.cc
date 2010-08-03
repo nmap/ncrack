@@ -265,7 +265,7 @@ typedef struct rpd_state {
   int decrypt_use_count;
   uint32_t server_public_key_length;
   uint16_t mcs_userid;
-  uint16_t shareid;
+  uint32_t shareid;
 
   u_char *rdp_packet;
   u_char *rdp_next_packet;
@@ -459,7 +459,7 @@ typedef struct rdp_bitmap_caps {
     allow_resize = 1;
     compression = 0;
     unknown1 = 0;
-    unknown2 = 0;
+    unknown2 = 1;
     pad2 = 0;
   } 
 
@@ -509,23 +509,23 @@ typedef struct rdp_order_caps {
       dest_blt = 1;
       pat_blt = 1;
       screen_blt = 1;
-      mem_blt = 0;
+      mem_blt = 1;
       tri_blt = 0;
       memset(&pad, 0, sizeof(pad));
       line1 = 1;
       line2 = 1;
       rect = 1;
-      desksave = 0;
+      desksave = 1;
       pad2 = 0;
       mem_blt2 = 1;
       tri_blt2 = 1;
       memset(&pad3, 0, sizeof(pad3));
-      polygon1 = 0;
-      polygon2 = 0;
+      polygon1 = 1;
+      polygon2 = 1;
       polyline = 1;
       memset(&pad4, 0, sizeof(pad4));
-      ellipse1 = 0;
-      ellipse2 = 0;
+      ellipse1 = 1;
+      ellipse2 = 1;
       text2 = 1;
       memset(&pad5, 0, sizeof(pad5));
     }
@@ -551,7 +551,7 @@ typedef struct rdp_order_caps {
     order;
     text_cap_flags = 0x6a1;
     memset(&pad2, 0, sizeof(pad2));
-    desk_cache_size = 0;
+    desk_cache_size = 0x38400;
     unknown1 = 0;
     unknown2 = 0x4e4;
   }
@@ -712,7 +712,7 @@ typedef struct rdp_caps_0x0d {
 
   rdp_caps_0x0d() {
     id = 0x0d;
-    length = 0x54;
+    length = 0x58;
     memcpy(caps, caps_0x0d_array, sizeof(caps_0x0d_array));
   }
 
@@ -728,7 +728,7 @@ typedef struct rdp_caps_0x0c {
 
   rdp_caps_0x0c() {
     id = 0x0c;
-    length = 0x04;
+    length = 0x08;
     memcpy(caps, caps_0x0c_array, sizeof(caps_0x0c_array));
   }
 
@@ -744,7 +744,7 @@ typedef struct rdp_caps_0x0e {
 
   rdp_caps_0x0e() {
     id = 0x0e;
-    length = 0x04;
+    length = 0x08;
     memcpy(caps, caps_0x0e_array, sizeof(caps_0x0e_array));
   }
 
@@ -767,7 +767,7 @@ typedef struct rdp_caps_0x10 {
 
   rdp_caps_0x10() {
     id = 0x10;
-    length = 0x30;
+    length = 0x34;
     memcpy(caps, caps_0x10_array, sizeof(caps_0x10_array));
   }
 
@@ -1748,7 +1748,6 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   char error[64];
   uint8_t opcode;
 
-  printf("MCS RECV\n");
 
   if (rdp_iso_recv_data(con) < 0)
     return NULL;
@@ -2282,17 +2281,15 @@ rdp_client_info(Connection *con)
    * strings, which are not included in the lengths 
    * see: http://msdn.microsoft.com/en-us/library/cc240475%28v=PROT.10%29.aspx
    */
-//  printf("username: %s pass: %s\n", con->user, con->pass);
+  printf("username: %s pass: %s\n", con->user, con->pass);
 
   total_length = 18 + domain_length + username_length + password_length +
     shell_length + workingdir_length + 10; 
 
-#if 0
   printf("-----------DATA--------\n");
   char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
   log_write(LOG_PLAIN, "%s", string);
   printf("-----------DATA--------\n");
-#endif
 
   total_length += sizeof(mcs_data) + sizeof(sec_header);
   rdp_iso_data(con, total_length);
@@ -2376,8 +2373,8 @@ rdp_confirm_active(Connection *con)
   rdp_order_caps order;
   rdp_bmpcache_caps bmpcache;
   rdp_colcache_caps colcache;
-  rdp_control_caps control;
   rdp_activate_caps activate;
+  rdp_control_caps control;
   rdp_pointer_caps pointer;
   rdp_share_caps share;
   rdp_caps_0x0d caps1;
@@ -2390,20 +2387,19 @@ rdp_confirm_active(Connection *con)
 
   caplen = RDP_CAPLEN_GENERAL + RDP_CAPLEN_BITMAP + RDP_CAPLEN_ORDER
     + RDP_CAPLEN_BMPCACHE + RDP_CAPLEN_COLCACHE + RDP_CAPLEN_ACTIVATE
-    + RDP_CAPLEN_CONTROL + RDP_CAPLEN_SHARE 
+    + RDP_CAPLEN_CONTROL + RDP_CAPLEN_POINTER + RDP_CAPLEN_SHARE 
     + sizeof(caps1) + sizeof(caps2) + sizeof(caps3) + sizeof(caps4)
     + 4;
 
+  printf("caplen %u \n", caplen);
+
   pdu.length = 2 + 14 + caplen + sizeof(RDP_SOURCE);
-  pdu.mcs_userid = info->mcs_userid;
+  pdu.mcs_userid = info->mcs_userid + 1001;
   pdu.shareid = info->shareid;
+  printf("shareid %u %x \n", pdu.shareid, pdu.shareid);
+
   pdu.caplen = caplen;
 
-  total_length = 6 + 14 + caplen + sizeof(RDP_SOURCE);
-  total_length += sizeof(mcs_data) + sizeof(sec_header);
-  rdp_iso_data(con, total_length);
-  total_length -= sizeof(mcs_data);
-  rdp_mcs_data(con, total_length);
 
   data->append(&pdu, sizeof(pdu));
   data->append(&general, sizeof(general));
@@ -2411,14 +2407,26 @@ rdp_confirm_active(Connection *con)
   data->append(&order, sizeof(order));
   data->append(&bmpcache, sizeof(bmpcache));
   data->append(&colcache, sizeof(colcache));
-  data->append(&control, sizeof(control));
   data->append(&activate, sizeof(activate));
+  data->append(&control, sizeof(control));
   data->append(&pointer, sizeof(pointer));
   data->append(&share, sizeof(share));
   data->append(&caps1, sizeof(caps1));
   data->append(&caps2, sizeof(caps2));
   data->append(&caps3, sizeof(caps3));
   data->append(&caps4, sizeof(caps4));
+
+  total_length = data->get_len();
+  total_length += sizeof(mcs_data) + sizeof(sec_header);
+  rdp_iso_data(con, total_length);
+  total_length -= sizeof(mcs_data);
+  rdp_mcs_data(con, total_length);
+
+
+  printf("-----------DATA-------- %u \n", data->get_len());
+  char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
+  log_write(LOG_PLAIN, "%s", string);
+  printf("-----------DATA--------\n");
 
   rdp_encrypt_data(con, (uint8_t *)data->get_dataptr(), data->get_len(), flags);
 
@@ -2687,6 +2695,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->state = RDP_DEMAND_ACTIVE_CONTROL_2;
 
       rdp_control(con, RDP_CTL_COOPERATE);
+      sleep(2);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
@@ -2701,6 +2710,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->state = RDP_DEMAND_ACTIVE_RECV_SYNC;
 
       rdp_control(con, RDP_CTL_REQUEST_CONTROL);
+      sleep(2);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
@@ -2733,6 +2743,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->state = RDP_DEMAND_ACTIVE_SEND_INPUT;
       nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
       printf("BEFORE SEND_INPUT\n");
+      sleep(20);
       exit(0);
 
       break;
