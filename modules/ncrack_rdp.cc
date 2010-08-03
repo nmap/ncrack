@@ -238,6 +238,10 @@ enum RDP_CONTROL_PDU_TYPE
 #define SEC_LOGON_INFO 0x0040
 #define SEC_LICENCE_NEG 0x0080
 
+#define RDP_LOGON_AUTO 0x0008
+#define RDP_LOGON_NORMAL 0x0033
+
+
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
   RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, 
   RDP_DEMAND_ACTIVE, RDP_DEMAND_ACTIVE_SYNC, RDP_DEMAND_ACTIVE_CONTROL_1,
@@ -1616,7 +1620,7 @@ static int
 rdp_process_loop(Connection *con)
 {
   bool loop = true;
-  uint8_t pdu_type;
+  uint8_t pdu_type = 0;
   rdp_state *info = (rdp_state *)con->misc_info;
   u_char *end = (u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len();
   u_char *p;
@@ -1628,9 +1632,16 @@ rdp_process_loop(Connection *con)
     switch (pdu_type) {
       case RDP_PDU_DEMAND_ACTIVE:
         rdp_demand_active_confirm(con, p);
+        printf("DEMAND ACTIVE\n");
         return LOOP_WRITE;
+
       case RDP_PDU_DATA:
-        ;
+        printf("PDU DATA\n");
+        return LOOP_NOTH;
+
+      default:
+        printf("default\n");
+        return LOOP_NOTH;
 
     }
 
@@ -1653,13 +1664,15 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
 
   /* WARNING: This only supports RDP version 4 */
 
-  if (info->rdp_packet == NULL || (end >= info->rdp_packet)) {
+  if (info->rdp_packet == NULL || (info->rdp_next_packet >= end) 
+      || (info->rdp_next_packet == NULL)) {
     info->rdp_packet = rdp_secure_recv_data(con);
     if (info->rdp_packet == NULL)
       return NULL;
 
+    info->rdp_next_packet = info->rdp_packet;
+  } else
     info->rdp_packet = info->rdp_next_packet;
-  }
 
   /* Get the length */
   length = *(uint16_t *)info->rdp_packet;
@@ -1688,7 +1701,8 @@ rdp_secure_recv_data(Connection *con)
   rdp_state *info = (rdp_state *)con->misc_info;
   uint32_t datalen;
 
-  while ((p = rdp_mcs_recv_data(con, &channel)) != NULL) {
+
+  if ((p = rdp_mcs_recv_data(con, &channel)) != NULL) {
 
     flags = *(uint32_t *)p;
     p += 4;
@@ -1704,14 +1718,15 @@ rdp_secure_recv_data(Connection *con)
         info->decrypt_use_count = 0;
       }
 
-      datalen = (ptrdiff_t)con->inbuf->get_len() - (ptrdiff_t)p;
+      datalen = ((u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len()) - p;
+
       RC4(&info->rc4_decrypt_key, datalen, p, p);
       info->decrypt_use_count++;
     }
 
     if (flags & SEC_LICENCE_NEG) {
       printf("LICENSE\n");
-      continue;
+      return NULL;
     }
 
     if (channel != MCS_GLOBAL_CHANNEL) {
@@ -1723,7 +1738,6 @@ rdp_secure_recv_data(Connection *con)
   }
 
   return NULL;
-
 }
 
 
@@ -1734,7 +1748,9 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   char error[64];
   uint8_t opcode;
 
-  if (rdp_iso_recv_data(con) < 1)
+  printf("MCS RECV\n");
+
+  if (rdp_iso_recv_data(con) < 0)
     return NULL;
 
   p = ((u_char *)con->inbuf->get_dataptr() + sizeof(iso_tpkt)
@@ -1744,7 +1760,7 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   opcode = (*(uint8_t *)p) >> 2;
   p += 1;
 
-  if (opcode == MCS_SDIN) {
+  if (opcode != MCS_SDIN) {
     if (opcode != MCS_DPUM) {
       snprintf(error, sizeof(error), "Expected data packet, but got 0x%x.",
           opcode);
@@ -1770,7 +1786,6 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   p += 1;
 
   return p;
-
 }
 
 
@@ -2213,7 +2228,7 @@ rdp_client_info(Connection *con)
   uint16_t username_length, password_length, domain_length,
            shell_length, workingdir_length;
   uint32_t total_length;
-  uint32_t flags = SEC_ENCRYPT | SEC_LOGON_INFO;
+  uint32_t flags = RDP_LOGON_AUTO | RDP_LOGON_NORMAL;
 
   data = new Buf();
   domain[0] = shell[0] = workingdir[0] = 0;
@@ -2239,6 +2254,7 @@ rdp_client_info(Connection *con)
    */
   data->append(pad0, 4);
   data->append(&flags, sizeof(flags));
+
   data->append(&domain_length, sizeof(domain_length));
   data->append(&username_length, sizeof(username_length));
   data->append(&password_length, sizeof(password_length));
@@ -2252,7 +2268,11 @@ rdp_client_info(Connection *con)
    */
   data->append(u_domain, domain_length ? domain_length : 2);
   data->append(u_username, username_length ? username_length : 2);
+  data->append(pad0, 2);  /* extra unicode NULL terminator */
+    
   data->append(u_password, password_length ? password_length : 2);
+  data->append(pad0, 2);
+
   data->append(u_shell, shell_length ? shell_length : 2);
   data->append(u_workdingdir, workingdir_length ? workingdir_length : 2);
 
@@ -2262,15 +2282,25 @@ rdp_client_info(Connection *con)
    * strings, which are not included in the lengths 
    * see: http://msdn.microsoft.com/en-us/library/cc240475%28v=PROT.10%29.aspx
    */
+//  printf("username: %s pass: %s\n", con->user, con->pass);
+
   total_length = 18 + domain_length + username_length + password_length +
-    shell_length + workingdir_length + 10;
+    shell_length + workingdir_length + 10; 
+
+#if 0
+  printf("-----------DATA--------\n");
+  char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
+  log_write(LOG_PLAIN, "%s", string);
+  printf("-----------DATA--------\n");
+#endif
 
   total_length += sizeof(mcs_data) + sizeof(sec_header);
   rdp_iso_data(con, total_length);
   total_length -= sizeof(mcs_data);
   rdp_mcs_data(con, total_length);
 
-  rdp_encrypt_data(con, (uint8_t *)data->get_dataptr(), data->get_len(), flags);
+  rdp_encrypt_data(con, (uint8_t *)data->get_dataptr(), data->get_len(),
+      SEC_LOGON_INFO | SEC_ENCRYPT);
 
   delete data;
   free(u_domain);
@@ -2619,10 +2649,12 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
-    
+
       loop_val = rdp_process_loop(con);
       if (loop_val != LOOP_WRITE) {
-        nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+        //nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+        delete con->inbuf;
+        con->inbuf = NULL;
         break;
       }
 
@@ -2639,7 +2671,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->outbuf = new Buf();
 
       con->state = RDP_DEMAND_ACTIVE_CONTROL_1;
-  
+
       rdp_synchronize(con);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
@@ -2653,13 +2685,13 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->outbuf = new Buf();
 
       con->state = RDP_DEMAND_ACTIVE_CONTROL_2;
-  
+
       rdp_control(con, RDP_CTL_COOPERATE);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
-    
+
     case RDP_DEMAND_ACTIVE_CONTROL_2:
 
       if (con->outbuf)
@@ -2667,7 +2699,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->outbuf = new Buf();
 
       con->state = RDP_DEMAND_ACTIVE_RECV_SYNC;
-  
+
       rdp_control(con, RDP_CTL_REQUEST_CONTROL);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
@@ -2700,6 +2732,9 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       con->state = RDP_DEMAND_ACTIVE_SEND_INPUT;
       nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+      printf("BEFORE SEND_INPUT\n");
+      exit(0);
+
       break;
 
     case RDP_LOOP:
