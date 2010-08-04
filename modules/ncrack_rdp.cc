@@ -1621,6 +1621,14 @@ rdp_demand_active_confirm(Connection *con, u_char *p)
 }
 
 
+
+/*****************************************************************************
+ * Maps disconnection error codes to human readable text. Upon first
+ * invocation, it initializes an STL map accordingly. It then performs a lookup
+ * based on the 32bit 'code' that gets as input. The message string is
+ * dynamically allocated here, so the caller is responsible for freeing it
+ * later.
+ */
 static char *
 rdp_disc_reason(uint32_t code)
 {
@@ -1672,6 +1680,11 @@ rdp_disc_reason(uint32_t code)
 
 
 
+/*****************************************************************************
+ * Parses an RDP data PDU. A disconnection PDU is one example and is useful for
+ * realizing why the RDP server decided to choke on us and close the
+ * connection.
+ */
 static int
 rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
 {
@@ -1700,6 +1713,7 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
       disc_reason = *(uint32_t *)p;
       disc_msg = rdp_disc_reason(disc_reason);
       log_write(LOG_PLAIN, "RDP: Disconnected: %s\n", disc_msg);
+      free(disc_msg);
       return -1;
       break;
 
