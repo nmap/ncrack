@@ -2507,6 +2507,7 @@ rdp_control(Connection *con, uint16_t action)
   rdp_ctrl control;
 
   control.action = action;
+  data->append(&control, sizeof(control));
 
   rdp_data(con, data, RDP_DATA_PDU_CONTROL);
 
@@ -2591,7 +2592,7 @@ rdp_data(Connection *con, Buf *data, uint8_t pdu_type)
 {
   rdp_hdr_data hdr;
   rdp_state *info = (rdp_state *)con->misc_info;
-  uint16_t flags = SEC_ENCRYPT;
+  uint32_t flags = SEC_ENCRYPT;
   Buf *rdp = new Buf();
   uint32_t total_length;
 
@@ -2823,18 +2824,6 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
     case RDP_DEMAND_ACTIVE_SYNC:
 
-#if 0
-      /* ADDED TEMPORARILY */
-      if (rdp_loop_read(nsp, con) < 0)
-        break;
-
-      rdp_process_loop(con);
-
-      printf("Sleep\n");
-      sleep(200);
-      /****************************/
-#endif
-
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
@@ -2856,7 +2845,6 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->state = RDP_DEMAND_ACTIVE_CONTROL_2;
 
       rdp_control(con, RDP_CTL_COOPERATE);
-      sleep(2);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
@@ -2871,7 +2859,6 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->state = RDP_DEMAND_ACTIVE_RECV_SYNC;
 
       rdp_control(con, RDP_CTL_REQUEST_CONTROL);
-      sleep(2);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
@@ -2883,6 +2870,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
+      rdp_process_loop(con);
+
       con->state = RDP_DEMAND_ACTIVE_RECV_CONTROL_1;
       nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
       break;
@@ -2891,6 +2880,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       if (rdp_loop_read(nsp, con) < 0)
         break;
+
+      rdp_process_loop(con);
 
       con->state = RDP_DEMAND_ACTIVE_RECV_CONTROL_2;
       nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
@@ -2901,10 +2892,10 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
-      con->state = RDP_DEMAND_ACTIVE_SEND_INPUT;
-      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+      rdp_process_loop(con);
+      
       printf("BEFORE SEND_INPUT\n");
-      sleep(20);
+      sleep(200);
       exit(0);
 
       break;
