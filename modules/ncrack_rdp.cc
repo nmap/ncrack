@@ -154,6 +154,7 @@ static void rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
 static void rdp_demand_active_confirm(Connection *con, u_char *p);
 static int rdp_parse_rdpdata_pdu(Connection *con, u_char *p);
 static char *rdp_disc_reason(uint32_t code);
+static void rdp_fonts_send(Connection *con, uint16_t sequence);
 
 
 /* RDP PDU codes */
@@ -254,7 +255,7 @@ enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF,
   RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, 
   RDP_DEMAND_ACTIVE, RDP_DEMAND_ACTIVE_SYNC, RDP_DEMAND_ACTIVE_RECV_SYNC, 
   RDP_DEMAND_ACTIVE_RECV_CONTROL_1, RDP_DEMAND_ACTIVE_RECV_CONTROL_2,
-  RDP_DEMAND_ACTIVE_SEND_INPUT,
+  RDP_DEMAND_ACTIVE_FONTS, RDP_DEMAND_ACTIVE_RECV_FONTS,
   RDP_LOOP, RDP_FINI };
 
 typedef struct rpd_state {
@@ -2486,6 +2487,20 @@ rdp_input_msg(Connection *con, uint32_t time, uint16_t message_type,
 }
 
 
+static void 
+rdp_fonts_send(Connection *con, uint16_t sequence)
+{
+  Buf *data = new Buf();
+  rdp_fonts fonts;
+
+  fonts.seq = sequence;
+
+  data->append(&fonts, sizeof(fonts));
+
+  rdp_data(con, data, RDP_DATA_PDU_FONT2);
+}
+
+
 
 static void
 rdp_synchronize(Connection *con)
@@ -2842,8 +2857,6 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
-      rdp_process_loop(con);
-
       con->state = RDP_DEMAND_ACTIVE_RECV_CONTROL_1;
       nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
       break;
@@ -2852,8 +2865,6 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       if (rdp_loop_read(nsp, con) < 0)
         break;
-
-      rdp_process_loop(con);
 
       con->state = RDP_DEMAND_ACTIVE_RECV_CONTROL_2;
       nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
@@ -2864,11 +2875,43 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
-      rdp_process_loop(con);
-      
-      printf("BEFORE SEND_INPUT\n");
-      sleep(200);
-      exit(0);
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      con->state = RDP_DEMAND_ACTIVE_FONTS;
+  
+      rdp_input_msg(con, 0, RDP_INPUT_SYNCHRONIZE, 0, 0, 0);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());  
+      break;
+
+    case RDP_DEMAND_ACTIVE_FONTS:
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      con->state = RDP_DEMAND_ACTIVE_RECV_FONTS;
+
+      rdp_fonts_send(con, 1);
+      rdp_fonts_send(con, 2);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());  
+      break;
+
+    case RDP_DEMAND_ACTIVE_RECV_FONTS:
+
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      printf("RECV FONTS\n");
+      sleep(100);
 
       break;
 
