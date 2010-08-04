@@ -1871,7 +1871,7 @@ rdp_iso_recv_data(Connection *con)
 }
 
 
-/*
+/*****************************************************************************
  * Parses and gets the Server Security Data (TS_UD_SC_SEC1) from MCS connect
  * response. Saves everything that will be needed later into rdp_state.
  * http://msdn.microsoft.com/en-us/library/cc240518%28v=PROT.10%29.aspx
@@ -2070,7 +2070,11 @@ rdp_get_crypto(Connection *con, u_char *p)
 
 
 
-
+/*****************************************************************************
+ * Parses the MCS connect response which comes as a reply from the server for
+ * our MCS connect initial request. This packet contains the server's public
+ * crypto key, which we store using 'rdp_get_crypto()'.
+ */
 static int
 rdp_mcs_connect_response(Connection *con)
 {
@@ -2163,6 +2167,14 @@ rdp_mcs_connect_response(Connection *con)
 }
 
 
+/*****************************************************************************
+ * Cryptographically signs and encrypts the data and puts them in Ncrack's
+ * outbuf. It also creates the security header which is nothing more than the
+ * 32bit flags (which must contain SEC_ENCRYPT). The security header precedes
+ * the data. Since this function appends the header, the signature and the
+ * encrypted data in the 'outbuf' everything preceding them, like the ISO and
+ * MCS headers must already be there.
+ */
 static void
 rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen,
     uint32_t flags)
@@ -2200,19 +2212,10 @@ rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen,
 
   memcpy(sec.sig, md5_sig, sizeof(sec.sig));
 
-#if 0
-  printf("===========DATA=========\n");
-  char *string = hexdump((uint8_t*)data, datalen);
-  log_write(LOG_PLAIN, "%s", string);
-  printf("===========DATA=========\n");
-#endif 
-
   /* Encrypt the data */
-
-  // UPDATE KEY
   if (info->encrypt_use_count == 4096) {
     info->encrypt_use_count = 0;
-
+    // UPDATE KEY
   }
   RC4(&info->rc4_encrypt_key, datalen, data, data);
   info->encrypt_use_count++;
@@ -2225,8 +2228,11 @@ rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen,
 }
 
 
-/* 
- * Prepares a Client Security Exchange PDU
+/*****************************************************************************
+ * Prepares a Client Security Exchange PDU. This packet contains the client's
+ * random data portion needed for the cryptographic exchange. This was created
+ * by using nbase's PRNG and later encrypted in the 'rdp_get_crypto()'
+ * function. 
  * http://msdn.microsoft.com/en-us/library/cc240471%28v=PROT.10%29.aspx
  */
 static void
