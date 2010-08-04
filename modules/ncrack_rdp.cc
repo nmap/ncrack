@@ -155,6 +155,7 @@ static void rdp_demand_active_confirm(Connection *con, u_char *p);
 static int rdp_parse_rdpdata_pdu(Connection *con, u_char *p);
 static char *rdp_disc_reason(uint32_t code);
 static void rdp_fonts_send(Connection *con, uint16_t sequence);
+static void rdp_disconnect(Connection *con);
 
 
 /* RDP PDU codes */
@@ -1220,6 +1221,34 @@ rdp_loop_read(nsock_pool nsp, Connection *con)
 }
 
 
+/*****************************************************************************
+ * Prepares a Disconnect packet, which only consists of an ISO message with the
+ * appropriate code (ISO_PDU_DR). The resulting headers are placed in Ncrack's
+ * 'outbuf' buffer.
+ */
+static void
+rdp_disconnect(Connection *con)
+{
+  iso_tpkt tpkt;
+  iso_itu_t itu_t;
+
+  tpkt.version = 3;
+  tpkt.reserved = 0;
+  tpkt.length = htons(11);
+
+  itu_t.hdrlen = 6;
+  itu_t.code = ISO_PDU_DR;
+  itu_t.dst_ref = 0;
+  itu_t.src_ref = 0;
+  itu_t.class_num = 0;
+
+  con->outbuf->append(&tpkt, sizeof(tpkt));
+  con->outbuf->append(&itu_t, sizeof(iso_itu_t));
+
+}
+
+
+
 static void
 rdp_iso_connection_request(Connection *con)
 {
@@ -1717,6 +1746,12 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
       return -1;
       break;
 
+    case RDP_DATA_PDU_LOGON:
+      printf("=========LOGIN SUCCESSFUL=======\n");
+      printf("user: %s pass %s\n", con->user, con->pass);
+      return 1;
+      break;
+
     default:
       printf("PDU data unimplemented\n");
       break;
@@ -1725,7 +1760,7 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
 }
 
 
-enum { LOOP_WRITE, LOOP_END, LOOP_NOTH };
+enum { LOOP_WRITE, LOOP_DISC, LOOP_NOTH };
 static int
 rdp_process_loop(Connection *con)
 {
@@ -1738,6 +1773,8 @@ rdp_process_loop(Connection *con)
   while (loop) {
 
     p = rdp_recv_data(con, &pdu_type);
+    if (p == NULL)
+      return LOOP_DISC;
 
     switch (pdu_type) {
       case RDP_PDU_DEMAND_ACTIVE:
@@ -1755,7 +1792,8 @@ rdp_process_loop(Connection *con)
 
       case RDP_PDU_DATA:
         printf("PDU DATA\n");
-        rdp_parse_rdpdata_pdu(con, p);
+        if (rdp_parse_rdpdata_pdu(con, p) == 1)
+          printf("LOG IN\n");
         return LOOP_NOTH;
 
       default:
@@ -2896,7 +2934,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      con->state = RDP_DEMAND_ACTIVE_RECV_FONTS;
+      con->state = RDP_LOOP;
 
       rdp_fonts_send(con, 1);
       rdp_fonts_send(con, 2);
@@ -2925,11 +2963,12 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       loop_val = rdp_process_loop(con);
       switch (loop_val) {
         case LOOP_WRITE:
+          ;
+          break;
+        case LOOP_DISC:
+          rdp_disconnect(con);
           nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
               (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
-          break;
-        case LOOP_END:
-          ;
           break;
         case LOOP_NOTH:
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
