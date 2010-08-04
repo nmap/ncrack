@@ -2275,7 +2275,7 @@ rdp_security_exchange(Connection *con)
 }
 
 
-/* 
+/*****************************************************************************
  * Prepares a Client Info PDU. Secure Settings Exchange phase.
  * http://msdn.microsoft.com/en-us/library/cc240473%28v=PROT.10%29.aspx
  * http://msdn.microsoft.com/en-us/library/cc240474%28v=PROT.10%29.aspx
@@ -2371,9 +2371,13 @@ rdp_client_info(Connection *con)
   free(u_password);
   free(u_shell);
   free(u_workdingdir);
-
 }
 
+
+/*****************************************************************************
+ * Sends a certain scancode by calling 'rdp_input_msg()' accordingly. Note
+ * that the data will be saved in Ncrack's 'outbuf'.
+ */
 static void
 rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
     uint8_t scancode)
@@ -2383,6 +2387,13 @@ rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
 }
 
 
+/*****************************************************************************
+ * Sends an input message - this can be for example a keystroke or a mouse
+ * click. Ncrack usually needs to send the 'ENTER' scancode to emulate the
+ * behaviour of pressing (or clicking) 'OK' on the window that appears
+ * whenever the user authentication fails. The data are saved in
+ * Ncrack's 'outbuf'.
+ */
 static void
 rdp_input_msg(Connection *con, uint32_t time, uint16_t message_type,
     uint16_t device_flags, uint16_t param1, uint16_t param2)
