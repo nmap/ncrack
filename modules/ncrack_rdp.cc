@@ -147,6 +147,7 @@ static void rdp_input_msg(Connection *con, uint32_t time, uint16_t message_type,
 static void rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
     uint8_t scancode);
 static void rdp_demand_active_confirm(Connection *con, u_char *p);
+static void rdp_parse_rdpdata_pdu(Connection *con, u_char *p);
 
 
 /* RDP PDU codes */
@@ -154,6 +155,7 @@ enum RDP_PDU_TYPE
 {
 	RDP_PDU_DEMAND_ACTIVE = 1,
 	RDP_PDU_CONFIRM_ACTIVE = 3,
+  RDP_PDU_REDIRECT = 4,
 	RDP_PDU_DEACTIVATE = 6,
 	RDP_PDU_DATA = 7
 };
@@ -457,7 +459,7 @@ typedef struct rdp_bitmap_caps {
     height = 600;
     pad = 0;
     allow_resize = 1;
-    compression = 0;
+    compression = 1;
     unknown1 = 0;
     unknown2 = 1;
     pad2 = 0;
@@ -1613,6 +1615,40 @@ rdp_demand_active_confirm(Connection *con, u_char *p)
 }
 
 
+static void
+rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
+{
+  rdp_state *info = (rdp_state *)con->misc_info;
+  uint8_t pdu_type;
+  uint32_t disc_reason;
+
+  /* Skip shareid, padding and streamid */
+  p += 6;
+
+  /* Skip len */
+  p += 2;
+
+  /* Get pdu type */
+  pdu_type = *(uint8_t *)p;
+  p += 1;
+
+  /* Skip compression type and compression len */
+  p += 1;
+  p += 2;
+
+  switch (pdu_type) {
+
+    case RDP_DATA_PDU_DISCONNECT:
+      disc_reason = *(uint32_t *)p;
+      //print_disconnect_reason(disc_reason);
+      break;
+
+    default:
+      printf("PDU data unimplemented\n");
+      break;
+  }
+
+}
 
 
 enum { LOOP_WRITE, LOOP_END, LOOP_NOTH };
@@ -1632,15 +1668,24 @@ rdp_process_loop(Connection *con)
     switch (pdu_type) {
       case RDP_PDU_DEMAND_ACTIVE:
         rdp_demand_active_confirm(con, p);
-        printf("DEMAND ACTIVE\n");
+        printf("PDU DEMAND ACTIVE\n");
         return LOOP_WRITE;
+
+      case RDP_PDU_DEACTIVATE:
+        printf("PDU deactivate\n");
+        return LOOP_NOTH;
+
+      case RDP_PDU_REDIRECT:
+        printf("PDU REDIRECT\n");
+        return LOOP_NOTH;
 
       case RDP_PDU_DATA:
         printf("PDU DATA\n");
+        rdp_parse_rdpdata_pdu(con, p);
         return LOOP_NOTH;
 
       default:
-        printf("default\n");
+        printf("PDU default\n");
         return LOOP_NOTH;
 
     }
@@ -1683,7 +1728,7 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
   info->rdp_packet += 2;
 
   /* Skip userid */
-  info->rdp_packet += 1;
+  info->rdp_packet += 2;
 
   info->rdp_next_packet += length;
 
@@ -1709,6 +1754,7 @@ rdp_secure_recv_data(Connection *con)
 
     if (flags & SEC_ENCRYPT) {
 
+      printf("SEC ENCRYPT\n");
       /* Skip signature */
       p += 8;
 
@@ -1725,8 +1771,12 @@ rdp_secure_recv_data(Connection *con)
     }
 
     if (flags & SEC_LICENCE_NEG) {
-      printf("LICENSE\n");
+      printf("SEC LICENSE\n");
       return NULL;
+    }
+
+    if (flags & 0x0400) {
+      printf("----SEC REDIRECT-----\n");
     }
 
     if (channel != MCS_GLOBAL_CHANNEL) {
@@ -1780,9 +1830,10 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   p += 1;
 
   /* Skip length */
-  if (*(uint8_t *)p & 0x80)
-    p += 1;
+  uint8_t length = *(uint8_t *)p;
   p += 1;
+  if (length & 0x80)
+    p += 1;
 
   return p;
 }
@@ -2149,6 +2200,13 @@ rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen,
 
   memcpy(sec.sig, md5_sig, sizeof(sec.sig));
 
+#if 0
+  printf("===========DATA=========\n");
+  char *string = hexdump((uint8_t*)data, datalen);
+  log_write(LOG_PLAIN, "%s", string);
+  printf("===========DATA=========\n");
+#endif 
+
   /* Encrypt the data */
 
   // UPDATE KEY
@@ -2268,7 +2326,7 @@ rdp_client_info(Connection *con)
   data->append(u_domain, domain_length ? domain_length : 2);
   data->append(u_username, username_length ? username_length : 2);
   data->append(pad0, 2);  /* extra unicode NULL terminator */
-    
+
   data->append(u_password, password_length ? password_length : 2);
   data->append(pad0, 2);
 
@@ -2281,15 +2339,17 @@ rdp_client_info(Connection *con)
    * strings, which are not included in the lengths 
    * see: http://msdn.microsoft.com/en-us/library/cc240475%28v=PROT.10%29.aspx
    */
-  printf("username: %s pass: %s\n", con->user, con->pass);
+  //printf("username: %s pass: %s\n", con->user, con->pass);
 
   total_length = 18 + domain_length + username_length + password_length +
     shell_length + workingdir_length + 10; 
 
+#if 0
   printf("-----------DATA--------\n");
   char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
   log_write(LOG_PLAIN, "%s", string);
   printf("-----------DATA--------\n");
+#endif
 
   total_length += sizeof(mcs_data) + sizeof(sec_header);
   rdp_iso_data(con, total_length);
@@ -2391,12 +2451,9 @@ rdp_confirm_active(Connection *con)
     + sizeof(caps1) + sizeof(caps2) + sizeof(caps3) + sizeof(caps4)
     + 4;
 
-  printf("caplen %u \n", caplen);
-
   pdu.length = 2 + 14 + caplen + sizeof(RDP_SOURCE);
   pdu.mcs_userid = info->mcs_userid + 1001;
   pdu.shareid = info->shareid;
-  printf("shareid %u %x \n", pdu.shareid, pdu.shareid);
 
   pdu.caplen = caplen;
 
@@ -2422,11 +2479,12 @@ rdp_confirm_active(Connection *con)
   total_length -= sizeof(mcs_data);
   rdp_mcs_data(con, total_length);
 
-
+#if 0
   printf("-----------DATA-------- %u \n", data->get_len());
   char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
   log_write(LOG_PLAIN, "%s", string);
   printf("-----------DATA--------\n");
+#endif
 
   rdp_encrypt_data(con, (uint8_t *)data->get_dataptr(), data->get_len(), flags);
 
@@ -2667,12 +2725,26 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       }
 
       con->state = RDP_DEMAND_ACTIVE_SYNC;
+      delete con->inbuf;
+      con->inbuf = NULL;
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
     case RDP_DEMAND_ACTIVE_SYNC:
+
+#if 0
+      /* ADDED TEMPORARILY */
+      if (rdp_loop_read(nsp, con) < 0)
+        break;
+
+      rdp_process_loop(con);
+
+      printf("Sleep\n");
+      sleep(200);
+      /****************************/
+#endif
 
       if (con->outbuf)
         delete con->outbuf;
