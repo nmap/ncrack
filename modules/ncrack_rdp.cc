@@ -97,6 +97,11 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <list>
+#include <map>
+
+using namespace std;
+bool rdp_discmap_initialized = false;
+map <int, const char *> rdp_discmap;
 
 #ifdef WIN32
 #ifndef __attribute__
@@ -147,7 +152,8 @@ static void rdp_input_msg(Connection *con, uint32_t time, uint16_t message_type,
 static void rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
     uint8_t scancode);
 static void rdp_demand_active_confirm(Connection *con, u_char *p);
-static void rdp_parse_rdpdata_pdu(Connection *con, u_char *p);
+static int rdp_parse_rdpdata_pdu(Connection *con, u_char *p);
+static char *rdp_disc_reason(uint32_t code);
 
 
 /* RDP PDU codes */
@@ -1615,12 +1621,64 @@ rdp_demand_active_confirm(Connection *con, u_char *p)
 }
 
 
-static void
+static char *
+rdp_disc_reason(uint32_t code)
+{
+  char *ret;
+
+  if (rdp_discmap_initialized == false) {
+    rdp_discmap_initialized = true;
+
+    rdp_discmap.insert(make_pair(0x0000, "No information available"));
+    rdp_discmap.insert(make_pair(0x0001, "Server initiated disconnect"));
+    rdp_discmap.insert(make_pair(0x0002, "Server initiated logoff"));
+    rdp_discmap.insert(make_pair(0x0003, "Server idle timeout reached"));
+    rdp_discmap.insert(make_pair(0x0004, "Server logon timeout reached"));
+    rdp_discmap.insert(make_pair(0x0005, "The session was replaced"));
+    rdp_discmap.insert(make_pair(0x0006, "The server is out of memory"));
+    rdp_discmap.insert(make_pair(0x0007, "The server denied the connection"));
+    rdp_discmap.insert(make_pair(0x0008,
+          "The server denied the connection for security reason"));
+    rdp_discmap.insert(make_pair(0x0100, "Internal licensing error"));
+    rdp_discmap.insert(make_pair(0x0101, "No license server available"));
+    rdp_discmap.insert(make_pair(0x0102, "No valid license available"));
+    rdp_discmap.insert(make_pair(0x0103, "Invalid licensing message"));
+    rdp_discmap.insert(make_pair(0x0104,
+          "Hardware id doesn't match software license"));
+    rdp_discmap.insert(make_pair(0x0105, "Client license error"));
+    rdp_discmap.insert(make_pair(0x0106,
+          "Network error during licensing protocol"));
+    rdp_discmap.insert(make_pair(0x0107,
+          "Licensing protocol was not completed"));
+    rdp_discmap.insert(make_pair(0x0108,
+          "Incorrect client license enryption"));
+    rdp_discmap.insert(make_pair(0x0109, "Can't upgrade license"));
+    rdp_discmap.insert(make_pair(0x010a,
+          "The server is not licensed to accept remote connections"));
+    rdp_discmap.insert(make_pair(-1,
+          "Internal protocol error / Unknown reason"));
+  }
+
+  map<int, const char*>::iterator mi = rdp_discmap.end();
+  mi = rdp_discmap.find(code);
+  if (mi == rdp_discmap.end()) {
+    /* fallback to key -1 */
+    mi = rdp_discmap.find(-1);
+  }
+  ret = Strndup(mi->second, strlen(mi->second));
+
+  return ret;
+}
+
+
+
+static int
 rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
 {
   rdp_state *info = (rdp_state *)con->misc_info;
   uint8_t pdu_type;
   uint32_t disc_reason;
+  char *disc_msg;
 
   /* Skip shareid, padding and streamid */
   p += 6;
@@ -1640,7 +1698,9 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
 
     case RDP_DATA_PDU_DISCONNECT:
       disc_reason = *(uint32_t *)p;
-      //print_disconnect_reason(disc_reason);
+      disc_msg = rdp_disc_reason(disc_reason);
+      log_write(LOG_PLAIN, "RDP: Disconnected: %s\n", disc_msg);
+      return -1;
       break;
 
     default:
@@ -2471,9 +2531,7 @@ rdp_confirm_active(Connection *con)
   pdu.length = 2 + 14 + caplen + sizeof(RDP_SOURCE);
   pdu.mcs_userid = info->mcs_userid + 1001;
   pdu.shareid = info->shareid;
-
   pdu.caplen = caplen;
-
 
   data->append(&pdu, sizeof(pdu));
   data->append(&general, sizeof(general));
