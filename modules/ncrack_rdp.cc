@@ -252,8 +252,7 @@ enum RDP_CONTROL_PDU_TYPE
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
   RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, 
-  RDP_DEMAND_ACTIVE, RDP_DEMAND_ACTIVE_SYNC, RDP_DEMAND_ACTIVE_CONTROL_1,
-  RDP_DEMAND_ACTIVE_CONTROL_2, RDP_DEMAND_ACTIVE_RECV_SYNC, 
+  RDP_DEMAND_ACTIVE, RDP_DEMAND_ACTIVE_SYNC, RDP_DEMAND_ACTIVE_RECV_SYNC, 
   RDP_DEMAND_ACTIVE_RECV_CONTROL_1, RDP_DEMAND_ACTIVE_RECV_CONTROL_2,
   RDP_DEMAND_ACTIVE_SEND_INPUT,
   RDP_LOOP, RDP_FINI };
@@ -2828,42 +2827,15 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      con->state = RDP_DEMAND_ACTIVE_CONTROL_1;
-
-      rdp_synchronize(con);
-
-      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
-          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
-      break;
-
-    case RDP_DEMAND_ACTIVE_CONTROL_1:
-
-      if (con->outbuf)
-        delete con->outbuf;
-      con->outbuf = new Buf();
-
-      con->state = RDP_DEMAND_ACTIVE_CONTROL_2;
-
-      rdp_control(con, RDP_CTL_COOPERATE);
-
-      nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
-          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
-      break;
-
-    case RDP_DEMAND_ACTIVE_CONTROL_2:
-
-      if (con->outbuf)
-        delete con->outbuf;
-      con->outbuf = new Buf();
-
       con->state = RDP_DEMAND_ACTIVE_RECV_SYNC;
 
+      rdp_synchronize(con);
+      rdp_control(con, RDP_CTL_COOPERATE);
       rdp_control(con, RDP_CTL_REQUEST_CONTROL);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
-
 
     case RDP_DEMAND_ACTIVE_RECV_SYNC:
 
