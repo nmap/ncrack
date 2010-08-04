@@ -2602,8 +2602,8 @@ rdp_data(Connection *con, Buf *data, uint8_t pdu_type)
   hdr.remaining_length = hdr.length - 14;
   hdr.type = pdu_type;
 
-  rdp->append(data->get_dataptr(), data->get_len());
   rdp->append(&hdr, sizeof(hdr));
+  rdp->append(data->get_dataptr(), data->get_len());
 
   total_length = sizeof(hdr) + data->get_len();  
   total_length += sizeof(mcs_data) + sizeof(sec_header);
