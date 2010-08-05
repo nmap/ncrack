@@ -245,7 +245,11 @@ Buf::get_data(void *dst, u_int len)
 		    __func__, len, end - offset);
 		return (-1);
 	}
-	memcpy(dst, buf + offset, len);
+  
+  /* If dst is NULL then don't copy anything */
+  if (dst)
+  	memcpy(dst, buf + offset, len);
+
 	offset += len;
 	return (0);
 }
