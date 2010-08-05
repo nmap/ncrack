@@ -156,6 +156,7 @@ static int rdp_parse_rdpdata_pdu(Connection *con, u_char *p);
 static char *rdp_disc_reason(uint32_t code);
 static void rdp_fonts_send(Connection *con, uint16_t sequence);
 static void rdp_disconnect(Connection *con);
+static u_char *rdp_iso_recv_data_loop(Connection *con);
 
 
 /* RDP PDU codes */
@@ -256,8 +257,7 @@ enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF,
   RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, 
   RDP_DEMAND_ACTIVE, RDP_DEMAND_ACTIVE_SYNC, RDP_DEMAND_ACTIVE_RECV_SYNC, 
   RDP_DEMAND_ACTIVE_RECV_CONTROL_1, RDP_DEMAND_ACTIVE_RECV_CONTROL_2,
-  RDP_DEMAND_ACTIVE_FONTS, RDP_DEMAND_ACTIVE_RECV_FONTS,
-  RDP_LOOP, RDP_FINI };
+  RDP_DEMAND_ACTIVE_FONTS, RDP_LOOP, RDP_FINI };
 
 typedef struct rpd_state {
 
@@ -278,7 +278,8 @@ typedef struct rpd_state {
 
   u_char *rdp_packet;
   u_char *rdp_next_packet;
-
+  u_char *rdp_packet_end;
+  uint16_t packet_len;
 
 } rdp_state;
 
@@ -1193,7 +1194,7 @@ static int
 rdp_loop_read(nsock_pool nsp, Connection *con)
 {
   uint16_t total_length;
-  void *ioptr;
+  u_char *ioptr;
 
   /* Make sure we get at least 4 bytes: this is the TPKT header which
    * contains the total size of the message
@@ -1204,10 +1205,10 @@ rdp_loop_read(nsock_pool nsp, Connection *con)
   }
 
   /* Get message length from TPKT header. It is in big-endian byte order */
-  ioptr = con->inbuf->get_dataptr();
+  ioptr = (u_char *)con->inbuf->get_dataptr() + 2;
   memcpy(&total_length, ioptr, sizeof(total_length));
 
-  total_length = ntohl(total_length); /* convert to host-byte order */
+  total_length = ntohs(total_length); /* convert to host-byte order */
 
   /* If we haven't received all the bytes of the message, according to the
    * total length that we calculated, then try and get the rest */
@@ -1765,48 +1766,67 @@ static int
 rdp_process_loop(Connection *con)
 {
   bool loop = true;
+  bool disc = false;
   uint8_t pdu_type = 0;
   rdp_state *info = (rdp_state *)con->misc_info;
-  u_char *end = (u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len();
   u_char *p;
+  int pdudata_ret;
 
   while (loop) {
 
     p = rdp_recv_data(con, &pdu_type);
-    if (p == NULL)
-      return LOOP_DISC;
+    if (p == NULL) {
+      printf("LOOP NOTH NULL DATA\n");
+      return LOOP_NOTH;
+    }
 
     switch (pdu_type) {
       case RDP_PDU_DEMAND_ACTIVE:
         rdp_demand_active_confirm(con, p);
         printf("PDU DEMAND ACTIVE\n");
-        return LOOP_WRITE;
+        break;
 
       case RDP_PDU_DEACTIVATE:
         printf("PDU deactivate\n");
-        return LOOP_NOTH;
+        break;
 
       case RDP_PDU_REDIRECT:
         printf("PDU REDIRECT\n");
-        return LOOP_NOTH;
+        break;
 
       case RDP_PDU_DATA:
         printf("PDU DATA\n");
-        if (rdp_parse_rdpdata_pdu(con, p) == 1)
+        pdudata_ret = rdp_parse_rdpdata_pdu(con, p);
+        if (pdudata_ret == 1)
           printf("LOG IN\n");
-        return LOOP_NOTH;
+        else if (pdudata_ret == -1)
+          return LOOP_DISC;
+
+        break;
 
       default:
         printf("PDU default\n");
-        return LOOP_NOTH;
+        break;
 
     }
 
-    loop = info->rdp_next_packet < end;
+    printf("next:%p end: %p \n", info->rdp_next_packet, info->rdp_packet_end);
+    loop = info->rdp_next_packet < info->rdp_packet_end;
 
   }
 
+  info->packet_len = 0;
 
+  switch (pdu_type) {
+      case RDP_PDU_DEMAND_ACTIVE:
+        return LOOP_WRITE;
+      case RDP_PDU_DEACTIVATE:
+      case RDP_PDU_REDIRECT:
+      case RDP_PDU_DATA:
+      default:
+        return LOOP_NOTH;
+  }
+  
 }
 
 
@@ -1816,20 +1836,30 @@ static u_char *
 rdp_recv_data(Connection *con, uint8_t *pdu_type)
 {
   rdp_state *info = (rdp_state *)con->misc_info;
-  u_char *end = (u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len();
   uint16_t length;
 
   /* WARNING: This only supports RDP version 4 */
 
-  if (info->rdp_packet == NULL || (info->rdp_next_packet >= end) 
+  if (info->rdp_packet == NULL || (info->rdp_next_packet >= info->rdp_packet_end) 
       || (info->rdp_next_packet == NULL)) {
     info->rdp_packet = rdp_secure_recv_data(con);
-    if (info->rdp_packet == NULL)
+    if (info->rdp_packet == NULL) {
+      printf("rdp packet NULL!\n");
       return NULL;
+    }
 
     info->rdp_next_packet = info->rdp_packet;
-  } else
+  } else {
+    printf("NEXT PACKET\n");
     info->rdp_packet = info->rdp_next_packet;
+  }
+
+#if 0
+  printf("-----------DATA--------\n");
+  char *string = hexdump((u8*)info->rdp_packet, 26);
+  log_write(LOG_PLAIN, "%s", string);
+  printf("-----------DATA--------\n");
+#endif
 
   /* Get the length */
   length = *(uint16_t *)info->rdp_packet;
@@ -1842,6 +1872,7 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
   /* Skip userid */
   info->rdp_packet += 2;
 
+  printf("RECV DATA length: %u\n", length);
   info->rdp_next_packet += length;
 
   return info->rdp_packet;
@@ -1859,7 +1890,7 @@ rdp_secure_recv_data(Connection *con)
   uint32_t datalen;
 
 
-  if ((p = rdp_mcs_recv_data(con, &channel)) != NULL) {
+  while ((p = rdp_mcs_recv_data(con, &channel)) != NULL) {
 
     flags = *(uint32_t *)p;
     p += 4;
@@ -1876,7 +1907,7 @@ rdp_secure_recv_data(Connection *con)
         info->decrypt_use_count = 0;
       }
 
-      datalen = ((u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len()) - p;
+      datalen = (info->rdp_packet_end - p);
 
       RC4(&info->rc4_decrypt_key, datalen, p, p);
       info->decrypt_use_count++;
@@ -1884,7 +1915,7 @@ rdp_secure_recv_data(Connection *con)
 
     if (flags & SEC_LICENCE_NEG) {
       printf("SEC LICENSE\n");
-      return NULL;
+      continue;
     }
 
     if (flags & 0x0400) {
@@ -1909,13 +1940,11 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   u_char *p;
   char error[64];
   uint8_t opcode;
+  rdp_state *info = (rdp_state *)con->misc_info;
 
-
-  if (rdp_iso_recv_data(con) < 0)
+  p = rdp_iso_recv_data_loop(con);
+  if (p == NULL)
     return NULL;
-
-  p = ((u_char *)con->inbuf->get_dataptr() + sizeof(iso_tpkt)
-      + sizeof(iso_itu_t_data));
 
   /* Check opcode */
   opcode = (*(uint8_t *)p) >> 2;
@@ -1928,6 +1957,7 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
       con->service->end.orly = true;
       con->service->end.reason = Strndup(error, strlen(error));
     }
+    printf("MCS ERR\n");
     return NULL;
   }
 
@@ -1951,6 +1981,61 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
 }
 
 
+static u_char *
+rdp_iso_recv_data_loop(Connection *con)
+{
+  iso_tpkt *tpkt;
+  iso_itu_t_data *itu_t;
+  char error[64];
+  rdp_state *info = (rdp_state *)con->misc_info;
+  /* length of previous packet in same TCP segment */
+  uint16_t prev_length = 0;
+  u_char *p;
+
+  printf("-----------ISO LOOP ------------\n");
+
+  if (info->packet_len)
+    prev_length = info->packet_len;
+
+  printf("prev_length: %u TCP_length: %u\n", prev_length, con->inbuf->get_len());
+
+  tpkt = (iso_tpkt *) ((u_char *)con->inbuf->get_dataptr() + prev_length);
+  itu_t = (iso_itu_t_data *) ((u_char *)tpkt + sizeof(iso_tpkt));
+
+  if ((u_char *)tpkt >= ((u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len())) {
+    info->packet_len = 0;
+    printf("WRONG\n");
+    return NULL;
+  }
+
+  if (tpkt->version != 3)
+    fatal("rdp_module: not supported TPKT version: %d\n", tpkt->version);
+
+  if (tpkt->length < 4) {
+    con->service->end.orly = true;
+    con->service->end.reason = Strndup("Bad tptk packet header.", 23);
+    printf("ERROR 1\n");
+    return NULL;
+  }
+
+  info->packet_len = ntohs(tpkt->length);
+  info->rdp_packet_end = (u_char *)tpkt + info->packet_len;
+  printf("ISO PACKET LEN: %u\n", info->packet_len);
+
+  p = ((u_char *)(itu_t) + sizeof(iso_itu_t_data));
+
+  if (itu_t->code != ISO_PDU_DT) {
+    snprintf(error, sizeof(error), "Expected data packet, but got 0x%x.",
+        itu_t->code);
+    con->service->end.orly = true;
+    con->service->end.reason = Strndup(error, strlen(error));
+    printf("ERROR 2\n");
+    return NULL;
+  }
+
+  return p;
+}
+
 
 static int
 rdp_iso_recv_data(Connection *con)
@@ -1958,6 +2043,8 @@ rdp_iso_recv_data(Connection *con)
   iso_tpkt *tpkt;
   iso_itu_t_data *itu_t;
   char error[64];
+  rdp_state *info = (rdp_state *)con->misc_info;
+
 
   tpkt = (iso_tpkt *) ((const char *)con->inbuf->get_dataptr());
   itu_t = (iso_itu_t_data *) ((const char *)tpkt + sizeof(iso_tpkt));
@@ -1981,6 +2068,10 @@ rdp_iso_recv_data(Connection *con)
 
   return 0;
 }
+
+
+
+
 
 
 /*****************************************************************************
@@ -2913,8 +3004,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
-      delete con->inbuf;
-      con->inbuf = NULL;
+      //delete con->inbuf;
+      //con->inbuf = NULL;
 
       if (con->outbuf)
         delete con->outbuf;
@@ -2943,24 +3034,22 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());  
       break;
 
-    case RDP_DEMAND_ACTIVE_RECV_FONTS:
-
-      if (rdp_loop_read(nsp, con) < 0)
-        break;
-
-      printf("RECV FONTS\n");
-      sleep(100);
-
-      break;
-
     case RDP_LOOP:
 
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
+      printf("RDP LOOP STATE \n");
       con->state = RDP_LOOP;
 
       loop_val = rdp_process_loop(con);
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
       switch (loop_val) {
         case LOOP_WRITE:
           ;
@@ -2971,7 +3060,9 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
               (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
           break;
         case LOOP_NOTH:
-          nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+          rdp_scancode_msg(con, time(NULL), RDP_KEYPRESS, 1);
+          nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+              (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
           break;
         default:
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
