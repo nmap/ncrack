@@ -1805,13 +1805,56 @@ rdp_parse_pen(u_char *p, uint32_t params)
 static u_char *
 rdp_parse_text2(u_char *p, uint32_t params, bool delta)
 {
+  printf("RDP PARSE TEXT2\n");
+  uint8_t length;
+  u_char text[256];
+
+  if (params & 0x000001)
+    p += 1;
+	if (params & 0x000002)
+    p += 1;
+	if (params & 0x000004)
+    p += 1;
+	if (params & 0x000008)
+    p += 1;
+	if (params & 0x000010)
+		p = rdp_color(p);
+	if (params & 0x000020)
+		p = rdp_color(p);
+	if (params & 0x000040)
+    p += 2;
+	if (params & 0x000080)
+    p += 2;
+	if (params & 0x000100)
+		p += 2;
+	if (params & 0x000200)
+    p += 2;
+	if (params & 0x000400)
+    p += 2;
+	if (params & 0x000800)
+    p += 2;
+	if (params & 0x001000)
+    p += 2;
+	if (params & 0x002000)
+    p += 2;
+
+	p = rdp_parse_brush(p, params >> 14);
+
+	if (params & 0x080000)
+    p += 2;
+	if (params & 0x100000)
+    p += 2;
+
+	if (params & 0x200000) {
+    length = *(uint8_t *)p;
+    p += 1;
+    if (length <= sizeof(text))
+      memcpy(text, p, length);
+    p += length;
+	}
 
 
-
-
-
-
-
+  return p;
 }
 
 
@@ -2373,6 +2416,8 @@ rdp_parse_update_pdu(Connection *con, u_char *p)
   switch (type) {
 
     case RDP_UPDATE_ORDERS:
+
+      printf(" -----> UPDATE ORDERs\n");
       p += 2; /* padding */
       num_orders = *(uint16_t *)p;
       p += 2;
@@ -2430,6 +2475,7 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
   switch (pdu_type) {
 
     case RDP_DATA_PDU_UPDATE:
+      printf(" -- DATA PDU UPDATE\n");
       rdp_parse_update_pdu(con, p);
       break;
 
