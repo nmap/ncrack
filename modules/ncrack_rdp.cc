@@ -157,6 +157,8 @@ static char *rdp_disc_reason(uint32_t code);
 static void rdp_fonts_send(Connection *con, uint16_t sequence);
 static void rdp_disconnect(Connection *con);
 static u_char *rdp_iso_recv_data_loop(Connection *con);
+static void rdp_parse_update_pdu(Connection *con, u_char *p);
+static void rdp_parse_orders(Connection *con, u_char *p, uint16_t num);
 
 
 /* RDP PDU codes */
@@ -176,12 +178,20 @@ enum RDP_DATA_PDU_TYPE
   RDP_DATA_PDU_CONTROL = 20,
   RDP_DATA_PDU_POINTER = 27,
   RDP_DATA_PDU_INPUT = 28,
-  RDP_DATA_PDU_SYNCHRONIZE = 31,
+  RDP_DATA_PDU_SYNCHRONISE = 31,
   RDP_DATA_PDU_BELL = 34,
   RDP_DATA_PDU_LOGON = 38,
   RDP_DATA_PDU_FONT2 = 39,
   RDP_DATA_PDU_KEYBOARD_INDICATORS = 41,
   RDP_DATA_PDU_DISCONNECT = 47
+};
+
+enum RDP_UPDATE_PDU_TYPE
+{
+	RDP_UPDATE_ORDERS = 0,
+	RDP_UPDATE_BITMAP = 1,
+	RDP_UPDATE_PALETTE = 2,
+	RDP_UPDATE_SYNCHRONISE = 3
 };
 
 /* ISO PDU codes */
@@ -1709,6 +1719,60 @@ rdp_disc_reason(uint32_t code)
 }
 
 
+static void
+rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
+{
+
+
+
+
+
+
+
+}
+
+
+
+
+static void
+rdp_parse_update_pdu(Connection *con, u_char *p)
+{
+  
+  uint16_t type;
+  uint16_t num_orders;
+
+  type = *(uint16_t *)p;
+  p += 2;
+
+  switch (type) {
+
+    case RDP_UPDATE_ORDERS:
+      p += 2; /* padding */
+      num_orders = *(uint16_t *)p;
+      p += 2;
+      p += 2; /* more padding */
+      rdp_parse_orders(con, p, num_orders);
+
+      break;
+
+    case RDP_UPDATE_BITMAP:
+      break;
+
+    case RDP_UPDATE_PALETTE:
+      break;
+
+    case RDP_UPDATE_SYNCHRONISE:
+      break;
+
+    default:
+
+      printf("Update PDU unimplemented: %u\n", type);
+  }
+
+}
+
+
+
 
 /*****************************************************************************
  * Parses an RDP data PDU. A disconnection PDU is one example and is useful for
@@ -1739,6 +1803,19 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
 
   switch (pdu_type) {
 
+    case RDP_DATA_PDU_UPDATE:
+      rdp_parse_update_pdu(con, p);
+      break;
+    
+    case RDP_DATA_PDU_CONTROL:
+      break;
+
+    case RDP_DATA_PDU_SYNCHRONISE:
+      break;
+
+    case RDP_DATA_PDU_POINTER:
+      break;
+
     case RDP_DATA_PDU_DISCONNECT:
       disc_reason = *(uint32_t *)p;
       disc_msg = rdp_disc_reason(disc_reason);
@@ -1754,7 +1831,7 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
       break;
 
     default:
-      printf("PDU data unimplemented\n");
+      printf("PDU data unimplemented %u\n", pdu_type);
       break;
   }
 
@@ -2638,7 +2715,7 @@ rdp_synchronize(Connection *con)
   rdp_sync sync;
   data->append(&sync, sizeof(sync));
 
-  rdp_data(con, data, RDP_DATA_PDU_SYNCHRONIZE);
+  rdp_data(con, data, RDP_DATA_PDU_SYNCHRONISE);
 
 }
 
