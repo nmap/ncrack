@@ -159,6 +159,24 @@ static void rdp_disconnect(Connection *con);
 static u_char *rdp_iso_recv_data_loop(Connection *con);
 static void rdp_parse_update_pdu(Connection *con, u_char *p);
 static void rdp_parse_orders(Connection *con, u_char *p, uint16_t num);
+static void rdp_parse_second_order(u_char *p);
+static u_char *rdp_parse_destblt(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_coord(u_char *p, bool delta);
+static u_char *rdp_parse_brush(u_char *p, uint32_t params);
+static u_char *rdp_parse_patblt(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_screenblt(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_line(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_pen(u_char *p, uint32_t params);
+static u_char *rdp_color(u_char *p);
+static u_char *rdp_parse_rect(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_desksave(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_memblt(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_triblt(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_polygon(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_polygon2(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_ellipse(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_ellipse2(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_text2(u_char *p, uint32_t params, bool delta);
 
 
 /* RDP PDU codes */
@@ -298,7 +316,7 @@ enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF,
   RDP_DEMAND_ACTIVE_RECV_CONTROL_1, RDP_DEMAND_ACTIVE_RECV_CONTROL_2,
   RDP_DEMAND_ACTIVE_FONTS, RDP_LOOP, RDP_FINI };
 
-typedef struct rpd_state {
+typedef struct rdp_state {
 
   uint8_t crypted_random[256];
   uint8_t sign_key[16];
@@ -1749,6 +1767,412 @@ rdp_disc_reason(uint32_t code)
 
 
 
+static u_char *
+rdp_parse_brush(u_char *p, uint32_t params)
+{
+
+  if (params & 1)
+    p += 1;
+  if (params & 2)
+    p += 1;
+  if (params & 4)
+    p += 1;
+  if (params & 8)
+    p += 1;
+  if (params & 16)
+    p += 7;
+
+  return p;
+}
+
+
+
+static u_char *
+rdp_parse_pen(u_char *p, uint32_t params)
+{
+  if (params & 1)
+    p += 1;
+  if (params & 2)
+    p += 1;
+  if (params & 4)
+    p = rdp_color(p);
+
+  return p;
+}
+
+
+
+static u_char *
+rdp_parse_text2(u_char *p, uint32_t params, bool delta)
+{
+
+
+
+
+
+
+
+}
+
+
+
+
+static u_char *
+rdp_parse_ellipse(u_char *p, uint32_t params, bool delta)
+{
+
+  if (params & 0x01)
+    p = rdp_coord(p, delta);
+  if (params & 0x02)
+    p = rdp_coord(p, delta);
+  if (params & 0x04)
+    p = rdp_coord(p, delta);
+  if (params & 0x08)
+    p = rdp_coord(p, delta);
+  if (params & 0x10)
+    p += 1;
+  if (params & 0x20)
+    p += 1;
+  if (params & 0x40)
+    p = rdp_color(p);
+
+}
+
+
+
+static u_char *
+rdp_parse_ellipse2(u_char *p, uint32_t params, bool delta)
+{
+
+  if (params & 0x0001)
+    p = rdp_coord(p, delta);
+  if (params & 0x0002)
+    p = rdp_coord(p, delta);
+  if (params & 0x0004)
+    p = rdp_coord(p, delta);
+  if (params & 0x0008)
+    p = rdp_coord(p, delta);
+  if (params & 0x0010)
+    p += 1;
+  if (params & 0x0020)
+    p += 1;
+  if (params & 0x0040)
+    p = rdp_color(p);
+  if (params & 0x0080)
+    p = rdp_color(p);
+
+  p = rdp_parse_brush(p, params >> 8);
+
+  return p;
+}
+
+
+
+static u_char *
+rdp_parse_polyline(u_char *p, uint32_t params, bool delta)
+{
+  uint8_t datasize;
+
+  if (params & 0x01)
+    p = rdp_coord(p, delta);
+  if (params & 0x02)
+    p = rdp_coord(p, delta);
+  if (params & 0x04)
+    p += 1;
+  if (params & 0x10)
+    rdp_color(p);
+  if (params & 0x20)
+    p += 1;
+  if (params & 0x40) {
+    datasize = *(uint8_t *)p;
+    p += datasize;
+  }
+
+  return p;
+}
+
+
+static u_char *
+rdp_parse_polygon(u_char *p, uint32_t params, bool delta)
+{
+  uint8_t datasize;
+
+  if (params & 0x01)
+    p = rdp_coord(p, delta);
+  if (params & 0x02)
+    p = rdp_coord(p, delta);
+  if (params & 0x04)
+    p += 1;
+  if (params & 0x08)
+    p += 1;
+  if (params & 0x10)
+    p = rdp_color(p);
+  if (params & 0x20)
+    p += 1;
+  if (params & 0x40) {
+    datasize = *(uint8_t *)p;
+    p += 1;
+    p += datasize;
+  }
+
+  return p;
+}
+
+
+static u_char *
+rdp_parse_polygon2(u_char *p, uint32_t params, bool delta)
+{
+  uint8_t datasize;
+
+  if (params & 0x0001)
+    p = rdp_coord(p, delta);
+  if (params & 0x0002)
+    p = rdp_coord(p, delta);
+  if (params & 0x0004)
+    p += 1;
+  if (params & 0x0008)
+    p += 1;
+  if (params & 0x0010)
+    p = rdp_color(p);
+  if (params & 0x0020)
+    p = rdp_color(p);
+
+  p = rdp_parse_brush(p, params >> 6);
+
+  if (params & 0x0800)
+    p += 1;
+  if (params & 0x1000) {
+    datasize = *(uint8_t *)p;
+    p += 1;
+    p += datasize;
+  }
+
+  return p;
+}
+
+
+
+static u_char *
+rdp_parse_triblt(u_char *p, uint32_t params, bool delta)
+{
+
+  if (params & 0x000001)
+    p += 2;
+  if (params & 0x000002)
+    p = rdp_coord(p, delta);
+  if (params & 0x000004)
+    p = rdp_coord(p, delta);
+  if (params & 0x000008)
+    p = rdp_coord(p, delta);
+  if (params & 0x000010)
+    p = rdp_coord(p, delta);
+  if (params & 0x000020)
+    p += 1;
+  if (params & 0x000040)
+    p = rdp_coord(p, delta);
+  if (params & 0x000080)
+    p = rdp_coord(p, delta);
+  if (params & 0x000100)
+    p = rdp_color(p);
+  if (params & 0x000200)
+    p = rdp_color(p);
+
+  p = rdp_parse_brush(p, params >> 10);
+
+  if (params & 0x008000)
+    p += 2;
+  if (params & 0x010000)
+    p += 2;
+
+  return p;
+}
+
+
+static u_char *
+rdp_parse_memblt(u_char *p, uint32_t params, bool delta)
+{
+
+  if (params & 0x0001)
+    p += 2;
+  if (params & 0x0002)
+    p = rdp_coord(p, delta);
+  if (params & 0x0004)
+    p = rdp_coord(p, delta);
+  if (params & 0x0008)
+    p = rdp_coord(p, delta);
+  if (params & 0x0010)
+    p = rdp_coord(p, delta);
+  if (params & 0x0020)
+    p += 1;
+  if (params & 0x0040)
+    p = rdp_coord(p, delta);
+  if (params & 0x0080)
+    p = rdp_coord(p, delta);
+  if (params & 0x0100)
+    p += 2;
+
+  return p;
+}
+
+
+
+static u_char *
+rdp_parse_desksave(u_char *p, uint32_t params, bool delta)
+{
+  if (params & 0x01)
+    p += 4;
+  if (params & 0x02)
+    p = rdp_coord(p, delta);
+  if (params & 0x04)
+    p = rdp_coord(p, delta);
+  if (params & 0x08)
+    p = rdp_coord(p, delta);
+  if (params & 0x10)
+    p = rdp_coord(p, delta);
+  if (params & 0x20)
+    p += 1;
+
+  return p;
+} 
+
+
+
+
+static u_char *
+rdp_parse_rect(u_char *p, uint32_t params, bool delta)
+{
+  if (params & 0x01)
+    p = rdp_coord(p, delta);
+  if (params & 0x02)
+    p = rdp_coord(p, delta);
+  if (params & 0x04)
+    p = rdp_coord(p, delta);
+  if (params & 0x08)
+    p = rdp_coord(p, delta);
+  if (params & 0x10)
+    p += 1;
+  if (params & 0x20)
+    p += 1;
+  if (params & 0x40)
+    p += 1;
+
+  return p;
+}
+
+
+
+
+static u_char *
+rdp_parse_line(u_char *p, uint32_t params, bool delta)
+{
+  if (params & 0x0001)
+    p += 2;
+  if (params & 0x0002)
+    p = rdp_coord(p, delta);
+  if (params & 0x0004)
+    p = rdp_coord(p, delta);
+  if (params & 0x0008)
+    p = rdp_coord(p, delta);
+  if (params & 0x0010)
+    p = rdp_coord(p, delta);
+  if (params & 0x0020)
+    rdp_color(p);
+  if (params & 0x0040)
+    p += 1;
+
+  p = rdp_parse_pen(p, params >> 7);
+
+  return p;
+}
+
+
+
+static u_char *
+rdp_parse_screenblt(u_char *p, uint32_t params, bool delta)
+{
+  if (params & 0x0001)
+    p = rdp_coord(p, delta);
+  if (params & 0x0002)
+    p = rdp_coord(p, delta);
+  if (params & 0x0004)
+    p = rdp_coord(p, delta);
+  if (params & 0x0008)
+    p = rdp_coord(p, delta);
+  if (params & 0x0010)
+    p += 1;
+  if (params & 0x0020)
+    p = rdp_coord(p, delta);
+  if (params & 0x0040)
+    p = rdp_coord(p, delta);
+
+  return p;
+}
+
+
+
+static u_char *
+rdp_parse_patblt(u_char *p, uint32_t params, bool delta)
+{
+  if (params & 0x0001)
+    p = rdp_coord(p, delta);
+  if (params & 0x0002)
+    p = rdp_coord(p, delta);
+  if (params & 0x0004)
+    p = rdp_coord(p, delta);
+  if (params & 0x0008)
+    p = rdp_coord(p, delta);
+  if (params & 0x0010)
+    p += 1;
+  if (params & 0x0020)
+    p = rdp_color(p);
+  if (params & 0x0040)
+    p = rdp_color(p);
+  p = rdp_parse_brush(p, params);
+
+  return p;
+}
+
+
+static u_char *
+rdp_parse_destblt(u_char *p, uint32_t params, bool delta)
+{
+
+  if (params & 0x01)
+    p = rdp_coord(p, delta);
+  if (params & 0x02)
+    p = rdp_coord(p, delta);
+  if (params & 0x04)
+    p = rdp_coord(p, delta);
+  if (params & 0x08)
+    p = rdp_coord(p, delta);
+  if (params & 0x10)
+    p += 1;
+
+  return p;
+}
+
+
+static u_char *
+rdp_color(u_char *p)
+{
+  p += 3;
+  return p;
+}
+
+
+static u_char *
+rdp_coord(u_char *p, bool delta)
+{
+  if (delta)
+    p += 1;
+  else
+    p += 2;
+
+  return p;
+}
+
+
+
 static void
 rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
 {
@@ -1757,6 +2181,7 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
   uint8_t type;
   int size;
   uint32_t params;
+  bool delta;
 
   while (parsed < num) {
 
@@ -1768,9 +2193,23 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
       break;
     }
 
-    if (flags & RDP_ORDER_SECONDARY) 
-      ;
-      //rdp_parse_second_order(p);
+    if (flags & RDP_ORDER_SECONDARY) {
+
+      /* parse secondary order: we just ignore everything here after we parse
+       * the length field to know how many bytes to skip to move on to the next
+       * order
+       */
+      uint16_t second_length = *(uint16_t *)p; 
+      p += 2;
+      /* skip secondary flags */
+      p += 2;
+      /* skip type */
+      p += 1;
+      /* now add length and ignore that many bytes */
+      p += (signed int16_t) second_length + 7;
+
+    }
+
     else {
 
       if (flags & RDP_ORDER_CHANGE) {
@@ -1844,8 +2283,72 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
         } 
       }
 
-      
+      delta = flags & RDP_ORDER_DELTA;
 
+      switch (type) {
+
+        case RDP_ORDER_DESTBLT:
+          p = rdp_parse_destblt(p, params, delta);
+          break;
+
+        case RDP_ORDER_PATBLT:
+          p = rdp_parse_patblt(p, params, delta);
+          break;
+
+        case RDP_ORDER_SCREENBLT:
+          p = rdp_parse_screenblt(p, params, delta);
+          break;
+
+        case RDP_ORDER_LINE:
+          p = rdp_parse_line(p, params, delta);
+          break;
+
+        case RDP_ORDER_RECT:
+          p = rdp_parse_rect(p, params, delta);
+          break;
+
+        case RDP_ORDER_DESKSAVE:
+          p = rdp_parse_desksave(p, params, delta);
+          break;
+
+        case RDP_ORDER_MEMBLT:
+          p = rdp_parse_memblt(p, params, delta);
+          break;
+
+        case RDP_ORDER_TRIBLT:
+          p = rdp_parse_triblt(p, params, delta);
+          break;
+
+        case RDP_ORDER_POLYGON:
+          p = rdp_parse_polygon(p, params, delta);
+          break;
+
+        case RDP_ORDER_POLYGON2:
+          p = rdp_parse_polygon2(p, params, delta);
+          break;
+
+        case RDP_ORDER_POLYLINE:
+          p = rdp_parse_polyline(p, params, delta);
+          break;
+
+        case RDP_ORDER_ELLIPSE:
+          p = rdp_parse_ellipse(p, params, delta);
+          break;
+
+        case RDP_ORDER_ELLIPSE2:
+          p = rdp_parse_ellipse2(p, params, delta);
+          break;
+
+        case RDP_ORDER_TEXT2:
+          printf("-----> PARSE TEXT <------- \n");
+          p = rdp_parse_text2(p, params, delta);
+          break;
+
+        default:
+          printf("Unimplemented order %u\n", type);
+          return;
+
+      }
 
     }
 
@@ -1860,7 +2363,7 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
 static void
 rdp_parse_update_pdu(Connection *con, u_char *p)
 {
-  
+
   uint16_t type;
   uint16_t num_orders;
 
@@ -1929,7 +2432,7 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
     case RDP_DATA_PDU_UPDATE:
       rdp_parse_update_pdu(con, p);
       break;
-    
+
     case RDP_DATA_PDU_CONTROL:
       break;
 
@@ -2018,15 +2521,15 @@ rdp_process_loop(Connection *con)
   info->packet_len = 0;
 
   switch (pdu_type) {
-      case RDP_PDU_DEMAND_ACTIVE:
-        return LOOP_WRITE;
-      case RDP_PDU_DEACTIVATE:
-      case RDP_PDU_REDIRECT:
-      case RDP_PDU_DATA:
-      default:
-        return LOOP_NOTH;
+    case RDP_PDU_DEMAND_ACTIVE:
+      return LOOP_WRITE;
+    case RDP_PDU_DEACTIVATE:
+    case RDP_PDU_REDIRECT:
+    case RDP_PDU_DATA:
+    default:
+      return LOOP_NOTH;
   }
-  
+
 }
 
 
@@ -3212,7 +3715,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->outbuf = new Buf();
 
       con->state = RDP_DEMAND_ACTIVE_FONTS;
-  
+
       rdp_input_msg(con, 0, RDP_INPUT_SYNCHRONIZE, 0, 0, 0);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
