@@ -188,11 +188,40 @@ enum RDP_DATA_PDU_TYPE
 
 enum RDP_UPDATE_PDU_TYPE
 {
-	RDP_UPDATE_ORDERS = 0,
-	RDP_UPDATE_BITMAP = 1,
-	RDP_UPDATE_PALETTE = 2,
-	RDP_UPDATE_SYNCHRONISE = 3
+  RDP_UPDATE_ORDERS = 0,
+  RDP_UPDATE_BITMAP = 1,
+  RDP_UPDATE_PALETTE = 2,
+  RDP_UPDATE_SYNCHRONISE = 3
 };
+
+
+#define RDP_ORDER_STANDARD   0x01
+#define RDP_ORDER_SECONDARY  0x02
+#define RDP_ORDER_BOUNDS     0x04
+#define RDP_ORDER_CHANGE     0x08
+#define RDP_ORDER_DELTA      0x10
+#define RDP_ORDER_LASTBOUNDS 0x20
+#define RDP_ORDER_SMALL      0x40
+#define RDP_ORDER_TINY       0x80
+
+enum RDP_ORDER_TYPE
+{
+  RDP_ORDER_DESTBLT = 0,
+  RDP_ORDER_PATBLT = 1,
+  RDP_ORDER_SCREENBLT = 2,
+  RDP_ORDER_LINE = 9,
+  RDP_ORDER_RECT = 10,
+  RDP_ORDER_DESKSAVE = 11,
+  RDP_ORDER_MEMBLT = 13,
+  RDP_ORDER_TRIBLT = 14,
+  RDP_ORDER_POLYGON = 20,
+  RDP_ORDER_POLYGON2 = 21,
+  RDP_ORDER_POLYLINE = 22,
+  RDP_ORDER_ELLIPSE = 25,
+  RDP_ORDER_ELLIPSE2 = 26,
+  RDP_ORDER_TEXT2 = 27
+};
+
 
 /* ISO PDU codes */
 enum ISO_PDU_CODE
@@ -1719,15 +1748,109 @@ rdp_disc_reason(uint32_t code)
 }
 
 
+
 static void
 rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
 {
+  uint16_t parsed = 0;
+  uint8_t flags;
+  uint8_t type;
+  int size;
+  uint32_t params;
+
+  while (parsed < num) {
+
+    flags = *(uint8_t *)p;
+    p += 1;
+
+    if ((!flags & RDP_ORDER_STANDARD)) {
+      printf("%s error parsing orders\n", __func__);
+      break;
+    }
+
+    if (flags & RDP_ORDER_SECONDARY) 
+      ;
+      //rdp_parse_second_order(p);
+    else {
+
+      if (flags & RDP_ORDER_CHANGE) {
+        type = *(uint8_t *)p;
+        p += 1;
+      }
+
+      switch (type) {
+        case RDP_ORDER_TRIBLT:
+        case RDP_ORDER_TEXT2:
+          size = 3;
+          break;
+
+        case RDP_ORDER_PATBLT:
+        case RDP_ORDER_MEMBLT:
+        case RDP_ORDER_LINE:
+        case RDP_ORDER_POLYGON2:
+        case RDP_ORDER_ELLIPSE2:
+          size = 2;
+          break;
+
+        default:
+          size = 1;
+      }
+
+      /* Check parameters present */
+      if (flags & RDP_ORDER_SMALL)
+        size--;
+
+      if (flags & RDP_ORDER_TINY) {
+        if (size < 2)
+          size = 0;
+        else
+          size -= 2;
+      }
+
+      params = 0;
+      uint8_t bits;
+      for (int i = 0; i < size; i++) {
+        bits = *(uint8_t *)p;
+        p += 1;
+        params |= bits << (i * 8);
+      }
+
+      if (flags & RDP_ORDER_BOUNDS) {
+        if (!(flags & RDP_ORDER_LASTBOUNDS)) {
+
+          uint8_t bounds = *(uint8_t *)p;
+          p += 1;
+
+          if (bounds & 1)
+            p += 2;
+          else if (bounds & 16)
+            p += 1;
+
+          if (bounds & 2)
+            p += 2;
+          else if (bounds & 32)
+            p += 1;
+
+          if (bounds & 4)
+            p += 2;
+          else if (bounds & 64)
+            p += 1;
+
+          if (bounds & 8)
+            p += 2;
+          else if (bounds & 128)
+            p += 1;
+
+        } 
+      }
+
+      
 
 
+    }
 
-
-
-
+    parsed++;
+  }
 
 }
 
