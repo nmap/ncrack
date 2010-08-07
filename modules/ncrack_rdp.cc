@@ -1801,6 +1801,44 @@ rdp_parse_pen(u_char *p, uint32_t params)
 }
 
 
+/* The following are currently extracted from the rdesktop bruteforcing
+ * patches.
+ */
+
+/* This appears to indicate that our attempt has failed in some way */
+#define LOGON_AUTH_FAILED "\xfe\x00\x00"
+
+/* The system could not log you on. Make sure your User name and domain are correct [FAILED] */
+#define LOGON_MESSAGE_FAILED_XP  "\x17\x00\x18\x06\x10\x06\x1a\x09\x1b\x05\x1a\x06\x1c\x05\x10\x04\x1d\x06"
+#define LOGON_MESSAGE_FAILED_2K3 "\x11\x00\x12\x06\x13\x06\x15\x09\x16\x05\x15\x06\x17\x05\x13\x04\x18\x06"
+
+/* The local policy of this system does not permit you to logon interactively. [SUCCESS] */
+#define LOGON_MESSAGE_NO_INTERACTIVE_XP "\x17\x00\x18\x06\x10\x06\x11\x09\x1a\x02\x0f\x06\x0d\x05\x11\x06\x1b\x05"
+#define LOGON_MESSAGE_NO_INTERACTIVE_2K3 "\x11\x00\x12\x06\x13\x06\x15\x09\x16\x02\x17\x06\x18\x05\x15\x06\x19\x05"
+
+/* Unable to log you on because your account has been locked out */
+#define LOGON_MESSAGE_LOCKED_XP  "\x17\x00\x0e\x07\x0d\x06\x18\x06\x11\x06\x10\x02\x1a\x09\x1b\x04\x11\x09"
+#define LOGON_MESSAGE_LOCKED_2K3 "\x11\x00\x12\x07\x13\x06\x14\x06\x15\x06\x16\x02\x18\x09\x19\x04\x15\x09"
+
+/* Your account has been disabled. Please see your system administrator. [ERROR] */
+/* Your account has expired. Please see your system administrator. [ERROR] */
+#define LOGON_MESSAGE_DISABLED_XP  "\x17\x00\x18\x06\x19\x06\x1a\x06\x0d\x07\x0f\x06\x0f\x05\x18\x05\x19\x06"
+#define LOGON_MESSAGE_DISABLED_2K3 "\x11\x00\x12\x06\x13\x06\x14\x06\x16\x07\x17\x06\x17\x05\x12\x05\x13\x06"
+
+/* Your password has expired and must be changed. [SUCCESS] */
+#define LOGON_MESSAGE_EXPIRED_XP  "\x17\x00\x18\x06\x19\x06\x0d\x09\x1b\x06\x10\x04\x1b\x09\x10\x04\x1c\x06"
+#define LOGON_MESSAGE_EXPIRED_2K3 "\x11\x00\x12\x06\x13\x06\x14\x06\x16\x07\x17\x06\x18\x06\x18\x05\x19\x05"
+
+/* You are required to change your password at first logon. [SUCCESS] */
+#define LOGON_MESSAGE_MUST_CHANGE_XP  "\x17\x00\x18\x06\x19\x06\x0d\x09\x1b\x06\x10\x04\x1b\x09\x10\x04\x1c\x06"
+#define LOGON_MESSAGE_MUST_CHANGE_2K3 "\x11\x00\x12\x06\x13\x06\x15\x09\x16\x06\x17\x04\x16\x09\x17\x04\x18\x06"
+
+/* The terminal server has exceeded the maximum number of allowed connections. [SUCCESS] */
+#define LOGON_MESSAGE_MSTS_MAX_2K3 "\x00\x00\x01\x06\x02\x07\x01\x07\x05\x07\x24\x0a\x25\x0a\x0b\x07\x0b\x06\x26"
+
+/* The user MACHINE_NAME\USER is currently logged on to this computer. [SUCCESS] */
+#define LOGON_MESSAGE_CURRENT_USER_XP "\x12\x00\x13\x07\x10\x05\x14\x06\x0e\x07\x0d\x06\x16\x06\x10\x08\x17\x06"
+
 
 static u_char *
 rdp_parse_text2(u_char *p, uint32_t params, bool delta)
@@ -1811,52 +1849,84 @@ rdp_parse_text2(u_char *p, uint32_t params, bool delta)
 
   if (params & 0x000001)
     p += 1;
-	if (params & 0x000002)
+  if (params & 0x000002)
     p += 1;
-	if (params & 0x000004)
+  if (params & 0x000004)
     p += 1;
-	if (params & 0x000008)
+  if (params & 0x000008)
     p += 1;
-	if (params & 0x000010)
-		p = rdp_color(p);
-	if (params & 0x000020)
-		p = rdp_color(p);
-	if (params & 0x000040)
+  if (params & 0x000010)
+    p = rdp_color(p);
+  if (params & 0x000020)
+    p = rdp_color(p);
+  if (params & 0x000040)
     p += 2;
-	if (params & 0x000080)
+  if (params & 0x000080)
     p += 2;
-	if (params & 0x000100)
-		p += 2;
-	if (params & 0x000200)
+  if (params & 0x000100)
     p += 2;
-	if (params & 0x000400)
+  if (params & 0x000200)
     p += 2;
-	if (params & 0x000800)
+  if (params & 0x000400)
     p += 2;
-	if (params & 0x001000)
+  if (params & 0x000800)
     p += 2;
-	if (params & 0x002000)
+  if (params & 0x001000)
+    p += 2;
+  if (params & 0x002000)
     p += 2;
 
-	p = rdp_parse_brush(p, params >> 14);
+  p = rdp_parse_brush(p, params >> 14);
 
-	if (params & 0x080000)
+  if (params & 0x080000)
     p += 2;
-	if (params & 0x100000)
+  if (params & 0x100000)
     p += 2;
 
-	if (params & 0x200000) {
+  if (params & 0x200000) {
     length = *(uint8_t *)p;
     p += 1;
     if (length <= sizeof(text))
       memcpy(text, p, length);
     p += length;
-	}
+  }
+
+  if (!memcmp(text, LOGON_AUTH_FAILED, 3))   
+    fprintf(stderr, "Retrieved connection termination packet.\n");
+
+  if ((!memcmp(text, LOGON_MESSAGE_FAILED_XP, 18))
+      || (!memcmp(text, LOGON_MESSAGE_FAILED_2K3, 18))) {
+    fprintf(stderr, "Account credentials are NOT valid.\n");
+
+  } else if ((!memcmp(text, LOGON_MESSAGE_NO_INTERACTIVE_XP, 18))
+      || (!memcmp(text, LOGON_MESSAGE_NO_INTERACTIVE_2K3, 18))) {
+    fprintf(stderr, "Account credentials are valid, however, the account is denied interactive logon.\n");
+  } else if ((!memcmp(text, LOGON_MESSAGE_LOCKED_XP, 18)) 
+      || (!memcmp(text, LOGON_MESSAGE_LOCKED_2K3, 18))) {
+    fprintf(stderr, "Account is currently locked out.\n");
+  } else if ((!memcmp(text, LOGON_MESSAGE_DISABLED_XP, 18)) 
+      || (!memcmp(text, LOGON_MESSAGE_DISABLED_2K3, 18))) {
+    fprintf(stderr, "Account is currently disabled or expired. "
+        "XP appears to report that an account is disabled only for valid credentials.\n");
+  } else if ((!memcmp(text, LOGON_MESSAGE_EXPIRED_XP, 18))
+      || (!memcmp(text, LOGON_MESSAGE_EXPIRED_2K3, 18))) {
+    fprintf(stderr, "Account credentials are valid, however, the password has expired and must be changed.\n");
+  } else if ((!memcmp(text, LOGON_MESSAGE_MUST_CHANGE_XP, 18)) 
+      || (!memcmp(text, LOGON_MESSAGE_MUST_CHANGE_2K3, 18))) {
+    fprintf(stderr, "Account credentials are valid, however, the password must be changed at first logon.\n");
+  }
+  else if (!memcmp(text, LOGON_MESSAGE_MSTS_MAX_2K3, 18)) {
+    fprintf(stderr, "Account credentials are valid, however, the maximum "
+        "number of terminal services connections has been reached.\n");
+  } else if (!memcmp(text, LOGON_MESSAGE_CURRENT_USER_XP, 18)) {
+    fprintf(stderr, "Valid credentials, however, another user is currently logged on.\n");
+  } else {
+    fprintf(stderr, "Text: irrelevant message\n");
+  }
 
 
   return p;
 }
-
 
 
 
@@ -1923,11 +1993,12 @@ rdp_parse_polyline(u_char *p, uint32_t params, bool delta)
   if (params & 0x04)
     p += 1;
   if (params & 0x10)
-    rdp_color(p);
+    p = rdp_color(p);
   if (params & 0x20)
     p += 1;
   if (params & 0x40) {
     datasize = *(uint8_t *)p;
+    p += 1;
     p += datasize;
   }
 
@@ -2119,7 +2190,7 @@ rdp_parse_line(u_char *p, uint32_t params, bool delta)
   if (params & 0x0010)
     p = rdp_coord(p, delta);
   if (params & 0x0020)
-    rdp_color(p);
+    p = rdp_color(p);
   if (params & 0x0040)
     p += 1;
 
@@ -2170,7 +2241,8 @@ rdp_parse_patblt(u_char *p, uint32_t params, bool delta)
     p = rdp_color(p);
   if (params & 0x0040)
     p = rdp_color(p);
-  p = rdp_parse_brush(p, params);
+
+  p = rdp_parse_brush(p, params >> 7);
 
   return p;
 }
@@ -2507,6 +2579,8 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
       break;
   }
 
+  return 0;
+
 }
 
 
@@ -2559,7 +2633,7 @@ rdp_process_loop(Connection *con)
 
     }
 
-    printf("next:%p end: %p \n", info->rdp_next_packet, info->rdp_packet_end);
+    //printf("next:%p end: %p \n", info->rdp_next_packet, info->rdp_packet_end);
     loop = info->rdp_next_packet < info->rdp_packet_end;
 
   }
@@ -2599,7 +2673,7 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
 
     info->rdp_next_packet = info->rdp_packet;
   } else {
-    printf("NEXT PACKET\n");
+    //printf("NEXT PACKET\n");
     info->rdp_packet = info->rdp_next_packet;
   }
 
@@ -2621,7 +2695,7 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
   /* Skip userid */
   info->rdp_packet += 2;
 
-  printf("RECV DATA length: %u\n", length);
+  //printf("RECV DATA length: %u\n", length);
   info->rdp_next_packet += length;
 
   return info->rdp_packet;
@@ -2646,7 +2720,6 @@ rdp_secure_recv_data(Connection *con)
 
     if (flags & SEC_ENCRYPT) {
 
-      printf("SEC ENCRYPT\n");
       /* Skip signature */
       p += 8;
 
@@ -2741,19 +2814,17 @@ rdp_iso_recv_data_loop(Connection *con)
   uint16_t prev_length = 0;
   u_char *p;
 
-  printf("-----------ISO LOOP ------------\n");
-
   if (info->packet_len)
     prev_length = info->packet_len;
 
-  printf("prev_length: %u TCP_length: %u\n", prev_length, con->inbuf->get_len());
+  //printf("prev_length: %u TCP_length: %u\n", prev_length, con->inbuf->get_len());
 
   tpkt = (iso_tpkt *) ((u_char *)con->inbuf->get_dataptr() + prev_length);
   itu_t = (iso_itu_t_data *) ((u_char *)tpkt + sizeof(iso_tpkt));
 
   if ((u_char *)tpkt >= ((u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len())) {
     info->packet_len = 0;
-    printf("WRONG\n");
+    //printf("WRONG\n");
     return NULL;
   }
 
@@ -2763,13 +2834,11 @@ rdp_iso_recv_data_loop(Connection *con)
   if (tpkt->length < 4) {
     con->service->end.orly = true;
     con->service->end.reason = Strndup("Bad tptk packet header.", 23);
-    printf("ERROR 1\n");
     return NULL;
   }
 
   info->packet_len = ntohs(tpkt->length);
   info->rdp_packet_end = (u_char *)tpkt + info->packet_len;
-  printf("ISO PACKET LEN: %u\n", info->packet_len);
 
   p = ((u_char *)(itu_t) + sizeof(iso_itu_t_data));
 
@@ -2778,7 +2847,6 @@ rdp_iso_recv_data_loop(Connection *con)
         itu_t->code);
     con->service->end.orly = true;
     con->service->end.reason = Strndup(error, strlen(error));
-    printf("ERROR 2\n");
     return NULL;
   }
 
