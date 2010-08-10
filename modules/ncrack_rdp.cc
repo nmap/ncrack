@@ -312,8 +312,7 @@ enum RDP_CONTROL_PDU_TYPE
 
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
   RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, 
-  RDP_DEMAND_ACTIVE, RDP_DEMAND_ACTIVE_SYNC, RDP_DEMAND_ACTIVE_RECV_SYNC, 
-  RDP_DEMAND_ACTIVE_RECV_CONTROL_1, RDP_DEMAND_ACTIVE_RECV_CONTROL_2,
+  RDP_DEMAND_ACTIVE, RDP_DEMAND_ACTIVE_SYNC, RDP_DEMAND_ACTIVE_INPUT_SYNC,
   RDP_DEMAND_ACTIVE_FONTS, RDP_LOOP, RDP_FINI };
 
 typedef struct rdp_state {
@@ -3854,7 +3853,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      con->state = RDP_DEMAND_ACTIVE_RECV_SYNC;
+      con->state = RDP_DEMAND_ACTIVE_INPUT_SYNC;
 
       rdp_synchronize(con);
       rdp_control(con, RDP_CTL_COOPERATE);
@@ -3864,31 +3863,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
-    case RDP_DEMAND_ACTIVE_RECV_SYNC:
+    case RDP_DEMAND_ACTIVE_INPUT_SYNC:
 
-      if (rdp_loop_read(nsp, con) < 0)
-        break;
-
-      con->state = RDP_DEMAND_ACTIVE_RECV_CONTROL_1;
-      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
-      break;
-
-    case RDP_DEMAND_ACTIVE_RECV_CONTROL_1:
-
-      if (rdp_loop_read(nsp, con) < 0)
-        break;
-
-      con->state = RDP_DEMAND_ACTIVE_RECV_CONTROL_2;
-      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
-      break;
-
-    case RDP_DEMAND_ACTIVE_RECV_CONTROL_2:
-
-      if (rdp_loop_read(nsp, con) < 0)
-        break;
-
-      //delete con->inbuf;
-      //con->inbuf = NULL;
 
       if (con->outbuf)
         delete con->outbuf;
@@ -3926,9 +3902,6 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       con->state = RDP_LOOP;
 
       loop_val = rdp_process_loop(con);
-
-      //delete con->inbuf;
-      //con->inbuf = NULL;
 
       if (con->outbuf)
         delete con->outbuf;
