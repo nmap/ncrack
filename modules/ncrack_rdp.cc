@@ -337,6 +337,7 @@ typedef struct rdp_state {
   u_char *rdp_next_packet;
   u_char *rdp_packet_end;
   uint16_t packet_len;
+  uint16_t tcp_len;
 
 } rdp_state;
 
@@ -1889,6 +1890,10 @@ rdp_parse_text2(u_char *p, uint32_t params, bool delta)
     if (length <= sizeof(text))
       memcpy(text, p, length);
     p += length;
+    if (length > sizeof(text)) {
+      fprintf(stderr, "Text message too long!\n");
+      return p;
+    }
   }
 
   if (!memcmp(text, LOGON_AUTH_FAILED, 3))   
@@ -2310,6 +2315,8 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
 
     if (flags & RDP_ORDER_SECONDARY) {
 
+      printf(" ORDER SECONDARY !!!!\n");
+
       /* parse secondary order: we just ignore everything here after we parse
        * the length field to know how many bytes to skip to move on to the next
        * order
@@ -2403,54 +2410,67 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
       switch (type) {
 
         case RDP_ORDER_DESTBLT:
+          printf(" ORDER DESTBLT \n");
           p = rdp_parse_destblt(p, params, delta);
           break;
 
         case RDP_ORDER_PATBLT:
+           printf(" ORDER PATBLT\n");
           p = rdp_parse_patblt(p, params, delta);
           break;
 
         case RDP_ORDER_SCREENBLT:
+          printf(" ORDER SCREENBLT\n");
           p = rdp_parse_screenblt(p, params, delta);
           break;
 
         case RDP_ORDER_LINE:
+          printf(" ORDER LINE\n");
           p = rdp_parse_line(p, params, delta);
           break;
 
         case RDP_ORDER_RECT:
+          printf(" ORDER RECT\n");
           p = rdp_parse_rect(p, params, delta);
           break;
 
         case RDP_ORDER_DESKSAVE:
+          printf(" ORDER DESKSAVE\n");
           p = rdp_parse_desksave(p, params, delta);
           break;
 
         case RDP_ORDER_MEMBLT:
+          printf(" ORDER MEMBLT\n");
           p = rdp_parse_memblt(p, params, delta);
           break;
 
         case RDP_ORDER_TRIBLT:
+          printf(" ORDER TRIBLT\n");
           p = rdp_parse_triblt(p, params, delta);
           break;
 
         case RDP_ORDER_POLYGON:
+          printf(" ORDER POLYGON\n");
           p = rdp_parse_polygon(p, params, delta);
           break;
 
         case RDP_ORDER_POLYGON2:
+          printf(" ORDER POLYGON 2 \n");
           p = rdp_parse_polygon2(p, params, delta);
           break;
 
         case RDP_ORDER_POLYLINE:
+           printf(" ORDER  POLYLINE \n");
           p = rdp_parse_polyline(p, params, delta);
           break;
 
         case RDP_ORDER_ELLIPSE:
+          printf(" ORDER ELLIPSE\n");
           p = rdp_parse_ellipse(p, params, delta);
           break;
 
         case RDP_ORDER_ELLIPSE2:
+          printf(" ORDER ELLIPSE 2 \n");
           p = rdp_parse_ellipse2(p, params, delta);
           break;
 
@@ -2544,6 +2564,7 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
   p += 1;
   p += 2;
 
+
   switch (pdu_type) {
 
     case RDP_DATA_PDU_UPDATE:
@@ -2560,8 +2581,12 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
     case RDP_DATA_PDU_POINTER:
       break;
 
+    case RDP_DATA_PDU_BELL:
+      break;
+
     case RDP_DATA_PDU_DISCONNECT:
       disc_reason = *(uint32_t *)p;
+      p += 4;
       disc_msg = rdp_disc_reason(disc_reason);
       log_write(LOG_PLAIN, "RDP: Disconnected: %s\n", disc_msg);
       free(disc_msg);
@@ -2595,18 +2620,24 @@ rdp_process_loop(Connection *con)
   u_char *p;
   int pdudata_ret;
 
+  printf(" ----------------------------------------------- FUNCTION LOOP -----------------------------------------\n");
+
   while (loop) {
+
+    printf(" --------------------- RDP LOOP ------------------\n");
 
     p = rdp_recv_data(con, &pdu_type);
     if (p == NULL) {
       printf("LOOP NOTH NULL DATA\n");
+      //info->tcp_len = 0;
+      info->rdp_packet = NULL;
       return LOOP_NOTH;
     }
 
     switch (pdu_type) {
       case RDP_PDU_DEMAND_ACTIVE:
-        rdp_demand_active_confirm(con, p);
         printf("PDU DEMAND ACTIVE\n");
+        rdp_demand_active_confirm(con, p);
         break;
 
       case RDP_PDU_DEACTIVATE:
@@ -2618,12 +2649,14 @@ rdp_process_loop(Connection *con)
         break;
 
       case RDP_PDU_DATA:
-        printf("PDU DATA\n");
+        printf("======= PDU DATA =======\n");
         pdudata_ret = rdp_parse_rdpdata_pdu(con, p);
         if (pdudata_ret == 1)
           printf("LOG IN\n");
-        else if (pdudata_ret == -1)
+        else if (pdudata_ret == -1) {
+          //info->tcp_len = 0;
           return LOOP_DISC;
+        }
 
         break;
 
@@ -2633,12 +2666,19 @@ rdp_process_loop(Connection *con)
 
     }
 
-    //printf("next:%p end: %p \n", info->rdp_next_packet, info->rdp_packet_end);
+    printf("next:%p end: %p \n", info->rdp_next_packet, info->rdp_packet_end);
     loop = info->rdp_next_packet < info->rdp_packet_end;
+    //if (info->tcp_len < con->inbuf->get_len()) {
+    //  printf("  TCP: %u  INBUF: %u \n", info->tcp_len, con->inbuf->get_len());
+    //  loop = true;
+    //}
 
   }
 
+  con->inbuf->get_data(NULL, info->packet_len);
   info->packet_len = 0;
+  info->rdp_packet = NULL;
+  //info->tcp_len = 0;
 
   switch (pdu_type) {
     case RDP_PDU_DEMAND_ACTIVE:
@@ -2663,17 +2703,26 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
 
   /* WARNING: This only supports RDP version 4 */
 
-  if (info->rdp_packet == NULL || (info->rdp_next_packet >= info->rdp_packet_end) 
-      || (info->rdp_next_packet == NULL)) {
+  if (info->rdp_packet == NULL) {
+    
     info->rdp_packet = rdp_secure_recv_data(con);
     if (info->rdp_packet == NULL) {
       printf("rdp packet NULL!\n");
       return NULL;
-    }
-
+    } 
     info->rdp_next_packet = info->rdp_packet;
+
+  /* Time to get the next TCP segment */
+  } else if ((info->rdp_next_packet >= info->rdp_packet_end) 
+      || (info->rdp_next_packet == NULL)) {
+
+    printf(" RECV DATA TCP NEXT SEGMENT\n");
+    /* Eat away the ISO packet */
+    con->inbuf->get_data(NULL, info->packet_len);
+    return NULL;
+
   } else {
-    //printf("NEXT PACKET\n");
+    printf("NEXT PACKET\n");
     info->rdp_packet = info->rdp_next_packet;
   }
 
@@ -2695,7 +2744,7 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
   /* Skip userid */
   info->rdp_packet += 2;
 
-  //printf("RECV DATA length: %u\n", length);
+  printf("-- RDP PACKET length: %u\n", length);
   info->rdp_next_packet += length;
 
   return info->rdp_packet;
@@ -2726,10 +2775,14 @@ rdp_secure_recv_data(Connection *con)
       /* Decrypt Data */
       if (info->decrypt_use_count == 4096) {
         //TODO: update
+        //
+        printf(" UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUPDATE\n");
         info->decrypt_use_count = 0;
       }
 
       datalen = (info->rdp_packet_end - p);
+
+      printf("     SECURE DATALEN: %u\n", datalen);
 
       RC4(&info->rc4_decrypt_key, datalen, p, p);
       info->decrypt_use_count++;
@@ -2737,7 +2790,12 @@ rdp_secure_recv_data(Connection *con)
 
     if (flags & SEC_LICENCE_NEG) {
       printf("SEC LICENSE\n");
-      continue;
+
+      /* Eat away the ISO packet */
+      con->inbuf->get_data(NULL, info->packet_len);
+
+      return NULL;
+      //continue;
     }
 
     if (flags & 0x0400) {
@@ -2799,6 +2857,8 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   if (length & 0x80)
     p += 1;
 
+  printf(" MCS LENGTH: %u \n", length);
+
   return p;
 }
 
@@ -2817,16 +2877,18 @@ rdp_iso_recv_data_loop(Connection *con)
   if (info->packet_len)
     prev_length = info->packet_len;
 
-  //printf("prev_length: %u TCP_length: %u\n", prev_length, con->inbuf->get_len());
+  printf("prev_length: %u TCP_length: %u\n", prev_length, con->inbuf->get_len());
 
-  tpkt = (iso_tpkt *) ((u_char *)con->inbuf->get_dataptr() + prev_length);
+  tpkt = (iso_tpkt *) ((u_char *)con->inbuf->get_dataptr());
   itu_t = (iso_itu_t_data *) ((u_char *)tpkt + sizeof(iso_tpkt));
 
+#if 0
   if ((u_char *)tpkt >= ((u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len())) {
     info->packet_len = 0;
-    //printf("WRONG\n");
+    printf("ISO CORRUPTED!\n");
     return NULL;
   }
+#endif
 
   if (tpkt->version != 3)
     fatal("rdp_module: not supported TPKT version: %d\n", tpkt->version);
@@ -2834,10 +2896,13 @@ rdp_iso_recv_data_loop(Connection *con)
   if (tpkt->length < 4) {
     con->service->end.orly = true;
     con->service->end.reason = Strndup("Bad tptk packet header.", 23);
-    return NULL;
+    printf("ISO ERROR 1\n");
+    //return NULL;
   }
 
   info->packet_len = ntohs(tpkt->length);
+  //info->tcp_len += info->packet_len;
+
   info->rdp_packet_end = (u_char *)tpkt + info->packet_len;
 
   p = ((u_char *)(itu_t) + sizeof(iso_itu_t_data));
@@ -2847,6 +2912,7 @@ rdp_iso_recv_data_loop(Connection *con)
         itu_t->code);
     con->service->end.orly = true;
     con->service->end.reason = Strndup(error, strlen(error));
+    printf("ISO ERROR 2\n");
     return NULL;
   }
 
@@ -3861,8 +3927,9 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       loop_val = rdp_process_loop(con);
 
-      delete con->inbuf;
-      con->inbuf = NULL;
+      //delete con->inbuf;
+      //con->inbuf = NULL;
+
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
@@ -3872,14 +3939,16 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
           ;
           break;
         case LOOP_DISC:
-          rdp_disconnect(con);
-          nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
-              (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+          //rdp_disconnect(con);
+          //nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          //    (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+          nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
         case LOOP_NOTH:
-          rdp_scancode_msg(con, time(NULL), RDP_KEYPRESS, 1);
-          nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
-              (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+          //rdp_scancode_msg(con, time(NULL), RDP_KEYPRESS, 1);
+          //nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+          //    (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+          nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
         default:
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
