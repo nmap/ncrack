@@ -2848,7 +2848,6 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   if (length & 0x80)
     p += 1;
 
-  printf(" MCS LENGTH: %u \n", length);
 
   return p;
 }
@@ -2861,25 +2860,12 @@ rdp_iso_recv_data_loop(Connection *con)
   iso_itu_t_data *itu_t;
   char error[64];
   rdp_state *info = (rdp_state *)con->misc_info;
-  /* length of previous packet in same TCP segment */
-  uint16_t prev_length = 0;
   u_char *p;
 
-  if (info->packet_len)
-    prev_length = info->packet_len;
-
-  printf("prev_length: %u TCP_length: %u\n", prev_length, con->inbuf->get_len());
+  printf("TCP_length: %u\n", con->inbuf->get_len());
 
   tpkt = (iso_tpkt *) ((u_char *)con->inbuf->get_dataptr());
   itu_t = (iso_itu_t_data *) ((u_char *)tpkt + sizeof(iso_tpkt));
-
-#if 0
-  if ((u_char *)tpkt >= ((u_char *)con->inbuf->get_dataptr() + con->inbuf->get_len())) {
-    info->packet_len = 0;
-    printf("ISO CORRUPTED!\n");
-    return NULL;
-  }
-#endif
 
   if (tpkt->version != 3)
     fatal("rdp_module: not supported TPKT version: %d\n", tpkt->version);
@@ -2887,12 +2873,10 @@ rdp_iso_recv_data_loop(Connection *con)
   if (tpkt->length < 4) {
     con->service->end.orly = true;
     con->service->end.reason = Strndup("Bad tptk packet header.", 23);
-    printf("ISO ERROR 1\n");
     return NULL;
   }
 
   info->packet_len = ntohs(tpkt->length);
-
   info->rdp_packet_end = (u_char *)tpkt + info->packet_len;
 
   p = ((u_char *)(itu_t) + sizeof(iso_itu_t_data));
@@ -2902,7 +2886,6 @@ rdp_iso_recv_data_loop(Connection *con)
         itu_t->code);
     con->service->end.orly = true;
     con->service->end.reason = Strndup(error, strlen(error));
-    printf("ISO ERROR 2\n");
     return NULL;
   }
 
