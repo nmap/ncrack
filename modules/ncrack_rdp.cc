@@ -983,7 +983,8 @@ typedef struct sec_header {
  */
 typedef struct gcc_conference_create_request {
   /* be = big endian, le = little endian */
-  // TODO: find the actual names of each var 
+  /* The above document is a bit fuzzy in which names correspond to which
+   * variables, thus no particular names were given to them */
 
   /* be */
   uint16_t conf_num;  /* 5 */
@@ -1052,8 +1053,8 @@ typedef struct client_security_data {
     uint16_t length;/* 12 */
   } __attribute__((__packed__)) hdr;
 
-  // TODO: rdesktop sets this field (enc_methods) to 0x3 for some reason
-  // microsoft doesn't mention 3 as a possible value
+  /* Rdesktop sets this field (enc_methods) to 0x3 for some reason
+   * microsoft doesn't mention 3 as a possible value */
   uint32_t enc_methods; /* 0 for no enc, 2 for 128-bit */
   uint32_t ext_enc; /* 0 for non-french locale clients */
 
@@ -1621,7 +1622,7 @@ rdp_mcs_connect(Connection *con)
   ccr.word7 = 0;
   ccr.word8 = 0xc001;
   ccr.word9 = 0;
-  ccr.word10 = 0x61637544;  /* OEM ID: "Duca" TODO: change this */
+  ccr.word10 = 0x61637544;  /* OEM ID: "Duca" */
   ccr.word11 = htons((length - 14) | 0x8000);
 
 
@@ -2765,9 +2766,11 @@ rdp_secure_recv_data(Connection *con)
 
       /* Decrypt Data */
       if (info->decrypt_use_count == 4096) {
-        //TODO: update
-        //
-        printf(" UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUPDATE\n");
+        /* Normally we should update our keys here, but we never get to receive
+         * more than 4096 RDP packets in one authentication session (since we
+         * close the connection after 1 attempt and reconnect with new keys),
+         * so we don't bother with this.
+         */
         info->decrypt_use_count = 0;
       }
 
@@ -3274,7 +3277,11 @@ rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen,
   /* Encrypt the data */
   if (info->encrypt_use_count == 4096) {
     info->encrypt_use_count = 0;
-    // UPDATE KEY
+    /* Normally we should update our keys here, but we never get to receive
+     * more than 4096 RDP packets in one authentication session (since we
+     * close the connection after 1 attempt and reconnect with new keys),
+     * so we don't bother with this.
+     */
   }
   RC4(&info->rc4_encrypt_key, datalen, data, data);
   info->encrypt_use_count++;
