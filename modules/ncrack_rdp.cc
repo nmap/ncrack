@@ -336,7 +336,6 @@ typedef struct rdp_state {
   u_char *rdp_next_packet;
   u_char *rdp_packet_end;
   uint16_t packet_len;
-  uint16_t tcp_len;
 
 } rdp_state;
 
@@ -2628,7 +2627,6 @@ rdp_process_loop(Connection *con)
     p = rdp_recv_data(con, &pdu_type);
     if (p == NULL) {
       printf("LOOP NOTH NULL DATA\n");
-      //info->tcp_len = 0;
       info->rdp_packet = NULL;
       return LOOP_NOTH;
     }
@@ -2653,7 +2651,6 @@ rdp_process_loop(Connection *con)
         if (pdudata_ret == 1)
           printf("LOG IN\n");
         else if (pdudata_ret == -1) {
-          //info->tcp_len = 0;
           return LOOP_DISC;
         }
 
@@ -2667,17 +2664,12 @@ rdp_process_loop(Connection *con)
 
     printf("next:%p end: %p \n", info->rdp_next_packet, info->rdp_packet_end);
     loop = info->rdp_next_packet < info->rdp_packet_end;
-    //if (info->tcp_len < con->inbuf->get_len()) {
-    //  printf("  TCP: %u  INBUF: %u \n", info->tcp_len, con->inbuf->get_len());
-    //  loop = true;
-    //}
 
   }
 
   con->inbuf->get_data(NULL, info->packet_len);
   info->packet_len = 0;
   info->rdp_packet = NULL;
-  //info->tcp_len = 0;
 
   switch (pdu_type) {
     case RDP_PDU_DEMAND_ACTIVE:
@@ -2896,11 +2888,10 @@ rdp_iso_recv_data_loop(Connection *con)
     con->service->end.orly = true;
     con->service->end.reason = Strndup("Bad tptk packet header.", 23);
     printf("ISO ERROR 1\n");
-    //return NULL;
+    return NULL;
   }
 
   info->packet_len = ntohs(tpkt->length);
-  //info->tcp_len += info->packet_len;
 
   info->rdp_packet_end = (u_char *)tpkt + info->packet_len;
 
