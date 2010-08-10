@@ -337,6 +337,8 @@ typedef struct rdp_state {
   u_char *rdp_packet_end;
   uint16_t packet_len;
 
+  uint8_t order_state_type;
+
 } rdp_state;
 
 
@@ -2297,15 +2299,17 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
 {
   uint16_t parsed = 0;
   uint8_t flags;
-  uint8_t type;
-  int size;
+  int size, temp_size;
   uint32_t params;
   bool delta;
+  rdp_state *info = (rdp_state *)con->misc_info;
 
   while (parsed < num) {
 
     flags = *(uint8_t *)p;
     p += 1;
+
+   // printf(" --- ORDER FLAGS %x \n", flags);
 
     if ((!flags & RDP_ORDER_STANDARD)) {
       printf("%s error parsing orders\n", __func__);
@@ -2334,11 +2338,12 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
     else {
 
       if (flags & RDP_ORDER_CHANGE) {
-        type = *(uint8_t *)p;
+        info->order_state_type = *(uint8_t *)p;
         p += 1;
+
       }
 
-      switch (type) {
+      switch (info->order_state_type) {
         case RDP_ORDER_TRIBLT:
         case RDP_ORDER_TEXT2:
           size = 3;
@@ -2357,19 +2362,21 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
       }
 
       /* Check parameters present */
+      temp_size = size;
+
       if (flags & RDP_ORDER_SMALL)
-        size--;
+        temp_size--;
 
       if (flags & RDP_ORDER_TINY) {
-        if (size < 2)
-          size = 0;
+        if (temp_size < 2)
+          temp_size = 0;
         else
-          size -= 2;
+          temp_size -= 2;
       }
 
       params = 0;
       uint8_t bits;
-      for (int i = 0; i < size; i++) {
+      for (int i = 0; i < temp_size; i++) {
         bits = *(uint8_t *)p;
         p += 1;
         params |= bits << (i * 8);
@@ -2405,8 +2412,10 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
       }
 
       delta = flags & RDP_ORDER_DELTA;
+     
+      //printf(" PARAMS %u  SIZE %u DELTA: %d\n", params, size, delta);
 
-      switch (type) {
+      switch (info->order_state_type) {
 
         case RDP_ORDER_DESTBLT:
           printf(" ORDER DESTBLT \n");
@@ -2479,7 +2488,7 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
           break;
 
         default:
-          printf("Unimplemented order %u\n", type);
+          printf("Unimplemented order %u\n", info->order_state_type);
           return;
 
       }
@@ -2572,12 +2581,15 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
       break;
 
     case RDP_DATA_PDU_CONTROL:
+      printf(" -- DATA PDU CONTROL\n");
       break;
 
     case RDP_DATA_PDU_SYNCHRONISE:
+      printf(" -- DATA PDU SYNC\n");
       break;
 
     case RDP_DATA_PDU_POINTER:
+      printf(" -- DATA PDU POINTER\n");
       break;
 
     case RDP_DATA_PDU_BELL:
@@ -2628,6 +2640,9 @@ rdp_process_loop(Connection *con)
     p = rdp_recv_data(con, &pdu_type);
     if (p == NULL) {
       printf("LOOP NOTH NULL DATA\n");
+
+      con->inbuf->get_data(NULL, info->packet_len);
+      info->packet_len = 0;
       info->rdp_packet = NULL;
       return LOOP_NOTH;
     }
@@ -2696,7 +2711,7 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
   /* WARNING: This only supports RDP version 4 */
 
   if (info->rdp_packet == NULL) {
-    
+
     info->rdp_packet = rdp_secure_recv_data(con);
     if (info->rdp_packet == NULL) {
       printf("rdp packet NULL!\n");
@@ -2704,13 +2719,13 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
     } 
     info->rdp_next_packet = info->rdp_packet;
 
-  /* Time to get the next TCP segment */
+    /* Time to get the next TCP segment */
   } else if ((info->rdp_next_packet >= info->rdp_packet_end) 
       || (info->rdp_next_packet == NULL)) {
 
     printf(" RECV DATA TCP NEXT SEGMENT\n");
     /* Eat away the ISO packet */
-    con->inbuf->get_data(NULL, info->packet_len);
+    //con->inbuf->get_data(NULL, info->packet_len);
     return NULL;
 
   } else {
@@ -2718,12 +2733,6 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
     info->rdp_packet = info->rdp_next_packet;
   }
 
-#if 0
-  printf("-----------DATA--------\n");
-  char *string = hexdump((u8*)info->rdp_packet, 26);
-  log_write(LOG_PLAIN, "%s", string);
-  printf("-----------DATA--------\n");
-#endif
 
   /* Get the length */
   length = *(uint16_t *)info->rdp_packet;
@@ -2738,6 +2747,13 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
 
   printf("-- RDP PACKET length: %u\n", length);
   info->rdp_next_packet += length;
+
+#if 0
+  printf("-----------DATA--------\n");
+  char *string = hexdump((u8*)info->rdp_packet, length);
+  log_write(LOG_PLAIN, "%s", string);
+  printf("-----------DATA--------\n");
+#endif
 
   return info->rdp_packet;
 }
@@ -2786,7 +2802,7 @@ rdp_secure_recv_data(Connection *con)
       printf("SEC LICENSE\n");
 
       /* Eat away the ISO packet */
-      con->inbuf->get_data(NULL, info->packet_len);
+      //con->inbuf->get_data(NULL, info->packet_len);
 
       return NULL;
       //continue;
@@ -2831,7 +2847,7 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
       con->service->end.orly = true;
       con->service->end.reason = Strndup(error, strlen(error));
     }
-    printf("MCS ERR\n");
+    printf(" ----------------------------------------------------------->>>>>>>>>>> MCS ERR\n");
     return NULL;
   }
 
@@ -3411,7 +3427,7 @@ rdp_client_info(Connection *con)
    * strings, which are not included in the lengths 
    * see: http://msdn.microsoft.com/en-us/library/cc240475%28v=PROT.10%29.aspx
    */
-  //printf("username: %s pass: %s\n", con->user, con->pass);
+  printf("username: %s pass: %s\n", con->user, con->pass);
 
   total_length = 18 + domain_length + username_length + password_length +
     shell_length + workingdir_length + 10; 
@@ -3585,6 +3601,8 @@ rdp_confirm_active(Connection *con)
   rdp_encrypt_data(con, (uint8_t *)data->get_dataptr(), data->get_len(), flags);
 
   delete data;
+
+  info->order_state_type = RDP_ORDER_PATBLT;
 
 } 
 
@@ -3893,9 +3911,9 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
           ;
           break;
         case LOOP_DISC:
-          //rdp_disconnect(con);
-          //nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
-          //    (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+          rdp_disconnect(con);
+          nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+              (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
         case LOOP_NOTH:
