@@ -2662,9 +2662,9 @@ rdp_process_loop(Connection *con)
     if (p == NULL) {
       printf("LOOP NOTH NULL DATA\n");
 
-      con->inbuf->get_data(NULL, info->packet_len);
-      info->packet_len = 0;
-      info->rdp_packet = NULL;
+      //con->inbuf->get_data(NULL, info->packet_len);
+      //info->packet_len = 0;
+      //info->rdp_packet = NULL;
       return LOOP_NOTH;
     }
 
@@ -2749,7 +2749,7 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
 
     printf(" RECV DATA TCP NEXT SEGMENT\n");
     /* Eat away the ISO packet */
-    //con->inbuf->get_data(NULL, info->packet_len);
+    con->inbuf->get_data(NULL, info->packet_len);
     return NULL;
 
   } else {
@@ -2826,7 +2826,7 @@ rdp_secure_recv_data(Connection *con)
       printf("SEC LICENSE\n");
 
       /* Eat away the ISO packet */
-      //con->inbuf->get_data(NULL, info->packet_len);
+      con->inbuf->get_data(NULL, info->packet_len);
 
       return NULL;
       //continue;
@@ -2871,7 +2871,7 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
       con->service->end.orly = true;
       con->service->end.reason = Strndup(error, strlen(error));
     }
-    printf(" ----------------------------------------------------------->>>>>>>>>>> MCS ERR\n");
+    printf(" ----------------------------------->>>>>>>>>>> MCS ERR\n");
     return NULL;
   }
 
@@ -2913,13 +2913,14 @@ rdp_iso_recv_data_loop(Connection *con)
   if (tpkt->version != 3)
     fatal("rdp_module: not supported TPKT version: %d\n", tpkt->version);
 
-  if (tpkt->length < 4) {
+  info->packet_len = ntohs(tpkt->length);
+
+  if (info->packet_len < 4) {
     con->service->end.orly = true;
     con->service->end.reason = Strndup("Bad tptk packet header.", 23);
     return NULL;
   }
 
-  info->packet_len = ntohs(tpkt->length);
   info->rdp_packet_end = (u_char *)tpkt + info->packet_len;
 
   p = ((u_char *)(itu_t) + sizeof(iso_itu_t_data));
@@ -2951,7 +2952,7 @@ rdp_iso_recv_data(Connection *con)
   if (tpkt->version != 3)
     fatal("rdp_module: not supported TPKT version: %d\n", tpkt->version);
 
-  if (tpkt->length < 4) {
+  if (ntohs(tpkt->length) < 4) {
     con->service->end.orly = true;
     con->service->end.reason = Strndup("Bad tptk packet header.", 23);
     return -1;
