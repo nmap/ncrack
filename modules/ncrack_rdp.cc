@@ -3900,21 +3900,23 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       printf("RDP LOOP STATE \n");
       con->state = RDP_LOOP;
 
-      loop_val = rdp_process_loop(con);
-
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
 
+      loop_val = rdp_process_loop(con);
+
       switch (loop_val) {
         case LOOP_WRITE:
-          ;
+          con->state = RDP_DEMAND_ACTIVE_SYNC;
+          nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+              (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
           break;
         case LOOP_DISC:
           rdp_disconnect(con);
           nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
               (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
-          nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+          //nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
         case LOOP_NOTH:
           //rdp_scancode_msg(con, time(NULL), RDP_KEYPRESS, 1);
