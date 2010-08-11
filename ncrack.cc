@@ -1654,7 +1654,11 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     SG->connections_timedout++;
 
   if (con->close_reason == READ_TIMEOUT) {
-    serv->appendToPool(con->user, con->pass);
+
+    if (!con->auth_complete) {
+      serv->appendToPool(con->user, con->pass);
+    }
+
     if (serv->getListPairfini())
       SG->popServiceFromList(serv, &SG->services_pairfini);
     if (o.debugging)
