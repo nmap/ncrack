@@ -176,7 +176,7 @@ static u_char *rdp_parse_polygon(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_polygon2(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_ellipse(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_ellipse2(u_char *p, uint32_t params, bool delta);
-static u_char *rdp_parse_text2(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta);
 
 
 /* RDP PDU codes */
@@ -337,9 +337,14 @@ typedef struct rdp_state {
   u_char *rdp_packet_end;
   uint16_t packet_len;
 
+  int login_result;
+
   uint8_t order_state_type;
 
 } rdp_state;
+
+enum login_results { LOGIN_INIT, LOGIN_FAIL, LOGIN_ERROR, LOGIN_SUCCESS };
+
 
 
 /* RDP header */
@@ -1843,11 +1848,12 @@ rdp_parse_pen(u_char *p, uint32_t params)
 
 
 static u_char *
-rdp_parse_text2(u_char *p, uint32_t params, bool delta)
+rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta)
 {
   printf("RDP PARSE TEXT2\n");
   uint8_t length;
   u_char text[256];
+  rdp_state *info = (rdp_state *)con->misc_info;
 
   if (params & 0x000001)
     p += 1;
@@ -1902,32 +1908,47 @@ rdp_parse_text2(u_char *p, uint32_t params, bool delta)
 
   if ((!memcmp(text, LOGON_MESSAGE_FAILED_XP, 18))
       || (!memcmp(text, LOGON_MESSAGE_FAILED_2K3, 18))) {
+    info->login_result = LOGIN_FAIL;
     fprintf(stderr, "Account credentials are NOT valid.\n");
 
   } else if ((!memcmp(text, LOGON_MESSAGE_NO_INTERACTIVE_XP, 18))
       || (!memcmp(text, LOGON_MESSAGE_NO_INTERACTIVE_2K3, 18))) {
+    info->login_result = LOGIN_SUCCESS;
     fprintf(stderr, "Account credentials are valid, however, the account is denied interactive logon.\n");
+
   } else if ((!memcmp(text, LOGON_MESSAGE_LOCKED_XP, 18)) 
       || (!memcmp(text, LOGON_MESSAGE_LOCKED_2K3, 18))) {
+    info->login_result = LOGIN_ERROR;
     fprintf(stderr, "Account is currently locked out.\n");
+
   } else if ((!memcmp(text, LOGON_MESSAGE_DISABLED_XP, 18)) 
       || (!memcmp(text, LOGON_MESSAGE_DISABLED_2K3, 18))) {
+    info->login_result = LOGIN_ERROR;
     fprintf(stderr, "Account is currently disabled or expired. "
         "XP appears to report that an account is disabled only for valid credentials.\n");
+
   } else if ((!memcmp(text, LOGON_MESSAGE_EXPIRED_XP, 18))
       || (!memcmp(text, LOGON_MESSAGE_EXPIRED_2K3, 18))) {
+    info->login_result = LOGIN_SUCCESS;
     fprintf(stderr, "Account credentials are valid, however, the password has expired and must be changed.\n");
+
   } else if ((!memcmp(text, LOGON_MESSAGE_MUST_CHANGE_XP, 18)) 
       || (!memcmp(text, LOGON_MESSAGE_MUST_CHANGE_2K3, 18))) {
+    info->login_result = LOGIN_SUCCESS;
     fprintf(stderr, "Account credentials are valid, however, the password must be changed at first logon.\n");
-  }
-  else if (!memcmp(text, LOGON_MESSAGE_MSTS_MAX_2K3, 18)) {
+
+  } else if (!memcmp(text, LOGON_MESSAGE_MSTS_MAX_2K3, 18)) {
+    info->login_result = LOGIN_SUCCESS;
     fprintf(stderr, "Account credentials are valid, however, the maximum "
         "number of terminal services connections has been reached.\n");
+
   } else if (!memcmp(text, LOGON_MESSAGE_CURRENT_USER_XP, 18)) {
+    info->login_result = LOGIN_SUCCESS;
     fprintf(stderr, "Valid credentials, however, another user is currently logged on.\n");
+
   } else {
     fprintf(stderr, "Text: irrelevant message\n");
+
   }
 
 
@@ -2318,7 +2339,7 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
 
     if (flags & RDP_ORDER_SECONDARY) {
 
-      printf(" ORDER SECONDARY !!!!\n");
+      //printf(" ORDER SECONDARY !!!!\n");
 
       /* parse secondary order: we just ignore everything here after we parse
        * the length field to know how many bytes to skip to move on to the next
@@ -2418,77 +2439,77 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
       switch (info->order_state_type) {
 
         case RDP_ORDER_DESTBLT:
-          printf(" ORDER DESTBLT \n");
+          //printf(" ORDER DESTBLT \n");
           p = rdp_parse_destblt(p, params, delta);
           break;
 
         case RDP_ORDER_PATBLT:
-           printf(" ORDER PATBLT\n");
+           //printf(" ORDER PATBLT\n");
           p = rdp_parse_patblt(p, params, delta);
           break;
 
         case RDP_ORDER_SCREENBLT:
-          printf(" ORDER SCREENBLT\n");
+          //printf(" ORDER SCREENBLT\n");
           p = rdp_parse_screenblt(p, params, delta);
           break;
 
         case RDP_ORDER_LINE:
-          printf(" ORDER LINE\n");
+          //printf(" ORDER LINE\n");
           p = rdp_parse_line(p, params, delta);
           break;
 
         case RDP_ORDER_RECT:
-          printf(" ORDER RECT\n");
+          //printf(" ORDER RECT\n");
           p = rdp_parse_rect(p, params, delta);
           break;
 
         case RDP_ORDER_DESKSAVE:
-          printf(" ORDER DESKSAVE\n");
+          //printf(" ORDER DESKSAVE\n");
           p = rdp_parse_desksave(p, params, delta);
           break;
 
         case RDP_ORDER_MEMBLT:
-          printf(" ORDER MEMBLT\n");
+          //printf(" ORDER MEMBLT\n");
           p = rdp_parse_memblt(p, params, delta);
           break;
 
         case RDP_ORDER_TRIBLT:
-          printf(" ORDER TRIBLT\n");
+          //printf(" ORDER TRIBLT\n");
           p = rdp_parse_triblt(p, params, delta);
           break;
 
         case RDP_ORDER_POLYGON:
-          printf(" ORDER POLYGON\n");
+          //printf(" ORDER POLYGON\n");
           p = rdp_parse_polygon(p, params, delta);
           break;
 
         case RDP_ORDER_POLYGON2:
-          printf(" ORDER POLYGON 2 \n");
+          //printf(" ORDER POLYGON 2 \n");
           p = rdp_parse_polygon2(p, params, delta);
           break;
 
         case RDP_ORDER_POLYLINE:
-           printf(" ORDER  POLYLINE \n");
+           //printf(" ORDER  POLYLINE \n");
           p = rdp_parse_polyline(p, params, delta);
           break;
 
         case RDP_ORDER_ELLIPSE:
-          printf(" ORDER ELLIPSE\n");
+          //printf(" ORDER ELLIPSE\n");
           p = rdp_parse_ellipse(p, params, delta);
           break;
 
         case RDP_ORDER_ELLIPSE2:
-          printf(" ORDER ELLIPSE 2 \n");
+          //printf(" ORDER ELLIPSE 2 \n");
           p = rdp_parse_ellipse2(p, params, delta);
           break;
 
         case RDP_ORDER_TEXT2:
-          printf("-----> PARSE TEXT <------- \n");
-          p = rdp_parse_text2(p, params, delta);
+          //printf("-----> PARSE TEXT <------- \n");
+          p = rdp_parse_text2(con, p, params, delta);
           break;
 
         default:
-          printf("Unimplemented order %u\n", info->order_state_type);
+          //printf("Unimplemented order %u\n", info->order_state_type);
           return;
 
       }
@@ -2620,7 +2641,7 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
 }
 
 
-enum { LOOP_WRITE, LOOP_DISC, LOOP_NOTH };
+enum { LOOP_WRITE, LOOP_DISC, LOOP_NOTH, LOOP_AUTH };
 static int
 rdp_process_loop(Connection *con)
 {
@@ -2664,9 +2685,9 @@ rdp_process_loop(Connection *con)
       case RDP_PDU_DATA:
         printf("======= PDU DATA =======\n");
         pdudata_ret = rdp_parse_rdpdata_pdu(con, p);
-        if (pdudata_ret == 1)
-          printf("LOG IN\n");
-        else if (pdudata_ret == -1) {
+        if (pdudata_ret == 1) {
+          info->login_result = LOGIN_SUCCESS;
+        } else if (pdudata_ret == -1) {
           return LOOP_DISC;
         }
 
@@ -2686,6 +2707,9 @@ rdp_process_loop(Connection *con)
   con->inbuf->get_data(NULL, info->packet_len);
   info->packet_len = 0;
   info->rdp_packet = NULL;
+
+  if (info->login_result != LOGIN_INIT)
+    return LOOP_AUTH;
 
   switch (pdu_type) {
     case RDP_PDU_DEMAND_ACTIVE:
@@ -3913,21 +3937,41 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
               (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
           break;
         case LOOP_DISC:
+
+          con->state = RDP_INIT;
+          delete con->inbuf;
+          con->inbuf = NULL;
+            
           rdp_disconnect(con);
           nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
               (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
-          //nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
         case LOOP_NOTH:
-          //rdp_scancode_msg(con, time(NULL), RDP_KEYPRESS, 1);
-          //nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
-          //    (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
+        case LOOP_AUTH:
+
+          if (info->login_result == LOGIN_SUCCESS) {
+            con->auth_success = true;
+          }
+          con->state = RDP_INIT;
+          
+          delete con->inbuf;
+          con->inbuf = NULL;
+
+          con->peer_alive = true;
+    
+          rdp_disconnect(con);
+          nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
+              (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+
+          return ncrack_module_end(nsp, con);
+
         default:
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
       }
+
 
       break;
 
