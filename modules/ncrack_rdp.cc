@@ -2683,7 +2683,7 @@ rdp_process_loop(Connection *con)
         break;
 
       case RDP_PDU_DATA:
-        printf("======= PDU DATA =======\n");
+        printf("PDU DATA\n");
         pdudata_ret = rdp_parse_rdpdata_pdu(con, p);
         if (pdudata_ret == 1) {
           info->login_result = LOGIN_SUCCESS;
@@ -2699,7 +2699,6 @@ rdp_process_loop(Connection *con)
 
     }
 
-    printf("next:%p end: %p \n", info->rdp_next_packet, info->rdp_packet_end);
     loop = info->rdp_next_packet < info->rdp_packet_end;
 
   }
@@ -2769,7 +2768,7 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
   /* Skip userid */
   info->rdp_packet += 2;
 
-  printf("-- RDP PACKET length: %u\n", length);
+  printf("    RDP length: %u\n", length);
   info->rdp_next_packet += length;
 
 #if 0
@@ -2816,7 +2815,7 @@ rdp_secure_recv_data(Connection *con)
 
       datalen = (info->rdp_packet_end - p);
 
-      printf("     SECURE DATALEN: %u\n", datalen);
+      printf("  Sec length: %u\n", datalen);
 
       RC4(&info->rc4_decrypt_key, datalen, p, p);
       info->decrypt_use_count++;
@@ -2905,7 +2904,7 @@ rdp_iso_recv_data_loop(Connection *con)
   rdp_state *info = (rdp_state *)con->misc_info;
   u_char *p;
 
-  printf("TCP_length: %u\n", con->inbuf->get_len());
+  printf("TCP length: %u\n", con->inbuf->get_len());
 
   tpkt = (iso_tpkt *) ((u_char *)con->inbuf->get_dataptr());
   itu_t = (iso_itu_t_data *) ((u_char *)tpkt + sizeof(iso_tpkt));
