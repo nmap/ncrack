@@ -139,6 +139,7 @@ class Connection
     bool from_pool;     /* true -> login pair was extracted from pair_pool */
     bool closed;        /* true -> connection was closed */
     bool auth_success;  /* true -> we found a valid pair!!! */
+    bool force_close;   /* true -> forcefully close the connection */
 
     void *misc_info;    /* additional state information that might be needed */
 

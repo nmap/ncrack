@@ -162,6 +162,8 @@ typedef struct rdp_state {
     uint16_t cache_idx;
   } order_memblt;
 
+  bool win7_fingerprint;
+
   order_memblt memblt;
 
 } rdp_state;
@@ -2186,6 +2188,20 @@ rdp_parse_memblt(u_char *p, uint32_t params, bool delta, rdp_state *info)
     p += 2;
   }
 
+  /* This is a fingerprint for Windows 7 when the credentials fail to
+   * authenticate.
+   */
+  if (info->memblt.opcode == 0xcc &&
+      info->memblt.x == 740 &&
+      info->memblt.y == 448 &&
+      info->memblt.cx == 60 &&
+      info->memblt.cy == 56 &&
+      info->memblt.cache_id == 2) {
+    printf(" ======================= WIN_7 FAIL ==============\n");
+    info->login_result = LOGIN_FAIL;
+    info->win7_fingerprint = true;
+  }
+
   printf("MEMBLT(op=0x%x,x=%d,y=%d,cx=%d,cy=%d,id=%d,idx=%d)\n",
 	       info->memblt.opcode, info->memblt.x, info->memblt.y, info->memblt.cx,
          info->memblt.cy, info->memblt.cache_id, info->memblt.cache_idx);
@@ -2670,7 +2686,9 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
       disc_msg = rdp_disc_reason(disc_reason);
       log_write(LOG_PLAIN, "RDP: Disconnected: %s\n", disc_msg);
       free(disc_msg);
-      return -1;
+      /* Don't disconnect because Windows Vista and Windows 7 always send a
+       * disconnect PDU, when you authenticate correctly, with reason 0 */
+      //return -1;
       break;
 
     case RDP_DATA_PDU_LOGON:
@@ -3981,41 +3999,50 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       loop_val = rdp_process_loop(con);
 
       switch (loop_val) {
+
         case LOOP_WRITE:
+
           con->state = RDP_DEMAND_ACTIVE_SYNC;
           nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
               (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
           break;
+
         case LOOP_DISC:
 
-          con->state = RDP_INIT;
           delete con->inbuf;
           con->inbuf = NULL;
             
+          con->force_close = true;
           rdp_disconnect(con);
+
           nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
               (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+          return ncrack_module_end(nsp, con);
+
           break;
+
         case LOOP_NOTH:
+
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
+
         case LOOP_AUTH:
 
           if (info->login_result == LOGIN_SUCCESS) {
             con->auth_success = true;
           }
-          con->state = RDP_INIT;
           
           delete con->inbuf;
           con->inbuf = NULL;
 
-          con->peer_alive = true;
-    
+          con->force_close = true;
           rdp_disconnect(con);
+
           nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
               (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
-
           return ncrack_module_end(nsp, con);
+
+          break;
 
         default:
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);

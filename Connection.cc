@@ -111,6 +111,7 @@ Connection(Service *serv)
   from_pool = false;
   closed = false;
   auth_success = false;
+  force_close = false;
   login_attempts = 0;
   misc_info = NULL;
   close_reason = -1;

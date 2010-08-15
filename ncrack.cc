@@ -701,6 +701,7 @@ call_module(nsock_pool nsp, Connection *con)
   con->peer_alive = false;
   con->finished_normally = false;
   con->close_reason = -1;
+  con->force_close = false;
 
 
   if (!strcmp(name, "ftp"))
@@ -1588,6 +1589,12 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   if (serv->getListActive())
     ncrack_probes(nsp, SG);
 
+  /* If module instructed to close the connection by force, then do so
+   * here.
+   */
+  if (con->force_close)
+    return ncrack_connection_end(nsp, con);
+
   /* 
    * If we need to check whether peer is alive or not we do the following:
    * Since there is no portable way to check if the peer has closed the
@@ -1708,6 +1715,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       error("%s Connection closed by peer", hostinfo);
   }
   con->close_reason = -1;
+
 
   /* 
    * If we are not the first timing probe and the authentication wasn't
@@ -2137,6 +2145,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
   int pair_ret;
   char *login, *pass;
   const char *hostinfo;
+
 
   /* First check for every service if connection_delay time has already
    * passed since its last connection and move them back to 'services_active'
