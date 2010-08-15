@@ -122,6 +122,51 @@ extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse,
     void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
+
+typedef struct rdp_state {
+
+  uint8_t crypted_random[256];
+  uint8_t sign_key[16];
+  uint8_t encrypt_key[16];
+  uint8_t decrypt_key[16];
+  uint8_t encrypt_update_key[16];
+  uint8_t decrypt_update_key[16];
+  RC4_KEY rc4_encrypt_key;
+  RC4_KEY rc4_decrypt_key;
+  int rc4_keylen;
+  int encrypt_use_count;
+  int decrypt_use_count;
+  uint32_t server_public_key_length;
+  uint16_t mcs_userid;
+  uint32_t shareid;
+
+  u_char *rdp_packet;
+  u_char *rdp_next_packet;
+  u_char *rdp_packet_end;
+  uint16_t packet_len;
+
+  int login_result;
+
+  uint8_t order_state_type;
+
+  typedef struct order_memblt {
+    uint8_t color_table;
+    uint8_t cache_id;
+    int16_t x;
+    int16_t y;
+    int16_t cx;
+    int16_t cy;
+    uint8_t opcode;
+    int16_t srcx;
+    int16_t srcy;
+    uint16_t cache_idx;
+  } order_memblt;
+
+  order_memblt memblt;
+
+} rdp_state;
+
+
 static int rdp_loop_read(nsock_pool nsp, Connection *con);
 static void rdp_iso_connection_request(Connection *con);
 static int rdp_iso_connection_confirm(Connection *con);
@@ -161,7 +206,7 @@ static void rdp_parse_update_pdu(Connection *con, u_char *p);
 static void rdp_parse_orders(Connection *con, u_char *p, uint16_t num);
 static void rdp_parse_second_order(u_char *p);
 static u_char *rdp_parse_destblt(u_char *p, uint32_t params, bool delta);
-static u_char *rdp_coord(u_char *p, bool delta);
+static u_char *rdp_coord(u_char *p, bool delta, int16_t *coord = NULL);
 static u_char *rdp_parse_brush(u_char *p, uint32_t params);
 static u_char *rdp_parse_patblt(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_screenblt(u_char *p, uint32_t params, bool delta);
@@ -170,7 +215,7 @@ static u_char *rdp_parse_pen(u_char *p, uint32_t params);
 static u_char *rdp_color(u_char *p);
 static u_char *rdp_parse_rect(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_desksave(u_char *p, uint32_t params, bool delta);
-static u_char *rdp_parse_memblt(u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_memblt(u_char *p, uint32_t params, bool delta, rdp_state *info);
 static u_char *rdp_parse_triblt(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_polygon(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_polygon2(u_char *p, uint32_t params, bool delta);
@@ -315,33 +360,6 @@ enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF,
   RDP_DEMAND_ACTIVE, RDP_DEMAND_ACTIVE_SYNC, RDP_DEMAND_ACTIVE_INPUT_SYNC,
   RDP_DEMAND_ACTIVE_FONTS, RDP_LOOP, RDP_FINI };
 
-typedef struct rdp_state {
-
-  uint8_t crypted_random[256];
-  uint8_t sign_key[16];
-  uint8_t encrypt_key[16];
-  uint8_t decrypt_key[16];
-  uint8_t encrypt_update_key[16];
-  uint8_t decrypt_update_key[16];
-  RC4_KEY rc4_encrypt_key;
-  RC4_KEY rc4_decrypt_key;
-  int rc4_keylen;
-  int encrypt_use_count;
-  int decrypt_use_count;
-  uint32_t server_public_key_length;
-  uint16_t mcs_userid;
-  uint32_t shareid;
-
-  u_char *rdp_packet;
-  u_char *rdp_next_packet;
-  u_char *rdp_packet_end;
-  uint16_t packet_len;
-
-  int login_result;
-
-  uint8_t order_state_type;
-
-} rdp_state;
 
 enum login_results { LOGIN_INIT, LOGIN_FAIL, LOGIN_ERROR, LOGIN_SUCCESS };
 
@@ -2130,27 +2148,47 @@ rdp_parse_triblt(u_char *p, uint32_t params, bool delta)
 
 
 static u_char *
-rdp_parse_memblt(u_char *p, uint32_t params, bool delta)
+rdp_parse_memblt(u_char *p, uint32_t params, bool delta, rdp_state *info)
 {
 
-  if (params & 0x0001)
-    p += 2;
-  if (params & 0x0002)
-    p = rdp_coord(p, delta);
-  if (params & 0x0004)
-    p = rdp_coord(p, delta);
-  if (params & 0x0008)
-    p = rdp_coord(p, delta);
-  if (params & 0x0010)
-    p = rdp_coord(p, delta);
-  if (params & 0x0020)
+  if (params & 0x0001) {
+    info->memblt.cache_id = *(uint8_t *)p;
     p += 1;
+    info->memblt.color_table = *(uint8_t *)p;
+    p += 1;
+  }
+
+  if (params & 0x0002)
+    p = rdp_coord(p, delta, &info->memblt.x);
+
+  if (params & 0x0004)
+    p = rdp_coord(p, delta, &info->memblt.y);
+
+  if (params & 0x0008)
+    p = rdp_coord(p, delta, &info->memblt.cx);
+
+  if (params & 0x0010)
+    p = rdp_coord(p, delta, &info->memblt.cy);
+
+  if (params & 0x0020) {
+    info->memblt.opcode = *(uint8_t *)p;
+    p += 1;
+  }
+
   if (params & 0x0040)
-    p = rdp_coord(p, delta);
+    p = rdp_coord(p, delta, &info->memblt.srcx);
+
   if (params & 0x0080)
-    p = rdp_coord(p, delta);
-  if (params & 0x0100)
+    p = rdp_coord(p, delta, &info->memblt.srcy);
+
+  if (params & 0x0100) {
+    info->memblt.cache_idx = *(uint16_t *)p;
     p += 2;
+  }
+
+  printf("MEMBLT(op=0x%x,x=%d,y=%d,cx=%d,cy=%d,id=%d,idx=%d)\n",
+	       info->memblt.opcode, info->memblt.x, info->memblt.y, info->memblt.cx,
+         info->memblt.cy, info->memblt.cache_id, info->memblt.cache_idx);
 
   return p;
 }
@@ -2303,12 +2341,22 @@ rdp_color(u_char *p)
 
 
 static u_char *
-rdp_coord(u_char *p, bool delta)
+rdp_coord(u_char *p, bool delta, int16_t *coord)
 {
-  if (delta)
+  int8_t change;
+
+  if (delta) {
+    if (coord) {
+      change = *(uint8_t *)p;
+      *coord += change;
+    }
     p += 1;
-  else
+  } else {
+    if (coord) {
+      *coord = *(uint16_t *)p;
+    }
     p += 2;
+  }
 
   return p;
 }
@@ -2470,7 +2518,7 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
 
         case RDP_ORDER_MEMBLT:
           //printf(" ORDER MEMBLT\n");
-          p = rdp_parse_memblt(p, params, delta);
+          p = rdp_parse_memblt(p, params, delta, info);
           break;
 
         case RDP_ORDER_TRIBLT:
@@ -3626,7 +3674,9 @@ rdp_confirm_active(Connection *con)
 
   delete data;
 
+  /* reset order state */
   info->order_state_type = RDP_ORDER_PATBLT;
+  memset(&info->memblt, 0, sizeof(info->memblt));
 
 } 
 
