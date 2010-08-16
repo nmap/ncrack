@@ -360,7 +360,7 @@ enum RDP_CONTROL_PDU_TYPE
 enum states { RDP_INIT, RDP_CON, RDP_MCS_RESP, RDP_MCS_AURQ, RDP_MCS_AUCF, 
   RDP_MCS_CJ_USER, RDP_SEC_EXCHANGE, RDP_CLIENT_INFO, 
   RDP_DEMAND_ACTIVE, RDP_DEMAND_ACTIVE_SYNC, RDP_DEMAND_ACTIVE_INPUT_SYNC,
-  RDP_DEMAND_ACTIVE_FONTS, RDP_LOOP, RDP_FINI };
+  RDP_DEMAND_ACTIVE_FONTS, RDP_LOOP };
 
 
 enum login_results { LOGIN_INIT, LOGIN_FAIL, LOGIN_ERROR, LOGIN_SUCCESS };
@@ -1874,7 +1874,6 @@ rdp_parse_pen(u_char *p, uint32_t params)
 static u_char *
 rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta)
 {
-  printf("RDP PARSE TEXT2\n");
   uint8_t length;
   u_char text[256];
   rdp_state *info = (rdp_state *)con->misc_info;
@@ -1939,7 +1938,7 @@ rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta)
     fprintf(stderr, "Account credentials are valid, however, the account "
         "does not have the log on through terminal services right "
         "(not in remote desktop users group).\n");
-	      info->login_result = LOGIN_SUCCESS;
+        info->login_result = LOGIN_SUCCESS;
 
   } else if ((!memcmp(text, LOGON_MESSAGE_NO_INTERACTIVE_XP, 18))
       || (!memcmp(text, LOGON_MESSAGE_NO_INTERACTIVE_2K3, 18))) {
@@ -2216,13 +2215,15 @@ rdp_parse_memblt(u_char *p, uint32_t params, bool delta, rdp_state *info)
       info->memblt.cx == 60 &&
       info->memblt.cy == 56 &&
       info->memblt.cache_id == 2) {
-    printf(" ======================= WIN_7 FAIL ==============\n");
+    if (o.debugging > 8)
+      printf(" ======================= WIN_7 FAIL ==============\n");
     info->login_result = LOGIN_FAIL;
     info->win7_vista_fingerprint = true;
   }
 
-  printf("MEMBLT(op=0x%x,x=%d,y=%d,cx=%d,cy=%d,id=%d,idx=%d)\n",
-	       info->memblt.opcode, info->memblt.x, info->memblt.y, info->memblt.cx,
+  if (o.debugging > 8)
+    printf("MEMBLT(op=0x%x,x=%d,y=%d,cx=%d,cy=%d,id=%d,idx=%d)\n",
+         info->memblt.opcode, info->memblt.x, info->memblt.y, info->memblt.cx,
          info->memblt.cy, info->memblt.cache_id, info->memblt.cache_idx);
 
   return p;
@@ -2413,16 +2414,13 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
     flags = *(uint8_t *)p;
     p += 1;
 
-   // printf(" --- ORDER FLAGS %x \n", flags);
-
     if ((!flags & RDP_ORDER_STANDARD)) {
-      printf("%s error parsing orders\n", __func__);
+      if (o.debugging > 8)
+        printf("%s error parsing orders\n", __func__);
       break;
     }
 
     if (flags & RDP_ORDER_SECONDARY) {
-
-      //printf(" ORDER SECONDARY !!!!\n");
 
       /* parse secondary order: we just ignore everything here after we parse
        * the length field to know how many bytes to skip to move on to the next
@@ -2517,82 +2515,95 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
 
       delta = flags & RDP_ORDER_DELTA;
      
-      //printf(" PARAMS %u  SIZE %u DELTA: %d\n", params, size, delta);
-
       switch (info->order_state_type) {
 
         case RDP_ORDER_DESTBLT:
-          //printf(" ORDER DESTBLT \n");
+          if (o.debugging > 9)
+            printf(" ORDER DESTBLT \n");
           p = rdp_parse_destblt(p, params, delta);
           break;
 
         case RDP_ORDER_PATBLT:
-           //printf(" ORDER PATBLT\n");
+          if (o.debugging > 9)
+            printf(" ORDER PATBLT\n");
           p = rdp_parse_patblt(p, params, delta);
           break;
 
         case RDP_ORDER_SCREENBLT:
-          //printf(" ORDER SCREENBLT\n");
+          if (o.debugging > 9)
+            printf(" ORDER SCREENBLT\n");
           p = rdp_parse_screenblt(p, params, delta);
           break;
 
         case RDP_ORDER_LINE:
-          //printf(" ORDER LINE\n");
+          if (o.debugging > 9)
+            printf(" ORDER LINE\n");
           p = rdp_parse_line(p, params, delta);
           break;
 
         case RDP_ORDER_RECT:
-          //printf(" ORDER RECT\n");
+          if (o.debugging > 9)
+            printf(" ORDER RECT\n");
           p = rdp_parse_rect(p, params, delta);
           break;
 
         case RDP_ORDER_DESKSAVE:
-          //printf(" ORDER DESKSAVE\n");
+          if (o.debugging > 9)
+            printf(" ORDER DESKSAVE\n");
           p = rdp_parse_desksave(p, params, delta);
           break;
 
         case RDP_ORDER_MEMBLT:
-          //printf(" ORDER MEMBLT\n");
+          if (o.debugging > 9)
+            printf(" ORDER MEMBLT\n");
           p = rdp_parse_memblt(p, params, delta, info);
           break;
 
         case RDP_ORDER_TRIBLT:
-          //printf(" ORDER TRIBLT\n");
+          if (o.debugging > 9)
+            printf(" ORDER TRIBLT\n");
           p = rdp_parse_triblt(p, params, delta);
           break;
 
         case RDP_ORDER_POLYGON:
-          //printf(" ORDER POLYGON\n");
+          if (o.debugging > 9)
+            printf(" ORDER POLYGON\n");
           p = rdp_parse_polygon(p, params, delta);
           break;
 
         case RDP_ORDER_POLYGON2:
-          //printf(" ORDER POLYGON 2 \n");
+          if (o.debugging > 9)
+            printf(" ORDER POLYGON 2 \n");
           p = rdp_parse_polygon2(p, params, delta);
           break;
 
         case RDP_ORDER_POLYLINE:
-           //printf(" ORDER  POLYLINE \n");
+          if (o.debugging > 9)
+            printf(" ORDER  POLYLINE \n");
           p = rdp_parse_polyline(p, params, delta);
           break;
 
         case RDP_ORDER_ELLIPSE:
-          //printf(" ORDER ELLIPSE\n");
+          if (o.debugging > 9)
+            printf(" ORDER ELLIPSE\n");
           p = rdp_parse_ellipse(p, params, delta);
           break;
 
         case RDP_ORDER_ELLIPSE2:
-          //printf(" ORDER ELLIPSE 2 \n");
+          if (o.debugging > 9)
+            printf(" ORDER ELLIPSE 2 \n");
           p = rdp_parse_ellipse2(p, params, delta);
           break;
 
         case RDP_ORDER_TEXT2:
-          //printf("-----> PARSE TEXT <------- \n");
+          if (o.debugging > 9)
+            printf("------> PARSE TEXT <------- \n");
           p = rdp_parse_text2(con, p, params, delta);
           break;
 
         default:
-          //printf("Unimplemented order %u\n", info->order_state_type);
+          if (o.debugging > 9)
+            printf("Unimplemented order %u\n", info->order_state_type);
           return;
 
       }
@@ -2621,7 +2632,8 @@ rdp_parse_update_pdu(Connection *con, u_char *p)
 
     case RDP_UPDATE_ORDERS:
 
-      printf(" -----> UPDATE ORDERs\n");
+      if (o.debugging > 8)
+        printf(" -----> UPDATE ORDERs\n");
       p += 2; /* padding */
       num_orders = *(uint16_t *)p;
       p += 2;
@@ -2640,8 +2652,8 @@ rdp_parse_update_pdu(Connection *con, u_char *p)
       break;
 
     default:
-
-      printf("Update PDU unimplemented: %u\n", type);
+      if (o.debugging > 8)
+        printf("Update PDU unimplemented: %u\n", type);
   }
 
 }
@@ -2680,20 +2692,24 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
   switch (pdu_type) {
 
     case RDP_DATA_PDU_UPDATE:
-      printf(" -- DATA PDU UPDATE\n");
+      if (o.debugging > 8)
+        printf(" -- DATA PDU UPDATE\n");
       rdp_parse_update_pdu(con, p);
       break;
 
     case RDP_DATA_PDU_CONTROL:
-      printf(" -- DATA PDU CONTROL\n");
+      if (o.debugging > 8)
+        printf(" -- DATA PDU CONTROL\n");
       break;
 
     case RDP_DATA_PDU_SYNCHRONISE:
-      printf(" -- DATA PDU SYNC\n");
+      if (o.debugging > 8)
+        printf(" -- DATA PDU SYNC\n");
       break;
 
     case RDP_DATA_PDU_POINTER:
-      printf(" -- DATA PDU POINTER\n");
+      if (o.debugging > 8)
+        printf(" -- DATA PDU POINTER\n");
       break;
 
     case RDP_DATA_PDU_BELL:
@@ -2703,7 +2719,8 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
       disc_reason = *(uint32_t *)p;
       p += 4;
       disc_msg = rdp_disc_reason(disc_reason);
-      log_write(LOG_PLAIN, "RDP: Disconnected: %s\n", disc_msg);
+      if (o.debugging > 8)
+        log_write(LOG_PLAIN, "RDP: Disconnected: %s\n", disc_msg);
       free(disc_msg);
       /* Don't disconnect because Windows Vista and Windows 7 always send a
        * disconnect PDU, when you authenticate correctly, with reason 0 */
@@ -2711,13 +2728,16 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
       break;
 
     case RDP_DATA_PDU_LOGON:
-      printf("=========LOGIN SUCCESSFUL=======\n");
-      printf("user: %s pass %s\n", con->user, con->pass);
+      if (o.debugging > 8) {
+        printf("=========LOGIN SUCCESSFUL=======\n");
+        printf("user: %s pass %s\n", con->user, con->pass);
+      }
       return 1;
       break;
 
     default:
-      printf("PDU data unimplemented %u\n", pdu_type);
+      if (o.debugging > 8)
+        printf("PDU data unimplemented %u\n", pdu_type);
       break;
   }
 
@@ -2737,15 +2757,18 @@ rdp_process_loop(Connection *con)
   u_char *p;
   int pdudata_ret;
 
-  printf(" ----------------------------------------------- FUNCTION LOOP -----------------------------------------\n");
+  if (o.debugging > 8)
+    printf(" --------------------------------------- FUNCTION LOOP ---------------------------------\n");
 
   while (loop) {
 
-    printf(" --------------------- RDP LOOP ------------------\n");
+    if (o.debugging > 8)
+      printf(" ------------------ RDP LOOP -----------------\n");
 
     p = rdp_recv_data(con, &pdu_type);
     if (p == NULL) {
-      printf("LOOP NOTH NULL DATA\n");
+      if (o.debugging > 8)
+        printf("LOOP NOTH NULL DATA\n");
 
       //con->inbuf->get_data(NULL, info->packet_len);
       //info->packet_len = 0;
@@ -2755,20 +2778,24 @@ rdp_process_loop(Connection *con)
 
     switch (pdu_type) {
       case RDP_PDU_DEMAND_ACTIVE:
-        printf("PDU DEMAND ACTIVE\n");
+        if (o.debugging > 8)
+          printf("PDU DEMAND ACTIVE\n");
         rdp_demand_active_confirm(con, p);
         break;
 
       case RDP_PDU_DEACTIVATE:
-        printf("PDU deactivate\n");
+        if (o.debugging > 8)
+          printf("PDU deactivate\n");
         break;
 
       case RDP_PDU_REDIRECT:
-        printf("PDU REDIRECT\n");
+        if (o.debugging > 8)
+          printf("PDU REDIRECT\n");
         break;
 
       case RDP_PDU_DATA:
-        printf("PDU DATA\n");
+        if (o.debugging > 8)
+          printf("PDU DATA\n");
         pdudata_ret = rdp_parse_rdpdata_pdu(con, p);
         if (pdudata_ret == 1) {
           info->login_result = LOGIN_SUCCESS;
@@ -2779,7 +2806,8 @@ rdp_process_loop(Connection *con)
         break;
 
       default:
-        printf("PDU default\n");
+        if (o.debugging > 8)
+          printf("PDU default\n");
         break;
 
     }
@@ -2822,7 +2850,8 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
 
     info->rdp_packet = rdp_secure_recv_data(con);
     if (info->rdp_packet == NULL) {
-      printf("rdp packet NULL!\n");
+      if (o.debugging > 8)
+        printf("rdp packet NULL!\n");
       return NULL;
     } 
     info->rdp_next_packet = info->rdp_packet;
@@ -2831,13 +2860,16 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
   } else if ((info->rdp_next_packet >= info->rdp_packet_end) 
       || (info->rdp_next_packet == NULL)) {
 
-    printf(" RECV DATA TCP NEXT SEGMENT\n");
+    if (o.debugging > 8)
+      printf(" RECV DATA TCP NEXT SEGMENT\n");
     /* Eat away the ISO packet */
     con->inbuf->get_data(NULL, info->packet_len);
     return NULL;
 
   } else {
-    printf("NEXT PACKET\n");
+
+    if (o.debugging > 8)
+      printf("NEXT PACKET\n");
     info->rdp_packet = info->rdp_next_packet;
   }
 
@@ -2853,7 +2885,8 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
   /* Skip userid */
   info->rdp_packet += 2;
 
-  printf("    RDP length: %u\n", length);
+  if (o.debugging > 8)
+    printf("    RDP length: %u\n", length);
   info->rdp_next_packet += length;
 
 #if 0
@@ -2900,28 +2933,31 @@ rdp_secure_recv_data(Connection *con)
 
       datalen = (info->rdp_packet_end - p);
 
-      printf("  Sec length: %u\n", datalen);
+      if (o.debugging > 8)
+        printf("  Sec length: %u\n", datalen);
 
       RC4(&info->rc4_decrypt_key, datalen, p, p);
       info->decrypt_use_count++;
     }
 
     if (flags & SEC_LICENCE_NEG) {
-      printf("SEC LICENSE\n");
+      if (o.debugging > 8)
+        printf("SEC LICENSE\n");
 
       /* Eat away the ISO packet */
       con->inbuf->get_data(NULL, info->packet_len);
 
       return NULL;
-      //continue;
     }
 
     if (flags & 0x0400) {
-      printf("----SEC REDIRECT-----\n");
+      if (o.debugging > 8)
+        printf("----SEC REDIRECT-----\n");
     }
 
     if (channel != MCS_GLOBAL_CHANNEL) {
-      printf("non-global channel\n");
+      if (o.debugging > 8)
+        printf("non-global channel\n");
 
     }
 
@@ -2955,7 +2991,8 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
       con->service->end.orly = true;
       con->service->end.reason = Strndup(error, strlen(error));
     }
-    printf(" ----------------------------------->>>>>>>>>>> MCS ERR\n");
+    if (o.debugging > 8)
+      printf(" ----------MCS ERR\n");
     return NULL;
   }
 
@@ -2989,7 +3026,8 @@ rdp_iso_recv_data_loop(Connection *con)
   rdp_state *info = (rdp_state *)con->misc_info;
   u_char *p;
 
-  printf("TCP length: %u\n", con->inbuf->get_len());
+  if (o.debugging > 8)
+    printf("TCP length: %u\n", con->inbuf->get_len());
 
   tpkt = (iso_tpkt *) ((u_char *)con->inbuf->get_dataptr());
   itu_t = (iso_itu_t_data *) ((u_char *)tpkt + sizeof(iso_tpkt));
@@ -3536,7 +3574,8 @@ rdp_client_info(Connection *con)
    * strings, which are not included in the lengths 
    * see: http://msdn.microsoft.com/en-us/library/cc240475%28v=PROT.10%29.aspx
    */
-  printf("username: %s pass: %s\n", con->user, con->pass);
+  if (o.debugging > 8)
+    printf("username: %s pass: %s\n", con->user, con->pass);
 
   total_length = 18 + domain_length + username_length + password_length +
     shell_length + workingdir_length + 10; 
@@ -4008,7 +4047,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (rdp_loop_read(nsp, con) < 0)
         break;
 
-      printf("RDP LOOP STATE \n");
+      if (o.debugging > 8)
+        printf("RDP LOOP STATE \n");
       con->state = RDP_LOOP;
 
       if (con->outbuf)
@@ -4070,14 +4110,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
 
       break;
-
-    case RDP_FINI:
-
-      printf("fini\n");
-      break;
-
   }
-
 
 }
 
