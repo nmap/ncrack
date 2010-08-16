@@ -1839,6 +1839,10 @@ rdp_parse_pen(u_char *p, uint32_t params)
 #define LOGON_MESSAGE_FAILED_XP  "\x17\x00\x18\x06\x10\x06\x1a\x09\x1b\x05\x1a\x06\x1c\x05\x10\x04\x1d\x06"
 #define LOGON_MESSAGE_FAILED_2K3 "\x11\x00\x12\x06\x13\x06\x15\x09\x16\x05\x15\x06\x17\x05\x13\x04\x18\x06"
 
+/* The system can log you on but you do not have the allow log on using
+ * terminal services right (not in remote desktop group) [SUCCESS]*/
+#define LOGON_MESSAGE_NOT_IN_RDESKTOP_GROUP "\x11\x00\x12\x06\x14\x09\x12\x02\x15\x06\x12\x09\x16\x06\x17\x09\x12\x04"
+
 /* The local policy of this system does not permit you to logon interactively. [SUCCESS] */
 #define LOGON_MESSAGE_NO_INTERACTIVE_XP "\x17\x00\x18\x06\x10\x06\x11\x09\x1a\x02\x0f\x06\x0d\x05\x11\x06\x1b\x05"
 #define LOGON_MESSAGE_NO_INTERACTIVE_2K3 "\x11\x00\x12\x06\x13\x06\x15\x09\x16\x02\x17\x06\x18\x05\x15\x06\x19\x05"
@@ -1930,6 +1934,12 @@ rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta)
       || (!memcmp(text, LOGON_MESSAGE_FAILED_2K3, 18))) {
     info->login_result = LOGIN_FAIL;
     fprintf(stderr, "Account credentials are NOT valid.\n");
+
+  } else if ((!memcmp(text, LOGON_MESSAGE_NOT_IN_RDESKTOP_GROUP, 18))) {
+    fprintf(stderr, "Account credentials are valid, however, the account "
+        "does not have the log on through terminal services right "
+        "(not in remote desktop users group).\n");
+	      info->login_result = LOGIN_SUCCESS;
 
   } else if ((!memcmp(text, LOGON_MESSAGE_NO_INTERACTIVE_XP, 18))
       || (!memcmp(text, LOGON_MESSAGE_NO_INTERACTIVE_2K3, 18))) {
