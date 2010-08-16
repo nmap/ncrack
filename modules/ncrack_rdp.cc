@@ -1921,13 +1921,15 @@ rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta)
       memcpy(text, p, length);
     p += length;
     if (length > sizeof(text)) {
-      fprintf(stderr, "Text message too long!\n");
+      if (o.debugging > 2)
+        fprintf(stderr, "Text message too long!\n");
       return p;
     }
   }
 
-  if (!memcmp(text, LOGON_AUTH_FAILED, 3))   
-    fprintf(stderr, "Retrieved connection termination packet.\n");
+  if (!memcmp(text, LOGON_AUTH_FAILED, 3))
+    if (o.debugging > 8)
+      fprintf(stderr, "Retrieved connection termination packet.\n");
 
   if ((!memcmp(text, LOGON_MESSAGE_FAILED_XP, 18))
       || (!memcmp(text, LOGON_MESSAGE_FAILED_2K3, 18))) {
@@ -1976,7 +1978,8 @@ rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta)
     fprintf(stderr, "Valid credentials, however, another user is currently logged on.\n");
 
   } else {
-    fprintf(stderr, "Text: irrelevant message\n");
+    if (o.debugging > 8)
+      fprintf(stderr, "Text: irrelevant message\n");
 
   }
 
