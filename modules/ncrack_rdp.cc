@@ -1996,6 +1996,7 @@ rdp_parse_ellipse(u_char *p, uint32_t params, bool delta)
   if (params & 0x40)
     p = rdp_color(p);
 
+  return p;
 }
 
 
@@ -2416,7 +2417,7 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
       /* skip type */
       p += 1;
       /* now add length and ignore that many bytes */
-      p += (signed int16_t) second_length + 7;
+      p += (int16_t) second_length + 7;
 
     }
 
