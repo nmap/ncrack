@@ -162,7 +162,7 @@ typedef struct rdp_state {
     uint16_t cache_idx;
   } order_memblt;
 
-  bool win7_fingerprint;
+  bool win7_vista_fingerprint;
 
   order_memblt memblt;
 
@@ -2199,8 +2199,16 @@ rdp_parse_memblt(u_char *p, uint32_t params, bool delta, rdp_state *info)
     p += 2;
   }
 
-  /* This is a fingerprint for Windows 7 when the credentials fail to
-   * authenticate.
+  /* This is a fingerprint for Windows 7, Windows Vista, Windows Server
+   * 2008. These specific values for the memblt always appear when your
+   * credentials fail to authenticate. The Microsoft RDP server from Windows
+   * Vista and above doesn't send any text message -> inside a text order <-
+   * unlike what happens in Windows XP etc. Consequently, we needed to
+   * inspect the RDP packets deeper and search for patterns that always
+   * appear whenever we fail to authenticate. This specific pattern has to
+   * do (most probably) with the coordinates of the 'OK' button that appears
+   * at the bottom of the screen when Windows tells us that our credentials
+   * weren't correct.
    */
   if (info->memblt.opcode == 0xcc &&
       info->memblt.x == 740 &&
@@ -2210,7 +2218,7 @@ rdp_parse_memblt(u_char *p, uint32_t params, bool delta, rdp_state *info)
       info->memblt.cache_id == 2) {
     printf(" ======================= WIN_7 FAIL ==============\n");
     info->login_result = LOGIN_FAIL;
-    info->win7_fingerprint = true;
+    info->win7_vista_fingerprint = true;
   }
 
   printf("MEMBLT(op=0x%x,x=%d,y=%d,cx=%d,cy=%d,id=%d,idx=%d)\n",
