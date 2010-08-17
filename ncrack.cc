@@ -1072,7 +1072,7 @@ ncrack_main(int argc, char **argv)
       case 'V': 
         log_write(LOG_STDOUT, "\n%s version %s ( %s )\n",
             NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
-        log_write(LOG_STDOUT, "Modules: SSH, FTP, TELNET, HTTP(S), POP3(S)\n");
+        log_write(LOG_STDOUT, "Modules: SSH, FTP, TELNET, HTTP(S), SMB, RDP, POP3(S)\n");
         exit(EXIT_SUCCESS);
         break;
       case 'v':
