@@ -3,10 +3,6 @@ TODO:
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
 
-* Add remote desktop (rdp) cracking. Ithilgore says there are few
-  rdesktop crackers out there.  Need to think about whether this makes
-  most sense in Ncrack, NSE, or both.
-
 * Handle username validation for services.  For example, if an FTP
   server is anon only or if we enumerate SMB users, or some service
   gives a user does not exist error, we should probably not waste time
@@ -33,6 +29,25 @@ TODO:
   automatically concatenated by Ncrack.
 
 * Write Ncrack Developer's Guide. 
+
+* RDP module TODOs:
+  o provide generic endianess by coding a framework which is
+    endianess-agnostic. This will also be helpful for the .restore
+    file portability (see relevant task).
+  o check if RDP cracking can go faster by issuing more than 1 pair of
+    credentials per connection (which is what happens now). This will
+    require the sending of special scancodes which will instruct the RDP
+    server to 'delete' the previous username/password (usually only needed
+    for the username if it is changed, since the password is automatically
+    deleted by the server, when wrong). A scancode (usually 'tab')
+    for switching between username and password will also have to be sent.
+  o see if it is possible to send an 'empty' password. This is currently
+    not easy to do, since the RDP server ignores an 'empty' password sent in
+    the initial client_info packet, and it has to be manually entered later
+    by the user. In order to automate this, special scancodes must be sent
+    like above. Windows Vista and above also require you to select the user
+    first, before being able to type the password. Automating this can be
+    hard.
 
 * Convert telnet module to use new inbuf/outbuf system.
   --> It already does, but needs some fixes.
@@ -147,6 +162,10 @@ TODO:
 * Think about making Ncrack distributed (e.g with one master, several agents)
 
 ============================= :DONE: =========================================
+
+* Add remote desktop (rdp) cracking. Ithilgore says there are few
+  rdesktop crackers out there.  Need to think about whether this makes
+  most sense in Ncrack, NSE, or both.
 
 * Improve current scorpion logo on the Ncrack page. An SVG file would be best.
 
