@@ -1876,6 +1876,58 @@ Ncrack finished.
       </varlistentry>
     </variablelist>
 
+    <variablelist><title>SMB Module </title>
+      <varlistentry>
+        <listitem>
+          <para>
+            The SMB module currently works over raw TCP. NetBIOS isn't
+            supported yet. This protocol allows for high parallelization,
+            so users could potentially increase the number of concurrent probes
+            against it. SMB is frequently used for file-sharing among other things
+            and is one of the most ubiquitous protocols, being present
+            in both Unix and Windows environments.
+          </para>         
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+    <variablelist><title>RDP Module </title>
+      <varlistentry>
+        <listitem>
+          <para>
+            RDP (Remote Desktop Protocol) is a proprietary protocol developed
+            by Microsoft for the purpose of providing remote terminal services
+            by transfering graphics display information from the remote computer
+            to the user and transporting input commands from the user to the
+            remote computer. Fortunately, Microsoft recently decided to open
+            the protocol's internal workings to the public and has provided
+            official documentation, which can be found at 
+            <ulink url="http://msdn.microsoft.com/en-us/library/cc240445%28v=PROT.10%29.aspx"/>
+          </para>
+
+          <para>
+            RDP is one of the most complex protocols, requiring the exchange of
+            many packets, even for just the authentication phase. For this
+            reason, cracking it takes a lot of time and this is probably
+            the slowest module. 
+            The connection phase is briefly described at
+            <ulink url="http://msdn.microsoft.com/en-us/library/cc240452%28v=PROT.10%29.aspx"/>
+            where you can also see a diagram of the various packets involved.
+            Care must be taken against RDP servers in Windows XP versions,
+            since they can't handle multiple connections at the same time.
+            It is advised to use a very slow timing template or even better
+            <emphasis>limit the maximum parallel connections</emphasis>
+            using timing options such as
+            <option>CL</option> (Connection Limit) or <option>cd</option>
+            (connection delay) against Windows XP (and relevant) RDP
+            servers. Windows Vista and above don't suffer from the same
+            limitation.
+          </para>
+
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
       <variablelist><title>POP3(S) Module</title>
       <varlistentry>
         <listitem>
