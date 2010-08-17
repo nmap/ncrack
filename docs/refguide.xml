@@ -577,7 +577,7 @@ $ ncrack scanme.nmap.org 10.0.0.120-122 192.168.2.0/24 -p 22,ftp:3210,telnet
   <variablelist><title>List of available Service Options</title>
 
     <para>
-      Bellow follows a list of all the currently available service options.
+      Below follows a list of all the currently available service options.
       You can apply them with any of the three modes described above. The
       last six of the options are timing related and will be analyzed in
       Section "Timing and Performance" of this manual.
@@ -1793,7 +1793,7 @@ Ncrack finished.
      <para>
        Ncrack's architecture is modular with each module corresponding to
        one particular service or protocol. Currently, Ncrack supports the
-       protocols FTP, TELNET, SSH and HTTP(S) (basic authentication). Bellow
+       protocols FTP, TELNET, SSH and HTTP(S) (basic authentication). Below
        we describe some key points for each of them.
      </para>
 
