@@ -1,5 +1,18 @@
 TODO:
 
+* Figure out why it isn't working against Windows 7 for Thomas
+  Buchanan: http://seclists.org/nmap-dev/2010/q3/505
+
+* Remove excess verbosity in RDP crackerm odule (e.g. don't print
+  "Account credentials are NOT valid." for each test unless in high
+  debugging mode)
+
+* Update CHANGELOG to note changes since last release
+
+* Make new post-soc Ncrack release with SMB and RDP
+
+* Write Ncrack Developer's Guide. 
+
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
 
@@ -28,7 +41,7 @@ TODO:
   so that user can give a comma separated list of files that will be
   automatically concatenated by Ncrack.
 
-* Write Ncrack Developer's Guide. 
+
 
 * RDP module TODOs:
   o provide generic endianess by coding a framework which is
