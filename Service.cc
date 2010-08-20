@@ -296,7 +296,7 @@ getNextPair(char **user, char **pass)
     *pass = tmp.pass;
     pair_pool.erase(pairli);
     if (o.debugging > 8)
-      log_write(LOG_STDOUT, "%s Pool: extract %s %s\n", HostInfo(),
+      log_write(LOG_STDOUT, "%s Pool: extract '%s' '%s'\n", HostInfo(),
           tmp.user, tmp.pass);
     return 1;
   }
@@ -386,7 +386,7 @@ appendToPool(char *user, char *pass)
   pair_pool.push_back(tmp);
 
   if (o.debugging > 8)
-    log_write(LOG_STDOUT, "%s Pool: Append %s %s \n", HostInfo(),
+    log_write(LOG_STDOUT, "%s Pool: Append '%s' '%s' \n", HostInfo(),
         tmp.user, tmp.pass);
 
   /* 
