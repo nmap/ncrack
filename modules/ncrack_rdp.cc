@@ -1877,6 +1877,7 @@ rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta)
   uint8_t length;
   u_char text[256];
   rdp_state *info = (rdp_state *)con->misc_info;
+  const char *hostinfo = con->service->HostInfo();
 
   if (params & 0x000001)
     p += 1;
@@ -1934,48 +1935,63 @@ rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta)
   if ((!memcmp(text, LOGON_MESSAGE_FAILED_XP, 18))
       || (!memcmp(text, LOGON_MESSAGE_FAILED_2K3, 18))) {
     info->login_result = LOGIN_FAIL;
-    fprintf(stderr, "Account credentials are NOT valid.\n");
+    if (o.debugging > 8)
+      log_write(LOG_PLAIN, "%s Account credentials are NOT valid.\n", hostinfo);
 
   } else if ((!memcmp(text, LOGON_MESSAGE_NOT_IN_RDESKTOP_GROUP, 18))) {
-    fprintf(stderr, "Account credentials are valid, however, the account "
-        "does not have the log on through terminal services right "
-        "(not in remote desktop users group).\n");
-        info->login_result = LOGIN_SUCCESS;
+    info->login_result = LOGIN_SUCCESS;
+    if (o.verbose)
+      log_write(LOG_PLAIN, "%s Account credentials are valid, however, the "
+        "account does not have the log on through terminal services right "
+        "(not in remote desktop users group).\n", hostinfo);
 
   } else if ((!memcmp(text, LOGON_MESSAGE_NO_INTERACTIVE_XP, 18))
       || (!memcmp(text, LOGON_MESSAGE_NO_INTERACTIVE_2K3, 18))) {
     info->login_result = LOGIN_SUCCESS;
-    fprintf(stderr, "Account credentials are valid, however, the account is denied interactive logon.\n");
+    if (o.verbose)
+      log_write(LOG_PLAIN, "%s Account credentials are valid, however,"
+          "the account is denied interactive logon.\n", hostinfo);
 
   } else if ((!memcmp(text, LOGON_MESSAGE_LOCKED_XP, 18)) 
       || (!memcmp(text, LOGON_MESSAGE_LOCKED_2K3, 18))) {
     info->login_result = LOGIN_ERROR;
-    fprintf(stderr, "Account is currently locked out.\n");
+    if (o.verbose)
+      log_write(LOG_PLAIN, "%s Account is currently locked out.\n", hostinfo);
 
   } else if ((!memcmp(text, LOGON_MESSAGE_DISABLED_XP, 18)) 
       || (!memcmp(text, LOGON_MESSAGE_DISABLED_2K3, 18))) {
     info->login_result = LOGIN_ERROR;
-    fprintf(stderr, "Account is currently disabled or expired. "
-        "XP appears to report that an account is disabled only for valid credentials.\n");
+    if (o.verbose)
+      log_write(LOG_PLAIN, "%s Account is currently disabled or expired. "
+        "XP appears to report that an account is disabled only for valid "
+        "credentials.\n", hostinfo);
 
   } else if ((!memcmp(text, LOGON_MESSAGE_EXPIRED_XP, 18))
       || (!memcmp(text, LOGON_MESSAGE_EXPIRED_2K3, 18))) {
     info->login_result = LOGIN_SUCCESS;
-    fprintf(stderr, "Account credentials are valid, however, the password has expired and must be changed.\n");
+    if (o.verbose) 
+      log_write(LOG_PLAIN, "%s Account credentials are valid, however, the "
+          "password has expired and must be changed.\n", hostinfo);
 
   } else if ((!memcmp(text, LOGON_MESSAGE_MUST_CHANGE_XP, 18)) 
       || (!memcmp(text, LOGON_MESSAGE_MUST_CHANGE_2K3, 18))) {
     info->login_result = LOGIN_SUCCESS;
-    fprintf(stderr, "Account credentials are valid, however, the password must be changed at first logon.\n");
+    if (o.verbose)
+      log_write(LOG_PLAIN, "%s Account credentials are valid, however, the "
+          "password must be changed at first logon.\n", hostinfo);
 
   } else if (!memcmp(text, LOGON_MESSAGE_MSTS_MAX_2K3, 18)) {
     info->login_result = LOGIN_SUCCESS;
-    fprintf(stderr, "Account credentials are valid, however, the maximum "
-        "number of terminal services connections has been reached.\n");
+    if (o.verbose)
+      log_write(LOG_PLAIN, "%s Account credentials are valid, however, the "
+          "maximum number of terminal services connections has been "
+          "reached.\n", hostinfo);
 
   } else if (!memcmp(text, LOGON_MESSAGE_CURRENT_USER_XP, 18)) {
     info->login_result = LOGIN_SUCCESS;
-    fprintf(stderr, "Valid credentials, however, another user is currently logged on.\n");
+    if (o.verbose)
+      log_write(LOG_PLAIN, "%s Valid credentials, however, another user is "
+          "currently logged on.\n", hostinfo);
 
   } else {
     if (o.debugging > 8)
