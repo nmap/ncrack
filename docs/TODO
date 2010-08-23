@@ -3,10 +3,6 @@ TODO:
 * Figure out why it isn't working against Windows 7 for Thomas
   Buchanan: http://seclists.org/nmap-dev/2010/q3/505
 
-* Remove excess verbosity in RDP crackerm odule (e.g. don't print
-  "Account credentials are NOT valid." for each test unless in high
-  debugging mode)
-
 * Update CHANGELOG to note changes since last release
 
 * Make new post-soc Ncrack release with SMB and RDP
@@ -41,8 +37,6 @@ TODO:
   so that user can give a comma separated list of files that will be
   automatically concatenated by Ncrack.
 
-
-
 * RDP module TODOs:
   o provide generic endianess by coding a framework which is
     endianess-agnostic. This will also be helpful for the .restore
@@ -61,6 +55,7 @@ TODO:
     like above. Windows Vista and above also require you to select the user
     first, before being able to type the password. Automating this can be
     hard.
+  o Support NLA: http://seclists.org/nmap-dev/2010/q3/526
 
 * Convert telnet module to use new inbuf/outbuf system.
   --> It already does, but needs some fixes.
@@ -175,6 +170,10 @@ TODO:
 * Think about making Ncrack distributed (e.g with one master, several agents)
 
 ============================= :DONE: =========================================
+
+* Remove excess verbosity in RDP crackerm odule (e.g. don't print
+  "Account credentials are NOT valid." for each test unless in high
+  debugging mode)
 
 * Add remote desktop (rdp) cracking. Ithilgore says there are few
   rdesktop crackers out there.  Need to think about whether this makes
