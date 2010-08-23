@@ -12,6 +12,8 @@ TODO:
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
 
+* Implement connection retry (cr) timing option.
+
 * Handle username validation for services.  For example, if an FTP
   server is anon only or if we enumerate SMB users, or some service
   gives a user does not exist error, we should probably not waste time
