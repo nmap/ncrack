@@ -87,7 +87,9 @@
  *                                                                         *
  ***************************************************************************/
 
-//#if HAVE_OPENSSL
+#include "ncrack.h"
+
+#if HAVE_OPENSSL
 
 #include <openssl/des.h>
 #include <openssl/hmac.h>
@@ -449,4 +451,4 @@ hash16(uint8_t *output, uint8_t *input, uint8_t *md5_salt1, uint8_t *md5_salt2)
 }
 
 
-//#endif /* HAVE_OPENSSL */
+#endif /* HAVE_OPENSSL */
