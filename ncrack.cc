@@ -720,9 +720,9 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_pop3(nsp, con);
   else if (!strcmp(name, "pop3s"))
     ncrack_pop3(nsp, con);
+#if HAVE_OPENSSL
   else if (!strcmp(name, "rdp")) 
     ncrack_rdp(nsp, con);
-#if HAVE_OPENSSL
   else if (!strcmp(name, "smb"))
     ncrack_smb(nsp, con);
 #endif
