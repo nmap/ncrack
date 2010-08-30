@@ -1,8 +1,5 @@
 TODO:
 
-* Figure out why it isn't working against Windows 7 for Thomas
-  Buchanan: http://seclists.org/nmap-dev/2010/q3/505
-
 * Update CHANGELOG to note changes since last release
 
 * Make new post-soc Ncrack release with SMB and RDP
@@ -13,6 +10,9 @@ TODO:
   addresses may be the most powerful technique.
 
 * Implement connection retry (cr) timing option.
+
+* Fix a SSH module bug as described here:
+  http://seclists.org/nmap-dev/2010/q3/517
 
 * Handle username validation for services.  For example, if an FTP
   server is anon only or if we enumerate SMB users, or some service
@@ -58,6 +58,14 @@ TODO:
     first, before being able to type the password. Automating this can be
     hard.
   o Support NLA: http://seclists.org/nmap-dev/2010/q3/526
+  o Figure out why it isn't working against Windows 7 for Thomas
+    Buchanan: http://seclists.org/nmap-dev/2010/q3/505
+    --> According to the discussion at this nmap-dev thread, it appears that
+    the problem Thomas has been describing only appears on his Windows 7
+    version which comes from a public release candidate of Windows 7. No other
+    Windows 7 version displays this behaviour. We are waiting to see if other
+    people come across this problem, since so far this bug can't be replicated.
+    
 
 * Convert telnet module to use new inbuf/outbuf system.
   --> It already does, but needs some fixes.
