@@ -39,6 +39,26 @@
                   -- [ Ncrack Changelog ] --
 
 
+Ncrack 0.3ALPHA [2010-08-31]
+
+o Ncrack can now crack the Remote Desktop Protocol on all Windows versions from
+  XP and above, with the introduction of the RDP module.
+
+o Implemented the SMB module which can crack Microsoft's SMB/CIFS services as
+  well as UNIX Samba servers.
+
+o Introduced the '-f' option, which forces Ncrack to quit cracking a 
+  service after it finds one credential for it. Specifying the option twice
+  like '-f -f' will cause Ncrack to completely quit after any credential is
+  found on any service.
+
+o Added support for blank-password testing. Ncrack will now test a blank 
+  entry whenever it sees an empty line in any of the wordlists. The same
+  behaviour applies for passing the options --user '' or --pass ''.
+
+o Improved the Ncrack scorpion logo with an updated SVG version.
+
+
 Ncrack 0.2ALPHA [2010-06-12]
 
 o Ncrack now interactively prints out discovered credentials whenever
