@@ -181,7 +181,7 @@ TODO:
 
 ============================= :DONE: =========================================
 
-* Remove excess verbosity in RDP crackerm odule (e.g. don't print
+* Remove excess verbosity in RDP cracker module (e.g. don't print
   "Account credentials are NOT valid." for each test unless in high
   debugging mode)
 
