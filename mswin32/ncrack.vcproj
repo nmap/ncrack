@@ -163,7 +163,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="nsock.lib nbase.lib openssh.lib ws2_32.lib advapi32.lib libeay32.lib ssleay32.lib $(NOINHERIT)"
+				AdditionalDependencies="nbase.lib openssh.lib ws2_32.lib advapi32.lib libeay32.lib ssleay32.lib $(NOINHERIT)"
 				OutputFile=".\Release\ncrack.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
