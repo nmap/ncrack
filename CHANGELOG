@@ -42,7 +42,9 @@
 Ncrack 0.3ALPHA [2010-08-31]
 
 o Ncrack can now crack the Remote Desktop Protocol on all Windows versions from
-  XP and above, with the introduction of the RDP module.
+  XP and above, with the introduction of the RDP module. Users are well advised
+  to read http://seclists.org/nmap-dev/2010/q3/450 for cracking Windows XP
+  machines since they can't handle many concurrent RDP connections.
 
 o Implemented the SMB module which can crack Microsoft's SMB/CIFS services as
   well as UNIX Samba servers.
