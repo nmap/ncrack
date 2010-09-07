@@ -39,7 +39,7 @@
                   -- [ Ncrack Changelog ] --
 
 
-Ncrack 0.3ALPHA [2010-08-31]
+Ncrack 0.3ALPHA [2010-09-07]
 
 o Ncrack can now crack the Remote Desktop Protocol on all Windows versions from
   XP and above, with the introduction of the RDP module. Users are well advised
@@ -58,7 +58,8 @@ o Added support for blank-password testing. Ncrack will now test a blank
   entry whenever it sees an empty line in any of the wordlists. The same
   behaviour applies for passing the options --user '' or --pass ''.
 
-o Improved the Ncrack scorpion logo with an updated SVG version.
+o Improved the Ncrack scorpion logo with an updated SVG version (see
+  the top of http://nmap.org/ncrack/)
 
 
 Ncrack 0.2ALPHA [2010-06-12]
