@@ -1,9 +1,5 @@
 TODO:
 
-* Update CHANGELOG to note changes since last release
-
-* Make new post-soc Ncrack release with SMB and RDP
-
 * Write Ncrack Developer's Guide. 
 
 * Start username-list gathering project. Gathering these from email
@@ -65,6 +61,7 @@ TODO:
     version which comes from a public release candidate of Windows 7. No other
     Windows 7 version displays this behaviour. We are waiting to see if other
     people come across this problem, since so far this bug can't be replicated.
+  o See what's wrong with: http://seclists.org/nmap-dev/2010/q3/643
     
 
 * Convert telnet module to use new inbuf/outbuf system.
@@ -180,6 +177,10 @@ TODO:
 * Think about making Ncrack distributed (e.g with one master, several agents)
 
 ============================= :DONE: =========================================
+
+* Update CHANGELOG to note changes since last release
+
+* Make new post-soc Ncrack release with SMB and RDP
 
 * Remove excess verbosity in RDP cracker module (e.g. don't print
   "Account credentials are NOT valid." for each test unless in high
