@@ -224,6 +224,7 @@ static u_char *rdp_parse_polygon2(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_ellipse(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_ellipse2(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta);
+static u_char *rdp_parse_ber(u_char *p, int tag, int *length);
 
 
 /* RDP PDU codes */
@@ -1304,6 +1305,33 @@ rdp_loop_read(nsock_pool nsp, Connection *con)
   return 0;
 
 }
+
+
+static u_char *
+rdp_parse_ber(u_char *p, int tag, int *length)
+{
+  int len;
+
+  if (tag > 0xFF)
+    p += 2;
+  else 
+    p += 1;
+  
+  len = *(uint8_t *)p;
+  p += 1;
+
+  if (len & 0x80) {
+    len &= ~0x80;
+    *length = 0;
+    while (len--) {
+      *length = (*length << 8) + *(p++);
+    }
+  } else 
+    *length = len;
+
+  return p;
+}
+
 
 
 /*****************************************************************************
@@ -3135,6 +3163,7 @@ rdp_get_crypto(Connection *con, u_char *p)
   char error[128];
   rdp_state *info;
 
+
   /* rdp_state must have already been initialized! */
   info = (rdp_state *)con->misc_info;
 
@@ -3322,7 +3351,7 @@ rdp_get_crypto(Connection *con, u_char *p)
 static int
 rdp_mcs_connect_response(Connection *con)
 {
-  mcs_response *mcs;
+  //mcs_response *mcs;
   u_char *p;
   char error[64];
 
@@ -3332,26 +3361,36 @@ rdp_mcs_connect_response(Connection *con)
   p = ((u_char *)con->inbuf->get_dataptr() + sizeof(iso_tpkt)
       + sizeof(iso_itu_t_data));
 
-  mcs = (mcs_response *)p;
+  // mcs = (mcs_response *)p;
+
+  int length;
+  p = rdp_parse_ber(p, MCS_CONNECT_RESPONSE, &length);
+  p = rdp_parse_ber(p, BER_TAG_RESULT, &length);
+  uint8_t result = *(uint8_t *)p;
+  p += 1;
 
   /* Check result parameter */
-  if (mcs->result_value != 0) {
-    snprintf(error, sizeof(error), "MCS connect result: %x\n", mcs->result_value);
+  if (result != 0) {
+    snprintf(error, sizeof(error), "MCS connect result: %x\n", result);
     con->service->end.orly = true;
     con->service->end.reason = Strndup(error, strlen(error));
     return -1;
   }
 
+
+  p = rdp_parse_ber(p, BER_TAG_INTEGER, &length);
+  p += length;
+
   /* Now parse MCS_TAG_DOMAIN_PARAMS header and ignore as many bytes as the
    * length of this header.
    */
+  p = rdp_parse_ber(p, MCS_TAG_DOMAIN_PARAMS, &length);
+  p += length;
+
+  p = rdp_parse_ber(p, BER_TAG_OCTET_STRING, &length);
+
+#if 0
   p += sizeof(mcs_response);
-  if (*p != MCS_TAG_DOMAIN_PARAMS) {
-    con->service->end.orly = true;
-    con->service->end.reason = Strndup(
-        "MCS connect no MCS_TAG_DOMAIN_PARAMS tag found where expected.", 62);
-    return -1;
-  }
 
   p++; /* now p should point to length of the header */
   uint8_t mcs_domain_len = *p;
@@ -3359,6 +3398,7 @@ rdp_mcs_connect_response(Connection *con)
 
   /* Now p points to the BER header of mcs_data - ignore header */
   p += 5;
+#endif
 
   /* Ignore the 21 bytes of the T.124 ConferenceCreateResponse */
   p += 21;
@@ -3366,9 +3406,12 @@ rdp_mcs_connect_response(Connection *con)
   /* Now parse Server Data Blocks (serverCoreData, serverNetworkData,
    * serverSecurityData) 
    */
-  uint8_t len = *++p;
-  if (len & 0x80)
-    len = *++p;
+  uint8_t len = *(uint8_t *)p;
+  p++;
+  if (len & 0x80) {
+    len = *(uint8_t *)p;
+    p++;
+  }
 
   uint16_t tag, hdr_length;
   u_char *saved_p;
@@ -3393,6 +3436,7 @@ rdp_mcs_connect_response(Connection *con)
     switch (tag)
     {
       case SEC_TAG_SRV_INFO:
+        p += 2;
         break;
 
       case SEC_TAG_SRV_CRYPT:
