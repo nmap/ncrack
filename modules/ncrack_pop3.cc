@@ -201,7 +201,7 @@ ncrack_pop3(nsock_pool nsp, Connection *con)
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
-      con->outbuf->snprintf(7 + strlen(con->user), "PASS %s\r\n", con->user);
+      con->outbuf->snprintf(7 + strlen(con->pass), "PASS %s\r\n", con->pass);
 
       nsock_write(nsp, nsi, ncrack_write_handler, POP3_TIMEOUT, con, 
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
