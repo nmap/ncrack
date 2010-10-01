@@ -2306,7 +2306,7 @@ ncrack(ServiceGroup *SG)
     fatal("Can't create nsock pool.");
 
   gettimeofday(&now, NULL);
-  nsp_settrace(nsp, o.nsock_trace, o.getStartTime());
+  nsp_settrace(nsp, NULL, o.nsock_trace, o.getStartTime());
 
 #if HAVE_OPENSSL
   /* We don't care about connection security, so cast Haste */
