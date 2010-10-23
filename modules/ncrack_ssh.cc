@@ -117,7 +117,6 @@ extern NcrackOps o;
 
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
-extern void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_KEY2, SSH_KEY3, SSH_KEY4, 
