@@ -93,7 +93,6 @@
 #include "NcrackOps.h"
 #include "Service.h"
 #include "modules.h"
-#include <list>
 
 #define FTP_TIMEOUT 20000
 #define FTP_DIGITS 3
@@ -200,8 +199,7 @@ ncrack_ftp(nsock_pool nsp, Connection *con)
   {
     case FTP_INIT:
 
-      /* Wait to read banner only at the beginning of
-       * the connection */
+      /* Wait to read banner only at the beginning of the connection */
       if (!con->login_attempts) {
 
         if (ftp_loop_read(nsp, con, ftp_code) < 0)
