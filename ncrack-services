@@ -13,3 +13,4 @@ smb 445/tcp
 https 443/tcp
 pop3s 995/tcp
 rdp 3389/tcp
+vnc 5901/tcp

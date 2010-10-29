@@ -101,6 +101,7 @@ void ncrack_http(nsock_pool nsp, Connection *con);
 void ncrack_pop3(nsock_pool nsp, Connection *con);
 void ncrack_smb(nsock_pool nsp, Connection *con);
 void ncrack_rdp(nsock_pool nsp, Connection *con);
+void ncrack_vnc(nsock_pool nsp, Connection *con);
 
 
 #endif
