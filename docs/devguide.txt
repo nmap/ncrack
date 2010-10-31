@@ -1,0 +1,611 @@
+
+----- [ Ncrack Developer's Guide ] -----
+
+by ithilgore 
+ithilgore.ryu.l@gmail.com | ithilgore@sock-raw.org
+http://sock-raw.org
+
+Version: 0.3 (in accordance with Ncrack release versions)
+
+
+---[ Contents
+
+   1 - Introduction
+   
+   2 - Ncrack Architecture overview
+     2.1 - ServiceGroup / Service
+     2.2 - Connection
+     2.3 - Module State Machine
+
+   3 - Ncrack Core Engine
+     3.1 - ncrack_probes
+     3.2 - ncrack_connect_handler
+     3.3 - ncrack_write_handler
+     3.4 - ncrack_read_handler
+     3.5 - ncrack_module_end
+     3.6 - ncrack_connection_end
+
+   4 - Building a Module
+     4.1 A Macroscopic View
+     4.2 FTP module in-depth
+     4.3 Final Steps
+     4.4 More Module details
+
+   5 - Final notes
+
+
+
+-- [ 1 - Introduction 
+
+Ncrack is a high-speed network authentication cracking tool with a modularized
+architecture that allows for easy development of additional protocol modules.
+This guide has been written to provide a quick overview of Ncrack's
+architecture and is meant to help programmers develop and contribute their own
+modules. It is advised that one first gets accustommed with Ncrack's general
+usage and examples, by consulting the man page:
+http://nmap.org/ncrack/man.html
+
+First we are going to take a look at the main constituents of Ncrack and then
+delve into the analysis of its core engine which should make a lot of things
+clear about Ncrack's overall versatility. Then we are going to present a
+step-by-step walkthrough of constructing a simple FTP module from scratch. This
+can serve as a general guideline for building your own modules.
+
+
+
+-- [ 2 - Ncrack Architecture overview
+  
+Ncrack is based on a modularized architecture, where each protocol/service
+corresponds to the equivalent module that handles all the authentication
+steps. Ncrack's architecture is thus built in a way so that a module is
+separated as much as possible from the more low level details of timing and
+connection management which are handled by the core engine. 
+
+Ncrack utilizes the venerable Nsock, a library which was originally written by
+Fyodor a long time ago and has since then been refined and tested thoroughly.
+Nsock is a parallel sockets library which internally uses select(2) to poll
+through the registered socket descriptors and which upon a new network event
+(read/write/timeout etc) jumps to a preregistered callback handler which is
+responsible for doing something about that particular event. This is more or
+less an event-driven API.
+
+Ncrack's core engine resides in ncrack.cc which includes definitions for all
+these callback handlers:
+
+void ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+void ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+void ncrack_module_end(nsock_pool nsp, void *mydata);
+void ncrack_connection_end(nsock_pool nsp, void *mydata);
+
+
+After main() finishes parsing the user's host specifications and options, it
+stores all the information it needs inside a ServiceGroup object
+(ServiceGroup.h).
+
+
+---- [ 2.1 - ServiceGroup / Service
+
+The ServiceGroup object holds all services (which are actually Service
+objects) that are going to be cracked. The Service (Service.h) class consists
+of variables that hold timing and statistical information, user-specified
+options that apply to that particular service/host, a pointer to a Target object
+(that is nearly the same as the known Target class from Nmap - only stripped of
+some unneeded fields like those that are related to network interfaces),
+functions that handle the username/password list iteration and a list of the
+active connections taking place at that moment.
+
+---- [ 2.2 - Connection
+
+A connection (Connection.h) is an instance that holds information pertaining to
+that particular TCP session between us and the service we are trying to crack.
+A connection must always belong to a Service class for obvious reasons.
+Usually, during a connection more than one authentication attempts are going to
+be carried out, depending on the service.
+
+---- [ 2.3 - Module State Machine
+
+The most important thing about a connection, is the 'state' it currently is in.
+The 'state' actually describes a specific step of the authentication procedure
+that is needed by the service we are cracking. Thus the number and names of
+states are defined in each module separately. For example, the authentication
+step, where at the beginning of a connection we need to wait and read the initial
+banner of the service, is specified by a particular 'state'. Another example, is
+the 'state' where we just need to write the password on the wire or the 'state'
+where in a service like telnet we have to make the option negotiation. It is
+pretty important that each 'state' performs a micro-action of the authentication
+procedure which will usually involve a certain Nsock event to be registered.
+However, this might not be always possible to happen (see telnet).
+
+
+
+-- [ 3 - Ncrack Core Engine
+
+We are now going to analyse the brains of Ncrack, namely its core engine. Note
+that this reading is not of vital importance for developing your own modules,
+but it will definitely give you a deeper understanding of what happens behind
+the scenes. You can skip or skim this section at will.
+
+The main Nsock loop resides in function ncrack() @ ncrack.cc and it is
+responsible for polling for new events that result in calling back one of the
+registered handlers mentioned above. ncrack_probes() is called in the end of
+every loop iteration and checks if it can initiate new connections against any
+one of the targets in ServiceGroup.
+
+To understand how ncrack_probes() work, we first need to see the way that
+ServiceGroup handles its services lists. In the beginning, every user-specified
+service is stored inside the 'services_active' list. For every service residing
+there, we can automatically initiate a new connection at will. ServiceGroup
+keeps a lot more additional lists which hold services that for one reason or
+another cannot perform additional actions (like start a new connection) except
+for the connections having already started. For example, 'services_full' holds
+all services that cannot start another connection due to the fact that the total
+number of active connections taking place at that moment has reached the maximum
+allowed limit (connection limit). The list 'services_wait' keeps all services
+that need to wait a time of 'connection_delay' (usually specified by the user)
+before they can send another connection probe. The list 'services_finished'
+keeps all services that have been marked as finished, either because a critical
+error has occured (like we got an RST at the first connection attempt or we
+kept getting too many timeouts for a prolonged time) or the username/password
+list iteration finished. The notion of keeping separate lists whose name imply
+the reason that the elements of the list are there, is also used (although to a
+lesser and simpler extent) by Nmap's service scanning engine.
+
+---- [ 3.1 - ncrack_probes
+
+ncrack_probes() iterates the ServiceGroup 'services_active' list, initiating new
+connections until every service has been moved inside a different ServiceGroup
+list. Note that it doesn't wait for any connection to actually finish the 3way
+handshake, since Nsock uses non-blocking connect(2)s and ncrack only needs to
+register the event and the callback handler (ncrack_connect_handler).
+
+---- [ 3.2 - ncrack_connect_handler
+
+Upon connection success ncrack_connect_handler() gives control to call_module()
+which calls the service module function corresponding to the particular service
+this connection is up against. If the connection times out or we get an RST and
+this is our first connection attempt, then we mark the service as 'dead' moving
+it to 'services_finished' list. This is particularly useful when the user
+specifies the targets in a wildmask or netmask notation, blindly searching for
+services to crack. It is very probable that some hosts will not even have that
+service listening and thus we will cease trying to crack them. It is important
+to note that this first connection probe (boolean 'just_started' @ Service
+class) also collects valuable timing information like how many authentication
+attempts the server allows to make per connection. That is why ncrack doesn't
+open more than 1 connection probes against a service before that first timing
+probe finishes its job (which will entail exhausting all allowed authentication
+attempts during that connection).
+
+---- [ 3.3 - ncrack_write_handler
+
+The write handler is probably the simplest one. The only thing it needs to do is
+check the Nsock return status and report on us in case of error. The case of a
+write failing is the most improbable one. It can happen though in case we write
+on a closed socket (which won't normally happen since we always check if the
+socket is still active or the peer closed on us) or if the kernel's socket
+buffers are full (which can only occur on very old systems with a small amount
+of RAM).
+
+---- [ 3.4 - ncrack_read_handler
+
+The read handler is responsible for filling in the Connection's auxiliary
+buffer upon a successful Nsock read event. We also use a trick to check whether
+or not the peer is still active or it has sent us a FIN closing the connection.
+Whenever the boolean 'check_closed' is true, if Nsock produces a TIMEOUT instead
+of an EOF error, then it means we are still online. This happens because the
+caller that wants to check the connection state, registers a read event with a
+very small timeout. This is a hack that allows us to check in a portable way if
+we have moved to the CLOSE_WAIT state from ESTABLISHED. 
+
+---- [ 3.5 - ncrack_module_end
+
+This function should be called by a module whenever it knows that it has
+completely finished an authentication attempt. It updates statistical variables
+for the service, like how many attempts in total have been made and also
+currently implements part of the dynamic timing engine. Every 500 msecs it
+checks whether the current authentication rate is less than the last calculated
+one and takes appropriate steps to increase it. Since the 'ideal_parallelism'
+variable which is the dominating connection metric can change, we also check if
+we can move our service from 'services_full' to 'services_active' and call
+ncrack_probes() to potentially initiate new connections. Finally, if we need to
+check if our peer is alive (variable 'peer_alive' is false), we do the read
+timeout trick mentioned above.
+
+---- [ 3.6 - ncrack_connection_end
+
+One of the most complex functions. It takes all necessary actions whenever a
+connection is ended - either normally or by an error. Firstly, it checks if
+we received a FIN from our peer, in which case one of the following could have
+happened:
+
+i) The peer might have closed on us 'unexpectedly': this happens with services
+like telnet that can close the connection immediately after giving the final
+results of the last authentication attempt. For services like these we need to
+always set the variable 'peer_might_close' inside the module immediately after
+the state that is responsible for writing the password on the wire and before
+the state that registers the next read call. If we are the first 'timing' probe
+then we increase the number of supported authentication attempts per connection
+for this service.
+
+ii) The peer might have closed on us normally in which case we don't do
+anything.
+
+iii) The peer might have closed on us in the middle of the authentication. This
+shouldn't normally happen and it is an indication of a really strange error,
+usually due to extreme network conditions.
+
+If the above or just a timeout in the middle of the authentication happens, then
+we adapt the dynamic timing engine to drop the 'ideal_parallelism' limit. 
+
+Next, if we are the first timing probe, depending on the timing template, we
+calculate our initial ideal parallelism.
+We also update the authentication rate meters accordingly.
+
+In the end of the function we also call ncrack_probes() since we might have
+changed 'ideal_parallelism'.
+
+
+
+-- [ 4 - Building a Module 
+
+This section will serve as a walkthrough for constructing a simple Ncrack
+module from scratch. Our study will focus on the module for the File Transfer
+Protocol (FTP), the authentication phase of which is one of the easiest. 
+
+---- [ 4.1 - A Macroscopic View
+
+The source code for the FTP module resides at ncrack/modules/ncrack_ftp.cc. For
+your convenience, some parts of the code that is going to be analysed, will be
+included in this text. A holistic view of the module source code follows:
+
+[Licence Header]
+[Library Inclusions]
+[Function Declarations]
+[Auxiliary Functions]
+[Main Module Function]
+
+These are the main sections of every module. Explanations follow.
+
+-- [Licence Header] --
+
+This is the Nmap licence copyright notice that is included in every Ncrack
+file. The first line also serves as a mini-description of the file's purpose.
+For example, in ncrack_ftp.cc we have:
+
+/***************************************************************************
+ * ncrack_ftp.cc -- ncrack module for the FTP protocol                     *
+ *                                                                         *
+ ***********************IMPORTANT NMAP LICENSE TERMS************************
+ *                                                                         *
+ ...
+
+-- [Library Inclusions] --
+
+The files which every module must include are: 
+
+#include "ncrack.h"
+#include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
+
+The rest of the inclusions depend on the individual needs of each module.
+For example, the SSH module includes the "opensshlib.h" interface additionally
+to other crypto-relevant/OpenSSH files. 
+
+
+-- [Function Declarations] --
+
+In this section, all the module's functions are declared. Note that by
+convention, we also put an 'extern' reference for all Ncrack's core functions
+that can be called by the module. These are:
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+We also enum-erate the states of the module state machine. For FTP we only have:
+
+enum states { FTP_INIT, FTP_USER, FTP_FINI };
+
+
+-- [Auxiliary Functions] --
+
+These are helper functions for the module and vary greatly depending on each
+protocol's needs. Among them, there is usually a routine for reading
+protocol-specific data. This is important, because Nsock is protocol-agnostic.
+It only deals with TCP and is responsible for transfering network data from the
+kernel to Ncrack's incoming buffers (Connection::inbuf). The rest of the
+parsing work must be done by each module individually. For example,
+ftp_loop_read() is responsible for parsing incoming data from Nsock and 
+deducing what kind of FTP return code we got. 
+
+-- [ Main Module Function] -- 
+
+This is the core engine of each module, holding its state machine and the main
+steps needed to complete and evaluate the authentication phase of the
+protocol. Essentially, it is a large switch statement, with each case
+corresponding to one of the module's states. Each state must end with a
+call to a core function of Ncrack, as described above. This is important, in
+order for Nsock's event-driven design to work. These lead to either a read or
+write operation from the network (nsock_write, nsock_read) or
+the notification that the authentication phase for this round ended
+(ncrack_module_end). In rare cases, the module can issue a call
+ncrack_timer_handler (through nsock_timer_create) to register a timeout event.
+This is used as a trick to immediately jump to the next state immediately,
+by passing a tiny timeout value. The current state of the module is held in the
+Connection::state variable and is usually changed to point to the next one
+a little before this phase is finished.
+
+
+---- [ 4.2 - FTP module in-depth
+
+Keeping the above in mind, let's now walk through the code of the FTP module.
+
+
+FTP_INIT:
+
+The code of the first state 'FTP_INIT' is responsible for reading the FTP server's
+banner if one exists and getting the 3-digit code mentioning that everything is
+OK (Code 220). Note that the above operation must only be done at the beginning
+of each new connection, thus the Connection-specific variable 'login_attempts'
+is checked. If it is 0, meaning we just opened this connection, then procede
+with the reading operation. If we, on the other hand, have already completed
+one or more authentication attempts in the current connection, this step should
+be ommitted. Otherwise the module would wait for data that would never arrive.
+The description of the behaviour is largely-dependent on the way FTP is
+designed (and also the way almost all FTP servers work) where the initial
+banner greeting is only done once at the beginning of a new connection.
+
+
+/* Wait to read banner only at the beginning of the connection */
+     if (!con->login_attempts) {
+
+       if (ftp_loop_read(nsp, con, ftp_code) < 0)
+         break;
+
+       /* ftp_loop_read already takes care so that the inbuf contains the
+        * 3 first ftp digit code, so you can safely traverse it that much */
+       if (strncmp(ftp_code, "220", FTP_DIGITS)) {
+
+         if (o.debugging > 6)
+           error("%s Not ftp or service was shutdown\n", hostinfo);
+         return ncrack_module_end(nsp, con);
+       }
+     }
+
+Note the use of the auxiliary function ftp_loop_read which hides a repetitive
+nature. It is responsible for parsing incoming data that are placed in
+Connection::inbuf by Ncrack, and issues nsock_read calls if there aren't enough
+yet. This is a frequent case with FTP servers that greet verbosely spewing
+multiple-line banners at you. Observe, that whenever a read event is
+registered, ftp_loop_read returns with a negative value which is then checked by
+ncrack_ftp and makes it return too, halting the module until the necessary data
+arrive. The module will then return temporarily and be called again by
+ncrack_read_handler() which *appends* the new data in Connection::inbuf as they
+are being read by Nsock. 
+
+By this way, a reading loop is created and almost all modules use this
+approach to get incoming data correctly. Each protocol has some special way of
+notifiying the peer that the current stream of data ended. For example, in FTP
+this is the "\r\n" characters. It is imperative that each module takes account
+of all these protocol-specific issues.
+
+A very useful function, that you will probably need in many cases, is memsearch
+(residing at utils.h). It conducts a case insensitive memory search by
+combining the functinonality of memmem and strcasestr, thus allowing you to
+search for any kind of character in a given buffer regardless of whether it is
+upper or lower case.
+
+Then, we change the state of the module to point to 'FTP_USER', which is the
+next one. We didn't do this until now, because if ftp_loop_read returned with a
+negative value before, meaning it needed more data to arrive, it would have to be
+executed again by landing in this state ('FTP_INIT') one more time.
+
+Important Note: each call to ncrack_read_handler makes Ncrack *append*, not
+overwrite, new data to Connection::inbuf. If you want to only get the new data,
+then your module must first delete the inbuf, before issuing the read call:
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+Afterwards, a new egress data buffer is created and filled in with the username
+for this authentication attempt.
+
+Important Note: Ncrack differentiates between incoming and
+outcoming network data and thus a different buffer (Connection::outbuf) is used
+for sending data. Ncrack uses the Buf (Buf.h) class for buffer manipulation. It
+has been derived from the buffer system in OpenSSH and provides many
+facilities, like its own snprintf, which is extensively used by our modules for
+filling in data.
+
+This phase is finished by issuing a call to nsock_write which registers a
+network write event, sending our new data (the username) to the server. We have
+already changed the Connection::state, so when ncrack_write_handler is executed
+whenever Nsock notifies Ncrack that the data were sent out successfully,
+ncrack_ftp() will land in 'FTP_USER'. 
+
+
+FTP_USER:
+
+We now check for the FTP code "331" which signifies that a password is needed
+in order to proceed. A call to ftp_loop_read is needed for this first. If
+everything is alright, then we continue by setting the next state ('FTP_FINI')
+and preparing the next outgoing buffer holding the password for this phase.
+Another call to an Nsock write event and we can move on to the last phase.
+
+Notice that the module doesn't need to do anything about the
+username/password list iteration. This is automatically being taken care of by
+the Ncrack engine. The module only needs to access the Connection::user and
+Connection::pass to access the current username and password accordingly.
+
+
+FTP_FINI:
+
+Reading the server's reply in this phase is vital for realizing if we have
+succeeded in our authentication attempt or not. If the returned FTP code is
+"230" then our guess was correct and we must inform Ncrack about this by
+setting the Connection::auth_success to true. Since most FTP servers allow more
+than one authentication attempt per connection, we set the state to 'FTP_INIT'
+again. The call to ncrack_module_end() is necessary to allow Ncrack to process
+our results so far and decide whether or not to call our module again for this
+connection. It should be called whenever an error has occurred or the
+authentication phase has finished. 
+
+Importat Note: The module itself can't tear up the connection (this is
+accomplished by ncrack_connection_end which a module should NEVER call), but
+can inform Ncrack in the rare case that it wants to force-close it
+by setting the Connection::force_close boolean variable. 
+
+
+---- [ 4.3 - Final Steps
+
+Now that you have completed writing your own module, you should include it in
+the Ncrack framework by following the steps below:
+
+a) modules.h inclusion
+
+ncrack/modules/modules.h should contain the declaration of the main module
+function whose naming scheme follows the convention of ncrack_<protocol-name>.
+For example, currently the modules.h file has:
+
+void ncrack_ftp(nsock_pool nsp, Connection *con);
+void ncrack_telnet(nsock_pool nsp, Connection *con);
+void ncrack_ssh(nsock_pool nsp, Connection *con);
+void ncrack_http(nsock_pool nsp, Connection *con);
+void ncrack_pop3(nsock_pool nsp, Connection *con);
+void ncrack_smb(nsock_pool nsp, Connection *con);
+void ncrack_rdp(nsock_pool nsp, Connection *con);
+
+b) Proper source code split-up
+
+Everything that is related to the protocol/module should reside in a file under
+ncrack/modules/ whose name is ncrack_<protocol-name>.cc. If you happen
+to use functions that were needed for your module but are generic in nature,
+then they should probably be placed inside ncrack/utils.cc or if they are
+crypto related in ncrack/crypto.cc. 
+
+c) ncrack-services 
+
+The file ncrack/ncrack-services contains all the protocols supported by Ncrack
+along with their default port numbers. You should add the protocol name, for
+which your module is responsible, in this format:
+<service_name> <port_number>/<protocol> 
+For example:
+
+ftp 21/tcp
+
+Note the case of SSL-supporting protocols where an 's' follows the protocol
+name, i.e https 443/tcp
+
+d) ncrack.cc::call_module 
+
+The call_module function inside ncrack/ncrack.cc should hold an additional
+'else-if' case which calls your main module function. For example:
+
+  if (!strcmp(name, "ftp"))
+    ncrack_ftp(nsp, con);
+  else if (!strcmp(name, "telnet"))
+    ncrack_telnet(nsp, con);
+  else if (!strcmp(name, "your-own-protocol"))
+    ncrack_<protocol_name>(nsp, con);
+  ...
+
+e) configure.ac 
+
+Finally, include your module filename in ncrack/configure.ac at the
+MODULES_SRCS and MODULES_OBJS statements:
+
+MODULES_SRCS="$MODULES_SRCS ncrack_ftp.cc ncrack_telnet.cc ncrack_http.cc \
+ncrack_pop3.cc ncrack_yourprotocol.cc"
+MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o ncrack_http.o \
+ncrack_pop3.o ncrack_yourprotocol.o"
+
+You can now test your new module by recompiling Ncrack.
+
+
+---- [ 4.4 - More Module details
+
+This section provides some more advanced information on module construction.
+
+a) Keeping additional module state information
+
+For many modules, a need for keeping protocol-session data inside a connection
+arises. For example, the SSH module needs to reference the encryption keys for
+the connection, the Telnet module needs to know the current session's options
+and so on. The Connection::misc_info void* variable exists for this reason.
+Each module casts it to a special struct tailored for its own individual needs.
+This struct is usually dynamically allocated in the first module state and
+destroyed upon the end of the connection. If it contains data that have been
+dynamically allocated, then these must be individually freed, which brings us
+to our next topic:
+
+b) Freeing module-specific dynamic data
+
+This pertains to situations like the one described just before, where a module
+has allocated a special struct with stateful information and more dynamic
+allocations have occurred inside it. For example, the SSH keys are created this
+way, since their length isn't known beforehand. While the Connection::misc_info
+struct itself is automatically freed by the Connection class' destructor, when
+the connection is terminated, things like the SSH keys or other similar
+dynamically allocated data must be manually freed by the module when it
+finishes. Ncrack provides an easy-to-use facility for making all module-specific
+deallocations: Connection::ops_free. This is a function pointer to the special
+handler that is registered by each module individually and that is responsible
+for deallocating all internal struct members of misc_info. The module needs to
+register the function upon the beginning of each invocation. For example, the
+SSH module does this: 
+
+void
+ncrack_ssh(nsock_pool nsp, Connection *con)
+{
+  nsock_iod nsi = con->niod;
+  Service *serv = con->service;
+  void *ioptr;
+  u_int buflen;
+  ncrack_ssh_state *info = NULL;
+  con->ops_free = &ssh_free;
+  ...
+
+and the ssh_free function is defined inside ncrack_ssh.cc:
+
+static void
+ssh_free(Connection *con)
+{
+  ncrack_ssh_state *p;
+  if (!con->misc_info)
+    return;
+
+  p = (ncrack_ssh_state *)con->misc_info;
+
+  if (p->kex) {
+    if (p->kex->peer.alloc > 0)
+      free(p->kex->peer.buf);
+    if (p->kex->my.alloc > 0)
+      free(p->kex->my.buf);
+    if (p->kex->session_id)
+      free(p->kex->session_id);
+    free(p->kex); 
+  }
+  ...
+
+
+c) Printing error/debugging info 
+
+Proper care should be taken for printing relevant debugging information to the
+user depending on the level of verbosity he has chosen. This can be regulated
+by accessing the NcrackOps struct's 'o.verbose' and 'o.debugging' variables.
+Print only necessary information using the log_write() facility (output.cc) and
+always use the Service::HostInfo() before every message so that the user knows
+from which service it comes from.
+
+
+
+-- [ 5 - Final Notes
+
+This document should serve as an overview of Ncrack's design and a general
+guideline for creating modules on it. For additional discussion and help,
+the best place is always the community mailing list: nmap-dev@insecure.org 
+
+
