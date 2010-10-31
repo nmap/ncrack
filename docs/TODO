@@ -1,7 +1,5 @@
 TODO:
 
-* Write Ncrack Developer's Guide. 
-
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
 
@@ -177,6 +175,8 @@ TODO:
 * Think about making Ncrack distributed (e.g with one master, several agents)
 
 ============================= :DONE: =========================================
+
+* Write Ncrack Developer's Guide. 
 
 * Update CHANGELOG to note changes since last release
 
