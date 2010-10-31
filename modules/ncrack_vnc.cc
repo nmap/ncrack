@@ -142,20 +142,6 @@ vncEncryptBytes(unsigned char *bytes, char *passwd)
     }
 }
 
-static void
-buf_print(int n, char* p) {
-  int i;
-  for(i=0; i<n; i++)
-    if(p[i] >= 32 && p[i]<= 126)
-      printf("%c", p[i]);
-    else
-      printf(".");
-  printf("\n");
-
-  for(i=0; i<n; i++)
-    printf(" 0x%08X", p[i]);
-  printf("\n");
-}
 
 static int
 buf_check(int n, char* p) {
@@ -192,13 +178,11 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
   switch (con->state)
   {
     case VNC_INIT: 
-      //printf("here0 %s %s\n", con->user, con->pass);
       con->state = VNC_HANDSHAKE;
 
       break;
 
     case VNC_HANDSHAKE:
-      //printf("here1 %s %s\n", con->user, con->pass);
 
       /* Wait till we receive the server's input */
       if(con->inbuf == NULL)
@@ -217,15 +201,12 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
        * determine which one to use, and then continue
        */
       if (memsearch((const char *)con->inbuf->get_dataptr(), "RFB 003.008", con->inbuf->get_len())) {
-        //printf("here02\n");
         con->outbuf = new Buf();
         con->outbuf->snprintf(12 , "RFB 003.008\n");
         nsock_write(nsp, nsi, ncrack_write_handler, TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
         con->state = VNC_SECURITY_TYPE;
       }
-      //if (memsearch((const char *)con->inbuf->get_dataptr(), "RFB 003.003", con->inbuf->get_len())) {
       else {
-        //printf("here01\n");
         con->outbuf = new Buf();
         con->outbuf->snprintf(12 , "RFB 003.003\n");
         nsock_write(nsp, nsi, ncrack_write_handler, TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
@@ -236,7 +217,6 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
       break;
 
     case VNC_SECURITY_TYPE:
-      //printf("here2 %s %s\n", con->user, con->pass);
       if(con->inbuf == NULL)
         break;
       
@@ -269,7 +249,6 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
       break;
 
     case VNC_AUTH:
-      //printf("here3 %s %s\n", con->user, con->pass);
       /* At this point, we should have gotten a 16-unsigned byte challenege */
 
       if(con->inbuf == NULL)
@@ -322,7 +301,6 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
       break;
 
     case VNC_SECURITY_RESULT:
-      //printf("here4 %s %s\n", con->user, con->pass);
 
       if(con->inbuf == NULL)
         break;
