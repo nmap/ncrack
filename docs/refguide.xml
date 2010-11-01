@@ -1793,8 +1793,10 @@ Ncrack finished.
      <para>
        Ncrack's architecture is modular with each module corresponding to
        one particular service or protocol. Currently, Ncrack supports the
-       protocols FTP, TELNET, SSH and HTTP(S) (basic authentication). Below
-       we describe some key points for each of them.
+       protocols FTP, TELNET, SSH, RDP, VNC and HTTP(S) (basic authentication).
+       If you want to write and contribute your own Ncrack modules, be sure to read
+       the Ncrack Developer's Guide at <ulink url="http://nmap.org/ncrack/devguide.html" />
+       Below we describe some key points for each of them.
      </para>
 
      <variablelist><title>FTP Module</title>
@@ -1963,7 +1965,10 @@ Ncrack finished.
     at <ulink url="http://seclists.org/"/> .
     <indexterm><primary> <citetitle>nmap-dev</citetitle> mailing list
     </primary></indexterm>
-    Read this full manual page as well. If nothing comes of this, mail a bug
+    Read this full manual page as well. If you are developing your own Ncrack
+    module, make sure you have first read the Ncrack Developer's Guide at
+    <ulink url="http://nmap.org/ncrack/devguide.html" /> .
+    If nothing comes of this, mail a bug
     report to <email>nmap-dev@insecure.org</email> . Please include
     everything you have learned about the problem, as well as what version of
     Ncrack you are running and what operating system version it is running on.
