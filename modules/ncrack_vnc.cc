@@ -193,7 +193,8 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
       /* We may have hit our limit, so we need to check */
       if (memsearch((const char *)con->inbuf->get_dataptr(), "Too many authentication failures", con->inbuf->get_len())|| 
           memsearch((const char *)con->inbuf->get_dataptr(), "Too many security failures", con->inbuf->get_len())) {
-        error("%s Too many authentication failures (a)\n", serv->HostInfo());
+        if (o.debugging > 5)
+          error("%s Too many authentication failures (a)\n", serv->HostInfo());
         return ncrack_module_end(nsp, con);
       }
 
@@ -222,7 +223,8 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
       
       if (memsearch((const char *)con->inbuf->get_dataptr(), "Too many authentication failures", con->inbuf->get_len())|| 
           memsearch((const char *)con->inbuf->get_dataptr(), "Too many security failures", con->inbuf->get_len())) {
-        error("%s Too many authentication failures (b)\n", serv->HostInfo());
+        if (o.debugging > 5)
+          error("%s Too many authentication failures (b)\n", serv->HostInfo());
         return ncrack_module_end(nsp, con);
       }
 
@@ -287,7 +289,8 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
        *  we should probably terminate this connection.  Hasn't really come up in my tests.
        */
       else {
-        error("%s Challenge not the right length (%d, when 16 expected)!\n", serv->HostInfo(), con->inbuf->get_len());
+        if (o.debugging)
+          error("%s Challenge not the right length (%d, when 16 expected)!\n", serv->HostInfo(), con->inbuf->get_len());
         return ncrack_module_end(nsp, con);
       }
 
