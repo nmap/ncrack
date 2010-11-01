@@ -167,5 +167,5 @@ class Connection
 		Service *service;   /* service it belongs to */
 };
 
-enum close_reasons { READ_EOF, READ_TIMEOUT, CON_ERR, CON_TIMEOUT };
+enum close_reasons { READ_EOF, READ_TIMEOUT, CON_ERR, CON_TIMEOUT, MODULE_ERR };
 

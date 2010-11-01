@@ -1591,6 +1591,12 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   if (serv->getListActive())
     ncrack_probes(nsp, SG);
 
+  /* If module itself reported an error in the connection, then mark the flag
+   * auth_complete as false.
+   */
+  if (con->close_reason == MODULE_ERR)
+    con->auth_complete = false;
+
   /* If module instructed to close the connection by force, then do so
    * here.
    */
@@ -1673,7 +1679,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     if (o.debugging)
       error("%s nsock READ timeout!", hostinfo);
 
-  } else if (con->close_reason == READ_EOF) {
+  } else if (con->close_reason == READ_EOF || con->close_reason == MODULE_ERR) {
     /* 
      * Check if we are on the point where peer might close at any moment
      * (usually we set 'peer_might_close' after writing the password on the
