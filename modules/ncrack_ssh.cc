@@ -380,7 +380,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
         //printf("failed!\n");
         con->state = SSH_AUTH3;
       } else if (info->type == SSH2_MSG_USERAUTH_BANNER) {
-        printf("Got banner!\n");
+        //printf("Got banner!\n");
       }
 
       return ncrack_module_end(nsp, con);
