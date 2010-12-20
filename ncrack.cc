@@ -254,7 +254,7 @@ print_usage(void)
       "  -V: Print version number\n"
       "  -h: Print this help summary page.\n"
       "MODULES:\n"
-      "  FTP, SSH, TELNET, HTTP(S), POP3(S)\n"
+      "  FTP, SSH, TELNET, HTTP(S), POP3(S), SMB, RDP\n"
       "EXAMPLES:\n"
       "  ncrack -v --user root localhost:22\n"
       "  ncrack -v -T5 https://192.168.0.1\n"
