@@ -125,7 +125,7 @@ TODO:
    raw sockets or packet-crafting libraries (the user can invoke
    Ncrack without root privileges after all), we only have TCP itself
    as a feedback mechanism for the network conditions. This can prove
-   tricky for our work. Our engine might have to based on
+   tricky for our work. Our engine might have to be based on
    trial-and-error and partial statistical analysis to take some of
    its decisions.
 
