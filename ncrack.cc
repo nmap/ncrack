@@ -1494,7 +1494,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     }
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
-      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+      log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
     return ncrack_connection_end(nsp, con);
   }
 
@@ -1511,7 +1511,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
       SG->pushServiceToList(serv, &SG->services_finished);
       if (o.verbose)
-        log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+        log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
       return ncrack_connection_end(nsp, con);
 
     } else if (o.finish > 1) {
@@ -1522,7 +1522,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
         SG->pushServiceToList(*li, &SG->services_finished);
         if (o.verbose)
-          log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+          log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
       }
       /* Now quit nsock_loop */
       nsock_loop_quit(nsp);
@@ -1532,8 +1532,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   } else {
     if (!serv->more_rounds) {
       if (o.debugging > 6)
-        log_write(LOG_STDOUT, "%s Login failed: '%s' '%s'\n", hostinfo,
-            con->user, con->pass);
+        log_write(LOG_STDOUT, "%s (EID %li) Login failed: '%s' '%s'\n",
+            hostinfo, nsi_id(con->niod), con->user, con->pass);
     } else {
       serv->appendToPool(con->user, con->pass);
     }
@@ -1550,7 +1550,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     double current_rate = serv->auth_rate_meter.getCurrentRate();
     if (o.debugging) 
       log_write(LOG_STDOUT, "%s last: %.2f current %.2f parallelism %ld\n",
-          serv->HostInfo(), serv->last_auth_rate.rate, current_rate,
+          hostinfo, serv->last_auth_rate.rate, current_rate,
           serv->ideal_parallelism);
     if (current_rate < serv->last_auth_rate.rate + 3) {
       if (serv->ideal_parallelism + 3 < serv->max_connection_limit)
@@ -1559,7 +1559,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
         serv->ideal_parallelism = serv->max_connection_limit;
       if (o.debugging)
         log_write(LOG_STDOUT, "%s Increasing connection limit to: %ld\n", 
-            serv->HostInfo(), serv->ideal_parallelism);
+            hostinfo, serv->ideal_parallelism);
     }
     serv->last_auth_rate.time = now;
     serv->last_auth_rate.rate = current_rate;
@@ -1575,7 +1575,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       && serv->getListFinishing()) {
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
-      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+      log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
     return ncrack_connection_end(nsp, con);
   }
 
@@ -1664,6 +1664,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
   list <Connection *>::iterator li;
   const char *hostinfo = serv->HostInfo();
+  unsigned long eid = nsi_id(con->niod);
 
   if (con->close_reason == CON_ERR)
     SG->connections_timedout++;
@@ -1677,7 +1678,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     if (serv->getListPairfini())
       SG->popServiceFromList(serv, &SG->services_pairfini);
     if (o.debugging)
-      error("%s nsock READ timeout!", hostinfo);
+      error("%s (EID %li) nsock READ timeout!", hostinfo, eid);
 
   } else if (con->close_reason == READ_EOF || con->close_reason == MODULE_ERR) {
     /* 
@@ -1697,8 +1698,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       serv->finished_attempts++;
 
       if (o.debugging > 6)
-        log_write(LOG_STDOUT, "%s Failed '%s' '%s'\n", hostinfo, con->user,
-            con->pass);
+        log_write(LOG_STDOUT, "%s (EID %li) Failed '%s' '%s'\n", hostinfo, eid,
+            con->user, con->pass);
 
     } else if (serv->more_rounds) {
       /* We are still checking timing of the host, so don't do anything yet. */
@@ -1715,12 +1716,12 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       if (!serv->just_started 
           && con->login_attempts < serv->supported_attempts) {
         if (o.debugging > 3)
-          error("%s closed on us in the middle of authentication!", hostinfo);
+          error("%s (EID %li) closed on us in the middle of authentication!", hostinfo, eid);
         SG->connections_closed++;
       }
     }
     if (o.debugging > 5)
-      error("%s Connection closed by peer", hostinfo);
+      error("%s (EID %li) Connection closed by peer", hostinfo, eid);
   }
   con->close_reason = -1;
 
@@ -1743,8 +1744,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       serv->ideal_parallelism = serv->min_connection_limit;
 
     if (o.debugging)
-      log_write(LOG_STDOUT, "%s Dropping connection limit due to connection "
-          "error to: %ld\n", hostinfo, serv->ideal_parallelism);
+      log_write(LOG_STDOUT, "%s (EID %li) Dropping connection limit due to connection "
+          "error to: %ld\n", hostinfo, eid, serv->ideal_parallelism);
   }
 
 
@@ -1813,13 +1814,13 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     else if (!serv->active_connections) {
       SG->pushServiceToList(serv, &SG->services_finished);
       if (o.verbose)
-        log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+        log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
     }
   }
 
   if (o.debugging)
-    log_write(LOG_STDOUT, "%s Attempts: total %lu completed %lu supported %lu "
-        "--- rate %.2f \n", serv->HostInfo(), serv->total_attempts,
+    log_write(LOG_STDOUT, "%s (EID %li) Attempts: total %lu completed %lu supported %lu "
+        "--- rate %.2f \n", hostinfo, eid, serv->total_attempts,
         serv->finished_attempts, serv->supported_attempts,
         SG->auth_rate_meter.getCurrentRate());
 
@@ -1828,7 +1829,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
       && !serv->active_connections && !serv->getListFinished()) {
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
-      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+      log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
   }
 
   /* see if we can initiate some more connections */
@@ -1852,6 +1853,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   int err;
   char *str;
   const char *hostinfo = serv->HostInfo();
+  unsigned long eid = nsi_id(con->niod);
 
   assert(type == NSE_TYPE_READ);
 
@@ -1868,7 +1870,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
-      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+      log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
     return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_SUCCESS) {
@@ -1916,19 +1918,19 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
     err = nse_errorcode(nse);
     if (o.debugging > 2)
-      error("%s nsock READ error #%d (%s)", hostinfo, err, strerror(err));
+      error("%s (EID %li) nsock READ error #%d (%s)", hostinfo, eid, err, strerror(err));
     serv->appendToPool(con->user, con->pass);
     if (serv->getListPairfini())
       SG->popServiceFromList(serv, &SG->services_pairfini);
 
   } else if (status == NSE_STATUS_KILL) {
     if (o.debugging > 2)
-      error("%s nsock READ nse_status_kill", hostinfo);
+      error("%s (EID %li) nsock READ nse_status_kill", hostinfo, eid);
 
   } else
     if (o.debugging > 2)
-      error("%s WARNING: nsock READ unexpected status %d", hostinfo,
-          (int) status);
+      error("%s (EID %li) WARNING: nsock READ unexpected status %d", hostinfo,
+          eid, (int) status);
 
   return ncrack_connection_end(nsp, con);
 }
@@ -1945,6 +1947,7 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
   int err;
+  unsigned long eid = nsi_id(con->niod);
 
   if (serv->getListFinished()) {
     nsock_event_cancel(nsp, nse_id(nse), 0);
@@ -1955,7 +1958,7 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
-      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+      log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
     return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_SUCCESS)
@@ -1963,12 +1966,12 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   else if (status == NSE_STATUS_ERROR) {
     err = nse_errorcode(nse);
     if (o.debugging > 2)
-      error("%s nsock WRITE error #%d (%s)", hostinfo, err, strerror(err));
+      error("%s (EID %li) nsock WRITE error #%d (%s)", hostinfo, eid, err, strerror(err));
   } else if (status == NSE_STATUS_KILL) {
-    error("%s nsock WRITE nse_status_kill\n", hostinfo);
+    error("%s (EID %li) nsock WRITE nse_status_kill\n", hostinfo, eid);
   } else
-    error("%s WARNING: nsock WRITE unexpected status %d", 
-        hostinfo, (int) (status));
+    error("%s (EID %li) WARNING: nsock WRITE unexpected status %d", 
+        hostinfo, eid, (int) (status));
 
   return;
 }
@@ -2010,6 +2013,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
   int err;
+  unsigned long eid = nsi_id(con->niod);
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
 
@@ -2022,7 +2026,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
-      log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+      log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
     return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_SUCCESS) {
@@ -2050,8 +2054,8 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     /* This is not good. connect() really shouldn't generally be timing out. */
     if (o.debugging > 2) {
       err = nse_errorcode(nse);
-      error("%s nsock CONNECT response with status %s error: %s", hostinfo,
-          nse_status2str(status), strerror(err));
+      error("%s (EID %li) nsock CONNECT response with status %s error: %s", hostinfo,
+          eid, nse_status2str(status), strerror(err));
     }
     serv->failed_connections++;
     serv->appendToPool(con->user, con->pass);
@@ -2061,7 +2065,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     if (serv->just_started) {
       SG->pushServiceToList(serv, &SG->services_finished);
       if (o.verbose)
-        log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+        log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
     }
     if (serv->getListPairfini())
       SG->popServiceFromList(serv, &SG->services_pairfini);
@@ -2071,14 +2075,14 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   } else if (status == NSE_STATUS_KILL) {
 
     if (o.debugging)
-      error("%s nsock CONNECT nse_status_kill", hostinfo);
+      error("%s (EID %li) nsock CONNECT nse_status_kill", hostinfo, eid);
     serv->appendToPool(con->user, con->pass);
     if (serv->getListPairfini())
       SG->popServiceFromList(serv, &SG->services_pairfini);
 
   } else
-    error("%s WARNING: nsock CONNECT unexpected status %d", 
-        hostinfo, (int) status);
+    error("%s (EID %li) WARNING: nsock CONNECT unexpected status %d", 
+        hostinfo, eid, (int) status);
 
   return ncrack_connection_end(nsp, con);
 }
@@ -2184,7 +2188,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
       serv->end.reason = Strndup(SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT));
       SG->pushServiceToList(serv, &SG->services_finished);
       if (o.verbose)
-        log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+        log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
       goto next;
     }
 
@@ -2222,7 +2226,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
       if (!serv->active_connections) {
         li = SG->pushServiceToList(serv, &SG->services_finished);
         if (o.verbose)
-          log_write(LOG_STDOUT, "%s finished.\n", serv->HostInfo());
+          log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
         goto next;
       } else {
         li = SG->pushServiceToList(serv, &SG->services_finishing);
@@ -2244,8 +2248,6 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     if ((pair_ret = serv->getNextPair(&login, &pass)) == -1)
       goto next;
 
-    if (o.debugging > 8)
-      log_write(LOG_STDOUT, "%s Initiating new Connection\n", hostinfo);
 
     /* Schedule 1 connection for this service */
     con = new Connection(serv);
@@ -2259,6 +2261,10 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     if ((con->niod = nsi_new(nsp, serv)) == NULL) {
       fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
     }
+
+    if (o.debugging > 8)
+      log_write(LOG_STDOUT, "%s (EID %li) Initiating new Connection\n", hostinfo, nsi_id(con->niod));
+
     gettimeofday(&now, NULL);
     serv->last = now;
     serv->connections.push_back(con);
