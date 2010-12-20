@@ -195,6 +195,9 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
           memsearch((const char *)con->inbuf->get_dataptr(), "Too many security failures", con->inbuf->get_len())) {
         if (o.debugging > 5)
           error("%s Too many authentication failures (a)\n", serv->HostInfo());
+
+        con->close_reason = MODULE_ERR;
+        con->force_close = true;
         return ncrack_module_end(nsp, con);
       }
 
@@ -225,6 +228,9 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
           memsearch((const char *)con->inbuf->get_dataptr(), "Too many security failures", con->inbuf->get_len())) {
         if (o.debugging > 5)
           error("%s Too many authentication failures (b)\n", serv->HostInfo());
+
+        con->close_reason = MODULE_ERR;
+        con->force_close = true;
         return ncrack_module_end(nsp, con);
       }
 
@@ -243,6 +249,9 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
         error("%s This VNC server doesn't support VNC Auth.\n", serv->HostInfo());
         con->service->end.orly = true;
         //con->service->end.reason = Strndup("This VNC server doesn't support VNC Auth.", 23);
+
+        con->close_reason = MODULE_ERR;
+        con->force_close = true;
         return ncrack_module_end(nsp, con);
       }
 
@@ -307,7 +316,7 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
 
       if(con->inbuf == NULL)
         break;
-     
+
       /* okay, at this point, we expect to have at least 4 bytes in response.  If more, then we have a failure message
        *  However, we'll still check to make sure all bytes are 0 (the OK message) before we set auth_success to true
        */
