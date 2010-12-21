@@ -194,7 +194,7 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
       if (memsearch((const char *)con->inbuf->get_dataptr(), "Too many authentication failures", con->inbuf->get_len())|| 
           memsearch((const char *)con->inbuf->get_dataptr(), "Too many security failures", con->inbuf->get_len())) {
         if (o.debugging > 5)
-          error("%s Too many authentication failures (a)\n", serv->HostInfo());
+          error("%s Too many authentication failures (a)", serv->HostInfo());
 
         con->close_reason = MODULE_ERR;
         con->force_close = true;
@@ -227,7 +227,7 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
       if (memsearch((const char *)con->inbuf->get_dataptr(), "Too many authentication failures", con->inbuf->get_len())|| 
           memsearch((const char *)con->inbuf->get_dataptr(), "Too many security failures", con->inbuf->get_len())) {
         if (o.debugging > 5)
-          error("%s Too many authentication failures (b)\n", serv->HostInfo());
+          error("%s Too many authentication failures (b)", serv->HostInfo());
 
         con->close_reason = MODULE_ERR;
         con->force_close = true;
@@ -245,6 +245,7 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
         nsock_write(nsp, nsi, ncrack_write_handler, TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
         con->state = VNC_AUTH;
       }
+      /*
       else {
         error("%s This VNC server doesn't support VNC Auth.\n", serv->HostInfo());
         con->service->end.orly = true;
@@ -254,6 +255,7 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
         con->force_close = true;
         return ncrack_module_end(nsp, con);
       }
+      */
 
       /* Now we're waiting to hear back from the server whether we are good to go or not.  0 is go, 1 is fail */
 
@@ -290,7 +292,8 @@ ncrack_vnc(nsock_pool nsp, Connection *con)
         if (memsearch((const char *)con->inbuf->get_dataptr(), version_test, con->inbuf->get_len()))
           break;
         else {
-          error("%s The server does not support VNC Auth.\n", serv->HostInfo());
+          if (o.debugging > 5)
+            error("%s The server claims not to support VNC Auth. (Can be an auth limit problem)\n", serv->HostInfo()); 
           return ncrack_module_end(nsp, con);
         }
       }
