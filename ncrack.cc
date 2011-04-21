@@ -254,7 +254,7 @@ print_usage(void)
       "  -V: Print version number\n"
       "  -h: Print this help summary page.\n"
       "MODULES:\n"
-      "  FTP, SSH, TELNET, HTTP(S), POP3(S), SMB, RDP\n"
+      "  FTP, SSH, TELNET, HTTP(S), POP3(S), SMB, RDP, VNC\n"
       "EXAMPLES:\n"
       "  ncrack -v --user root localhost:22\n"
       "  ncrack -v -T5 https://192.168.0.1\n"
@@ -1074,7 +1074,8 @@ ncrack_main(int argc, char **argv)
       case 'V': 
         log_write(LOG_STDOUT, "\n%s version %s ( %s )\n",
             NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
-        log_write(LOG_STDOUT, "Modules: SSH, FTP, TELNET, HTTP(S), SMB, RDP, POP3(S)\n");
+        log_write(LOG_STDOUT, "Modules: FTP, SSH, TELNET, HTTP(S), POP3(S), "
+            "SMB, RDP, VNC\n");
         exit(EXIT_SUCCESS);
         break;
       case 'v':
