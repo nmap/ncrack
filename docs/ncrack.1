@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 11/01/2010
+.\"      Date: 04/21/2011
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "11/01/2010" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "04/21/2011" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -797,6 +797,19 @@ of the user\'s home path with a filename format of "restore\&.YY\-MM\-DD_hh\-mm"
 "/home/ithilgore/\&.ncrack/restore\&.2010\-05\-18_04\-42"\&. You can then continue your session, by specifying this file as argument to the
 \fB\-\-resume\fR
 option\&.
+.RE
+.PP
+\fB\-f \fR (Quit cracking service after one found credential) .\" -f
+.RS 4
+This option will force Ncrack to quit cracking a service as soon as it finds a valid username/password combination for it\&. Assuming many parallel services are being cracked at the same time, this option is applied on each of them separately\&. This means that Ncrack will stop cracking each individual service after finding a pair of credentials for it, but will not quit entirely\&. Supplying the option two times, like
+\fB\-f \-f\fR
+will, however, make Ncrack exit immediately as soon as it finds a valid credential for
+\fIany\fR
+service\&.
+.sp
+Frequently, attackers will try cracking several services in parallel to maximize the chances of finding a pair of valid credentials\&. Given that a network is no stronger than its weakest link, this option and especially the
+\fB\-f \-f \fR
+counterpart will often be used to lessen chances of detection and prevent network resources from being wasted aimlessly\&.
 .RE
 .PP
 \fB\-6\fR (Enable IPv6 scanning) .\" -6 .\" IPv6

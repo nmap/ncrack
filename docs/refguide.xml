@@ -1602,6 +1602,40 @@ Ncrack finished.
         </listitem>
       </varlistentry>
 
+        <varlistentry>
+        <term>
+          <option>-f </option>
+          (Quit cracking service after one found credential)
+          <indexterm significance="preferred"><primary><option>-f
+          </option></primary></indexterm>
+        </term>
+        <listitem>
+
+          <para>This option will force Ncrack to quit cracking a service as
+            soon as it finds a valid username/password combination for it.
+            Assuming many parallel services are being cracked at the same
+            time, this option is applied on each of them separately. This
+            means that Ncrack will stop cracking each individual service 
+            after finding a pair of credentials for it, but will not quit
+            entirely. Supplying the option two times, like <option>-f
+              -f</option> will, however, make Ncrack exit immediately as soon
+            as it finds a valid credential for <emphasis>any</emphasis>
+            service.
+          </para>
+
+          <para>
+            Frequently, attackers will try cracking several
+            services in parallel to maximize the chances of finding a pair
+            of valid credentials. Given that a network is no stronger than
+            its weakest link, this option and especially the <option>-f -f
+            </option> counterpart will often be used to lessen chances of 
+            detection and prevent network resources from being wasted aimlessly.
+        </para>
+        </listitem>
+      </varlistentry>
+
+
+
       <varlistentry>
         <term>
           <option>-6</option> (Enable IPv6 scanning)
