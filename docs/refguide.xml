@@ -1964,6 +1964,25 @@ Ncrack finished.
       </varlistentry>
     </variablelist>
 
+      <variablelist><title>VNC Module</title>
+      <varlistentry>
+        <listitem>
+          <para>  
+            The VNC protocol has known widespread usage among Unix
+            administrators and users for remote graphical access. VNC is
+            perhaps one of the most vulnerable protocols in terms of
+            brute-forcing, since it often requires a password without a
+            corresponding username for authentication. In addition, some
+            versions of VNC impose an 8-character limit in password length.
+            You should consider adding the
+            <option>--passwords-first</option> option when cracking VNC
+            systems to exploit the fact that the username often has no
+            actual importance in authentication.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
       <variablelist><title>POP3(S) Module</title>
       <varlistentry>
         <listitem>

@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 04/21/2011
+.\"      Date: 04/23/2011
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "04/21/2011" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "04/23/2011" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -948,6 +948,14 @@ using timing options such as
 (Connection Limit) or
 \fBcd\fR
 (connection delay) against Windows XP (and relevant) RDP servers\&. Windows Vista and above don\'t suffer from the same limitation\&.
+.RE
+.PP
+\fBVNC Module\fR
+.PP
+.RS 4
+The VNC protocol has known widespread usage among Unix administrators and users for remote graphical access\&. VNC is perhaps one of the most vulnerable protocols in terms of brute\-forcing, since it often requires a password without a corresponding username for authentication\&. In addition, some versions of VNC impose an 8\-character limit in password length\&. You should consider adding the
+\fB\-\-passwords\-first\fR
+option when cracking VNC systems to exploit the fact that the username often has no actual importance in authentication\&.
 .RE
 .PP
 \fBPOP3(S) Module\fR
