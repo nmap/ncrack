@@ -8,6 +8,11 @@ TODO:
 * Fix a SSH module bug as described here:
   http://seclists.org/nmap-dev/2010/q3/517
 
+* Consider adding an option for excluding cracking certain accounts. This
+  is important when we want to avoid locking out a critical account by
+  trying too many times. See discussion at:
+  http://seclists.org/nmap-dev/2011/q2/292
+
 * Handle username validation for services.  For example, if an FTP
   server is anon only or if we enumerate SMB users, or some service
   gives a user does not exist error, we should probably not waste time
