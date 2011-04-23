@@ -39,6 +39,30 @@
                   -- [ Ncrack Changelog ] --
 
 
+Ncrack 0.4ALPHA [2011-04-23]
+
+o Added the VNC module to Ncrack's arsenal. Thanks to rhh of rycon.hu for
+  implementing the module and discussing about it for further improvement.
+
+o Wrote the Ncrack Developer's Guide, which is meant to give an overall
+  insight into Ncrack's architecture and help programmers develop their own
+  modules (http://nmap.org/ncrack/devguide.html)
+
+o Fixed critical bug in RDP module, which caused Ncrack to fail cracking
+  some Windows 2003 server versions.
+
+o Added a mechanism (MODULE_ERR), which modules can use to report to the
+  Ncrack engine that the authentication wasn't completed due to an
+  application error. For instance, the VNC server often notifies the client
+  that there are "too many authentication failures" and Ncrack can then
+  close the running connections and wait some time until the above wears
+  off.  
+
+o Ncrack can now print the nsock EID (unique connection ID) in debugging
+  messages. This will greatly help us track problems, since error messages
+  will be matched to certain connections.
+
+
 Ncrack 0.3ALPHA [2010-09-07]
 
 o Ncrack can now crack the Remote Desktop Protocol on all Windows versions from
