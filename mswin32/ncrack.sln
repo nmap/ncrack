@@ -1,18 +1,13 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual C++ Express 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ncrack", "ncrack.vcproj", "{133C627B-C6FC-438F-853D-66FF7EE484F5}"
-	ProjectSection(ProjectDependencies) = postProject
-		{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4} = {F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}
-		{B630C8F7-3138-43E8-89ED-78742FA2AC5F} = {B630C8F7-3138-43E8-89ED-78742FA2AC5F}
-		{B630C8F7-3138-1337-11FF-DEADBEEFAC5F} = {B630C8F7-3138-1337-11FF-DEADBEEFAC5F}
-	EndProjectSection
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual C++ Express 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ncrack", "ncrack.vcxproj", "{133C627B-C6FC-438F-853D-66FF7EE484F5}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nbase", "..\nbase\nbase.vcproj", "{B630C8F7-3138-43E8-89ED-78742FA2AC5F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nbase", "..\nbase\nbase.vcxproj", "{B630C8F7-3138-43E8-89ED-78742FA2AC5F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nsock", "..\nsock\nsock.vcproj", "{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nsock", "..\nsock\nsock.vcxproj", "{F8D6D1E3-D4EA-402C-98AA-168E5309BAF4}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opensshlib", "..\opensshlib\openssh.vcproj", "{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opensshlib", "..\opensshlib\openssh.vcxproj", "{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

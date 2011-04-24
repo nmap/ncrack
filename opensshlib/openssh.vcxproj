@@ -1,0 +1,166 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectName>opensshlib</ProjectName>
+    <ProjectGuid>{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}</ProjectGuid>
+    <RootNamespace>opensshlib</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Debug\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>..\mswin32;..\;..\mswin32\OpenSSL\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Lib>
+      <OutputFile>$(OutDir)openssh.lib</OutputFile>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalOptions>/D "_CRT_SECURE_NO_DEPRECATE" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>..\mswin32;..\;..\mswin32\OpenSSL\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Lib />
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="acss.c" />
+    <ClCompile Include="bsd-asprintf.c" />
+    <ClCompile Include="bsd-snprintf.c" />
+    <ClCompile Include="bufaux.c" />
+    <ClCompile Include="bufbn.c" />
+    <ClCompile Include="buffer.c" />
+    <ClCompile Include="cipher-3des1.c" />
+    <ClCompile Include="cipher-acss.c" />
+    <ClCompile Include="cipher-aes.c" />
+    <ClCompile Include="cipher-bf1.c" />
+    <ClCompile Include="cipher-ctr.c" />
+    <ClCompile Include="cipher.c" />
+    <ClCompile Include="cleanup.c" />
+    <ClCompile Include="compat.c" />
+    <ClCompile Include="crc32.c" />
+    <ClCompile Include="deattack.c" />
+    <ClCompile Include="dh.c" />
+    <ClCompile Include="fatal.c" />
+    <ClCompile Include="kex.c" />
+    <ClCompile Include="kexdh.c" />
+    <ClCompile Include="kexdhc.c" />
+    <ClCompile Include="kexgex.c" />
+    <ClCompile Include="kexgexc.c" />
+    <ClCompile Include="key.c" />
+    <ClCompile Include="log.c" />
+    <ClCompile Include="mac.c" />
+    <ClCompile Include="match.c" />
+    <ClCompile Include="md-sha256.c" />
+    <ClCompile Include="misc.c" />
+    <ClCompile Include="moduli.c" />
+    <ClCompile Include="packet.c" />
+    <ClCompile Include="rijndael.c" />
+    <ClCompile Include="rsa.c" />
+    <ClCompile Include="sha2.c" />
+    <ClCompile Include="ssh-dss.c" />
+    <ClCompile Include="ssh-rsa.c" />
+    <ClCompile Include="sshconnect.c" />
+    <ClCompile Include="sshconnect2.c" />
+    <ClCompile Include="strlcat.c" />
+    <ClCompile Include="strlcpy.c" />
+    <ClCompile Include="strsep.c" />
+    <ClCompile Include="umac.c" />
+    <ClCompile Include="xmalloc.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="acss.h" />
+    <ClInclude Include="audit.h" />
+    <ClInclude Include="auth.h" />
+    <ClInclude Include="buffer.h" />
+    <ClInclude Include="cipher.h" />
+    <ClInclude Include="compat.h" />
+    <ClInclude Include="crc32.h" />
+    <ClInclude Include="deattack.h" />
+    <ClInclude Include="defines.h" />
+    <ClInclude Include="dh.h" />
+    <ClInclude Include="includes.h" />
+    <ClInclude Include="kex.h" />
+    <ClInclude Include="key.h" />
+    <ClInclude Include="log.h" />
+    <ClInclude Include="mac.h" />
+    <ClInclude Include="match.h" />
+    <ClInclude Include="misc.h" />
+    <ClInclude Include="myproposal.h" />
+    <ClInclude Include="openbsd-compat.h" />
+    <ClInclude Include="openssh.h" />
+    <ClInclude Include="opensshlib.h" />
+    <ClInclude Include="openssl-compat.h" />
+    <ClInclude Include="packet.h" />
+    <ClInclude Include="rijndael.h" />
+    <ClInclude Include="rsa.h" />
+    <ClInclude Include="sha2.h" />
+    <ClInclude Include="ssh.h" />
+    <ClInclude Include="ssh1.h" />
+    <ClInclude Include="ssh2.h" />
+    <ClInclude Include="sshconnect.h" />
+    <ClInclude Include="umac.h" />
+    <ClInclude Include="winfixssh.h" />
+    <ClInclude Include="xmalloc.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
