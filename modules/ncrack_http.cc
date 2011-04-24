@@ -336,15 +336,15 @@ http_decode(int http_code)
 
   if (http_map_initialized == false) {
     http_map_initialized = true;
-    http_map.insert(make_pair(200, "File or directory requested doesn't seem "
+    http_map.insert(make_pair<int, const char*>(200, "File or directory requested doesn't seem "
           "to be password protected. (200 OK)"));
-    http_map.insert(make_pair(400, "Malformed syntax on our part. "
+    http_map.insert(make_pair<int, const char*>(400, "Malformed syntax on our part. "
           "(400 Bad Request)"));
-    http_map.insert(make_pair(401, "File or directory has forbidden access. "
+    http_map.insert(make_pair<int, const char*>(401, "File or directory has forbidden access. "
           "(403 Forbidden)"));
-    http_map.insert(make_pair(404, "File or directory doesn't seem to exist. "
+    http_map.insert(make_pair<int, const char*>(404, "File or directory doesn't seem to exist. "
           "(404 Not Found)"));
-    http_map.insert(make_pair(-1, "Unknown HTTP error"));
+    http_map.insert(make_pair<int, const char*>(-1, "Unknown HTTP error"));
   }
 
   map<int, const char*>::iterator mi = http_map.end();
