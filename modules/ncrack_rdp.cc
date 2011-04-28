@@ -3221,7 +3221,7 @@ rdp_get_crypto(Connection *con, u_char *p)
   if (end > real_end) {
     con->service->end.orly = true;
     snprintf(error, sizeof(error), "Server security data: possibly corrupted "
-        " packet. %d more bytes specified", end - real_end);
+        " packet. %ld more bytes specified", end - real_end);
     con->service->end.reason = Strndup(error, strlen(error));
     return -1;
   }
