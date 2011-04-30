@@ -1,5 +1,10 @@
 TODO:
 
+* We should probably include the Microsoft Visual C++ 2010 Redistributable Package 
+  in the Windows installation setup file, since after moving to Visual Studio 
+  C++ 2010 Express, Windows systems demand msvcr100.dll in order for Ncrack
+  to run.
+
 * Start username-list gathering project. Gathering these from email
   addresses may be the most powerful technique.
 
