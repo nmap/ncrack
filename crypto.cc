@@ -88,6 +88,7 @@
  ***************************************************************************/
 
 #include "ncrack.h"
+#include "crypto.h"
 
 #if HAVE_OPENSSL
 
@@ -99,7 +100,6 @@
 #ifndef WIN32
   #include <stdint.h>
 #endif
-#include "crypto.h"
 #include "ncrack_error.h"
 #include "utils.h"
 
