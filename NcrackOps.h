@@ -165,6 +165,8 @@ class NcrackOps {
      */
     bool resume;
     map<uint32_t, struct saved_info> resume_map;
+    
+    char *save_file;
 
   private:
     struct timeval start_time;

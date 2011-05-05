@@ -247,6 +247,7 @@ print_usage(void)
          "files\n"
       "MISC:\n"
       "  --resume <file>: Continue previously saved session\n"
+      "  --save <file>: Save restoration file with specific filename\n"
       "  -f: quit cracking service after one found credential\n"
       "  -6: Enable IPv6 cracking\n"
       "  -sL or --list: only list hosts and services\n"
@@ -812,6 +813,7 @@ ncrack_main(int argc, char **argv)
   struct option long_options[] =
   {
     {"resume", required_argument, 0, 0},
+    {"save", required_argument, 0, 0},
     {"list", no_argument, 0, 0},
     {"services", required_argument, 0, 'p'},
     {"version", no_argument, 0, 'V'},
@@ -960,7 +962,9 @@ ncrack_main(int argc, char **argv)
               "arguments.\n");
         } else if (strcmp(long_options[option_index].name, "vv") == 0) {
           /* Compatability hack ... ugly */
-          o.verbose += 2;    
+          o.verbose += 2;  
+        } else if (strcmp(long_options[option_index].name, "save") == 0) {
+          o.save_file = logfilename(optarg, tm);
         }
         break;
       case '6':
@@ -1422,14 +1426,25 @@ ncrack_main(int argc, char **argv)
   }
 
   log_write(LOG_STDOUT, "\n");
-  /* Now print the final results for each service */
+  /* Now print the final results for each service 
+   * In addition, check if any of the services timed out so that 
+   * we can save a .restore file in case the user needs to resume the session
+   * another time. 
+   */
+  bool save_state = false;
   for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
+    if (!strncmp((*li)->end.reason, SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT)))
+        save_state = true;
     if ((*li)->credentials_found.size() != 0)
       print_service_output(*li);
   }
 
   /* Print final output information */
   print_final_output(SG);
+
+  /* If any service timed out, then save a .restore file */
+  if (save_state)
+    ncrack_save(SG);
 
   /* Free all of the Targets */
   while(!Targets.empty()) {

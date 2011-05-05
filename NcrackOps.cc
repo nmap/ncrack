@@ -98,6 +98,7 @@ NcrackOps::
 NcrackOps() {
 
   datadir = NULL;
+  save_file = NULL;
   stats_interval = 0.0; /* unset */
   log_errors = false;
   append_output = false;
@@ -131,6 +132,7 @@ NcrackOps::
 
   if (datadir)
     free(datadir);
+
 }
 
 

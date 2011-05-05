@@ -191,65 +191,80 @@ ncrack_save(ServiceGroup *SG)
   int res;
   struct tm *tm;
   time_t now;
-  char path[256];
-  char filename[128];
+  char path[MAXPATHLEN];
+  char filename[MAXPATHLEN];
   bool cmd_user_pass = false; /* boolean used for handling the blank username/password
                                  in the --user or --pass option */
 
 
   /* First find user home directory to save current session file
-   * in there. 
+   * in there (if he hasn't already specified his own filename, in which case
+   * we don't need to do all this work)
    */
+  if (!o.save_file) {
+
 #ifndef WIN32
-  /* Unix systems -> use getpwuid of real or effective uid  */
-  pw = getpwuid(getuid());
-  if (!pw && getuid() != geteuid())
-    pw = getpwuid(geteuid());
-  if (!pw)
-    fatal("%s: couldn't get current user's home directory to save restoration"
-        " file", __func__);
+    /* Unix systems -> use getpwuid of real or effective uid  */
+    pw = getpwuid(getuid());
+    if (!pw && getuid() != geteuid())
+      pw = getpwuid(geteuid());
+    if (!pw)
+      fatal("%s: couldn't get current user's home directory to save restoration"
+          " file", __func__);
 
-  res = Snprintf(path, sizeof(path), "%s/.ncrack", pw->pw_dir);
-  if (res < 0 || res > (int)sizeof(path))
-    fatal("%s: possibly not enough buffer space for home path!\n", __func__);
+    res = Snprintf(path, sizeof(path), "%s/.ncrack", pw->pw_dir);
+    if (res < 0 || res > (int)sizeof(path))
+      fatal("%s: possibly not enough buffer space for home path!\n", __func__);
 
 #else
-  /* Windows systems -> use the environmental variables */
-  ExpandEnvironmentStrings("%userprofile%", path, sizeof(path));
-  strncpy(&path[strlen(path)], "\\.ncrack", sizeof(path) - strlen(path));
+    /* Windows systems -> use the environmental variables */
+    ExpandEnvironmentStrings("%userprofile%", path, sizeof(path));
+    strncpy(&path[strlen(path)], "\\.ncrack", sizeof(path) - strlen(path));
 
 #endif
 
-  /* Check if <home>/.ncrack directory exists and has proper permissions.
-   * If it doesn't exist, create it */
-  if (access(path, F_OK)) {
-    /* dir doesn't exist, so mkdir it */
+    /* Check if <home>/.ncrack directory exists and has proper permissions.
+     * If it doesn't exist, create it */
+    if (access(path, F_OK)) {
+      /* dir doesn't exist, so mkdir it */
 #ifdef WIN32
-    if (mkdir(path))
+      if (mkdir(path))
 #else 
-    if (mkdir(path, S_IRUSR | S_IWUSR | S_IXUSR))
+        if (mkdir(path, S_IRUSR | S_IWUSR | S_IXUSR))
 #endif
-      fatal("%s: can't create %s in user's home directory!\n", __func__, path);
-  } else {
+          fatal("%s: can't create %s in user's home directory!\n", __func__, path);
+    } else {
 #ifdef WIN32
-    if (access(path, R_OK | W_OK))
+      if (access(path, R_OK | W_OK))
 #else
-	if (access(path, R_OK | W_OK | X_OK))
+        if (access(path, R_OK | W_OK | X_OK))
 #endif
-      fatal("%s: %s doesn't have proper permissions!\n", __func__, path);
+          fatal("%s: %s doesn't have proper permissions!\n", __func__, path);
+    }
+
   }
 
-  /* Now create restoration file name based on the current date and time */
-  Strncpy(filename, "restore.", 9);
+  /* If user has specified a specific filename, then store saved state into
+   * that, rather than in the normal restore. format */
+  if (!o.save_file) {
 
-  now = time(NULL);
-  tm = localtime(&now);
-  if (strftime(&filename[8], sizeof(filename), "%Y-%m-%d_%H-%M", tm) <= 0)
-    fatal("%s: Unable to properly format time", __func__);
+    /* Now create restoration file name based on the current date and time */
+    Strncpy(filename, "restore.", 9);
 
-  if (chdir(path) < 0) {
-    /* check for race condition */
-    fatal("%s: unable to chdir to %s", __func__, path);
+    now = time(NULL);
+    tm = localtime(&now);
+    if (strftime(&filename[8], sizeof(filename), "%Y-%m-%d_%H-%M", tm) <= 0)
+      fatal("%s: Unable to properly format time", __func__);
+
+    if (chdir(path) < 0) {
+      /* check for race condition */
+      fatal("%s: unable to chdir to %s", __func__, path);
+    }
+
+  } else {
+
+    Strncpy(filename, o.save_file, sizeof(filename) - 1);
+
   }
 
   if (!(outfile = fopen(filename, "w")))
@@ -271,12 +286,12 @@ ncrack_save(ServiceGroup *SG)
     if (cmd_user_pass 
         && (!strlen(o.saved_argv[argiter]) 
           || ((strlen(o.saved_argv[argiter]) == 1)
-              && !strncmp(o.saved_argv[argiter], ",", 1)))) {
+            && !strncmp(o.saved_argv[argiter], ",", 1)))) {
       /* If --user or --pass option argument is blank or a plain ",", then
        * write BLANK_ENTRY magic keyword to indicate this special case */
-        if (fwrite(BLANK_ENTRY, strlen(BLANK_ENTRY), 1, outfile) != 1)
-          fatal("%s: couldn't write %s to file!\n", __func__, BLANK_ENTRY);
-        cmd_user_pass = false;
+      if (fwrite(BLANK_ENTRY, strlen(BLANK_ENTRY), 1, outfile) != 1)
+        fatal("%s: couldn't write %s to file!\n", __func__, BLANK_ENTRY);
+      cmd_user_pass = false;
     } else {
       if (fwrite(o.saved_argv[argiter], strlen(o.saved_argv[argiter]), 1,
             outfile) != 1)
@@ -346,12 +361,18 @@ ncrack_save(ServiceGroup *SG)
 
   }
 
-  log_write(LOG_STDOUT, "Saved current session state at: %s", path);
+  log_write(LOG_STDOUT, "Saved current session state at: ");
+
+  if (!o.save_file) {
+
+    log_write(LOG_STDOUT, "%s", path);
 #ifdef WIN32
-  log_write(LOG_STDOUT, "\\");
+    log_write(LOG_STDOUT, "\\");
 #else
-  log_write(LOG_STDOUT, "/");
+    log_write(LOG_STDOUT, "/");
 #endif
+
+  }
   log_write(LOG_STDOUT, "%s\n", filename);
 
   fclose(outfile);
