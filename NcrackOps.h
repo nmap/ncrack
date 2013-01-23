@@ -140,7 +140,6 @@ class NcrackOps {
     bool passwords_first; 
     bool global_options;  /* true if -g has been specified */
     bool list_only;       /* only list hosts and exit */
-    int nsock_trace;      /* nsock debugging level (range is 0-10) */
     int timing_level;     /* timing template number: T(0-5) */
     int debugging;        /* valid for range 0-10 */
     int finish;           /* 0 -> disabled
@@ -148,6 +147,7 @@ class NcrackOps {
                            * 2 -> quit after any credential is found on any
                            * service
                            */
+    nsock_loglevel_t nsock_loglevel;
     int verbose;
     int numhosts_scanned;
     long connection_limit;/* global maximum total connections */

@@ -111,7 +111,7 @@ NcrackOps() {
   nmap_input_xml = false;
   debugging = 0;
   verbose = 0;
-  nsock_trace = 0;
+  nsock_loglevel = NSOCK_LOG_ERROR;
   timing_level = 3;
   connection_limit = -1;
   numhosts_scanned = 0;

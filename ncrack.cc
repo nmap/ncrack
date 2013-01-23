@@ -904,7 +904,18 @@ ncrack_main(int argc, char **argv)
           o.passwords_first = true;
         } else if (!optcmp(long_options[option_index].name,
               "nsock-trace")) {
-          o.nsock_trace = atoi(optarg);
+          int lvl;
+
+          lvl = atoi(optarg);
+
+          if (lvl >= 7)
+            o.nsock_loglevel = NSOCK_LOG_DBG_ALL;
+          else if (lvl >= 4)
+            o.nsock_loglevel = NSOCK_LOG_DBG;
+          else if (lvl >= 2)
+            o.nsock_loglevel = NSOCK_LOG_INFO;
+          else
+            o.nsock_loglevel = NSOCK_LOG_ERROR;
         } else if (!optcmp(long_options[option_index].name, "log-errors")) {
           o.log_errors = true;
         } else if (!optcmp(long_options[option_index].name, "append-output")) {
@@ -2336,7 +2347,7 @@ ncrack(ServiceGroup *SG)
     fatal("Can't create nsock pool.");
 
   gettimeofday(&now, NULL);
-  nsp_settrace(nsp, NULL, o.nsock_trace, o.getStartTime());
+  nsock_set_loglevel(nsp, o.nsock_loglevel);
 
 #if HAVE_OPENSSL
   /* We don't care about connection security, so cast Haste */
