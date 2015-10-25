@@ -1492,7 +1492,7 @@ void
 ncrack_module_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  ServiceGroup *SG = (ServiceGroup *) nsock_pool_get_udata(nsp);
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   struct timeval now;
@@ -1560,7 +1560,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     if (!serv->more_rounds) {
       if (o.debugging > 6)
         log_write(LOG_STDOUT, "%s (EID %li) Login failed: '%s' '%s'\n",
-            hostinfo, nsi_id(con->niod), con->user, con->pass);
+            hostinfo, nsock_iod_id(con->niod), con->user, con->pass);
     } else {
       serv->appendToPool(con->user, con->pass);
     }
@@ -1688,10 +1688,10 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  ServiceGroup *SG = (ServiceGroup *) nsock_pool_get_udata(nsp);
   list <Connection *>::iterator li;
   const char *hostinfo = serv->HostInfo();
-  unsigned long eid = nsi_id(con->niod);
+  unsigned long eid = nsock_iod_id(con->niod);
 
   if (con->close_reason == CON_ERR)
     SG->connections_timedout++;
@@ -1806,13 +1806,13 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   for (li = serv->connections.begin(); li != serv->connections.end(); li++) {
     if ((*li)->niod == nsi)
       break;
-  } 
+  }
   if (li == serv->connections.end()) /* this shouldn't happen */
     fatal("%s: invalid niod!", __func__);
 
   SG->auth_rate_meter.update(con->login_attempts, NULL);
 
-  nsi_delete(nsi, NSOCK_PENDING_SILENT);
+  nsock_iod_delete(nsi, NSOCK_PENDING_SILENT);
   serv->connections.erase(li);
   delete con;
 
@@ -1824,7 +1824,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
    * Check if we had previously surpassed imposed connection limit so that
    * we remove service from 'services_full' list
    */
-  if (serv->getListFull() 
+  if (serv->getListFull()
       && serv->active_connections < serv->ideal_parallelism)
     SG->popServiceFromList(serv, &SG->services_full);
 
@@ -1872,7 +1872,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
   enum nse_type type = nse_type(nse);
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  ServiceGroup *SG = (ServiceGroup *) nsock_pool_get_udata(nsp);
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
   int pair_ret;
@@ -1880,7 +1880,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   int err;
   char *str;
   const char *hostinfo = serv->HostInfo();
-  unsigned long eid = nsi_id(con->niod);
+  unsigned long eid = nsock_iod_id(con->niod);
 
   assert(type == NSE_TYPE_READ);
 
@@ -1970,11 +1970,11 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
   Connection *con = (Connection *) mydata;
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  ServiceGroup *SG = (ServiceGroup *) nsock_pool_get_udata(nsp);
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
   int err;
-  unsigned long eid = nsi_id(con->niod);
+  unsigned long eid = nsock_iod_id(con->niod);
 
   if (serv->getListFinished()) {
     nsock_event_cancel(nsp, nse_id(nse), 0);
@@ -2035,12 +2035,12 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   nsock_iod nsi = nse_iod(nse);
   enum nse_status status = nse_status(nse);
   enum nse_type type = nse_type(nse);
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  ServiceGroup *SG = (ServiceGroup *) nsock_pool_get_udata(nsp);
   Connection *con = (Connection *) mydata;
   Service *serv = con->service;
   const char *hostinfo = serv->HostInfo();
   int err;
-  unsigned long eid = nsi_id(con->niod);
+  unsigned long eid = nsock_iod_id(con->niod);
 
   assert(type == NSE_TYPE_CONNECT || type == NSE_TYPE_CONNECT_SSL);
 
@@ -2060,16 +2060,16 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 #if HAVE_OPENSSL
     // Snag our SSL_SESSION from the nsi for use in subsequent connections.
-    if (nsi_checkssl(nsi)) {
-      if (con->ssl_session ) {
-        if (con->ssl_session == (SSL_SESSION *)(nsi_get0_ssl_session(nsi))) {
+    if (nsock_iod_check_ssl(nsi)) {
+      if (con->ssl_session) {
+        if (con->ssl_session == (SSL_SESSION *)(nsock_iod_get_ssl_session(nsi, 0))) {
           //nada
         } else {
           SSL_SESSION_free((SSL_SESSION*)con->ssl_session);
-          con->ssl_session = (SSL_SESSION *)(nsi_get1_ssl_session(nsi));
+          con->ssl_session = (SSL_SESSION *)(nsock_iod_get_ssl_session(nsi, 1));
         }
       } else {
-        con->ssl_session = (SSL_SESSION *)(nsi_get1_ssl_session(nsi));
+        con->ssl_session = (SSL_SESSION *)(nsock_iod_get_ssl_session(nsi, 1));
       }
     }
 #endif
@@ -2115,7 +2115,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 }
 
 
-/* 
+/*
  * Poll for interactive user input every time this timer is called.
  */
 static void
@@ -2123,7 +2123,7 @@ status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   int key_ret;
   enum nse_status status = nse_status(nse);
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  ServiceGroup *SG = (ServiceGroup *) nsock_pool_get_udata(nsp);
   mydata = NULL; /* nothing in there */
 
   key_ret = keyWasPressed();
@@ -2137,7 +2137,7 @@ status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
      * deleted (NSE_STATUS_KILL sent) and we are done. */
     if (status == NSE_STATUS_KILL)
       return;
-    else 
+    else
       error("Nsock status timer handler error: %s\n", nse_status2str(status));
   }
 
@@ -2150,7 +2150,7 @@ static void
 signal_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
-  ServiceGroup *SG = (ServiceGroup *) nsp_getud(nsp);
+  ServiceGroup *SG = (ServiceGroup *) nsock_pool_get_udata(nsp);
   mydata = NULL; /* nothing in there */
 
   if (status != NSE_STATUS_SUCCESS) {
@@ -2160,7 +2160,7 @@ signal_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       sigcheck(SG);
       return;
     }
-    else 
+    else
       error("Nsock status timer handler error: %s\n", nse_status2str(status));
   }
 
@@ -2240,13 +2240,13 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     }
 
 
-    /* 
+    /*
      * To mark a service as completely finished, first make sure:
      * a) that the username list has finished being iterated through once
      * b) that the mirror pair pool, which holds temporary login pairs which
      *    are currently being used, is empty
      * c) that no pending connections are left
-     * d) that the service hasn't already finished 
+     * d) that the service hasn't already finished
      */
     if (serv->loginlist_fini && serv->isMirrorPoolEmpty()
         && !serv->getListFinished()) {
@@ -2261,7 +2261,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
       }
     }
 
-    /* 
+    /*
      * If the username list iteration has finished, then don't initiate another
      * connection until our pair_pool has at least one element to grab another
      * pair from.
@@ -2285,12 +2285,12 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     con->user = login;
     con->pass = pass;
 
-    if ((con->niod = nsi_new(nsp, serv)) == NULL) {
+    if ((con->niod = nsock_iod_new(nsp, serv)) == NULL) {
       fatal("Failed to allocate Nsock I/O descriptor in %s()", __func__);
     }
 
     if (o.debugging > 8)
-      log_write(LOG_STDOUT, "%s (EID %li) Initiating new Connection\n", hostinfo, nsi_id(con->niod));
+      log_write(LOG_STDOUT, "%s (EID %li) Initiating new Connection\n", hostinfo, nsock_iod_id(con->niod));
 
     gettimeofday(&now, NULL);
     serv->last = now;
@@ -2301,19 +2301,19 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     serv->target->TargetSockAddr(&ss, &ss_len);
     if (serv->proto == IPPROTO_TCP) {
       if (!serv->ssl) {
-        nsock_connect_tcp(nsp, con->niod, ncrack_connect_handler, 
+        nsock_connect_tcp(nsp, con->niod, ncrack_connect_handler,
             DEFAULT_CONNECT_TIMEOUT, con,
             (struct sockaddr *)&ss, ss_len,
             serv->portno);
       } else {
-        nsock_connect_ssl(nsp, con->niod, ncrack_connect_handler, 
-            DEFAULT_CONNECT_SSL_TIMEOUT, con, 
+        nsock_connect_ssl(nsp, con->niod, ncrack_connect_handler,
+            DEFAULT_CONNECT_SSL_TIMEOUT, con,
             (struct sockaddr *) &ss, ss_len, serv->proto,
             serv->portno, con->ssl_session);
       }
     } else {
       assert(serv->proto == IPPROTO_UDP);
-      nsock_connect_udp(nsp, con->niod, ncrack_connect_handler, 
+      nsock_connect_udp(nsp, con->niod, ncrack_connect_handler,
           serv, (struct sockaddr *) &ss, ss_len,
           serv->portno);
     }
@@ -2343,15 +2343,15 @@ ncrack(ServiceGroup *SG)
   int err;
 
   /* create nsock p00l */
-  if (!(nsp = nsp_new(SG))) 
+  if (!(nsp = nsock_pool_new(SG)))
     fatal("Can't create nsock pool.");
 
   gettimeofday(&now, NULL);
-  nsock_set_loglevel(nsp, o.nsock_loglevel);
+  nsock_set_loglevel(o.nsock_loglevel);
 
 #if HAVE_OPENSSL
   /* We don't care about connection security, so cast Haste */
-  nsp_ssl_init_max_speed(nsp);
+  nsock_pool_ssl_init(nsp, NSOCK_SSL_MAX_SPEED);
 #endif
 
   SG->findMinDelay();
@@ -2359,7 +2359,7 @@ ncrack(ServiceGroup *SG)
    * delay, since we have to check every that time period for potential new
    * connection initiations. If the minimum connection delay is 0 however, we
    * don't need to do it, since that would make nsock_loop return immediately
-   * and consume a lot of CPU. 
+   * and consume a lot of CPU.
    */
   if (SG->min_connection_delay != 0)
     nsock_timeout = SG->min_connection_delay;
@@ -2372,7 +2372,7 @@ ncrack(ServiceGroup *SG)
   for (li = SG->services_all.begin(); li != SG->services_all.end(); li++)
     (*li)->auth_rate_meter.start();
 
-  /* 
+  /*
    * Since nsock can delay between each event due to the targets being really
    * slow,  we need a way to make sure that we always poll for interactive user
    * input regardless of the above case. Thus we schedule a special timer event
@@ -2381,7 +2381,7 @@ ncrack(ServiceGroup *SG)
    */
   nsock_timer_create(nsp, status_timer_handler, KEYPRESSED_INTERVAL, NULL);
 
-  /* 
+  /*
    * We do the same for checking pending signals every SIGNAL_CHECK_INTERVAL
    */
   nsock_timer_create(nsp, signal_timer_handler, SIGNAL_CHECK_INTERVAL, NULL);
@@ -2394,7 +2394,7 @@ ncrack(ServiceGroup *SG)
     loopret = nsock_loop(nsp, nsock_timeout);
 
     if (loopret == NSOCK_LOOP_ERROR) {
-      err = nsp_geterrorcode(nsp);
+      err = nsock_pool_get_error(nsp);
       fatal("Unexpected nsock_loop error. Error code %d (%s)",
           err, strerror(err));
     }
@@ -2403,7 +2403,7 @@ ncrack(ServiceGroup *SG)
 
   } while (SG->services_finished.size() != SG->total_services);
 
-  nsp_delete(nsp);
+  nsock_pool_delete(nsp);
 
   if (o.debugging > 4)
     log_write(LOG_STDOUT, "nsock_loop returned %d\n", loopret);

@@ -10,7 +10,7 @@ CXXFLAGS="$CXXFLAGS -O2"
 
 # This variable is needed so that PCAP support, which is by default defined
 # for Nsock due to Nmap, is disabled in Ncrack's case. 
-ac_configure_args="$ac_configure_args --without-pcap"
+ac_configure_args="$ac_configure_args --with-libpcap=no"
 
 
 AC_ARG_WITH(localdirs,
