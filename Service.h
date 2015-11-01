@@ -195,6 +195,8 @@ class Service
     vector <loginpair> credentials_found;
   
 		bool loginlist_fini;/* true if login list has been iterated through */ 
+    bool userlist_fini;
+    bool passlist_fini;
 
     vector <char *> *UserArray;
     vector <char *> *PassArray;

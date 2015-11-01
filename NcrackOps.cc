@@ -103,6 +103,7 @@ NcrackOps() {
   log_errors = false;
   append_output = false;
   passwords_first = false;
+  pairwise = false;
   global_options = false;
   list_only = false;
   userlist_src = 0;

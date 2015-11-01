@@ -184,6 +184,8 @@ Service(const Service& ref)
   active_connections = 0;
 
   loginlist_fini = false;
+  passlist_fini = false;
+  userlist_fini = false;
   list_active = true;
   list_full = false;
   list_wait = false;
@@ -304,8 +306,36 @@ getNextPair(char **user, char **pass)
   if (loginlist_fini)
     return -1;
 
-  /* Iteration of username list for each password (default). */
-  if (!o.passwords_first) {
+  if (o.pairwise) {
+
+    if (uservi == UserArray->end() && passvi == PassArray->end()) {
+      if (o.debugging > 8)
+        log_write(LOG_STDOUT, "%s Password list finished!\n", HostInfo());
+      loginlist_fini = true;
+      return -1;
+    }
+    if (uservi == UserArray->end()) {
+      uservi = UserArray->begin();
+      userlist_fini = true;
+    }
+    if (passvi == PassArray->end()) {
+      passvi = PassArray->begin();
+      passlist_fini = true;
+    }
+    if (userlist_fini == true && passlist_fini == true) {
+      printf("asdf\n");
+      if (o.debugging > 8)
+        log_write(LOG_STDOUT, "%s Password list finished!\n", HostInfo());
+      loginlist_fini = true;
+      return -1;
+    }
+    *pass = *passvi;
+    *user = *uservi;
+    uservi++;
+    passvi++;
+
+    /* Iteration of username list for each password (default). */
+  } else if (!o.passwords_first) {
     /* If username list finished one iteration then reset the username pointer
      * to show at the beginning and get password from password list. */
     if (uservi == UserArray->end()) {
@@ -321,6 +351,7 @@ getNextPair(char **user, char **pass)
     *pass = *passvi;
     *user = *uservi;
     uservi++;
+
     /* Iteration of password list for each username. */
   } else if (o.passwords_first) { 
     /* If password list finished one iteration then reset the password pointer
@@ -432,7 +463,7 @@ getPercDone(void)
       if (usertmp != UserArray->begin())
         usertmp--;
       ret = distance(PassArray->begin(), passtmp) * UserArray->size()
-          + distance(UserArray->begin(), usertmp);
+        + distance(UserArray->begin(), usertmp);
     }
   } else {
     if (usertmp != UserArray->begin())

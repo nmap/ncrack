@@ -137,7 +137,10 @@ class NcrackOps {
     bool nmap_input_normal; /* true if host input from Nmap's -oN output */
     bool nmap_input_xml;    /* true if host input from Nmap's -oX output */
     /* iterate password list for each username instead of opposite */
-    bool passwords_first; 
+    bool passwords_first;
+    /* choose a username and a password from the username and password lists 
+     * correspondingly in pairs */
+    bool pairwise;
     bool global_options;  /* true if -g has been specified */
     bool list_only;       /* only list hosts and exit */
     int timing_level;     /* timing template number: T(0-5) */

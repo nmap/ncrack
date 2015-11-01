@@ -139,26 +139,26 @@ ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
   if (con->inbuf != NULL) {
     packetlen = con->inbuf->get_len();
 
-    printf("packetlen read by nsock: %d\n", packetlen);
+    //printf("packetlen read by nsock: %d\n", packetlen);
     if (packetlen > 0) {
       buffer_append(info->input, con->inbuf->get_dataptr(), packetlen);
       delete con->inbuf;
       con->inbuf = NULL;
     }
 
-    printf("info input length: %d \n", sshbuf_len(info->input));
+    //printf("info input length: %d \n", sshbuf_len(info->input));
   }
 
-  printf("ncrack state %d\n", con->state);
+  //printf("ncrack state %d\n", con->state);
 
   info->type = ncrackssh_ssh_packet_read(info);
   if (info->type == SSH_MSG_NONE) {
-    printf("ssh loop MSG NONE\n");
+    //printf("ssh loop MSG NONE\n");
     nsock_read(nsp, con->niod, ncrack_read_handler, SSH_TIMEOUT, con);
     return -1;
   }
 
-  printf("final input packet length %d\n", sshbuf_len(info->input));
+  //printf("final input packet length %d\n", sshbuf_len(info->input));
 
   delete con->inbuf;
   con->inbuf = NULL;
@@ -283,20 +283,20 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       con->state = SSH_KEY4;
 
       if (info->kex->kex_type == KEX_ECDH_SHA2) {
-        printf("KEX ECDH SHA2 \n");
+        //printf("KEX ECDH SHA2 \n");
         ncrackssh_input_kex_ecdh_reply(info);
         con->state = SSH_AUTH;
       } else if (info->kex->kex_type == KEX_DH_GRP1_SHA1
                  || info->kex->kex_type == KEX_DH_GRP14_SHA1) {
-        printf("dh client\n");
+        //printf("dh client\n");
         ncrackssh_input_kex_dh(info);
         con->state = SSH_AUTH;
       } else if (info->kex->kex_type == KEX_C25519_SHA256) {
-        printf("c25519 client\n");
+        //printf("c25519 client\n");
         ncrackssh_input_kex_c25519_reply(info);
         con->state = SSH_AUTH;
       } else {
-        printf("dh gex sha\n");
+        //printf("dh gex sha\n");
         ncrackssh_input_kex_dh_gex_group(info);
       }
 

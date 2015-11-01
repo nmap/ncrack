@@ -235,6 +235,7 @@ print_usage(void)
       "  --pass <password_list>: comma-separated password list\n"
       "  --passwords-first: Iterate password list for each username. "
         "Default is opposite.\n"
+      "  --pairwise: Choose usernames and passwords in pairs.\n"
       "OUTPUT:\n"
       "  -oN/-oX <file>: Output scan in normal and XML format, respectively, "
          "to the given filename.\n"
@@ -840,6 +841,7 @@ ncrack_main(int argc, char **argv)
     {"connection-limit", required_argument, 0, 0},
     {"passwords_first", no_argument, 0, 0},
     {"passwords-first", no_argument, 0, 0},
+    {"pairwise", no_argument, 0, 0},
     {"user", required_argument, 0, 0},
     {"pass", required_argument, 0, 0},
     {"nsock-trace", required_argument, 0, 0},
@@ -902,6 +904,9 @@ ncrack_main(int argc, char **argv)
         } else if (!optcmp(long_options[option_index].name,
               "passwords-first")) {
           o.passwords_first = true;
+        } else if (!optcmp(long_options[option_index].name,
+              "pairwise")) {
+          o.pairwise = true;
         } else if (!optcmp(long_options[option_index].name,
               "nsock-trace")) {
           int lvl;

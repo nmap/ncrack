@@ -163,7 +163,7 @@ ncrackssh_ssh_kex2(ncrack_ssh_state *nstate, char *client_version_string,
 	struct kex *kex;
   int r;
 
-  printf("ssh_kex2\n");
+  //printf("ssh_kex2\n");
 
   // normally these are defined in Options struct (readconf.h)
   char *ciphers = NULL; /* SSH2 ciphers in order of preference. */
@@ -193,7 +193,7 @@ ncrackssh_ssh_kex2(ncrack_ssh_state *nstate, char *client_version_string,
   // of same host
 	myproposal[PROPOSAL_SERVER_HOST_KEY_ALGS] = xstrdup(KEX_DEFAULT_PK_ALG);
 
-  printf("before kex setup\n");
+  //printf("before kex setup\n");
 
 	/* start key exchange */
 	if ((r = kex_setup(nstate, myproposal)) != 0)
@@ -363,7 +363,7 @@ int
 ncrackssh_ssh_userauth2_service_rep(ncrack_ssh_state *nstate)
 {
 
-  printf("nstate type: %d \n", nstate->type);
+  //printf("nstate type: %d \n", nstate->type);
 
 	if (nstate->type != SSH2_MSG_SERVICE_ACCEPT)
     return -1;
