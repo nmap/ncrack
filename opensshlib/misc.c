@@ -1,4 +1,4 @@
-/* $OpenBSD: misc.c,v 1.71 2009/02/21 19:32:04 tobias Exp $ */
+/* $OpenBSD: misc.c,v 1.97 2015/04/24 01:36:00 deraadt Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2005,2006 Damien Miller.  All rights reserved.
@@ -27,24 +27,27 @@
 #include "includes.h"
 
 #include <sys/types.h>
-
-#ifndef WIN32
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/param.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#endif
+#include <sys/un.h>
 
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
+#include <netinet/in.h>
+#include <netinet/in_systm.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <netdb.h>
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #include <pwd.h>
@@ -74,6 +77,84 @@ chop(char *s)
 
 }
 
+/* set/unset filedescriptor to non-blocking */
+int
+set_nonblock(int fd)
+{
+	int val;
+
+	val = fcntl(fd, F_GETFL, 0);
+	if (val < 0) {
+		error("fcntl(%d, F_GETFL, 0): %s", fd, strerror(errno));
+		return (-1);
+	}
+	if (val & O_NONBLOCK) {
+		debug3("fd %d is O_NONBLOCK", fd);
+		return (0);
+	}
+	debug2("fd %d setting O_NONBLOCK", fd);
+	val |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, val) == -1) {
+		debug("fcntl(%d, F_SETFL, O_NONBLOCK): %s", fd,
+		    strerror(errno));
+		return (-1);
+	}
+	return (0);
+}
+
+int
+unset_nonblock(int fd)
+{
+	int val;
+
+	val = fcntl(fd, F_GETFL, 0);
+	if (val < 0) {
+		error("fcntl(%d, F_GETFL, 0): %s", fd, strerror(errno));
+		return (-1);
+	}
+	if (!(val & O_NONBLOCK)) {
+		debug3("fd %d is not O_NONBLOCK", fd);
+		return (0);
+	}
+	debug("fd %d clearing O_NONBLOCK", fd);
+	val &= ~O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, val) == -1) {
+		debug("fcntl(%d, F_SETFL, ~O_NONBLOCK): %s",
+		    fd, strerror(errno));
+		return (-1);
+	}
+	return (0);
+}
+
+const char *
+ssh_gai_strerror(int gaierr)
+{
+	if (gaierr == EAI_SYSTEM && errno != 0)
+		return strerror(errno);
+	return gai_strerror(gaierr);
+}
+
+/* disable nagle on socket */
+void
+set_nodelay(int fd)
+{
+	int opt;
+	socklen_t optlen;
+
+	optlen = sizeof opt;
+	if (getsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, &optlen) == -1) {
+		debug("getsockopt TCP_NODELAY: %.100s", strerror(errno));
+		return;
+	}
+	if (opt == 1) {
+		debug2("fd %d is TCP_NODELAY", fd);
+		return;
+	}
+	opt = 1;
+	debug2("fd %d setting TCP_NODELAY", fd);
+	if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof opt) == -1)
+		error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
+}
 
 /* Characters considered whitespace in strsep calls. */
 #define WHITESPACE " \t\r\n"
@@ -102,6 +183,7 @@ strdelim(char **s)
 			return (NULL);		/* no matching quote */
 		} else {
 			*s[0] = '\0';
+			*s += strspn(*s + 1, WHITESPACE) + 1;
 			return (old);
 		}
 	}
@@ -119,7 +201,6 @@ strdelim(char **s)
 	return (old);
 }
 
-#if 0
 struct passwd *
 pwcopy(struct passwd *pw)
 {
@@ -127,23 +208,72 @@ pwcopy(struct passwd *pw)
 
 	copy->pw_name = xstrdup(pw->pw_name);
 	copy->pw_passwd = xstrdup(pw->pw_passwd);
+#ifdef HAVE_STRUCT_PASSWD_PW_GECOS
 	copy->pw_gecos = xstrdup(pw->pw_gecos);
+#endif
 	copy->pw_uid = pw->pw_uid;
 	copy->pw_gid = pw->pw_gid;
-#ifdef HAVE_PW_EXPIRE_IN_PASSWD
+#ifdef HAVE_STRUCT_PASSWD_PW_EXPIRE
 	copy->pw_expire = pw->pw_expire;
 #endif
-#ifdef HAVE_PW_CHANGE_IN_PASSWD
+#ifdef HAVE_STRUCT_PASSWD_PW_CHANGE
 	copy->pw_change = pw->pw_change;
 #endif
-#ifdef HAVE_PW_CLASS_IN_PASSWD
+#ifdef HAVE_STRUCT_PASSWD_PW_CLASS
 	copy->pw_class = xstrdup(pw->pw_class);
 #endif
 	copy->pw_dir = xstrdup(pw->pw_dir);
 	copy->pw_shell = xstrdup(pw->pw_shell);
 	return copy;
 }
-#endif
+
+/*
+ * Convert ASCII string to TCP/IP port number.
+ * Port must be >=0 and <=65535.
+ * Return -1 if invalid.
+ */
+int
+a2port(const char *s)
+{
+	long long port;
+	const char *errstr;
+
+	port = strtonum(s, 0, 65535, &errstr);
+	if (errstr != NULL)
+		return -1;
+	return (int)port;
+}
+
+int
+a2tun(const char *s, int *remote)
+{
+	const char *errstr = NULL;
+	char *sp, *ep;
+	int tun;
+
+	if (remote != NULL) {
+		*remote = SSH_TUNID_ANY;
+		sp = xstrdup(s);
+		if ((ep = strchr(sp, ':')) == NULL) {
+			free(sp);
+			return (a2tun(s, NULL));
+		}
+		ep[0] = '\0'; ep++;
+		*remote = a2tun(ep, NULL);
+		tun = a2tun(sp, NULL);
+		free(sp);
+		return (*remote == SSH_TUNID_ERR ? *remote : tun);
+	}
+
+	if (strcasecmp(s, "any") == 0)
+		return (SSH_TUNID_ANY);
+
+	tun = strtonum(s, 0, SSH_TUNID_MAX, &errstr);
+	if (errstr != NULL)
+		return (SSH_TUNID_ERR);
+
+	return (tun);
+}
 
 #define SECONDS		1
 #define MINUTES		(SECONDS * 60)
@@ -228,7 +358,74 @@ convtime(const char *s)
 	return total;
 }
 
+/*
+ * Returns a standardized host+port identifier string.
+ * Caller must free returned string.
+ */
+char *
+put_host_port(const char *host, u_short port)
+{
+	char *hoststr;
 
+	if (port == 0 || port == SSH_DEFAULT_PORT)
+		return(xstrdup(host));
+	if (asprintf(&hoststr, "[%s]:%d", host, (int)port) < 0)
+		fatal("put_host_port: asprintf: %s", strerror(errno));
+	debug3("put_host_port: %s", hoststr);
+	return hoststr;
+}
+
+/*
+ * Search for next delimiter between hostnames/addresses and ports.
+ * Argument may be modified (for termination).
+ * Returns *cp if parsing succeeds.
+ * *cp is set to the start of the next delimiter, if one was found.
+ * If this is the last field, *cp is set to NULL.
+ */
+char *
+hpdelim(char **cp)
+{
+	char *s, *old;
+
+	if (cp == NULL || *cp == NULL)
+		return NULL;
+
+	old = s = *cp;
+	if (*s == '[') {
+		if ((s = strchr(s, ']')) == NULL)
+			return NULL;
+		else
+			s++;
+	} else if ((s = strpbrk(s, ":/")) == NULL)
+		s = *cp + strlen(*cp); /* skip to end (see first case below) */
+
+	switch (*s) {
+	case '\0':
+		*cp = NULL;	/* no more fields*/
+		break;
+
+	case ':':
+	case '/':
+		*s = '\0';	/* terminate */
+		*cp = s + 1;
+		break;
+
+	default:
+		return NULL;
+	}
+
+	return old;
+}
+
+char *
+cleanhostname(char *host)
+{
+	if (*host == '[' && host[strlen(host) - 1] == ']') {
+		host[strlen(host) - 1] = '\0';
+		return (host + 1);
+	} else
+		return host;
+}
 
 char *
 colon(char *cp)
@@ -236,7 +433,7 @@ colon(char *cp)
 	int flag = 0;
 
 	if (*cp == ':')		/* Leading colon is part of file name. */
-		return (0);
+		return NULL;
 	if (*cp == '[')
 		flag = 1;
 
@@ -248,14 +445,73 @@ colon(char *cp)
 		if (*cp == ':' && !flag)
 			return (cp);
 		if (*cp == '/')
-			return (0);
+			return NULL;
 	}
-	return (0);
+	return NULL;
 }
 
+/* function to assist building execv() arguments */
+void
+addargs(arglist *args, char *fmt, ...)
+{
+	va_list ap;
+	char *cp;
+	u_int nalloc;
+	int r;
 
+	va_start(ap, fmt);
+	r = vasprintf(&cp, fmt, ap);
+	va_end(ap);
+	if (r == -1)
+		fatal("addargs: argument too long");
 
-#if 0
+	nalloc = args->nalloc;
+	if (args->list == NULL) {
+		nalloc = 32;
+		args->num = 0;
+	} else if (args->num+2 >= nalloc)
+		nalloc *= 2;
+
+	args->list = xreallocarray(args->list, nalloc, sizeof(char *));
+	args->nalloc = nalloc;
+	args->list[args->num++] = cp;
+	args->list[args->num] = NULL;
+}
+
+void
+replacearg(arglist *args, u_int which, char *fmt, ...)
+{
+	va_list ap;
+	char *cp;
+	int r;
+
+	va_start(ap, fmt);
+	r = vasprintf(&cp, fmt, ap);
+	va_end(ap);
+	if (r == -1)
+		fatal("replacearg: argument too long");
+
+	if (which >= args->num)
+		fatal("replacearg: tried to replace invalid arg %d >= %d",
+		    which, args->num);
+	free(args->list[which]);
+	args->list[which] = cp;
+}
+
+void
+freeargs(arglist *args)
+{
+	u_int i;
+
+	if (args->list != NULL) {
+		for (i = 0; i < args->num; i++)
+			free(args->list[i]);
+		free(args->list);
+		args->nalloc = args->num = 0;
+		args->list = NULL;
+	}
+}
+
 /*
  * Expands tildes in the file name.  Returns data allocated by xmalloc.
  * Warning: this calls getpw*.
@@ -263,8 +519,8 @@ colon(char *cp)
 char *
 tilde_expand_filename(const char *filename, uid_t uid)
 {
-	const char *path;
-	char user[128], ret[MAXPATHLEN];
+	const char *path, *sep;
+	char user[128], *ret;
 	struct passwd *pw;
 	u_int len, slash;
 
@@ -284,25 +540,22 @@ tilde_expand_filename(const char *filename, uid_t uid)
 	} else if ((pw = getpwuid(uid)) == NULL)	/* ~/path */
 		fatal("tilde_expand_filename: No such uid %ld", (long)uid);
 
-	if (strlcpy(ret, pw->pw_dir, sizeof(ret)) >= sizeof(ret))
-		fatal("tilde_expand_filename: Path too long");
-
 	/* Make sure directory has a trailing '/' */
 	len = strlen(pw->pw_dir);
-	if ((len == 0 || pw->pw_dir[len - 1] != '/') &&
-	    strlcat(ret, "/", sizeof(ret)) >= sizeof(ret))
-		fatal("tilde_expand_filename: Path too long");
+	if (len == 0 || pw->pw_dir[len - 1] != '/')
+		sep = "/";
+	else
+		sep = "";
 
 	/* Skip leading '/' from specified path */
 	if (path != NULL)
 		filename = path + 1;
-	if (strlcat(ret, filename, sizeof(ret)) >= sizeof(ret))
+
+	if (xasprintf(&ret, "%s%s%s", pw->pw_dir, sep, filename) >= PATH_MAX)
 		fatal("tilde_expand_filename: Path too long");
 
-	return (xstrdup(ret));
+	return (ret);
 }
-#endif
-
 
 /*
  * Expand a string with a set of %[char] escapes. A number of escapes may be
@@ -314,11 +567,11 @@ char *
 percent_expand(const char *string, ...)
 {
 #define EXPAND_MAX_KEYS	16
+	u_int num_keys, i, j;
 	struct {
 		const char *key;
 		const char *repl;
 	} keys[EXPAND_MAX_KEYS];
-	u_int num_keys, i, j;
 	char buf[4096];
 	va_list ap;
 
@@ -330,12 +583,11 @@ percent_expand(const char *string, ...)
 			break;
 		keys[num_keys].repl = va_arg(ap, char *);
 		if (keys[num_keys].repl == NULL)
-			fatal("percent_expand: NULL replacement");
+			fatal("%s: NULL replacement", __func__);
 	}
+	if (num_keys == EXPAND_MAX_KEYS && va_arg(ap, char *) != NULL)
+		fatal("%s: too many keys", __func__);
 	va_end(ap);
-
-	if (num_keys >= EXPAND_MAX_KEYS)
-		fatal("percent_expand: too many keys");
 
 	/* Expand string */
 	*buf = '\0';
@@ -344,29 +596,148 @@ percent_expand(const char *string, ...)
  append:
 			buf[i++] = *string;
 			if (i >= sizeof(buf))
-				fatal("percent_expand: string too long");
+				fatal("%s: string too long", __func__);
 			buf[i] = '\0';
 			continue;
 		}
 		string++;
+		/* %% case */
 		if (*string == '%')
 			goto append;
 		for (j = 0; j < num_keys; j++) {
 			if (strchr(keys[j].key, *string) != NULL) {
 				i = strlcat(buf, keys[j].repl, sizeof(buf));
 				if (i >= sizeof(buf))
-					fatal("percent_expand: string too long");
+					fatal("%s: string too long", __func__);
 				break;
 			}
 		}
 		if (j >= num_keys)
-			fatal("percent_expand: unknown key %%%c", *string);
+			fatal("%s: unknown key %%%c", __func__, *string);
 	}
 	return (xstrdup(buf));
 #undef EXPAND_MAX_KEYS
 }
 
+/*
+ * Read an entire line from a public key file into a static buffer, discarding
+ * lines that exceed the buffer size.  Returns 0 on success, -1 on failure.
+ */
+int
+read_keyfile_line(FILE *f, const char *filename, char *buf, size_t bufsz,
+   u_long *lineno)
+{
+	while (fgets(buf, bufsz, f) != NULL) {
+		if (buf[0] == '\0')
+			continue;
+		(*lineno)++;
+		if (buf[strlen(buf) - 1] == '\n' || feof(f)) {
+			return 0;
+		} else {
+			debug("%s: %s line %lu exceeds size limit", __func__,
+			    filename, *lineno);
+			/* discard remainder of line */
+			while (fgetc(f) != '\n' && !feof(f))
+				;	/* nothing */
+		}
+	}
+	return -1;
+}
 
+int
+tun_open(int tun, int mode)
+{
+#if defined(CUSTOM_SYS_TUN_OPEN)
+  return 0;
+	  //return (sys_tun_open(tun, mode));
+#elif defined(SSH_TUN_OPENBSD)
+	struct ifreq ifr;
+	char name[100];
+	int fd = -1, sock;
+
+	/* Open the tunnel device */
+	if (tun <= SSH_TUNID_MAX) {
+		snprintf(name, sizeof(name), "/dev/tun%d", tun);
+		fd = open(name, O_RDWR);
+	} else if (tun == SSH_TUNID_ANY) {
+		for (tun = 100; tun >= 0; tun--) {
+			snprintf(name, sizeof(name), "/dev/tun%d", tun);
+			if ((fd = open(name, O_RDWR)) >= 0)
+				break;
+		}
+	} else {
+		debug("%s: invalid tunnel %u", __func__, tun);
+		return (-1);
+	}
+
+	if (fd < 0) {
+		debug("%s: %s open failed: %s", __func__, name, strerror(errno));
+		return (-1);
+	}
+
+	debug("%s: %s mode %d fd %d", __func__, name, mode, fd);
+
+	/* Set the tunnel device operation mode */
+	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "tun%d", tun);
+	if ((sock = socket(PF_UNIX, SOCK_STREAM, 0)) == -1)
+		goto failed;
+
+	if (ioctl(sock, SIOCGIFFLAGS, &ifr) == -1)
+		goto failed;
+
+	/* Set interface mode */
+	ifr.ifr_flags &= ~IFF_UP;
+	if (mode == SSH_TUNMODE_ETHERNET)
+		ifr.ifr_flags |= IFF_LINK0;
+	else
+		ifr.ifr_flags &= ~IFF_LINK0;
+	if (ioctl(sock, SIOCSIFFLAGS, &ifr) == -1)
+		goto failed;
+
+	/* Bring interface up */
+	ifr.ifr_flags |= IFF_UP;
+	if (ioctl(sock, SIOCSIFFLAGS, &ifr) == -1)
+		goto failed;
+
+	close(sock);
+	return (fd);
+
+ failed:
+	if (fd >= 0)
+		close(fd);
+	if (sock >= 0)
+		close(sock);
+	debug("%s: failed to set %s mode %d: %s", __func__, name,
+	    mode, strerror(errno));
+	return (-1);
+#else
+	error("Tunnel interfaces are not supported on this platform");
+	return (-1);
+#endif
+}
+
+void
+sanitise_stdfd(void)
+{
+	int nullfd, dupfd;
+
+	if ((nullfd = dupfd = open(_PATH_DEVNULL, O_RDWR)) == -1) {
+		fprintf(stderr, "Couldn't open /dev/null: %s\n",
+		    strerror(errno));
+		exit(1);
+	}
+	while (++dupfd <= 2) {
+		/* Only clobber closed fds */
+		if (fcntl(dupfd, F_GETFL, 0) >= 0)
+			continue;
+		if (dup2(nullfd, dupfd) == -1) {
+			fprintf(stderr, "dup2: %s\n", strerror(errno));
+			exit(1);
+		}
+	}
+	if (nullfd > 2)
+		close(nullfd);
+}
 
 char *
 tohex(const void *vp, size_t l)
@@ -419,6 +790,20 @@ get_u32(const void *vp)
 	return (v);
 }
 
+u_int32_t
+get_u32_le(const void *vp)
+{
+	const u_char *p = (const u_char *)vp;
+	u_int32_t v;
+
+	v  = (u_int32_t)p[0];
+	v |= (u_int32_t)p[1] << 8;
+	v |= (u_int32_t)p[2] << 16;
+	v |= (u_int32_t)p[3] << 24;
+
+	return (v);
+}
+
 u_int16_t
 get_u16(const void *vp)
 {
@@ -457,6 +842,16 @@ put_u32(void *vp, u_int32_t v)
 	p[3] = (u_char)v & 0xff;
 }
 
+void
+put_u32_le(void *vp, u_int32_t v)
+{
+	u_char *p = (u_char *)vp;
+
+	p[0] = (u_char)v & 0xff;
+	p[1] = (u_char)(v >> 8) & 0xff;
+	p[2] = (u_char)(v >> 16) & 0xff;
+	p[3] = (u_char)(v >> 24) & 0xff;
+}
 
 void
 put_u16(void *vp, u_int16_t v)
@@ -467,7 +862,6 @@ put_u16(void *vp, u_int16_t v)
 	p[1] = (u_char)v & 0xff;
 }
 
-#if 0
 void
 ms_subtract_diff(struct timeval *start, int *ms)
 {
@@ -477,7 +871,6 @@ ms_subtract_diff(struct timeval *start, int *ms)
 	timersub(&finish, start, &diff);	
 	*ms -= (diff.tv_sec * 1000) + (diff.tv_usec / 1000);
 }
-#endif
 
 void
 ms_to_timeval(struct timeval *tv, int ms)
@@ -488,3 +881,238 @@ ms_to_timeval(struct timeval *tv, int ms)
 	tv->tv_usec = (ms % 1000) * 1000;
 }
 
+time_t
+monotime(void)
+{
+#if defined(HAVE_CLOCK_GETTIME) && \
+    (defined(CLOCK_MONOTONIC) || defined(CLOCK_BOOTTIME))
+	struct timespec ts;
+	static int gettime_failed = 0;
+
+	if (!gettime_failed) {
+#if defined(CLOCK_BOOTTIME)
+		if (clock_gettime(CLOCK_BOOTTIME, &ts) == 0)
+			return (ts.tv_sec);
+#endif
+#if defined(CLOCK_MONOTONIC)
+		if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
+			return (ts.tv_sec);
+#endif
+		debug3("clock_gettime: %s", strerror(errno));
+		gettime_failed = 1;
+	}
+#endif /* HAVE_CLOCK_GETTIME && (CLOCK_MONOTONIC || CLOCK_BOOTTIME */
+
+	return time(NULL);
+}
+
+void
+bandwidth_limit_init(struct bwlimit *bw, u_int64_t kbps, size_t buflen)
+{
+	bw->buflen = buflen;
+	bw->rate = kbps;
+	bw->thresh = bw->rate;
+	bw->lamt = 0;
+	timerclear(&bw->bwstart);
+	timerclear(&bw->bwend);
+}	
+
+/* Callback from read/write loop to insert bandwidth-limiting delays */
+void
+bandwidth_limit(struct bwlimit *bw, size_t read_len)
+{
+	u_int64_t waitlen;
+	struct timespec ts, rm;
+
+	if (!timerisset(&bw->bwstart)) {
+		gettimeofday(&bw->bwstart, NULL);
+		return;
+	}
+
+	bw->lamt += read_len;
+	if (bw->lamt < bw->thresh)
+		return;
+
+	gettimeofday(&bw->bwend, NULL);
+	timersub(&bw->bwend, &bw->bwstart, &bw->bwend);
+	if (!timerisset(&bw->bwend))
+		return;
+
+	bw->lamt *= 8;
+	waitlen = (double)1000000L * bw->lamt / bw->rate;
+
+	bw->bwstart.tv_sec = waitlen / 1000000L;
+	bw->bwstart.tv_usec = waitlen % 1000000L;
+
+	if (timercmp(&bw->bwstart, &bw->bwend, >)) {
+		timersub(&bw->bwstart, &bw->bwend, &bw->bwend);
+
+		/* Adjust the wait time */
+		if (bw->bwend.tv_sec) {
+			bw->thresh /= 2;
+			if (bw->thresh < bw->buflen / 4)
+				bw->thresh = bw->buflen / 4;
+		} else if (bw->bwend.tv_usec < 10000) {
+			bw->thresh *= 2;
+			if (bw->thresh > bw->buflen * 8)
+				bw->thresh = bw->buflen * 8;
+		}
+
+		TIMEVAL_TO_TIMESPEC(&bw->bwend, &ts);
+		while (nanosleep(&ts, &rm) == -1) {
+			if (errno != EINTR)
+				break;
+			ts = rm;
+		}
+	}
+
+	bw->lamt = 0;
+	gettimeofday(&bw->bwstart, NULL);
+}
+
+/* Make a template filename for mk[sd]temp() */
+void
+mktemp_proto(char *s, size_t len)
+{
+	const char *tmpdir;
+	int r;
+
+	if ((tmpdir = getenv("TMPDIR")) != NULL) {
+		r = snprintf(s, len, "%s/ssh-XXXXXXXXXXXX", tmpdir);
+		if (r > 0 && (size_t)r < len)
+			return;
+	}
+	r = snprintf(s, len, "/tmp/ssh-XXXXXXXXXXXX");
+	if (r < 0 || (size_t)r >= len)
+		fatal("%s: template string too short", __func__);
+}
+
+static const struct {
+	const char *name;
+	int value;
+} ipqos[] = {
+	{ "af11", IPTOS_DSCP_AF11 },
+	{ "af12", IPTOS_DSCP_AF12 },
+	{ "af13", IPTOS_DSCP_AF13 },
+	{ "af21", IPTOS_DSCP_AF21 },
+	{ "af22", IPTOS_DSCP_AF22 },
+	{ "af23", IPTOS_DSCP_AF23 },
+	{ "af31", IPTOS_DSCP_AF31 },
+	{ "af32", IPTOS_DSCP_AF32 },
+	{ "af33", IPTOS_DSCP_AF33 },
+	{ "af41", IPTOS_DSCP_AF41 },
+	{ "af42", IPTOS_DSCP_AF42 },
+	{ "af43", IPTOS_DSCP_AF43 },
+	{ "cs0", IPTOS_DSCP_CS0 },
+	{ "cs1", IPTOS_DSCP_CS1 },
+	{ "cs2", IPTOS_DSCP_CS2 },
+	{ "cs3", IPTOS_DSCP_CS3 },
+	{ "cs4", IPTOS_DSCP_CS4 },
+	{ "cs5", IPTOS_DSCP_CS5 },
+	{ "cs6", IPTOS_DSCP_CS6 },
+	{ "cs7", IPTOS_DSCP_CS7 },
+	{ "ef", IPTOS_DSCP_EF },
+	{ "lowdelay", IPTOS_LOWDELAY },
+	{ "throughput", IPTOS_THROUGHPUT },
+	{ "reliability", IPTOS_RELIABILITY },
+	{ NULL, -1 }
+};
+
+int
+parse_ipqos(const char *cp)
+{
+	u_int i;
+	char *ep;
+	long val;
+
+	if (cp == NULL)
+		return -1;
+	for (i = 0; ipqos[i].name != NULL; i++) {
+		if (strcasecmp(cp, ipqos[i].name) == 0)
+			return ipqos[i].value;
+	}
+	/* Try parsing as an integer */
+	val = strtol(cp, &ep, 0);
+	if (*cp == '\0' || *ep != '\0' || val < 0 || val > 255)
+		return -1;
+	return val;
+}
+
+const char *
+iptos2str(int iptos)
+{
+	int i;
+	static char iptos_str[sizeof "0xff"];
+
+	for (i = 0; ipqos[i].name != NULL; i++) {
+		if (ipqos[i].value == iptos)
+			return ipqos[i].name;
+	}
+	snprintf(iptos_str, sizeof iptos_str, "0x%02x", iptos);
+	return iptos_str;
+}
+
+void
+lowercase(char *s)
+{
+	for (; *s; s++)
+		*s = tolower((u_char)*s);
+}
+
+int
+unix_listener(const char *path, int backlog, int unlink_first)
+{
+	struct sockaddr_un sunaddr;
+	int saved_errno, sock;
+
+	memset(&sunaddr, 0, sizeof(sunaddr));
+	sunaddr.sun_family = AF_UNIX;
+	if (strlcpy(sunaddr.sun_path, path, sizeof(sunaddr.sun_path)) >= sizeof(sunaddr.sun_path)) {
+		error("%s: \"%s\" too long for Unix domain socket", __func__,
+		    path);
+		errno = ENAMETOOLONG;
+		return -1;
+	}
+
+	sock = socket(PF_UNIX, SOCK_STREAM, 0);
+	if (sock < 0) {
+		saved_errno = errno;
+		error("socket: %.100s", strerror(errno));
+		errno = saved_errno;
+		return -1;
+	}
+	if (unlink_first == 1) {
+		if (unlink(path) != 0 && errno != ENOENT)
+			error("unlink(%s): %.100s", path, strerror(errno));
+	}
+	if (bind(sock, (struct sockaddr *)&sunaddr, sizeof(sunaddr)) < 0) {
+		saved_errno = errno;
+		error("bind: %.100s", strerror(errno));
+		close(sock);
+		error("%s: cannot bind to path: %s", __func__, path);
+		errno = saved_errno;
+		return -1;
+	}
+	if (listen(sock, backlog) < 0) {
+		saved_errno = errno;
+		error("listen: %.100s", strerror(errno));
+		close(sock);
+		unlink(path);
+		error("%s: cannot listen on path: %s", __func__, path);
+		errno = saved_errno;
+		return -1;
+	}
+	return sock;
+}
+
+void
+sock_set_v6only(int s)
+{
+#ifdef IPV6_V6ONLY
+	int on = 1;
+
+	debug3("%s: set socket %d IPV6_V6ONLY", __func__, s);
+	if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1)
+		error("setsockopt IPV6_V6ONLY: %s", strerror(errno));
+#endif
+}

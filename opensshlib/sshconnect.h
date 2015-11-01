@@ -1,4 +1,4 @@
-/* $OpenBSD: sshconnect.h,v 1.24 2007/09/04 11:15:56 djm Exp $ */
+/* $OpenBSD: sshconnect.h,v 1.28 2013/10/16 02:31:47 djm Exp $ */
 
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
@@ -24,9 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "key.h"
-#include "cipher.h"
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,32 +36,59 @@ struct Sensitive {
 	int	external_keysign;
 };
 
-int
-ssh_connect(const char *, struct sockaddr_storage *, u_short, int, int,
-    int *, int, int, const char *);
+struct addrinfo;
+int	 ssh_connect(const char *, struct addrinfo *, struct sockaddr_storage *,
+    u_short, int, int, int *, int, int);
+void	 ssh_kill_proxy_command(void);
 
-void
-ssh_login(Sensitive *, const char *, struct sockaddr *, struct passwd *, int);
+void	 ssh_login(Sensitive *, const char *, struct sockaddr *, u_short,
+    struct passwd *, int);
+
+void	 ssh_exchange_identification(int);
 
 int	 verify_host_key(char *, struct sockaddr *, Key *);
 
+void	 get_hostfile_hostname_ipaddr(char *, struct sockaddr *, u_short,
+    char **, char **);
+
 void	 ssh_kex(char *, struct sockaddr *);
+void	 ssh_kex2(char *, struct sockaddr *, u_short);
 
 void	 ssh_userauth1(const char *, const char *, char *, Sensitive *);
+void	 ssh_userauth2(const char *, const char *, char *, Sensitive *);
 
 void	 ssh_put_password(char *);
 int	 ssh_local_cmd(const char *);
 
 
-void openssh_ssh_kex2(ncrack_ssh_state *nstate,
-  char *client_version_string, char *server_version_string);
-
-void openssh_userauth2(ncrack_ssh_state *nstate, const char *server_user,
+void ncrackssh_ssh_kex2(ncrack_ssh_state *nstate, char *client_version_string,
+  char *server_version_string);
+void ncrackssh_ssh_start_userauth2(ncrack_ssh_state *nstate);
+int ncrackssh_ssh_userauth2_service_rep(ncrack_ssh_state *nstate);
+int ncrackssh_ssh_userauth2(ncrack_ssh_state *nstate, const char *server_user,
     const char *password);
 
-void openssh_start_userauth2(ncrack_ssh_state *nstate);
 
-int openssh_userauth2_service_rep(ncrack_ssh_state *nstate);
+
+/*
+ * Macros to raise/lower permissions.
+ */
+#define PRIV_START do {					\
+	int save_errno = errno;				\
+	if (seteuid(original_effective_uid) != 0)	\
+		fatal("PRIV_START: seteuid: %s",	\
+		    strerror(errno));			\
+	errno = save_errno;				\
+} while (0)
+
+#define PRIV_END do {					\
+	int save_errno = errno;				\
+	if (seteuid(original_real_uid) != 0)		\
+		fatal("PRIV_END: seteuid: %s",		\
+		    strerror(errno));			\
+	errno = save_errno;				\
+} while (0)
+
 
 #ifdef __cplusplus
 } /* End of 'extern "C"' */

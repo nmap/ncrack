@@ -16,28 +16,26 @@
 #ifndef INCLUDES_H
 #define INCLUDES_H
 
-#ifndef WIN32
- #include "config.h"
-#else
- #include "winfixssh.h"
- #include "winsock.h"
- #include <stdlib.h> // for rand()
+#include "config.h"
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE /* activate extra prototypes for glibc */
 #endif
 
-#define _GNU_SOURCE /* activate extra prototypes for glibc */
-
 #include <sys/types.h>
-//#include <sys/socket.h> /* For CMSG_* */
+#include <sys/param.h>
+#include <sys/socket.h> /* For CMSG_* */
 
 #ifdef HAVE_LIMITS_H
-# include <limits.h> /* For PATH_MAX */
+# include <limits.h> /* For PATH_MAX, _POSIX_HOST_NAME_MAX */
 #endif
 #ifdef HAVE_BSTRING_H
 # include <bstring.h>
 #endif
 #if defined(HAVE_GLOB_H) && defined(GLOB_HAS_ALTDIRFUNC) && \
-    defined(GLOB_HAS_GL_MATCHC) && \
-    defined(HAVE_DECL_GLOB_NOMATCH) &&  HAVE_DECL_GLOB_NOMATCH != 0
+    defined(GLOB_HAS_GL_MATCHC) && defined(GLOB_HAS_GL_STATV) && \
+    defined(HAVE_DECL_GLOB_NOMATCH) &&  HAVE_DECL_GLOB_NOMATCH != 0 && \
+    !defined(BROKEN_GLOB)
 # include <glob.h>
 #endif
 #ifdef HAVE_ENDIAN_H
@@ -58,8 +56,6 @@
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #endif
-
-
 
 /*
  *-*-nto-qnx needs these headers for strcasecmp and LASTLOG_FILE respectively
@@ -90,7 +86,7 @@
 #ifdef HAVE_STDINT_H
 # include <stdint.h>
 #endif
-//#include <termios.h>
+#include <termios.h>
 #ifdef HAVE_SYS_BITYPES_H
 # include <sys/bitypes.h> /* For u_intXX_t */
 #endif
@@ -116,11 +112,8 @@
 #include <sys/ptms.h>	/* for grantpt() and friends */
 #endif
 
-#ifndef WIN32
 #include <netinet/in.h>
 #include <netinet/in_systm.h> /* For typedefs */
-#endif
-
 #ifdef HAVE_RPC_TYPES_H
 # include <rpc/types.h> /* For INADDR_LOOPBACK */
 #endif
@@ -147,8 +140,10 @@
 # include <tmpdir.h>
 #endif
 
-#ifdef HAVE_LIBUTIL_H
-# include <libutil.h> /* Openpty on FreeBSD at least */
+#if defined(HAVE_BSD_LIBUTIL_H)
+# include <bsd/libutil.h>
+#elif defined(HAVE_LIBUTIL_H)
+# include <libutil.h>
 #endif
 
 #if defined(KRB5) && defined(USE_AFS)
@@ -159,7 +154,6 @@
 #if defined(HAVE_SYS_SYSLOG_H)
 # include <sys/syslog.h>
 #endif
-
 
 #include <errno.h>
 
@@ -173,10 +167,16 @@
 # endif
 #endif
 
+#ifdef WITH_OPENSSL
 #include <openssl/opensslv.h> /* For OPENSSL_VERSION_NUMBER */
+#endif
 
 #include "defines.h"
 
+#include "platform.h"
 #include "openbsd-compat.h"
+#include "bsd-nextstep.h"
+
+#include "entropy.h"
 
 #endif /* INCLUDES_H */

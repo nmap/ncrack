@@ -95,6 +95,7 @@
 #define OPENSSHLIB_H
 
 #include "buffer.h"
+#include "sshbuf.h"
 #include "cipher.h"
 #include "ssh1.h"
 
@@ -102,8 +103,8 @@
 extern "C" {
 #endif
 
-struct Kex;
-struct Newkeys;
+struct kex;
+struct newkeys;
 
 typedef struct packet_state {
   u_int32_t seqnr;
@@ -112,8 +113,7 @@ typedef struct packet_state {
   u_int64_t bytes;
 } packet_state;
 
-
-/* 
+/*
  * Every module invocation has its own Ncrack_state struct which holds every
  * bit of information needed to keep track of things. Most of the variables
  * found inside this object were usually static/global variables in the original
@@ -121,34 +121,37 @@ typedef struct packet_state {
  */
 typedef struct ncrack_ssh_state {
 
-  struct Kex *kex;
+  struct kex *kex;
   DH *dh;
   /* Session key information for Encryption and MAC */
-  struct Newkeys *keys[2];
-  struct Newkeys *current_keys[2];
+  struct newkeys *newkeys[2];
+  struct newkeys *current_keys[2];
   char *client_version_string;
   char *server_version_string;
   /* Encryption context for receiving data. This is only used for decryption. */
-  CipherContext receive_context;
+  struct sshcipher_ctx receive_context;
   /* Encryption context for sending data. This is only used for encryption. */
-  CipherContext send_context;
+  struct sshcipher_ctx send_context;
 
   /* ***** IO Buffers ****** */
-  Buffer ncrack_buf;
+  //Buffer ncrack_buf;
 
   /* Buffer for raw input data from the socket. */
-  Buffer input;
+  struct sshbuf *input;
   /* Buffer for raw output data going to the socket. */
-  Buffer output;
+  struct sshbuf *output;
   /* Buffer for the incoming packet currently being processed. */
-  Buffer incoming_packet;
+  struct sshbuf *incoming_packet;
   /* Buffer for the partial outgoing packet being constructed. */
-  Buffer outgoing_packet;
+  struct sshbuf *outgoing_packet;
 
   u_int64_t max_blocks_in;
   u_int64_t max_blocks_out;
   packet_state p_read;
   packet_state p_send;
+
+  /* Used in packet_read_poll2() */
+  u_int packlen;
 
 	int compat20;	/* boolean -> true if SSHv2 compatible */
 
@@ -156,17 +159,31 @@ typedef struct ncrack_ssh_state {
    * versions. It holds a list of these bug types in a binary OR list
    */
   int datafellows;
+  int compat;
   int type;   /* type of packet returned */
   u_char extra_pad; /* extra padding that might be needed */
 
-  /* 
+  /*
    * Reason that this connection was ended. It might be that we got a
    * disconnnect packet from the server due to many authentication attempts
    * or some other exotic reason.
    */
   char *disc_reason;
 
-	u_int packet_length; 
+	u_int packet_length; // TODO check this
+
+  int 	rekeying;
+  u_int32_t 	rekey_limit;
+  u_int32_t 	rekey_interval;
+  time_t 	rekey_time;
+  int 	cipher_warning_done;
+
+  int keep_alive_timeouts;
+  int 	dispatch_skip_packets;
+
+  u_int packet_discard;
+  struct sshmac *packet_discard_mac;
+
 
 } ncrack_ssh_state;
 

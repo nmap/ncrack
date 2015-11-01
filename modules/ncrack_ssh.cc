@@ -101,6 +101,7 @@
 #include "ssh2.h"
 #include "openssl/dh.h"
 #include "buffer.h"
+#include "sshbuf.h"
 #include "kex.h"
 #include "sshconnect.h"
 #include "packet.h"
@@ -110,7 +111,7 @@
 #include "mac.h"
 
 #define SSH_TIMEOUT 20000
-#define CLIENT_VERSION "SSH-2.0-OpenSSH_5.2\n"
+#define CLIENT_VERSION "SSH-2.0-OpenSSH_7.1\n"
 
 
 extern NcrackOps o;
@@ -119,17 +120,18 @@ extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
-enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_KEY2, SSH_KEY3, SSH_KEY4, 
+enum states { SSH_INIT, SSH_ID_EX, SSH_KEY, SSH_KEY2, SSH_KEY3, SSH_KEY4,
   SSH_AUTH, SSH_AUTH2, SSH_AUTH3, SSH_AUTH4, SSH_FINI };
 
 static void ssh_free(Connection *con);
+
 
 
 static inline int
 ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
 {
   u_int packetlen = 0;
-  
+
   /* If we have data in the I/O buffer, which means that we had previously
    * scheduled an nsock read event, then append the new data we got inside
    * the 'input' buffer which will be processed by the openssh library
@@ -137,14 +139,20 @@ ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
   if (con->inbuf != NULL) {
     packetlen = con->inbuf->get_len();
     if (packetlen > 0)
-      buffer_append(&info->input, con->inbuf->get_dataptr(), packetlen); 
+      buffer_append(info->input, con->inbuf->get_dataptr(), packetlen);
   }
 
-  info->type = openssh_packet_read(info);
+  printf("ncrack state %d\n", con->state);
+
+  info->type = ncrackssh_ssh_packet_read(info);
   if (info->type == SSH_MSG_NONE) {
+    printf("ssh loop MSG NONE\n");
     nsock_read(nsp, con->niod, ncrack_read_handler, SSH_TIMEOUT, con);
     return -1;
   }
+
+  printf("final input packet length %d\n", sshbuf_len(info->input));
+
   delete con->inbuf;
   con->inbuf = NULL;
   return 0;
@@ -162,6 +170,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
   ncrack_ssh_state *info = NULL;
   con->ops_free = &ssh_free;
 
+
   if (con->misc_info)
     info = (ncrack_ssh_state *) con->misc_info;
 
@@ -170,7 +179,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
     case SSH_INIT:
 
       con->state = SSH_ID_EX;
-      con->misc_info = (ncrack_ssh_state *)safe_zalloc(sizeof(ncrack_ssh_state));  
+      con->misc_info = (ncrack_ssh_state *)safe_zalloc(sizeof(ncrack_ssh_state));
       nsock_read(nsp, nsi, ncrack_read_handler, SSH_TIMEOUT, con);
       break;
 
@@ -192,7 +201,9 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       con->state = SSH_KEY;
 
       info->server_version_string = Strndup((char *)ioptr, buflen);
-      openssh_compat_datafellows(info);
+      ncrackssh_compat_datafellows(info);
+
+      printf("server: %s \n", info->server_version_string);
 
       chop(info->server_version_string);
 
@@ -221,19 +232,26 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       /* sends "Key Exchange Init" */
 
       /* Initialize cipher contexts and keys as well as internal opensshlib
-       * buffers (input, output, incoming_packet, outgoing_packet) 
+       * buffers (input, output, incoming_packet, outgoing_packet)
        */
-      packet_set_connection(info);
+      ssh_packet_set_connection(info, -1, -1);
 
-      openssh_ssh_kex2(info, info->client_version_string,
+      printf("after ssh packet\n");
+
+      ncrackssh_ssh_kex2(info, info->client_version_string,
           info->server_version_string);
 
-      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
-          (const char *)buffer_ptr(&info->output),
-          buffer_len(&info->output));
-      buffer_consume(&info->output, buffer_len(&info->output));
+      printf("after ssh_kex2 : %d\n", buffer_len(info->output));
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
+          (const char *)buffer_ptr(info->output),
+          buffer_len(info->output));
+
+      printf("before buffer consume\n");
+      buffer_consume(info->output, buffer_len(info->output));
 
       break;
+
 
     case SSH_KEY2:
 
@@ -243,14 +261,17 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       /* Receives: "Key Exchange Init"
        * Sends: "Diffie-Hellman GEX Request"
        */
-
       con->state = SSH_KEY3;
 
-      openssh_kex_input_kexinit(info);
+      printf("before kex_input_kexinit : %d\n", buffer_len(info->input));
 
-      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
-          (const char *)buffer_ptr(&info->output), buffer_len(&info->output));
-      buffer_consume(&info->output, buffer_len(&info->output));
+
+      ncrackssh_kex_input_kexinit(info);
+      printf("after kex_input \n");
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
+          (const char *)buffer_ptr(info->output), buffer_len(info->output));
+      buffer_consume(info->output, buffer_len(info->output));
 
       break;
 
@@ -259,17 +280,35 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       if (ssh_loop_read(nsp, con, info) < 0)
         break;
 
+      printf("SSH KEY3 \n");
+
       /* Receives: "Diffie-Hellman Key Exchange Reply" and
        * Sends: "Diffie-Hellman GEX Init"
        */
 
       con->state = SSH_KEY4;
 
-      openssh_kexgex_2(info);
+      if (info->kex->kex_type == KEX_ECDH_SHA2) {
+        printf("KEX ECDH SHA2 \n");
+        ncrackssh_input_kex_ecdh_reply(info);
+        con->state = SSH_AUTH;
+      } else if (info->kex->kex_type == KEX_DH_GRP1_SHA1
+                 || info->kex->kex_type == KEX_DH_GRP14_SHA1) {
+        printf("dh client\n");
+        ncrackssh_input_kex_dh(info);
+        con->state = SSH_AUTH;
+      } else if (info->kex->kex_type == KEX_C25519_SHA256) {
+        printf("c25519 client\n");
+        ncrackssh_input_kex_c25519_reply(info);
+        con->state = SSH_AUTH;
+      } else {
+        printf("dh gex sha\n");
+        ncrackssh_input_kex_dh_gex_group(info);
+      }
 
-      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
-          (const char *)buffer_ptr(&info->output), buffer_len(&info->output));
-      buffer_consume(&info->output, buffer_len(&info->output));
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
+          (const char *)buffer_ptr(info->output), buffer_len(info->output));
+      buffer_consume(info->output, buffer_len(info->output));
 
       break;
 
@@ -281,20 +320,21 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       /* Receives: "Diffie-Hellman GEX Reply" and
        * Sends: "New keys"
        */
-
+      printf("ssh key 4\n");
       con->state = SSH_AUTH;
 
-      openssh_kexgex_3(info);
+      printf("kex dh gex sha\n");
+      ncrackssh_input_kex_dh_gex_reply(info);
 
-      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
-          (const char *)buffer_ptr(&info->output), buffer_len(&info->output));
-      buffer_consume(&info->output, buffer_len(&info->output));
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
+          (const char *)buffer_ptr(info->output), buffer_len(info->output));
+      buffer_consume(info->output, buffer_len(info->output));
 
       break;
 
     case SSH_AUTH:
 
-      //printf("SSH AUTH 1\n");
+      printf("SSH AUTH 1\n");
 
       if (ssh_loop_read(nsp, con, info) < 0)
         break;
@@ -303,32 +343,45 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
        * Sends "Encrypted Request 1"
        */
 
+      printf("before start_userauth2\n");
+
       con->state = SSH_AUTH2;
 
-      openssh_start_userauth2(info);
+      ncrackssh_ssh_start_userauth2(info);
 
-      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
-          (const char *)buffer_ptr(&info->output), buffer_len(&info->output));
-      buffer_consume(&info->output, buffer_len(&info->output));
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
+          (const char *)buffer_ptr(info->output), buffer_len(info->output));
+      buffer_consume(info->output, buffer_len(info->output));
 
       break;
 
     case SSH_AUTH2:
 
-      //printf("SSH AUTH 2\n");
-      if (ssh_loop_read(nsp, con, info) < 0)
-        break;
+      printf("SSH AUTH 2\n");
+
+      if (info->kex->kex_type == KEX_DH_GEX_SHA1 || info->kex->kex_type == KEX_DH_GEX_SHA256) {
+        printf("SSH AUTH 2 loop read \n");
+        if (ssh_loop_read(nsp, con, info) < 0)
+          break;
+      }
 
       con->state = SSH_AUTH3;
-      /* 
+
+      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+      break;
+
+
+      /*
        * If server doesn't support "password" authentication method then
        * there is no point in doing any more attempts, so we can mark the
        * service as finished.
        */
-      if (openssh_userauth2_service_rep(info) < 0) {
+      if (ncrackssh_ssh_userauth2_service_rep(info) < 0) {
         serv->end.orly = true;
         if (con->outbuf)
           delete con->outbuf;
+
+        printf("Server error\n");
 
         con->outbuf = new Buf();
         Snprintf((char *)con->outbuf->get_dataptr(), DEFAULT_BUF_SIZE,
@@ -344,27 +397,27 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
     case SSH_AUTH3:
 
-      /* 
+      /*
        * Sends credentials
        */
-      //printf("SSH AUTH 3\n");
+      printf("SSH AUTH 3\n");
       con->state = SSH_FINI;
 
-      openssh_userauth2(info, con->user, con->pass);
+      ncrackssh_ssh_userauth2(info, con->user, con->pass);
 
-      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con, 
-          (const char *)buffer_ptr(&info->output), buffer_len(&info->output));
-      buffer_consume(&info->output, buffer_len(&info->output));
+      nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
+          (const char *)buffer_ptr(info->output), buffer_len(info->output));
+      buffer_consume(info->output, buffer_len(info->output));
 
       break;
-      
+
     case SSH_FINI:
 
-      //printf("SSH FINI\n");
+      printf("SSH FINI\n");
       if (ssh_loop_read(nsp, con, info) < 0)
         break;
 
-      /* 
+      /*
        * If we get a disconnect message at this stage, then it probably
        * means that we reached the server's authentication limit per
        * connection.
@@ -377,11 +430,12 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
         con->auth_success = true;
         con->state = SSH_AUTH3;
       } else if (info->type == SSH2_MSG_USERAUTH_FAILURE) {
-        //printf("failed!\n");
+        printf("failed!\n");
         con->state = SSH_AUTH3;
       } else if (info->type == SSH2_MSG_USERAUTH_BANNER) {
-        //printf("Got banner!\n");
+        printf("Got banner!\n");
       }
+
 
       return ncrack_module_end(nsp, con);
   }
@@ -398,13 +452,13 @@ ssh_free(Connection *con)
   p = (ncrack_ssh_state *)con->misc_info;
 
   if (p->kex) {
-    if (p->kex->peer.alloc > 0)
-      free(p->kex->peer.buf);
-    if (p->kex->my.alloc > 0)
-      free(p->kex->my.buf);
+    if (p->kex->peer->alloc > 0)
+      free(p->kex->peer->d);
+    if (p->kex->my->alloc > 0)
+      free(p->kex->my->d);
     if (p->kex->session_id)
       free(p->kex->session_id);
-    free(p->kex); 
+    free(p->kex);
   }
 
   /* Note that DH *dh has already been freed from
@@ -412,34 +466,33 @@ ssh_free(Connection *con)
 
   /* 2 keys */
   for (int i = 0; i < 2; i++) {
-    if (p->keys[i]) {
-      free(p->keys[i]->enc.iv);
-      free(p->keys[i]->enc.key);
-      free(p->keys[i]->mac.key);
+    if (p->newkeys[i]) {
+      free(p->newkeys[i]->enc.iv);
+      free(p->newkeys[i]->enc.key);
+      free(p->newkeys[i]->mac.key);
       /* Without this specific call to cleanup the mac environment there
        * was a big memleak - reported by Valgrind to be starting from
        * mac_init() (opensshlib/mac.c). For some reason, no proper cleanup
-       * was done and this explicit call for mac_clear() is needed. 
+       * was done and this explicit call for mac_clear() is needed.
        */
-      mac_clear(&p->keys[i]->mac);
-      if (p->keys[i]->comp.name)
-        free(p->keys[i]->comp.name);
-      if (p->keys[i]->enc.name)
-        free(p->keys[i]->enc.name);
-      if (p->keys[i]->mac.name)
-        free(p->keys[i]->mac.name);
-      free(p->keys[i]);
+      mac_clear(&p->newkeys[i]->mac);
+      if (p->newkeys[i]->comp.name)
+        free(p->newkeys[i]->comp.name);
+      if (p->newkeys[i]->enc.name)
+        free(p->newkeys[i]->enc.name);
+      if (p->newkeys[i]->mac.name)
+        free(p->newkeys[i]->mac.name);
+      free(p->newkeys[i]);
     }
   }
 
   EVP_CIPHER_CTX_cleanup(&p->receive_context.evp);
   EVP_CIPHER_CTX_cleanup(&p->send_context.evp);
 
-  buffer_free(&p->ncrack_buf);
-  buffer_free(&p->input);
-  buffer_free(&p->output);
-  buffer_free(&p->incoming_packet);
-  buffer_free(&p->outgoing_packet);
+  buffer_free(p->input);
+  buffer_free(p->output);
+  buffer_free(p->incoming_packet);
+  buffer_free(p->outgoing_packet);
 
   if (p->client_version_string)
     free(p->client_version_string);
