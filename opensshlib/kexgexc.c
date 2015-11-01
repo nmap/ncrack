@@ -61,7 +61,7 @@ kexgex_client(ncrack_ssh_state *nstate)
 	int r;
 	u_int nbits;
 
-  printf("kexgex client\n");
+  //printf("kexgex client\n");
 
 	nbits = dh_estimate(kex->dh_need * 8);
 
@@ -99,7 +99,7 @@ ncrackssh_input_kex_dh_gex_group(ncrack_ssh_state *nstate)
 	BIGNUM *p = NULL, *g = NULL;
 	int r, bits;
 
-  printf("DH GEX GROUP\n");
+  //printf("DH GEX GROUP\n");
 
 	debug("got SSH2_MSG_KEX_DH_GEX_GROUP");
 
@@ -137,7 +137,6 @@ ncrackssh_input_kex_dh_gex_group(ncrack_ssh_state *nstate)
 	fprintf(stderr, "\n");
 #endif
 
-  //TODO: check these
 	//ssh_dispatch_set(nstate, SSH2_MSG_KEX_DH_GEX_GROUP, NULL);
 	//ssh_dispatch_set(nstate, SSH2_MSG_KEX_DH_GEX_REPLY, &input_kex_dh_gex_reply);
 	r = 0;

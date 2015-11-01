@@ -51,7 +51,7 @@ kexc25519_client(ncrack_ssh_state *nstate)
 	struct kex *kex = nstate->kex;
 	int r;
 
-  printf("kexc 25519 client\n");
+  //printf("kexc 25519 client\n");
 
 	kexc25519_keygen(kex->c25519_client_key, kex->c25519_client_pubkey);
 #ifdef DEBUG_KEXECDH
@@ -82,7 +82,7 @@ ncrackssh_input_kex_c25519_reply(ncrack_ssh_state *nstate)
 	size_t slen, pklen, sbloblen, hashlen;
 	int r;
 
-  printf("kex c25519 reply\n");
+  //printf("kex c25519 reply\n");
 
 	if (kex->verify_host_key == NULL) {
 		r = SSH_ERR_INVALID_ARGUMENT;
@@ -160,7 +160,7 @@ ncrackssh_input_kex_c25519_reply(ncrack_ssh_state *nstate)
 	}
 
 	if ((r = kex_derive_keys(nstate, hash, hashlen, shared_secret)) == 0) {
-    printf("kex send newkeys 25519\n");
+    //printf("kex send newkeys 25519\n");
 		r = kex_send_newkeys(nstate);
   }
 out:

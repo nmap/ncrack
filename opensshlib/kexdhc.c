@@ -57,7 +57,7 @@ kexdh_client(ncrack_ssh_state *nstate)
 	struct kex *kex = nstate->kex;
 	int r;
 
-  printf("kexdh client\n");
+  //printf("kexdh client\n");
 
 	/* generate and send 'e', client DH public key */
 	switch (kex->kex_type) {

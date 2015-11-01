@@ -1432,7 +1432,8 @@ ncrackssh_ssh_packet_read(ncrack_ssh_state *nstate)
 	u_char type;
 	int r;
 	if ((r = ssh_packet_read_poll_seqnr(nstate, &type, NULL)) != 0)
-    printf("ssh_packet_read_poll_seqnr returned err: %d\n", r);
+    ;
+    //printf("ssh_packet_read_poll_seqnr returned err: %d\n", r);
 		//fatal("%s: %s", __func__, ssh_err(r));
 
   //ssh_packet_read_poll_seqnr(nstate, &type, NULL);

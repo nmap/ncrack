@@ -62,7 +62,7 @@ kexecdh_client(ncrack_ssh_state *nstate)
 	int r;
 
 
-  printf("kexecdh client \n");
+  //printf("kexecdh client \n");
 
 	if ((client_key = EC_KEY_new_by_curve_name(kex->ec_nid)) == NULL) {
 		r = SSH_ERR_ALLOC_FAIL;
@@ -115,7 +115,7 @@ ncrackssh_input_kex_ecdh_reply(ncrack_ssh_state *nstate)
 	size_t klen = 0, hashlen;
 	int r;
 
-  printf("KEX ECDH REPLY\n");
+  //printf("KEX ECDH REPLY\n");
 
 	if (kex->verify_host_key == NULL) {
 		r = SSH_ERR_INVALID_ARGUMENT;
@@ -141,7 +141,7 @@ ncrackssh_input_kex_ecdh_reply(ncrack_ssh_state *nstate)
 		goto out;
 	}
 
-  printf("before EC_POINT NEW\n");
+  //printf("before EC_POINT NEW\n");
 
 	/* Q_S, server public key */
 	/* signed H */

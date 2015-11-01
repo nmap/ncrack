@@ -84,7 +84,7 @@ kex_choose_conf(ncrack_ssh_state *nstate)
 	u_int mode, ctos, need, dh_need, authlen;
 	int r, first_kex_follows;
 
-  printf("kex_choose_conf\n");
+  //printf("kex_choose_conf\n");
 
 	if ((r = kex_buf2prop(kex->my, NULL, &my)) != 0 ||
 	    (r = kex_buf2prop(kex->peer, &first_kex_follows, &peer)) != 0)
@@ -453,7 +453,7 @@ kex_send_newkeys(ncrack_ssh_state *nstate)
 	//kex_reset_dispatch(ssh);
 	if ((r = sshpkt_start(nstate, SSH2_MSG_NEWKEYS)) != 0 ||
 	    (r = sshpkt_send(nstate)) != 0) {
-    printf("kex send newkeys\n");
+    //printf("kex send newkeys\n");
 		return r;
   }
 	debug("SSH2_MSG_NEWKEYS sent");
@@ -570,7 +570,7 @@ ncrackssh_kex_input_kexinit(ncrack_ssh_state *nstate)
 		return r;
 
 	if (kex->kex_type < KEX_MAX && kex->kex[kex->kex_type] != NULL) {
-    printf("kex type %d\n", kex->kex_type);
+    //printf("kex type %d\n", kex->kex_type);
     //printf("kex %d \n", kex->kex[kex->kex_type]);
 		return (kex->kex[kex->kex_type])(nstate);
   }

@@ -190,7 +190,7 @@ sshbuf_reset(struct sshbuf *buf)
 {
 	u_char *d;
 
-  printf("sshbuf reset \n");
+  //printf("sshbuf reset \n");
 
 	if (buf->readonly || buf->refcount > 1) {
 		/* Nonsensical. Just make buffer appear empty */
