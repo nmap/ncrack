@@ -1444,7 +1444,8 @@ ncrack_main(int argc, char **argv)
    */
   bool save_state = false;
   for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
-    if (!strncmp((*li)->end.reason, SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT)))
+    if ((*li)->end.reason != NULL && 
+        !strncmp((*li)->end.reason, SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT)))
         save_state = true;
     if ((*li)->credentials_found.size() != 0)
       print_service_output(*li);
@@ -1693,6 +1694,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   const char *hostinfo = serv->HostInfo();
   unsigned long eid = nsock_iod_id(con->niod);
 
+
   if (con->close_reason == CON_ERR)
     SG->connections_timedout++;
 
@@ -1858,6 +1860,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     if (o.verbose)
       log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
   }
+
 
   /* see if we can initiate some more connections */
   if (serv->getListActive())
