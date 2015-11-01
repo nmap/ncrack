@@ -1113,8 +1113,6 @@ ssh_packet_send2_wrapped(ncrack_ssh_state *nstate)
 	struct sshcomp *comp = NULL;
 	int r, block_size;
 
-  printf("ssh packet send2 wrapped \n");
-
 	if (nstate->newkeys[MODE_OUT] != NULL) {
 		enc  = &nstate->newkeys[MODE_OUT]->enc;
 		mac  = &nstate->newkeys[MODE_OUT]->mac;
@@ -1261,11 +1259,8 @@ ssh_packet_send2(ncrack_ssh_state *nstate)
 
 	type = sshbuf_ptr(nstate->outgoing_packet)[5];
 
-  printf("type: %x\n", type);
-
 	/* during rekeying we can only send key exchange messages */
 	if (nstate->rekeying) {
-    printf("ssh_packet_send2 rekeying\n");
 
 		if ((type < SSH2_MSG_TRANSPORT_MIN) ||
 		    (type > SSH2_MSG_TRANSPORT_MAX) ||
@@ -1297,7 +1292,6 @@ ssh_packet_send2(ncrack_ssh_state *nstate)
 	/* after a NEWKEYS message we can send the complete queue */
 	if (type == SSH2_MSG_NEWKEYS) {
 
-    printf("rekeying set to 0 now \n");
 		nstate->rekeying = 0;
 
 		//state->rekey_time = monotime();
@@ -1646,6 +1640,7 @@ ssh_packet_read_poll2(ncrack_ssh_state *nstate, u_char *typep, u_int32_t *seqnr_
 		if ((authlen = cipher_authlen(enc->cipher)) != 0)
 			mac = NULL;
 	}
+
 	maclen = mac && mac->enabled ? mac->mac_len : 0;
 	block_size = enc ? enc->block_size : 8;
 	aadlen = (mac && mac->enabled && mac->etm) || authlen ? 4 : 0;
@@ -1657,9 +1652,9 @@ ssh_packet_read_poll2(ncrack_ssh_state *nstate, u_char *typep, u_int32_t *seqnr_
 			return 0;
 		if (nstate->packlen < 1 + 4 ||
 		    nstate->packlen > PACKET_MAX_SIZE) {
-//#ifdef PACKET_DEBUG
+#ifdef PACKET_DEBUG
 			sshbuf_dump(nstate->input, stderr);
-//#endif
+#endif
 			logit("Bad packet length %u.", nstate->packlen);
 			if ((r = sshpkt_disconnect(nstate, "Packet corrupt")) != 0)
 				return r;
@@ -1683,12 +1678,12 @@ ssh_packet_read_poll2(ncrack_ssh_state *nstate, u_char *typep, u_int32_t *seqnr_
 		nstate->packlen = PEEK_U32(sshbuf_ptr(nstate->incoming_packet));
 		if (nstate->packlen < 1 + 4 ||
 		    nstate->packlen > PACKET_MAX_SIZE) {
-//#ifdef PACKET_DEBUG
+#ifdef PACKET_DEBUG
 			fprintf(stderr, "input: \n");
 			sshbuf_dump(nstate->input, stderr);
 			fprintf(stderr, "incoming_packet: \n");
 			sshbuf_dump(nstate->incoming_packet, stderr);
-//#endif
+#endif
 			logit("Bad packet length %u.", nstate->packlen);
 			return ssh_packet_start_discard(nstate, enc, mac,
 			    nstate->packlen, PACKET_MAX_SIZE);
@@ -1825,18 +1820,19 @@ ssh_packet_read_poll2(ncrack_ssh_state *nstate, u_char *typep, u_int32_t *seqnr_
 			return r;
 		return SSH_ERR_PROTOCOL_ERROR;
 	}
-	if (*typep == SSH2_MSG_NEWKEYS)
+	if (*typep == SSH2_MSG_NEWKEYS) {
 		r = ssh_set_newkeys(nstate, MODE_IN);
+  }
 #if 0
 	else if (*typep == SSH2_MSG_USERAUTH_SUCCESS && !nstate->server_side)
 		r = ssh_packet_enable_delayed_compress(ssh);
 #endif
 	else
 		r = 0;
-//#ifdef PACKET_DEBUG
+#ifdef PACKET_DEBUG
 	fprintf(stderr, "read/plain[%d]:\r\n", *typep);
 	sshbuf_dump(nstate->incoming_packet, stderr);
-//#endif
+#endif
 	/* reset for next packet */
 	nstate->packlen = 0;
  out:
@@ -2982,6 +2978,7 @@ sshpkt_start(ncrack_ssh_state *nstate, u_char type)
   // NCRACK: INITIALIZE COMPAT20 HERE FOR NOW
 	nstate->compat20 = 1;
 	nstate->packet_length = 0;
+  nstate->packlen = 0;
 
 
 	DBG(debug("packet_start[%d]", type));
@@ -2998,7 +2995,6 @@ sshpkt_start(ncrack_ssh_state *nstate, u_char type)
 int
 sshpkt_send(ncrack_ssh_state *nstate)
 {
-  printf("sshpkt_send \n");
 	if (nstate->compat20)
 		return ssh_packet_send2(nstate);
 	//else

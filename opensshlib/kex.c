@@ -450,8 +450,6 @@ kex_send_newkeys(ncrack_ssh_state *nstate)
 {
 	int r;
 
-  printf("kex send newkeys\n");
-
 	//kex_reset_dispatch(ssh);
 	if ((r = sshpkt_start(nstate, SSH2_MSG_NEWKEYS)) != 0 ||
 	    (r = sshpkt_send(nstate)) != 0) {
@@ -472,8 +470,6 @@ kex_input_newkeys(ncrack_ssh_state *nstate)
 	struct kex *kex = nstate->kex;
 	int r;
 
-  printf("kex input newkeys\n");
-
 	debug("SSH2_MSG_NEWKEYS received");
 	//ssh_dispatch_set(ssh, SSH2_MSG_NEWKEYS, &kex_protocol_error);
 	if ((r = sshpkt_get_end(nstate)) != 0)
@@ -485,8 +481,6 @@ kex_input_newkeys(ncrack_ssh_state *nstate)
 	free(kex->name);
 	kex->name = NULL;
 
-  printf("kex input newkeys ended well\n");
-
 	return 0;
 }
 
@@ -497,8 +491,6 @@ kex_send_kexinit(ncrack_ssh_state *nstate)
 	u_char *cookie;
 	struct kex *kex = nstate->kex;
 	int r;
-
-  printf("kex send kexinit\n");
 
 	if (kex == NULL)
 		return SSH_ERR_INTERNAL_ERROR;
@@ -534,44 +526,24 @@ ncrackssh_kex_input_kexinit(ncrack_ssh_state *nstate)
 	size_t dlen;
 	int r;
 
-  printf("ncrackssh_kex_input_kexinit \n");
-
 	debug("SSH2_MSG_KEXINIT received");
 	if (kex == NULL) {
-    printf("KEX NULL\n");
 		return SSH_ERR_INVALID_ARGUMENT;
   }
 
-  int j = 0;
-  for (j = 0; j < sshbuf_len(nstate->incoming_packet); j++)
-    printf("%x ", sshbuf_ptr(nstate->incoming_packet)[j]);
-  printf("\n");
-
-
 	ptr = sshpkt_ptr(nstate, &dlen);
 	if ((r = sshbuf_put(kex->peer, ptr, dlen)) != 0) {
-    printf("ssbuf err\n");
 		return r;
   }
-
-  printf("discard packet\n");
 
 	/* discard packet */
 	for (i = 0; i < KEX_COOKIE_LEN; i++)
 		if ((r = sshpkt_get_u8(nstate, NULL)) != 0) {
-      printf("sshpkt get u8 err\n");
 			return r;
     }
 
-  printf("NEXT \n");
-  for (j = 0; j < sshbuf_len(nstate->incoming_packet); j++)
-    printf("%x ", sshbuf_ptr(nstate->incoming_packet)[j]);
-  printf("\n");
-
-
 	for (i = 0; i < PROPOSAL_MAX; i++)
 		if ((r = sshpkt_get_string(nstate, NULL, NULL)) != 0) {
-      printf("sshpkt get string err %d\n", r);
 			return r;
     }
 	/*
@@ -585,17 +557,12 @@ ncrackssh_kex_input_kexinit(ncrack_ssh_state *nstate)
 	 * ignore it when it is set for these cases, which is what we do now.
 	 */
 
-  printf("after discard\n");
-
 	if ((r = sshpkt_get_u8(nstate, NULL)) != 0 ||	/* first_kex_follows */
 	    (r = sshpkt_get_u32(nstate, NULL)) != 0 ||	/* reserved */
 	    (r = sshpkt_get_end(nstate)) != 0)
 			return r;
 
-  printf("after sshpkt\n");
-
 	if (!(kex->flags & KEX_INIT_SENT)) {
-    printf("kex init sent\n");
 		if ((r = kex_send_kexinit(nstate)) != 0)
 			return r;
   }
@@ -617,8 +584,6 @@ kex_new(ncrack_ssh_state *nstate, char *proposal[PROPOSAL_MAX], struct kex **kex
 {
 	struct kex *kex;
 	int r;
-
-  printf("kex new\n");
 
 	*kexp = NULL;
 	if ((kex = calloc(1, sizeof(*kex))) == NULL)
@@ -701,22 +666,17 @@ kex_free(struct kex *kex)
 int
 kex_setup(ncrack_ssh_state *nstate, char *proposal[PROPOSAL_MAX])
 {
-  printf("kex setup\n");
-
 	int r;
 
 	if ((r = kex_new(nstate, proposal, &nstate->kex)) != 0) {
-    printf("kex new finish\n");
 		return r;
   }
 	if ((r = kex_send_kexinit(nstate)) != 0) {		/* we start */
-    printf("kex send kexinit finish\n");
 		kex_free(nstate->kex);
 		nstate->kex = NULL;
 		return r;
 	}
 
-  printf("kex_setup finish success\n");
 	return 0;
 }
 

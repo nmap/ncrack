@@ -138,8 +138,15 @@ ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
    */
   if (con->inbuf != NULL) {
     packetlen = con->inbuf->get_len();
-    if (packetlen > 0)
+
+    printf("packetlen read by nsock: %d\n", packetlen);
+    if (packetlen > 0) {
       buffer_append(info->input, con->inbuf->get_dataptr(), packetlen);
+      delete con->inbuf;
+      con->inbuf = NULL;
+    }
+
+    printf("info input length: %d \n", sshbuf_len(info->input));
   }
 
   printf("ncrack state %d\n", con->state);
@@ -203,8 +210,6 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       info->server_version_string = Strndup((char *)ioptr, buflen);
       ncrackssh_compat_datafellows(info);
 
-      printf("server: %s \n", info->server_version_string);
-
       chop(info->server_version_string);
 
       /* NEVER forget to free allocated memory and also NULL-assign ptr */
@@ -236,18 +241,13 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
        */
       ssh_packet_set_connection(info, -1, -1);
 
-      printf("after ssh packet\n");
-
       ncrackssh_ssh_kex2(info, info->client_version_string,
           info->server_version_string);
-
-      printf("after ssh_kex2 : %d\n", buffer_len(info->output));
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
           (const char *)buffer_ptr(info->output),
           buffer_len(info->output));
 
-      printf("before buffer consume\n");
       buffer_consume(info->output, buffer_len(info->output));
 
       break;
@@ -263,11 +263,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
        */
       con->state = SSH_KEY3;
 
-      printf("before kex_input_kexinit : %d\n", buffer_len(info->input));
-
-
       ncrackssh_kex_input_kexinit(info);
-      printf("after kex_input \n");
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
           (const char *)buffer_ptr(info->output), buffer_len(info->output));
@@ -279,8 +275,6 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
       if (ssh_loop_read(nsp, con, info) < 0)
         break;
-
-      printf("SSH KEY3 \n");
 
       /* Receives: "Diffie-Hellman Key Exchange Reply" and
        * Sends: "Diffie-Hellman GEX Init"
@@ -320,10 +314,8 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       /* Receives: "Diffie-Hellman GEX Reply" and
        * Sends: "New keys"
        */
-      printf("ssh key 4\n");
       con->state = SSH_AUTH;
 
-      printf("kex dh gex sha\n");
       ncrackssh_input_kex_dh_gex_reply(info);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,
@@ -334,16 +326,12 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
     case SSH_AUTH:
 
-      printf("SSH AUTH 1\n");
-
       if (ssh_loop_read(nsp, con, info) < 0)
         break;
 
       /* Receives: "New keys"
        * Sends "Encrypted Request 1"
        */
-
-      printf("before start_userauth2\n");
 
       con->state = SSH_AUTH2;
 
@@ -356,8 +344,6 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       break;
 
     case SSH_AUTH2:
-
-      printf("SSH AUTH 2\n");
 
       if (info->kex->kex_type == KEX_DH_GEX_SHA1 || info->kex->kex_type == KEX_DH_GEX_SHA256) {
         printf("SSH AUTH 2 loop read \n");
@@ -400,7 +386,6 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       /*
        * Sends credentials
        */
-      printf("SSH AUTH 3\n");
       con->state = SSH_FINI;
 
       ncrackssh_ssh_userauth2(info, con->user, con->pass);
@@ -413,7 +398,6 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
     case SSH_FINI:
 
-      printf("SSH FINI\n");
       if (ssh_loop_read(nsp, con, info) < 0)
         break;
 
