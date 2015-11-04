@@ -4881,105 +4881,103 @@ AC_SUBST([TEST_MALLOC_OPTIONS], [$TEST_MALLOC_OPTIONS])
 AC_SUBST([UNSUPPORTED_ALGORITHMS], [$unsupported_algorithms])
 
 AC_EXEEXT
-AC_CONFIG_FILES([Makefile buildpkg.sh opensshd.init openssh.xml \
-	openbsd-compat/Makefile openbsd-compat/regress/Makefile \
-	survey.sh])
+AC_CONFIG_FILES([Makefile buildpkg.sh])
 AC_OUTPUT
 
 # Print summary of options
 
 # Someone please show me a better way :)
-A=`eval echo ${prefix}` ; A=`eval echo ${A}`
-B=`eval echo ${bindir}` ; B=`eval echo ${B}`
-C=`eval echo ${sbindir}` ; C=`eval echo ${C}`
-D=`eval echo ${sysconfdir}` ; D=`eval echo ${D}`
-E=`eval echo ${libexecdir}/ssh-askpass` ; E=`eval echo ${E}`
-F=`eval echo ${mandir}/${mansubdir}X` ; F=`eval echo ${F}`
-G=`eval echo ${piddir}` ; G=`eval echo ${G}`
-H=`eval echo ${PRIVSEP_PATH}` ; H=`eval echo ${H}`
-I=`eval echo ${user_path}` ; I=`eval echo ${I}`
-J=`eval echo ${superuser_path}` ; J=`eval echo ${J}`
-
-echo ""
-echo "OpenSSH has been configured with the following options:"
-echo "                     User binaries: $B"
-echo "                   System binaries: $C"
-echo "               Configuration files: $D"
-echo "                   Askpass program: $E"
-echo "                      Manual pages: $F"
-echo "                          PID file: $G"
-echo "  Privilege separation chroot path: $H"
-if test "x$external_path_file" = "x/etc/login.conf" ; then
-echo "   At runtime, sshd will use the path defined in $external_path_file"
-echo "   Make sure the path to scp is present, otherwise scp will not work"
-else
-echo "            sshd default user PATH: $I"
-	if test ! -z "$external_path_file"; then
-echo "   (If PATH is set in $external_path_file it will be used instead. If"
-echo "   used, ensure the path to scp is present, otherwise scp will not work.)"
-	fi
-fi
-if test ! -z "$superuser_path" ; then
-echo "          sshd superuser user PATH: $J"
-fi
-echo "                    Manpage format: $MANTYPE"
-echo "                       PAM support: $PAM_MSG"
-echo "                   OSF SIA support: $SIA_MSG"
-echo "                 KerberosV support: $KRB5_MSG"
-echo "                   SELinux support: $SELINUX_MSG"
-echo "                 Smartcard support: $SCARD_MSG"
-echo "                     S/KEY support: $SKEY_MSG"
-echo "              MD5 password support: $MD5_MSG"
-echo "                   libedit support: $LIBEDIT_MSG"
-echo "  Solaris process contract support: $SPC_MSG"
-echo "           Solaris project support: $SP_MSG"
-echo "       IP address in \$DISPLAY hack: $DISPLAY_HACK_MSG"
-echo "           Translate v4 in v6 hack: $IPV4_IN6_HACK_MSG"
-echo "                  BSD Auth support: $BSD_AUTH_MSG"
-echo "              Random number source: $RAND_MSG"
-echo "             Privsep sandbox style: $SANDBOX_STYLE"
-
-echo ""
-
-echo "              Host: ${host}"
-echo "          Compiler: ${CC}"
-echo "    Compiler flags: ${CFLAGS}"
-echo "Preprocessor flags: ${CPPFLAGS}"
-echo "      Linker flags: ${LDFLAGS}"
-echo "         Libraries: ${LIBS}"
-if test ! -z "${SSHDLIBS}"; then
-echo "         +for sshd: ${SSHDLIBS}"
-fi
-if test ! -z "${SSHLIBS}"; then
-echo "          +for ssh: ${SSHLIBS}"
-fi
-
-echo ""
-
-if test "x$MAKE_PACKAGE_SUPPORTED" = "xyes" ; then
-	echo "SVR4 style packages are supported with \"make package\""
-	echo ""
-fi
-
-if test "x$PAM_MSG" = "xyes" ; then
-	echo "PAM is enabled. You may need to install a PAM control file "
-	echo "for sshd, otherwise password authentication may fail. "
-	echo "Example PAM control files can be found in the contrib/ "
-	echo "subdirectory"
-	echo ""
-fi
-
-if test ! -z "$NO_PEERCHECK" ; then
-	echo "WARNING: the operating system that you are using does not"
-	echo "appear to support getpeereid(), getpeerucred() or the"
-	echo "SO_PEERCRED getsockopt() option. These facilities are used to"
-	echo "enforce security checks to prevent unauthorised connections to"
-	echo "ssh-agent. Their absence increases the risk that a malicious"
-	echo "user can connect to your agent."
-	echo ""
-fi
-
-if test "$AUDIT_MODULE" = "bsm" ; then
-	echo "WARNING: BSM audit support is currently considered EXPERIMENTAL."
-	echo "See the Solaris section in README.platform for details."
-fi
+#A=`eval echo ${prefix}` ; A=`eval echo ${A}`
+#B=`eval echo ${bindir}` ; B=`eval echo ${B}`
+#C=`eval echo ${sbindir}` ; C=`eval echo ${C}`
+#D=`eval echo ${sysconfdir}` ; D=`eval echo ${D}`
+#E=`eval echo ${libexecdir}/ssh-askpass` ; E=`eval echo ${E}`
+#F=`eval echo ${mandir}/${mansubdir}X` ; F=`eval echo ${F}`
+#G=`eval echo ${piddir}` ; G=`eval echo ${G}`
+#H=`eval echo ${PRIVSEP_PATH}` ; H=`eval echo ${H}`
+#I=`eval echo ${user_path}` ; I=`eval echo ${I}`
+#J=`eval echo ${superuser_path}` ; J=`eval echo ${J}`
+#
+#echo ""
+#echo "OpenSSH has been configured with the following options:"
+#echo "                     User binaries: $B"
+#echo "                   System binaries: $C"
+#echo "               Configuration files: $D"
+#echo "                   Askpass program: $E"
+#echo "                      Manual pages: $F"
+#echo "                          PID file: $G"
+#echo "  Privilege separation chroot path: $H"
+#if test "x$external_path_file" = "x/etc/login.conf" ; then
+#echo "   At runtime, sshd will use the path defined in $external_path_file"
+#echo "   Make sure the path to scp is present, otherwise scp will not work"
+#else
+#echo "            sshd default user PATH: $I"
+#	if test ! -z "$external_path_file"; then
+#echo "   (If PATH is set in $external_path_file it will be used instead. If"
+#echo "   used, ensure the path to scp is present, otherwise scp will not work.)"
+#	fi
+#fi
+#if test ! -z "$superuser_path" ; then
+#echo "          sshd superuser user PATH: $J"
+#fi
+#echo "                    Manpage format: $MANTYPE"
+#echo "                       PAM support: $PAM_MSG"
+#echo "                   OSF SIA support: $SIA_MSG"
+#echo "                 KerberosV support: $KRB5_MSG"
+#echo "                   SELinux support: $SELINUX_MSG"
+#echo "                 Smartcard support: $SCARD_MSG"
+#echo "                     S/KEY support: $SKEY_MSG"
+#echo "              MD5 password support: $MD5_MSG"
+#echo "                   libedit support: $LIBEDIT_MSG"
+#echo "  Solaris process contract support: $SPC_MSG"
+#echo "           Solaris project support: $SP_MSG"
+#echo "       IP address in \$DISPLAY hack: $DISPLAY_HACK_MSG"
+#echo "           Translate v4 in v6 hack: $IPV4_IN6_HACK_MSG"
+#echo "                  BSD Auth support: $BSD_AUTH_MSG"
+#echo "              Random number source: $RAND_MSG"
+#echo "             Privsep sandbox style: $SANDBOX_STYLE"
+#
+#echo ""
+#
+#echo "              Host: ${host}"
+#echo "          Compiler: ${CC}"
+#echo "    Compiler flags: ${CFLAGS}"
+#echo "Preprocessor flags: ${CPPFLAGS}"
+#echo "      Linker flags: ${LDFLAGS}"
+#echo "         Libraries: ${LIBS}"
+#if test ! -z "${SSHDLIBS}"; then
+#echo "         +for sshd: ${SSHDLIBS}"
+#fi
+#if test ! -z "${SSHLIBS}"; then
+#echo "          +for ssh: ${SSHLIBS}"
+#fi
+#
+#echo ""
+#
+#if test "x$MAKE_PACKAGE_SUPPORTED" = "xyes" ; then
+#	echo "SVR4 style packages are supported with \"make package\""
+#	echo ""
+#fi
+#
+#if test "x$PAM_MSG" = "xyes" ; then
+#	echo "PAM is enabled. You may need to install a PAM control file "
+#	echo "for sshd, otherwise password authentication may fail. "
+#	echo "Example PAM control files can be found in the contrib/ "
+#	echo "subdirectory"
+#	echo ""
+#fi
+#
+#if test ! -z "$NO_PEERCHECK" ; then
+#	echo "WARNING: the operating system that you are using does not"
+#	echo "appear to support getpeereid(), getpeerucred() or the"
+#	echo "SO_PEERCRED getsockopt() option. These facilities are used to"
+#	echo "enforce security checks to prevent unauthorised connections to"
+#	echo "ssh-agent. Their absence increases the risk that a malicious"
+#	echo "user can connect to your agent."
+#	echo ""
+#fi
+#
+#if test "$AUDIT_MODULE" = "bsm" ; then
+#	echo "WARNING: BSM audit support is currently considered EXPERIMENTAL."
+#	echo "See the Solaris section in README.platform for details."
+#fi

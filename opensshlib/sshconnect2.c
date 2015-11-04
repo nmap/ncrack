@@ -375,7 +375,7 @@ ncrackssh_ssh_userauth2_service_rep(ncrack_ssh_state *nstate)
 	} else {
 		debug2("buggy server: service_accept w/o service");
 	}
-	ssh_packet_check_eom(nstate);
+	//ssh_packet_check_eom(nstate);
 	debug("SSH2_MSG_SERVICE_ACCEPT received");
   return 0;
 }

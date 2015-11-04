@@ -235,6 +235,7 @@ packet_set_connection(int fd_in, int fd_out)
 		fatal("%s: ssh_packet_set_connection failed", __func__);
 }
 
+#if 0
 void
 packet_backup_state(void)
 {
@@ -246,6 +247,7 @@ packet_restore_state(void)
 {
 	ssh_packet_restore_state(active_state, backup_state);
 }
+#endif
 
 u_int
 packet_get_char(void)
@@ -315,6 +317,7 @@ packet_write_poll(void)
 		sshpkt_fatal(active_state, __func__, r);
 }
 
+#if 0
 void
 packet_read_expect(int expected_type)
 {
@@ -347,3 +350,4 @@ packet_send_debug(const char *fmt, ...)
 	va_end(args);
 	ssh_packet_send_debug(active_state, "%s", buf);
 }
+#endif

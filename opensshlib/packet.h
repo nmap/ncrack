@@ -112,16 +112,16 @@ int	 ssh_packet_send2(ncrack_ssh_state *);
 int      ssh_packet_read(struct ssh *);
 int	 ssh_packet_read_expect(struct ssh *, u_int type);
 int      ssh_packet_read_poll(struct ssh *);
-int ssh_packet_read_poll1(struct ssh *, u_char *);
+int ssh_packet_read_poll1(ncrack_ssh_state *, u_char *);
 
 int ssh_packet_read_poll2(ncrack_ssh_state *nstate, u_char *, u_int32_t *seqnr_p);
 
-int	 ssh_packet_process_incoming(struct ssh *, const char *buf, u_int len);
+int	 ssh_packet_process_incoming(ncrack_ssh_state *, const char *buf, u_int len);
 int      ssh_packet_read_seqnr(struct ssh *, u_char *, u_int32_t *seqnr_p);
 int      ssh_packet_read_poll_seqnr(ncrack_ssh_state *, u_char *, u_int32_t *seqnr_p);
 
 const void *ssh_packet_get_string_ptr(ncrack_ssh_state *, u_int *length_ptr);
-void     ssh_packet_disconnect(struct ssh *, const char *fmt, ...)
+void     ssh_packet_disconnect(ncrack_ssh_state *, const char *fmt, ...)
 	__attribute__((format(printf, 2, 3)))
 	__attribute__((noreturn));
 void     ssh_packet_send_debug(struct ssh *, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
@@ -134,13 +134,13 @@ typedef void (ssh_packet_comp_free_func)(void *, void *);
 void	 ssh_packet_set_compress_hooks(struct ssh *, void *,
     ssh_packet_comp_alloc_func *, ssh_packet_comp_free_func *);
 
-int	 ssh_packet_write_poll(struct ssh *);
-int	 ssh_packet_write_wait(struct ssh *);
+int	 ssh_packet_write_poll(ncrack_ssh_state *);
+int	 ssh_packet_write_wait(ncrack_ssh_state *);
 int      ssh_packet_have_data_to_write(struct ssh *);
 int      ssh_packet_not_very_much_data_to_write(struct ssh *);
 
 int	 ssh_packet_connection_is_on_socket(struct ssh *);
-int	 ssh_packet_remaining(struct ssh *);
+int	 ssh_packet_remaining(ncrack_ssh_state *);
 void	 ssh_packet_send_ignore(struct ssh *, int);
 
 void	 tty_make_modes(int, struct termios *);

@@ -151,10 +151,10 @@ struct kex {
 	char	*client_version_string;
 	char	*server_version_string;
 	char	*failed_choice;
-	int	(*verify_host_key)(struct sshkey *, struct ssh *);
-	struct sshkey *(*load_host_public_key)(int, int, struct ssh *);
-	struct sshkey *(*load_host_private_key)(int, int, struct ssh *);
-	int	(*host_key_index)(struct sshkey *, int, struct ssh *);
+	int	(*verify_host_key)(struct sshkey *, ncrack_ssh_state *);
+	struct sshkey *(*load_host_public_key)(int, int, ncrack_ssh_state *);
+	struct sshkey *(*load_host_private_key)(int, int, ncrack_ssh_state *);
+	int	(*host_key_index)(struct sshkey *, int, ncrack_ssh_state *);
 	int	(*sign)(struct sshkey *, struct sshkey *,
 	    u_char **, size_t *, const u_char *, size_t, u_int);
 	int	(*kex[KEX_MAX])(ncrack_ssh_state *);
