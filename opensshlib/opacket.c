@@ -230,7 +230,7 @@ ssh_packet_get_cstring(ncrack_ssh_state *nstate, u_int *length_ptr)
 void
 packet_set_connection(int fd_in, int fd_out)
 {
-	active_state = ssh_packet_set_connection(active_state, fd_in, fd_out);
+	active_state = ssh_packet_set_connection(active_state); //, fd_in, fd_out);
 	if (active_state == NULL)
 		fatal("%s: ssh_packet_set_connection failed", __func__);
 }

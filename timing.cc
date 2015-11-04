@@ -478,8 +478,8 @@ bool ScanProgressMeter::printStats(double perc_done,
    additional_info may be NULL if no additional information is necessary. */
 bool ScanProgressMeter::beginOrEndTask(const struct timeval *now, const char *additional_info, bool beginning) {
   struct timeval tvtmp;
-  struct tm *tm;
-  time_t tv_sec;
+  //struct tm *tm;
+  //time_t tv_sec;
 
   if (!o.verbose) {
     return false;
@@ -490,9 +490,9 @@ bool ScanProgressMeter::beginOrEndTask(const struct timeval *now, const char *ad
     now = (const struct timeval *) &tvtmp;
   }
 
-  tv_sec = now->tv_sec;
-  tm = localtime(&tv_sec);
-  
+  //tv_sec = now->tv_sec;
+  //tm = localtime(&tv_sec);
+
   if (beginning) {
    // log_write(LOG_STDOUT, "Initiating %s at %02d:%02d", scantypestr, tm->tm_hour, tm->tm_min);
   //  log_write(LOG_XML, "<taskbegin task=\"%s\" time=\"%lu\"", scantypestr, (unsigned long) now->tv_sec);
@@ -513,6 +513,6 @@ bool ScanProgressMeter::beginOrEndTask(const struct timeval *now, const char *ad
     log_write(LOG_XML, " />\n");
   }
   log_flush(LOG_STDOUT|LOG_XML);
-  
+
   return true;
 }

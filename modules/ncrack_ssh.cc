@@ -239,7 +239,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       /* Initialize cipher contexts and keys as well as internal opensshlib
        * buffers (input, output, incoming_packet, outgoing_packet)
        */
-      ssh_packet_set_connection(info, -1, -1);
+      ssh_packet_set_connection(info);
 
       ncrackssh_ssh_kex2(info, info->client_version_string,
           info->server_version_string);

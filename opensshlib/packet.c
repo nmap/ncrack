@@ -61,7 +61,7 @@
 #include <signal.h>
 #include <time.h>
 
-#include <zlib.h>
+//#include <zlib.h>
 
 #include "buffer.h"	/* typedefs XXX */
 #include "key.h"	/* typedefs XXX */
@@ -144,8 +144,8 @@ struct session_state {
 	struct sshbuf *compression_buffer;
 
 	/* Incoming/outgoing compression dictionaries */
-	z_stream compression_in_stream;
-	z_stream compression_out_stream;
+	//z_stream compression_in_stream;
+	//z_stream compression_out_stream;
 	int compression_in_started;
 	int compression_out_started;
 	int compression_in_failures;
@@ -271,7 +271,7 @@ ssh_alloc_session_state(void)
  * packet_set_encryption_key is called.
  */
 int
-ssh_packet_set_connection(ncrack_ssh_state *nstate, int fd_in, int fd_out)
+ssh_packet_set_connection(ncrack_ssh_state *nstate)
 {
 	//struct session_state *state;
 	const struct sshcipher *none = cipher_by_name("none");
@@ -316,6 +316,7 @@ ssh_packet_set_connection(ncrack_ssh_state *nstate, int fd_in, int fd_out)
 	 */
 	//(void)ssh_remote_ipaddr(ssh);
 	//return ssh;
+  return 0;
 }
 
 
@@ -566,6 +567,7 @@ ssh_packet_get_protocol_flags(struct ssh *ssh)
 }
 
 
+#if 0
 /*
  * Starts packet compression from the next packet on in both directions.
  * Level is compression level 1 (fastest) - 9 (slow, best) as in gzip.
@@ -574,18 +576,15 @@ ssh_packet_get_protocol_flags(struct ssh *ssh)
 static int
 ssh_packet_init_compression(struct ssh *ssh)
 {
-#if 0
 	if (!ssh->state->compression_buffer &&
 	   ((ssh->state->compression_buffer = sshbuf_new()) == NULL))
 		return SSH_ERR_ALLOC_FAIL;
 	return 0;
-#endif
 }
 
 static int
 start_compression_out(struct ssh *ssh, int level)
 {
-#if 0
 	if (level < 1 || level > 9)
 		return SSH_ERR_INVALID_ARGUMENT;
 	debug("Enabling compression at level %d.", level);
@@ -601,13 +600,11 @@ start_compression_out(struct ssh *ssh, int level)
 		return SSH_ERR_INTERNAL_ERROR;
 	}
 	return 0;
-#endif
 }
 
 static int
 start_compression_in(struct ssh *ssh)
 {
-#if 0
 	if (ssh->state->compression_in_started == 1)
 		inflateEnd(&ssh->state->compression_in_stream);
 	switch (inflateInit(&ssh->state->compression_in_stream)) {
@@ -620,13 +617,11 @@ start_compression_in(struct ssh *ssh)
 		return SSH_ERR_INTERNAL_ERROR;
 	}
 	return 0;
-#endif
 }
 
 int
 ssh_packet_start_compression(struct ssh *ssh, int level)
 {
-#if 0
 	int r;
 
 	if (ssh->state->packet_compression && !compat20)
@@ -637,14 +632,12 @@ ssh_packet_start_compression(struct ssh *ssh, int level)
 	    (r = start_compression_out(ssh, level)) != 0)
 		return r;
 	return 0;
-#endif
 }
 
 /* XXX remove need for separate compression buffer */
 static int
 compress_buffer(struct ssh *ssh, struct sshbuf *in, struct sshbuf *out)
 {
-#if 0
 	u_char buf[4096];
 	int r, status;
 
@@ -686,13 +679,11 @@ compress_buffer(struct ssh *ssh, struct sshbuf *in, struct sshbuf *out)
 		}
 	} while (ssh->state->compression_out_stream.avail_out == 0);
 	return 0;
-#endif
 }
 
 static int
 uncompress_buffer(struct ssh *ssh, struct sshbuf *in, struct sshbuf *out)
 {
-#if 0
 	u_char buf[4096];
 	int r, status;
 
@@ -735,14 +726,12 @@ uncompress_buffer(struct ssh *ssh, struct sshbuf *in, struct sshbuf *out)
 		}
 	}
 	/* NOTREACHED */
-#endif
 }
 
 /* Serialise compression state into a blob for privsep */
 static int
 ssh_packet_get_compress_state(struct sshbuf *m, struct ssh *ssh)
 {
-#if 0
 	struct session_state *state = ssh->state;
 	struct sshbuf *b;
 	int r;
@@ -765,14 +754,12 @@ ssh_packet_get_compress_state(struct sshbuf *m, struct ssh *ssh)
  out:
 	sshbuf_free(b);
 	return r;
-#endif
 }
 
 /* Deserialise compression state from a blob for privsep */
 static int
 ssh_packet_set_compress_state(struct ssh *ssh, struct sshbuf *m)
 {
-#if 0
 	struct session_state *state = ssh->state;
 	struct sshbuf *b = NULL;
 	int r;
@@ -806,7 +793,6 @@ ssh_packet_set_compress_state(struct ssh *ssh, struct sshbuf *m)
  out:
 	sshbuf_free(b);
 	return r;
-#endif
 }
 
 void
@@ -814,15 +800,14 @@ ssh_packet_set_compress_hooks(struct ssh *ssh, void *ctx,
     void *(*allocfunc)(void *, u_int, u_int),
     void (*freefunc)(void *, void *))
 {
-#if 0
 	ssh->state->compression_out_stream.zalloc = (alloc_func)allocfunc;
 	ssh->state->compression_out_stream.zfree = (free_func)freefunc;
 	ssh->state->compression_out_stream.opaque = ctx;
 	ssh->state->compression_in_stream.zalloc = (alloc_func)allocfunc;
 	ssh->state->compression_in_stream.zfree = (free_func)freefunc;
 	ssh->state->compression_in_stream.opaque = ctx;
-#endif
 }
+#endif
 
 
 /*
@@ -870,10 +855,9 @@ ssh_packet_set_encryption_key(struct ssh *ssh, const u_char *key, u_int keylen, 
  */
 
 int
-ssh_packet_send1(struct ssh *ssh)
+ssh_packet_send1(ncrack_ssh_state *nstate)
 {
-#if 0
-	struct session_state *state = ssh->state;
+	//struct session_state *state = ssh->state;
 	u_char buf[8], *cp;
 	int r, padding, len;
 	u_int checksum;
@@ -882,71 +866,73 @@ ssh_packet_send1(struct ssh *ssh)
 	 * If using packet compression, compress the payload of the outgoing
 	 * packet.
 	 */
-	if (state->packet_compression) {
-		sshbuf_reset(state->compression_buffer);
+#if 0
+	if (nstate->packet_compression) {
+		sshbuf_reset(nstate->compression_buffer);
 		/* Skip padding. */
-		if ((r = sshbuf_consume(state->outgoing_packet, 8)) != 0)
+		if ((r = sshbuf_consume(nstate->outgoing_packet, 8)) != 0)
 			goto out;
 		/* padding */
-		if ((r = sshbuf_put(state->compression_buffer,
+		if ((r = sshbuf_put(nstate->compression_buffer,
 		    "\0\0\0\0\0\0\0\0", 8)) != 0)
 			goto out;
-		if ((r = compress_buffer(ssh, state->outgoing_packet,
-		    state->compression_buffer)) != 0)
+		if ((r = compress_buffer(ssh, nstate->outgoing_packet,
+		    nstate->compression_buffer)) != 0)
 			goto out;
-		sshbuf_reset(state->outgoing_packet);
-                if ((r = sshbuf_putb(state->outgoing_packet,
-                    state->compression_buffer)) != 0)
+		sshbuf_reset(nstate->outgoing_packet);
+                if ((r = sshbuf_putb(nstate->outgoing_packet,
+                    nstate->compression_buffer)) != 0)
 			goto out;
 	}
+#endif
 	/* Compute packet length without padding (add checksum, remove padding). */
-	len = sshbuf_len(state->outgoing_packet) + 4 - 8;
+	len = sshbuf_len(nstate->outgoing_packet) + 4 - 8;
 
 	/* Insert padding. Initialized to zero in packet_start1() */
 	padding = 8 - len % 8;
-	if (!state->send_context.plaintext) {
-		cp = sshbuf_mutable_ptr(state->outgoing_packet);
+	if (!nstate->send_context.plaintext) {
+		cp = sshbuf_mutable_ptr(nstate->outgoing_packet);
 		if (cp == NULL) {
 			r = SSH_ERR_INTERNAL_ERROR;
 			goto out;
 		}
 		arc4random_buf(cp + 8 - padding, padding);
 	}
-	if ((r = sshbuf_consume(state->outgoing_packet, 8 - padding)) != 0)
+	if ((r = sshbuf_consume(nstate->outgoing_packet, 8 - padding)) != 0)
 		goto out;
 
 	/* Add check bytes. */
-	checksum = ssh_crc32(sshbuf_ptr(state->outgoing_packet),
-	    sshbuf_len(state->outgoing_packet));
+	checksum = ssh_crc32(sshbuf_ptr(nstate->outgoing_packet),
+	    sshbuf_len(nstate->outgoing_packet));
 	POKE_U32(buf, checksum);
-	if ((r = sshbuf_put(state->outgoing_packet, buf, 4)) != 0)
+	if ((r = sshbuf_put(nstate->outgoing_packet, buf, 4)) != 0)
 		goto out;
 
 #ifdef PACKET_DEBUG
 	fprintf(stderr, "packet_send plain: ");
-	sshbuf_dump(state->outgoing_packet, stderr);
+	sshbuf_dump(nstate->outgoing_packet, stderr);
 #endif
 
 	/* Append to output. */
 	POKE_U32(buf, len);
-	if ((r = sshbuf_put(state->output, buf, 4)) != 0)
+	if ((r = sshbuf_put(nstate->output, buf, 4)) != 0)
 		goto out;
-	if ((r = sshbuf_reserve(state->output,
-	    sshbuf_len(state->outgoing_packet), &cp)) != 0)
+	if ((r = sshbuf_reserve(nstate->output,
+	    sshbuf_len(nstate->outgoing_packet), &cp)) != 0)
 		goto out;
-	if ((r = cipher_crypt(&state->send_context, 0, cp,
-	    sshbuf_ptr(state->outgoing_packet),
-	    sshbuf_len(state->outgoing_packet), 0, 0)) != 0)
+	if ((r = cipher_crypt(&nstate->send_context, 0, cp,
+	    sshbuf_ptr(nstate->outgoing_packet),
+	    sshbuf_len(nstate->outgoing_packet), 0, 0)) != 0)
 		goto out;
 
 #ifdef PACKET_DEBUG
 	fprintf(stderr, "encrypted: ");
-	sshbuf_dump(state->output, stderr);
+	sshbuf_dump(nstate->output, stderr);
 #endif
-	state->p_send.packets++;
-	state->p_send.bytes += len +
-	    sshbuf_len(state->outgoing_packet);
-	sshbuf_reset(state->outgoing_packet);
+	nstate->p_send.packets++;
+	nstate->p_send.bytes += len +
+	    sshbuf_len(nstate->outgoing_packet);
+	sshbuf_reset(nstate->outgoing_packet);
 
 	/*
 	 * Note that the packet is now only buffered in output.  It won't be
@@ -956,7 +942,6 @@ ssh_packet_send1(struct ssh *ssh)
 	r = 0;
  out:
 	return r;
-#endif
 }
 
 int
@@ -1589,6 +1574,7 @@ ssh_packet_read_poll1(struct ssh *ssh, u_char *typep)
 	if ((r = sshbuf_consume_end(state->incoming_packet, 4)) < 0)
 		goto out;
 
+#if 0
 	if (state->packet_compression) {
 		sshbuf_reset(state->compression_buffer);
 		if ((r = uncompress_buffer(ssh, state->incoming_packet,
@@ -1599,6 +1585,7 @@ ssh_packet_read_poll1(struct ssh *ssh, u_char *typep)
 		    state->compression_buffer)) != 0)
 			goto out;
 	}
+#endif
 	state->p_read.packets++;
 	state->p_read.bytes += padded_len + 4;
 	if ((r = sshbuf_get_u8(state->incoming_packet, typep)) != 0)
@@ -2998,8 +2985,8 @@ sshpkt_send(ncrack_ssh_state *nstate)
 {
 	if (nstate->compat20)
 		return ssh_packet_send2(nstate);
-	//else
-	//	return ssh_packet_send1(nstate);
+	else
+		return ssh_packet_send1(nstate);
 }
 
 int

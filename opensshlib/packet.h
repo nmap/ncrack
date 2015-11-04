@@ -85,7 +85,7 @@ struct ssh {
 struct ssh *ssh_alloc_session_state(void);
 
 //struct ssh *ssh_packet_set_connection(struct ssh *, int, int);
-int ssh_packet_set_connection(ncrack_ssh_state *nstate, int, int);
+int ssh_packet_set_connection(ncrack_ssh_state *nstate);
 
 
 void     ssh_packet_set_timeout(struct ssh *, int, int);
@@ -105,7 +105,7 @@ int      ssh_packet_is_interactive(struct ssh *);
 void     ssh_packet_set_server(struct ssh *);
 void     ssh_packet_set_authenticated(struct ssh *);
 
-int	 ssh_packet_send1(struct ssh *);
+int	 ssh_packet_send1(ncrack_ssh_state *);
 int	 ssh_packet_send2_wrapped(ncrack_ssh_state *);
 int	 ssh_packet_send2(ncrack_ssh_state *);
 
