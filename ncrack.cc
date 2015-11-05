@@ -725,7 +725,7 @@ call_module(nsock_pool nsp, Connection *con)
   else if (!strcmp(name, "vnc"))
     ncrack_vnc(nsp, con);
 #if HAVE_OPENSSL
-  else if (!strcmp(name, "rdp")) 
+  else if (!strcmp(name, "rdp") || !strcmp(name, "ms-wbt-server"))
     ncrack_rdp(nsp, con);
   else if (!strcmp(name, "smb"))
     ncrack_smb(nsp, con);
