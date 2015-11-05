@@ -94,23 +94,24 @@
 #include "ncrack_input.h"
 
 
-/* 
+/*
  * Responsible for parsing an Nmap XML output file (with the -oX option).
  * Returns 0 for success and host_spec is set with a host-service specification
  * in the form <service_name>://<IP-address>:<port-number>.
- * Returns -1 upon failure - which is usually when the EOF is reached. 
+ * Returns -1 upon failure - which is usually when the EOF is reached.
  * This function has to be called as many times as needed until it
- * returns -1 to signify the end of parsing. 
+ * returns -1 to signify the end of parsing.
  */
 int
 xml_input(FILE *inputfd, char *host_spec)
 {
   static bool begin = true;
   int ch;
-  char buf[256];
+  char buf[2048];
   static char ip[16];
   char portnum[7];
   char service_name[64];
+  char cpe[4];
 
   /* check if file is indeed in Nmap's XML output format */
   if (begin) {
@@ -170,10 +171,10 @@ xml_input(FILE *inputfd, char *host_spec)
               break;
             if (i < sizeof(buf) / sizeof(char) - 1)
               buf[i++] = (char) ch;
-            else 
+            else
               fatal("-iX possible buffer overflow!\n");
           }
-          if (i < 12) 
+          if (i < 12)
             fatal("-iX corrupted Nmap XML output file!\n");
           i--;
           char *addr = NULL;
@@ -219,12 +220,12 @@ xml_input(FILE *inputfd, char *host_spec)
               }
             }
           }
-        } 
+        }
         if (memsearch(buf, "port ", strlen(buf))) {
           /* We are inside a <port section */
 
           /* Now get the rest of the line which is in the following format:
-           * <port protocol="tcp" portid="22"><state state="open" 
+           * <port protocol="tcp" portid="22"><state state="open"
            * reason="syn-ack" reason_ttl="0"/><service name="ssh"
            * method="table" conf="3" /></port>
            */
@@ -235,17 +236,32 @@ xml_input(FILE *inputfd, char *host_spec)
           /* Since the <port section has a total of 3 subsections (port,
            * service, state) we can use that information for parsing */
           while ((ch = getc(inputfd)) != EOF) {
+
+            int i = 0;
             if (ch == '>') {
               subsection++;
               if (subsection > 3)
                 break;
             }
+
+            /* Scanning with -A produces <cpe> sections at the end of the port
+             * section in Nmap's XML output so if you find a cpe section,
+             * go to next port
+             */
+            cpe[i++] = (char) ch;
+            if (i == 3)
+              i = 0;
+            if (!strncmp(cpe, "cpe", 3)) {
+              printf("cpe\n");
+              break;
+            }
+
             if (port_section_length < sizeof(buf) / sizeof(char) - 1)
               buf[port_section_length++] = (char) ch;
-            else 
+            else
               fatal("-iX possible buffer overflow inside port parsing\n");
           }
-          if (port_section_length < 100) 
+          if (port_section_length < 100)
             fatal("-iX corrupted Nmap XML output file: too little length in "
                 "<port> section\n");
           port_section_length--;
@@ -292,7 +308,7 @@ xml_input(FILE *inputfd, char *host_spec)
             //printf("\nservice_name: %s\n", service_name);
 
             /* Now we get everything we need: IP, service name and port so
-             * we can return them into host_spec 
+             * we can return them into host_spec
              */
             Snprintf(host_spec, 1024, "%s://%s:%s", service_name, ip, portnum);
             return 0;
