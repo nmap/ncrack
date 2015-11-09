@@ -345,17 +345,18 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
     case SSH_AUTH2:
 
+#if 0
       if (info->kex->kex_type == KEX_DH_GEX_SHA1 || info->kex->kex_type == KEX_DH_GEX_SHA256) {
         printf("SSH AUTH 2 loop read \n");
         if (ssh_loop_read(nsp, con, info) < 0)
           break;
       }
+#endif
+
+      if (ssh_loop_read(nsp, con, info) < 0)
+          break;
 
       con->state = SSH_AUTH3;
-
-      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
-      break;
-
 
       /*
        * If server doesn't support "password" authentication method then
@@ -367,7 +368,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
         if (con->outbuf)
           delete con->outbuf;
 
-        printf("Server error\n");
+        //printf("Server error\n");
 
         con->outbuf = new Buf();
         Snprintf((char *)con->outbuf->get_dataptr(), DEFAULT_BUF_SIZE,
@@ -387,6 +388,8 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
        * Sends credentials
        */
       con->state = SSH_FINI;
+
+      //printf("SSH AUTH 3 \n");
 
       ncrackssh_ssh_userauth2(info, con->user, con->pass);
 
@@ -411,13 +414,14 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       }
 
       if (info->type == SSH2_MSG_USERAUTH_SUCCESS) {
+        //printf("succeed\n");
         con->auth_success = true;
         con->state = SSH_AUTH3;
       } else if (info->type == SSH2_MSG_USERAUTH_FAILURE) {
         //printf("failed!\n");
         con->state = SSH_AUTH3;
       } else if (info->type == SSH2_MSG_USERAUTH_BANNER) {
-        printf("Got banner!\n");
+        //printf("Got banner!\n");
       }
 
 
