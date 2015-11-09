@@ -416,7 +416,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       if (info->type == SSH2_MSG_USERAUTH_SUCCESS) {
         //printf("succeed\n");
         con->auth_success = true;
-        con->state = SSH_AUTH3;
+        con->force_close = true;
       } else if (info->type == SSH2_MSG_USERAUTH_FAILURE) {
         //printf("failed!\n");
         con->state = SSH_AUTH3;
