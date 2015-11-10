@@ -323,7 +323,6 @@ getNextPair(char **user, char **pass)
       passlist_fini = true;
     }
     if (userlist_fini == true && passlist_fini == true) {
-      printf("asdf\n");
       if (o.debugging > 8)
         log_write(LOG_STDOUT, "%s Password list finished!\n", HostInfo());
       loginlist_fini = true;
