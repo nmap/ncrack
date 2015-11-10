@@ -1572,7 +1572,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     }
   }
 
-  if (serv->just_started && !serv->more_rounds) {
+  if (serv->just_started && !serv->more_rounds 
+      && con->close_reason != MODULE_ERR) {
     serv->supported_attempts++;
     serv->auth_rate_meter.update(1, NULL);
   }

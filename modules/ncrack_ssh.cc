@@ -391,6 +391,25 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
       //printf("SSH AUTH 3 \n");
 
+      /* compare the current user with the previously saved on, so that if 
+       * we get another username in the same connection, we close the
+       * connection because ssh doesn't let us change the username midway
+       */
+      if (info->prev_user == NULL) {
+        info->prev_user = con->user;
+        //printf("null user: %s \n", info->prev_user);
+      } else {
+        if (info->prev_user != con->user) {
+          //printf("CLOSING CONNECTION DUE TO DIFFERENT NAME\n");
+          con->force_close = true;
+          con->close_reason = MODULE_ERR;
+          return ncrack_module_end(nsp, con);
+        }
+
+        info->prev_user = con->user;
+        //printf("prev_user %d \n", con->user);
+      }
+
       ncrackssh_ssh_userauth2(info, con->user, con->pass);
 
       nsock_write(nsp, nsi, ncrack_write_handler, SSH_TIMEOUT, con,

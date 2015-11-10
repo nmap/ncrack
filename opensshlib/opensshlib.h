@@ -184,6 +184,8 @@ typedef struct ncrack_ssh_state {
   u_int packet_discard;
   struct sshmac *packet_discard_mac;
 
+  char *prev_user;
+
 
 } ncrack_ssh_state;
 
