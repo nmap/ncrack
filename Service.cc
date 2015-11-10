@@ -306,6 +306,35 @@ getNextPair(char **user, char **pass)
   if (loginlist_fini)
     return -1;
 
+  if (!strcmp(name, "ssh")) {
+
+    //printf("ssh special case\n");
+
+    /* special case for ssh */
+    if (just_started == true) {
+      //printf("just started\n");
+
+      /* keep using same username for first timing probe */
+      if (passvi == PassArray->end()) {                                          
+        passvi = PassArray->begin();
+        uservi++;
+        if (uservi == UserArray->end()) {
+          if (o.debugging > 8)
+            log_write(LOG_STDOUT, "%s Username list finished!\n", HostInfo());
+          loginlist_fini = true;
+          return -1;
+        } 
+      } 
+      *user = *uservi;
+      *pass = *passvi;
+      passvi++;
+
+      //printf("user: %s \n", *user);
+      //printf("pass: %s \n", *pass);
+      return 0;
+    } 
+  }
+
   if (o.pairwise) {
 
     if (uservi == UserArray->end() && passvi == PassArray->end()) {
