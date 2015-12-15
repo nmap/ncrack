@@ -220,5 +220,10 @@ char *unicode_alloc_upper(const char *string);
  */
 void mem_reverse(uint8_t *p, unsigned int len);
 
+/* Ncat's buffering functions */
+int strbuf_append(char **buf, size_t *size, size_t *offset, const char *s, size_t n);
+int strbuf_append_str(char **buf, size_t *size, size_t *offset, const char *s);
+int strbuf_sprintf(char **buf, size_t *size, size_t *offset, const char *fmt, ...);
+
 
 #endif /* UTILS_H */

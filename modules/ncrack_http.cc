@@ -93,6 +93,7 @@
 #include "NcrackOps.h"
 #include "Service.h"
 #include "modules.h"
+#include "http.h"
 #include <list>
 
 #include <map>
@@ -120,16 +121,21 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 static int http_loop_read(nsock_pool nsp, Connection *con);
 static void http_basic(nsock_pool nsp, Connection *con);
+static void http_digest(nsock_pool nsp, Connection *con);
 static void http_set_error(Service *serv, const char *reply);
 static char *http_decode(int http_code);
 
 static void http_free(Connection *con);
 
 
-enum states { HTTP_INIT, HTTP_GET_AUTH, HTTP_BASIC_AUTH };
+enum states { HTTP_INIT, HTTP_GET_AUTH, HTTP_BASIC_AUTH, HTTP_DIGEST_AUTH };
 
 /* Basic Authentication substates */
 enum { BASIC_SEND, BASIC_RESULTS };
+
+/* Digest Authentication substates */
+enum { DIGEST_SEND, DIGEST_RESULTS };
+
 
 typedef struct http_info {
   char *auth_scheme;
@@ -258,6 +264,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
       info->auth_scheme = Strndup(start, i);
 
       if (!strcmp("Basic", info->auth_scheme)) {
+
         //con->state = HTTP_BASIC_AUTH;
         //info->substate = BASIC_SEND;
         serv->module_data = (http_state *)safe_zalloc(sizeof(http_state));
@@ -270,6 +277,20 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
         return ncrack_module_end(nsp, con);
 
+      } else if (!strcmp("Digest", info->auth_scheme)) {
+
+        serv->module_data = (http_state *)safe_zalloc(sizeof(http_state));
+        hstate = (http_state *)serv->module_data;
+        hstate->auth_scheme = Strndup(info->auth_scheme, 
+            strlen(info->auth_scheme));
+        hstate->state = HTTP_DIGEST_AUTH;
+        hstate->reconnaissance = true;
+        serv->more_rounds = true;
+
+        http_digest(nsp, con);
+
+        //return ncrack_module_end(nsp, con);
+      
       } else {
         serv->end.orly = true;
 
@@ -290,6 +311,11 @@ ncrack_http(nsock_pool nsp, Connection *con)
     case HTTP_BASIC_AUTH:
 
       http_basic(nsp, con);
+      break;
+
+    case HTTP_DIGEST_AUTH:
+
+      http_digest(nsp, con);
       break;
 
   }
@@ -378,6 +404,106 @@ http_loop_read(nsock_pool nsp, Connection *con)
 
   return 0;
 }
+
+
+
+static void
+http_digest(nsock_pool nsp, Connection *con)
+{
+  Service *serv = con->service;
+  nsock_iod nsi = con->niod;
+  http_info *info = (http_info *)con->misc_info;
+  struct http_header *h;
+  char *header;
+  struct http_challenge challenge;
+  char *response_hdr;
+
+
+  switch(info->substate) {
+    case DIGEST_SEND:
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      if (http_read_header((char *)con->inbuf->get_dataptr(), con->inbuf->get_len(),
+          &header) < 0) {
+          printf("Error reading response header.\n");
+          return ncrack_module_end(nsp, con);
+      }
+
+      if (http_parse_header(&h, header) != 0) {
+          printf("Error parsing response header.\n");
+          return ncrack_module_end(nsp, con);
+      }
+      free(header);
+      header = NULL;
+
+      if (http_header_get_challenge(h, &challenge) == NULL) {
+          printf("Error getting Authenticate challenge.\n");
+          http_header_free(h);
+          return ncrack_module_end(nsp, con);
+      }
+      http_header_free(h);
+
+      response_hdr = http_digest_proxy_authorization(&challenge, 
+          con->user, con->pass, "GET", serv->path);
+
+      if (response_hdr == NULL) {
+          printf("Error building Authorization header.\n");
+          http_challenge_free(&challenge);
+
+          if (header != NULL)
+            free(header);
+          return ncrack_module_end(nsp, con);
+      }
+
+      con->outbuf->append(response_hdr, strlen(response_hdr));
+      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, HTTP_TIMEOUT, con,
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+
+
+      info->substate = DIGEST_RESULTS;
+      break;
+
+    case DIGEST_RESULTS:
+      if (http_loop_read(nsp, con) < 0)
+        break;
+
+      info->substate = DIGEST_SEND;
+
+      // we need to get the new nonce
+      ((http_state *) serv->module_data)->state = HTTP_GET_AUTH;
+
+      //memprint((const char *)con->iobuf->get_dataptr(),
+      //  con->iobuf->get_len());
+
+      /* If we get a "200 OK" HTTP response OR a "301 Moved Permanently" which
+       * happpens when we request access to a directory without an ending '/',
+       * then it means our credentials were correct.
+       */
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "200 OK", con->inbuf->get_len()) 
+          || memsearch((const char *)con->inbuf->get_dataptr(),
+            "301", con->inbuf->get_len())) {
+        con->auth_success = true;
+      }
+
+      /* The in buffer has to be cleared out, because we are expecting
+       * possibly new answers in the same connection.
+       */
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      ncrack_module_end(nsp, con);
+      break;
+  }
+
+}
+
+
 
 
 

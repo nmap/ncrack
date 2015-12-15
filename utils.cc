@@ -561,4 +561,60 @@ mem_reverse(uint8_t *p, unsigned int len)
 
 }
 
+/* Ncat's buffering functions */
+
+/* Append n bytes starting at s to a malloc-allocated buffer. Reallocates the
+   buffer and updates the variables to make room if necessary. */
+int strbuf_append(char **buf, size_t *size, size_t *offset, const char *s, size_t n)
+{
+    //ncat_assert(*offset <= *size);
+
+    if (n >= *size - *offset) {
+        *size += n + 1;
+        *buf = (char *) safe_realloc(*buf, *size);
+    }
+
+    memcpy(*buf + *offset, s, n);
+    *offset += n;
+    (*buf)[*offset] = '\0';
+
+    return n;
+}
+
+/* Append a '\0'-terminated string as with strbuf_append. */
+int strbuf_append_str(char **buf, size_t *size, size_t *offset, const char *s)
+{
+    return strbuf_append(buf, size, offset, s, strlen(s));
+}
+
+/* Do a sprintf at the given offset into a malloc-allocated buffer. Reallocates
+   the buffer and updates the variables to make room if necessary. */
+int strbuf_sprintf(char **buf, size_t *size, size_t *offset, const char *fmt, ...)
+{
+    va_list va;
+    int n;
+
+    //ncat_assert(*offset <= *size);
+
+    if (*buf == NULL) {
+        *size = 1;
+        *buf = (char *) safe_malloc(*size);
+    }
+
+    for (;;) {
+        va_start(va, fmt);
+        n = Vsnprintf(*buf + *offset, *size - *offset, fmt, va);
+        va_end(va);
+        if (n < 0)
+            *size = MAX(*size, 1) * 2;
+        else if (n >= *size - *offset)
+            *size += n + 1;
+        else
+            break;
+        *buf = (char *) safe_realloc(*buf, *size);
+    }
+    *offset += n;
+
+    return n;
+}
 
