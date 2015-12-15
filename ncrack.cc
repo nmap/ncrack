@@ -727,7 +727,7 @@ call_module(nsock_pool nsp, Connection *con)
 #if HAVE_OPENSSL
   else if (!strcmp(name, "rdp") || !strcmp(name, "ms-wbt-server"))
     ncrack_rdp(nsp, con);
-  else if (!strcmp(name, "smb"))
+  else if (!strcmp(name, "smb") || !strcmp(name, "netbios-ssn"))
     ncrack_smb(nsp, con);
 #endif
   else
@@ -1892,6 +1892,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
   unsigned long eid = nsock_iod_id(con->niod);
 
   assert(type == NSE_TYPE_READ);
+
 
   /* If service has already finished (probably due to the -f option), then
    * cancel this event and return immediately. The same happens with the rest
