@@ -370,6 +370,8 @@ char *http_digest_proxy_authorization(const struct http_challenge *challenge,
         append_quoted_string(&buf, &size, &offset, challenge->digest.opaque);
     }
 
+    strbuf_append_str(&buf, &size, &offset, ", algorithm=MD5");
+
     strbuf_append_str(&buf, &size, &offset, "\r\n");
 
     return buf;

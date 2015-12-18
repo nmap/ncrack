@@ -163,18 +163,32 @@ ncrack_http(nsock_pool nsp, Connection *con)
   http_state *hstate = NULL;
   con->ops_free = &http_free;
 
+  //printf("-------HTTP MODULE START---------\n");
+  //printf("state: %d\n", con->state);
+
   if (con->misc_info) {
     info = (http_info *) con->misc_info;
+    //printf("info substate: %d \n", info->substate);
   }
 
-  if (serv->module_data && !con->misc_info) {
+  if (serv->module_data && con->misc_info == NULL) {
+
+    //printf("got here\n");
     hstate = (http_state *)serv->module_data;
-    con->state = hstate->state;
     con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
     info = (http_info *)con->misc_info;
-    info->auth_scheme = hstate->auth_scheme;
+    if (!strcmp(hstate->auth_scheme, "Basic")) {
+      con->state = hstate->state;
+    }
+    info->auth_scheme = Strndup(hstate->auth_scheme, 
+            strlen(hstate->auth_scheme));
+
+    //printf("got here scheme: %s\n", info->auth_scheme);
+
     serv->more_rounds = false;
   }
+
+  //printf("con->state: %d\n", con->state);
 
   switch (con->state)
   { 
@@ -198,8 +212,9 @@ ncrack_http(nsock_pool nsp, Connection *con)
         con->outbuf->append(serv->target->NameIP(),
             strlen(serv->target->NameIP()));
 
-      con->outbuf->snprintf(115, "\r\nUser-Agent: %sConnection: close\r\n\r\n",
-          USER_AGENT);
+      //con->outbuf->snprintf(115, "\r\nUser-Agent: %sConnection: close\r\n\r\n",
+      //    USER_AGENT);
+      con->outbuf->append("\r\n\r\n", 4);
 
       nsock_write(nsp, nsi, ncrack_write_handler, HTTP_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
@@ -207,11 +222,14 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
     case HTTP_GET_AUTH:
 
+      //printf("http get auth state READ\n");
+
       if (http_loop_read(nsp, con) < 0)
         break;
 
-      //memprint((const char *)con->iobuf->get_dataptr(),
-      //con->iobuf->get_len());
+      //printf("---------------memprint-------------\n");
+      //memprint((const char *)con->inbuf->get_dataptr(), con->inbuf->get_len());
+      //printf("---------------memprint-------------\n");
       
       /* If target doesn't need authorization for the path selected, then
        * there is no point in trying to crack it. So inform the core engine
@@ -259,9 +277,12 @@ ncrack_http(nsock_pool nsp, Connection *con)
         end++;
         i++;
       }
-      con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
-      info = (http_info *)con->misc_info;
-      info->auth_scheme = Strndup(start, i);
+
+      if (info == NULL) {
+        con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
+        info = (http_info *)con->misc_info;
+        info->auth_scheme = Strndup(start, i);
+      }
 
       if (!strcmp("Basic", info->auth_scheme)) {
 
@@ -279,13 +300,17 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
       } else if (!strcmp("Digest", info->auth_scheme)) {
 
+        con->state = HTTP_DIGEST_AUTH;
+
         serv->module_data = (http_state *)safe_zalloc(sizeof(http_state));
         hstate = (http_state *)serv->module_data;
         hstate->auth_scheme = Strndup(info->auth_scheme, 
             strlen(info->auth_scheme));
-        hstate->state = HTTP_DIGEST_AUTH;
-        hstate->reconnaissance = true;
-        serv->more_rounds = true;
+        //hstate->state = HTTP_DIGEST_AUTH;
+        //hstate->reconnaissance = true;
+        serv->more_rounds = false;
+        con->peer_alive = true;
+
 
         http_digest(nsp, con);
 
@@ -391,6 +416,8 @@ static int
 http_loop_read(nsock_pool nsp, Connection *con)
 {
 
+  //printf("loop read\n");
+
   if (con->inbuf == NULL) {
     nsock_read(nsp, con->niod, ncrack_read_handler, HTTP_TIMEOUT, con);
     return -1;
@@ -418,6 +445,10 @@ http_digest(nsock_pool nsp, Connection *con)
   struct http_challenge challenge;
   char *response_hdr;
 
+  //printf("substate: %d \n", info->substate);
+  //printf("digest inbuf: %x \n", con->inbuf);
+  //char *la;
+
 
   switch(info->substate) {
     case DIGEST_SEND:
@@ -426,21 +457,22 @@ http_digest(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
+      //printf("read header\n");
       if (http_read_header((char *)con->inbuf->get_dataptr(), con->inbuf->get_len(),
           &header) < 0) {
-          printf("Error reading response header.\n");
+          //printf("Error reading response header.\n");
           return ncrack_module_end(nsp, con);
       }
 
       if (http_parse_header(&h, header) != 0) {
-          printf("Error parsing response header.\n");
+          //printf("Error parsing response header.\n");
           return ncrack_module_end(nsp, con);
       }
       free(header);
       header = NULL;
 
       if (http_header_get_challenge(h, &challenge) == NULL) {
-          printf("Error getting Authenticate challenge.\n");
+          //printf("Error getting Authenticate challenge.\n");
           http_header_free(h);
           return ncrack_module_end(nsp, con);
       }
@@ -450,7 +482,7 @@ http_digest(nsock_pool nsp, Connection *con)
           con->user, con->pass, "GET", serv->path);
 
       if (response_hdr == NULL) {
-          printf("Error building Authorization header.\n");
+          //printf("Error building Authorization header.\n");
           http_challenge_free(&challenge);
 
           if (header != NULL)
@@ -458,12 +490,36 @@ http_digest(nsock_pool nsp, Connection *con)
           return ncrack_module_end(nsp, con);
       }
 
+      /* craft digest reply */
+      con->outbuf->append("GET ", 4);
+      if (serv->path[0] != '/')
+        con->outbuf->append("/", 1);
+      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+          serv->path);
+      if (serv->target->targetname)
+        con->outbuf->append(serv->target->targetname, 
+            strlen(serv->target->targetname));
+      else 
+        con->outbuf->append(serv->target->NameIP(),
+            strlen(serv->target->NameIP()));
+//      con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+      //con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+      con->outbuf->append("\r\nAuthorization:", 16);
       con->outbuf->append(response_hdr, strlen(response_hdr));
-      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+      con->outbuf->append("Accept: */*\r\n", 13);
+      con->outbuf->append("\r\n", sizeof("\r\n")-1);
+
+      //printf("outbuf: \n");
+      //la = (char *)con->outbuf->get_dataptr();
+      //for (int i = 0; i < con->outbuf->get_len(); i++)
+        //printf("%c", *(la + i));
+      //printf("------\n");
+
+      delete con->inbuf;
+      con->inbuf = NULL;
 
       nsock_write(nsp, nsi, ncrack_write_handler, HTTP_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
-
 
       info->substate = DIGEST_RESULTS;
       break;
@@ -474,8 +530,10 @@ http_digest(nsock_pool nsp, Connection *con)
 
       info->substate = DIGEST_SEND;
 
-      // we need to get the new nonce
-      ((http_state *) serv->module_data)->state = HTTP_GET_AUTH;
+      // nonce is already in this reply
+      ((http_state *) serv->module_data)->state = HTTP_DIGEST_AUTH;
+
+      //printf("DIGEST SERVER REPLY %s \n", (char *)con->inbuf->get_dataptr());
 
       //memprint((const char *)con->iobuf->get_dataptr(),
       //  con->iobuf->get_len());
@@ -494,8 +552,8 @@ http_digest(nsock_pool nsp, Connection *con)
       /* The in buffer has to be cleared out, because we are expecting
        * possibly new answers in the same connection.
        */
-      delete con->inbuf;
-      con->inbuf = NULL;
+      //delete con->inbuf;
+      //con->inbuf = NULL;
 
       ncrack_module_end(nsp, con);
       break;
@@ -562,7 +620,7 @@ http_basic(nsock_pool nsp, Connection *con)
       base64_encode(tmp, tmplen, b64);
 
       //b64 = b64enc(tmp, tmplen - 1);
-      //printf("%s %s %s \n", con->user, con->pass, b64);
+      ////printf("%s %s %s \n", con->user, con->pass, b64);
       con->outbuf->append(b64, strlen(b64));
       free(b64);
       free(tmp);
@@ -608,24 +666,32 @@ http_basic(nsock_pool nsp, Connection *con)
 static void
 http_free(Connection *con)
 {
+  //printf("http free\n");
+
   http_info *p = NULL;
   http_state *s = NULL;
-  if (!con->misc_info)
+  if (con->misc_info == NULL)
     return;
 
   p = (http_info *)con->misc_info;
+
+  //printf("free scheme: %s\n", p->auth_scheme);
+  //printf("free substate: %d\n", p->substate);
+
   if (con->service->module_data)
     s = (http_state *)con->service->module_data;
 
+  //printf("free service scheme: %s\n", s->auth_scheme);
   /* We only deallocate the 'auth_scheme' string from the http_info struct
    * when it hasn't been assigned from the module http_state (thus we check
    * that the pointers are different). If we freed it, when the two
    * pointers referred to the same memory address, then the http_state's
    * would be deallocated as well, something we don't want to happen.
    */
-  if (p->auth_scheme && s && s->auth_scheme 
-      && p->auth_scheme != s->auth_scheme)
-    free(p->auth_scheme);
+   //if (p->auth_scheme && s  && s->auth_scheme && p->auth_scheme != s->auth_scheme) {
+     //printf("freed scheme\n");
+     free(p->auth_scheme);
+   // }
 
 }
 
