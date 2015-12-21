@@ -716,15 +716,17 @@ call_module(nsock_pool nsp, Connection *con)
 #endif
   else if (!strcmp(name, "http"))
     ncrack_http(nsp, con);
-  else if (!strcmp(name, "https"))
-    ncrack_http(nsp, con);
   else if (!strcmp(name, "pop3"))
-    ncrack_pop3(nsp, con);
-  else if (!strcmp(name, "pop3s"))
     ncrack_pop3(nsp, con);
   else if (!strcmp(name, "vnc"))
     ncrack_vnc(nsp, con);
+  else if (!strcmp(name, "sip"))
+    ncrack_sip(nsp, con);
 #if HAVE_OPENSSL
+  else if (!strcmp(name, "pop3s"))
+    ncrack_pop3(nsp, con);
+  else if (!strcmp(name, "https"))
+    ncrack_http(nsp, con);
   else if (!strcmp(name, "rdp") || !strcmp(name, "ms-wbt-server"))
     ncrack_rdp(nsp, con);
   else if (!strcmp(name, "smb") || !strcmp(name, "netbios-ssn"))
@@ -1505,6 +1507,8 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   int pair_ret;
   const char *hostinfo = serv->HostInfo();
 
+  //printf("module end\n");
+
   con->login_attempts++;
   con->auth_complete = true;
   serv->total_attempts++;
@@ -1528,6 +1532,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
       log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
+    //printf("finished!!\n");
     return ncrack_connection_end(nsp, con);
   }
 
@@ -1545,6 +1550,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       SG->pushServiceToList(serv, &SG->services_finished);
       if (o.verbose)
         log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
+      //printf("finish \n");
       return ncrack_connection_end(nsp, con);
 
     } else if (o.finish > 1) {
@@ -1559,6 +1565,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       }
       /* Now quit nsock_loop */
       nsock_loop_quit(nsp);
+      //printf("nsock loop\n");
       return ncrack_connection_end(nsp, con);
     }
 
@@ -1610,6 +1617,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
       log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
+    //printf("finished\n");
     return ncrack_connection_end(nsp, con);
   }
 
@@ -1634,8 +1642,10 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
   /* If module instructed to close the connection by force, then do so
    * here.
    */
-  if (con->force_close)
+  if (con->force_close) {
+    //printf("force close\n");
     return ncrack_connection_end(nsp, con);
+  }
 
   /* 
    * If we need to check whether peer is alive or not we do the following:
@@ -1656,17 +1666,21 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       if (pair_ret == 1)
         con->from_pool = true;
       nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
-    } else
+    } else {
+      //printf("else peer\n");
       return ncrack_connection_end(nsp, con);
+    }
   } else {
     /* 
      * We need to check if host is alive only on first timing
      * probe. Thereafter we can use the 'supported_attempts'.
      */
     if (serv->just_started && serv->more_rounds) {
+      //printf("more rounds\n");
       ncrack_connection_end(nsp, con);
     } else if (serv->just_started) {
       con->check_closed = true;
+      //printf("just started\n");
       nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
     } else if ((!serv->auth_tries
           || con->login_attempts < (unsigned long)serv->auth_tries)
@@ -1682,6 +1696,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
        * (we are either at the server's imposed authentication limit OR
        * we are at the user's imposed authentication limit) 
        */
+      //printf("else con\n");
       ncrack_connection_end(nsp, con);
     }
   }
@@ -1700,6 +1715,8 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
   const char *hostinfo = serv->HostInfo();
   unsigned long eid = nsock_iod_id(con->niod);
 
+
+  //printf("connection end\n");
 
   if (con->close_reason == CON_ERR)
     SG->connections_timedout++;
@@ -1908,13 +1925,16 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
       log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
+    //printf("read end\n");
     return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_SUCCESS) {
 
+    //printf("nse status\n");
+
     str = nse_readbuf(nse, &nbytes);
 
-    if (!con->inbuf)
+    if (con->inbuf == NULL)
       con->inbuf = new Buf();
     con->inbuf->append(str, nbytes);
 
@@ -1969,6 +1989,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
       error("%s (EID %li) WARNING: nsock READ unexpected status %d", hostinfo,
           eid, (int) status);
 
+  //printf("read end end\n");
   return ncrack_connection_end(nsp, con);
 }
 
@@ -1996,6 +2017,7 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
       log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
+    //printf("write end\n");
     return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_SUCCESS)
@@ -2064,6 +2086,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     SG->pushServiceToList(serv, &SG->services_finished);
     if (o.verbose)
       log_write(LOG_STDOUT, "%s finished.\n", hostinfo);
+    //printf("connect start end\n");
     return ncrack_connection_end(nsp, con);
 
   } else if (status == NSE_STATUS_SUCCESS) {
@@ -2121,6 +2144,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     error("%s (EID %li) WARNING: nsock CONNECT unexpected status %d", 
         hostinfo, eid, (int) status);
 
+  //printf("connect end\n");
   return ncrack_connection_end(nsp, con);
 }
 
