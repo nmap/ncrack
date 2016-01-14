@@ -124,6 +124,8 @@ NcrackOps() {
   saved_argv = NULL;
   setaf(AF_INET);
   gettimeofday(&start_time, NULL);
+  proxychain = NULL;
+  socks4a = false;
   resume = false;
   finish = 0;
 }

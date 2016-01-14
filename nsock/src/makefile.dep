@@ -1,0 +1,106 @@
+error.o: error.c error.h ../include/nsock_config.h \
+ ../../nbase/nbase_config.h
+filespace.o: filespace.c nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../include/nsock_config.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h ../include/nsock.h ../include/nsock_config.h \
+ nsock_ssl.h nsock_proxy.h
+gh_heap.o: gh_heap.c ../include/nsock_config.h ../../nbase/nbase_config.h \
+ ../../nbase/nbase.h ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ gh_heap.h error.h
+nsock_connect.o: nsock_connect.c ../include/nsock.h \
+ ../include/nsock_config.h nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../include/nsock_config.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h nsock_ssl.h nsock_proxy.h nsock_log.h netutils.h
+nsock_core.o: nsock_core.c nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../include/nsock_config.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h ../include/nsock.h ../include/nsock_config.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h netutils.h
+nsock_iod.o: nsock_iod.c ../include/nsock.h ../include/nsock_config.h \
+ nsock_internal.h ../../nbase/nbase.h ../../nbase/nbase_config.h \
+ ../../nbase/nbase_ipv6.h ../include/nsock_config.h \
+ ../../nbase/nbase_config.h gh_list.h error.h gh_heap.h filespace.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h netutils.h
+nsock_read.o: nsock_read.c nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../include/nsock_config.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h ../include/nsock.h ../include/nsock_config.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h netutils.h
+nsock_timers.o: nsock_timers.c nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../include/nsock_config.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h ../include/nsock.h ../include/nsock_config.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h
+nsock_write.o: nsock_write.c ../include/nsock.h ../include/nsock_config.h \
+ nsock_internal.h ../../nbase/nbase.h ../../nbase/nbase_config.h \
+ ../../nbase/nbase_ipv6.h ../include/nsock_config.h \
+ ../../nbase/nbase_config.h gh_list.h error.h gh_heap.h filespace.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h netutils.h
+nsock_ssl.o: nsock_ssl.c ../include/nsock.h ../include/nsock_config.h \
+ nsock_internal.h ../../nbase/nbase.h ../../nbase/nbase_config.h \
+ ../../nbase/nbase_ipv6.h ../include/nsock_config.h \
+ ../../nbase/nbase_config.h gh_list.h error.h gh_heap.h filespace.h \
+ nsock_ssl.h nsock_proxy.h netutils.h
+nsock_event.o: nsock_event.c nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../include/nsock_config.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h ../include/nsock.h ../include/nsock_config.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h
+nsock_pool.o: nsock_pool.c nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../include/nsock_config.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h ../include/nsock.h ../include/nsock_config.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h netutils.h
+netutils.o: netutils.c netutils.h ../include/nsock_config.h \
+ ../../nbase/nbase_config.h nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h gh_list.h error.h \
+ gh_heap.h filespace.h ../include/nsock.h ../include/nsock_config.h \
+ nsock_ssl.h nsock_proxy.h
+nsock_pcap.o: nsock_pcap.c ../include/nsock.h ../include/nsock_config.h \
+ nsock_internal.h ../../nbase/nbase.h ../../nbase/nbase_config.h \
+ ../../nbase/nbase_ipv6.h ../include/nsock_config.h \
+ ../../nbase/nbase_config.h gh_list.h error.h gh_heap.h filespace.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h nsock_pcap.h
+nsock_engines.o: nsock_engines.c ../include/nsock_config.h \
+ nsock_internal.h ../../nbase/nbase.h ../../nbase/nbase_config.h \
+ ../../nbase/nbase_ipv6.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h ../include/nsock.h ../include/nsock_config.h \
+ nsock_ssl.h nsock_proxy.h
+engine_select.o: engine_select.c nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../include/nsock_config.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h ../include/nsock.h ../include/nsock_config.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h
+engine_epoll.o: engine_epoll.c ../include/nsock_config.h nsock_internal.h \
+ ../../nbase/nbase.h ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../../nbase/nbase_config.h gh_list.h error.h gh_heap.h filespace.h \
+ ../include/nsock.h ../include/nsock_config.h nsock_ssl.h nsock_proxy.h \
+ nsock_log.h
+engine_kqueue.o: engine_kqueue.c ../include/nsock_config.h
+engine_poll.o: engine_poll.c ../include/nsock_config.h nsock_internal.h \
+ ../../nbase/nbase.h ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../../nbase/nbase_config.h gh_list.h error.h gh_heap.h filespace.h \
+ ../include/nsock.h ../include/nsock_config.h nsock_ssl.h nsock_proxy.h \
+ nsock_log.h
+nsock_proxy.o: nsock_proxy.c ../include/nsock.h ../include/nsock_config.h \
+ nsock_internal.h ../../nbase/nbase.h ../../nbase/nbase_config.h \
+ ../../nbase/nbase_ipv6.h ../include/nsock_config.h \
+ ../../nbase/nbase_config.h gh_list.h error.h gh_heap.h filespace.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h
+nsock_log.o: nsock_log.c nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../include/nsock_config.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h ../include/nsock.h ../include/nsock_config.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h
+proxy_http.o: proxy_http.c ../include/nsock.h ../include/nsock_config.h \
+ nsock_internal.h ../../nbase/nbase.h ../../nbase/nbase_config.h \
+ ../../nbase/nbase_ipv6.h ../include/nsock_config.h \
+ ../../nbase/nbase_config.h gh_list.h error.h gh_heap.h filespace.h \
+ nsock_ssl.h nsock_proxy.h nsock_log.h
+proxy_socks4.o: proxy_socks4.c ../include/nsock.h \
+ ../include/nsock_config.h nsock_internal.h ../../nbase/nbase.h \
+ ../../nbase/nbase_config.h ../../nbase/nbase_ipv6.h \
+ ../include/nsock_config.h ../../nbase/nbase_config.h gh_list.h error.h \
+ gh_heap.h filespace.h nsock_ssl.h nsock_proxy.h nsock_log.h

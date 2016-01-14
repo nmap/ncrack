@@ -159,6 +159,8 @@ class NcrackOps {
     FILE *ncrack_stdout; /* Ncrack standard output */
     char *datadir;
 
+    nsock_proxychain proxychain; /* only assigned when --proxy is valid */
+    bool socks4a; /* only true when first proxy is socks4a */
     int saved_signal;    /* save caught signal here, -1 for no signal */
     char **saved_argv;    /* pointer to current argv array */
     int saved_argc;      /* saved argument count */
