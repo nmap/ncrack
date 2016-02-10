@@ -725,6 +725,8 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_pop3(nsp, con);
   else if (!strcmp(name, "vnc"))
     ncrack_vnc(nsp, con);
+  else if (!strcmp(name, "sip"))
+    ncrack_sip(nsp, con);
 #if HAVE_OPENSSL
   else if (!strcmp(name, "rdp") || !strcmp(name, "ms-wbt-server"))
     ncrack_rdp(nsp, con);

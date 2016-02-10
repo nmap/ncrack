@@ -93,6 +93,9 @@
 #include "NcrackOps.h"
 #include "Service.h"
 #include "modules.h"
+#include "http.h"
+#include <ifaddrs.h>
+#include <net/if.h>
 
 using namespace std;
 
@@ -103,14 +106,17 @@ extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 static int sip_loop_read(nsock_pool nsp, Connection *con);
+static char *get_ip_address(void);
 
 
 typedef struct sip_info {
   int cseq;
+  u16 localport;
+  char *local_ip; 
 } sip_info;
 
 
-enum states { SIP_INIT, SIP_STATUS };
+enum states { SIP_INIT, SIP_STATUS, SIP_AUTH };
 
 #define SIP_TIMEOUT 10000
 
@@ -127,15 +133,23 @@ ncrack_sip(nsock_pool nsp, Connection *con)
   int family = 0;
   local4 = (struct sockaddr_in *)&local;
   local6 = (struct sockaddr_in6 *)&local;
-  u16 localport = 0;
   char localport_s[6];
   char cseq_s[6];
+
+  struct http_header *h;
+  char *header;
+  struct http_challenge challenge;
+  char *response_hdr;
+
+  char *la;
+
 
   if (con->misc_info) {
     info = (sip_info *) con->misc_info;
   } else {
-    info = (sip_info *) safe_zalloc(sizeof(sip_info));
-    info->cseq = 0;
+    con->misc_info = (sip_info *) safe_zalloc(sizeof(sip_info));
+    info = (sip_info *) con->misc_info;
+    info->cseq = 1;
   }
 
 
@@ -147,12 +161,12 @@ ncrack_sip(nsock_pool nsp, Connection *con)
       nsock_iod_get_communication_info(nsi, NULL, &family, (struct sockaddr*)&local,
                                        NULL, sizeof(struct sockaddr_storage));
       if (family == AF_INET6) {
-        localport = ntohs(local6->sin6_port);
+        info->localport = ntohs(local6->sin6_port);
       } else {
-        localport = ntohs(local4->sin_port);
+        info->localport = ntohs(local4->sin_port);
       }
 
-      snprintf(localport_s, sizeof(localport_s), "%d", localport);
+      snprintf(localport_s, sizeof(localport_s), "%d", info->localport);
       printf("local port %s \n", localport_s);
 
       snprintf(cseq_s, sizeof(cseq_s), "%d", info->cseq);
@@ -161,8 +175,10 @@ ncrack_sip(nsock_pool nsp, Connection *con)
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
-      
-      con->outbuf->snprintf(strlen(serv->target->NameIP()) + strlen("192.168.25.1") + strlen(localport_s) + strlen(con->user) \
+
+      info->local_ip = get_ip_address();
+
+      con->outbuf->snprintf(strlen(serv->target->NameIP()) + strlen(info->local_ip) + strlen(localport_s) + strlen(con->user) \
            + strlen(serv->target->NameIP()) + strlen(con->user) + strlen(serv->target->NameIP()) + strlen(serv->target->NameIP()) \
            + strlen(cseq_s) + 
            strlen("REGISTER sip: SIP/2.0\r\nVia: SIP/2.0/TCP :\r\nFrom: <sip:@>\r\nTo: <sip:@>\r\n" "Call-ID: 1234@\r\nCSeq:  REGISTER\r\nContent-Length: 0\r\n\r\n"),
@@ -170,8 +186,21 @@ ncrack_sip(nsock_pool nsp, Connection *con)
            "Via: SIP/2.0/TCP %s:%d\r\n"
            "From: <sip:%s@%s>\r\n"
            "To: <sip:%s@%s>\r\n" "Call-ID: 1234@%s\r\n" \
-           "CSeq: %i REGISTER\r\n" "Content-Length: 0\r\n\r\n", serv->target->NameIP(), "192.168.25.1", localport, con->user, 
+           "CSeq: %i REGISTER\r\n" "Content-Length: 0\r\n\r\n", serv->target->NameIP(), info->local_ip, info->localport, con->user, 
            serv->target->NameIP(), con->user, serv->target->NameIP(), serv->target->NameIP(), info->cseq);
+
+#if 0
+      con->outbuf->snprintf(strlen("officesip.local") + strlen(info->local_ip) + strlen(localport_s) + strlen(con->user) \
+           + strlen("officesip.local") + strlen(con->user) + strlen(serv->target->NameIP()) + strlen(serv->target->NameIP()) \
+           + strlen(cseq_s) + 
+           strlen("REGISTER sip: SIP/2.0\r\nVia: SIP/2.0/TCP :\r\nFrom: <sip:@>\r\nTo: <sip:@>\r\n" "Call-ID: 1234@\r\nCSeq:  REGISTER\r\nContent-Length: 0\r\n\r\n"),
+       "REGISTER sip:%s SIP/2.0\r\n"
+       "Via: SIP/2.0/TCP %s:%d\r\n"
+       "From: <sip:%s@%s>\r\n"
+       "To: <sip:%s@%s>\r\n" "Call-ID: 1234@%s\r\n" \
+       "CSeq: %i REGISTER\r\n" "Content-Length: 0\r\n\r\n", "officesip.local", info->local_ip, info->localport, con->user, 
+       "officesip.local", con->user, serv->target->NameIP(), serv->target->NameIP(), info->cseq);
+#endif
 
       info->cseq++;
 
@@ -187,14 +216,109 @@ ncrack_sip(nsock_pool nsp, Connection *con)
       if (sip_loop_read(nsp, con) < 0)
         break;
 
+#if 0
       printf("---------------memprint-------------\n");
       memprint((const char *)con->inbuf->get_dataptr(), con->inbuf->get_len());
       printf("---------------memprint-------------\n");
+#endif
 
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      /* If domain is invalid, then we should stop trying to crack this
+       * service.
+       */
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "Domain invalid or not specified", con->inbuf->get_len())) {
+        serv->end.orly = true;
+        serv->end.reason = Strndup("Domain invalid or not specified.",
+            strlen("Domain invalid or not specified."));
+        return ncrack_module_end(nsp, con);
+      }
+
+
+      if (http_read_header((char *)con->inbuf->get_dataptr(), con->inbuf->get_len(),
+          &header) < 0) {
+          //printf("Error reading response header.\n");
+          return ncrack_module_end(nsp, con);
+      }
+
+      if (http_parse_header(&h, header) != 0) {
+          //printf("Error parsing response header.\n");
+          return ncrack_module_end(nsp, con);
+      }
+      free(header);
+      header = NULL;
+
+      if (http_header_get_challenge(h, &challenge) == NULL) {
+          //printf("Error getting Authenticate challenge.\n");
+          http_header_free(h);
+          return ncrack_module_end(nsp, con);
+      }
+      http_header_free(h);
+
+      response_hdr = http_digest_proxy_authorization(&challenge, 
+          con->user, con->pass, "REGISTER", "sip:officesip.local");
+
+      //printf("resp hdr: %s\n", response_hdr);
+      //printf("length: %d \n", strlen(response_hdr)); 
+
+      snprintf(localport_s, sizeof(localport_s), "%d", info->localport);
+      snprintf(cseq_s, sizeof(cseq_s), "%d", info->cseq);
+
+      con->outbuf->snprintf(strlen(serv->target->NameIP()) + strlen(info->local_ip) + strlen(localport_s) + strlen(con->user) \
+          + strlen(serv->target->NameIP()) + strlen(con->user) + strlen(serv->target->NameIP()) + strlen(serv->target->NameIP()) \
+          + strlen(cseq_s) + strlen(response_hdr) +
+          strlen("REGISTER sip: SIP/2.0\r\nVia: SIP/2.0/TCP :\r\nFrom: <sip:@>\r\nTo: <sip:@>\r\n" "Call-ID: 1234@\r\nCSeq:  REGISTER\r\n\Authorization:\r\nContent-Length: 0\r\n\r\n"),
+      "REGISTER sip:%s SIP/2.0\r\n"
+      "Via: SIP/2.0/TCP %s:%d\r\n"
+      "From: <sip:%s@%s>\r\n"
+      "To: <sip:%s@%s>\r\n" "Call-ID: 1234@%s\r\n" \
+      "CSeq: %u REGISTER\r\n" "Authorization:%s\r\n" "Content-Length: 0\r\n\r\n", serv->target->NameIP(), info->local_ip, info->localport, con->user, 
+      serv->target->NameIP(), con->user, serv->target->NameIP(), serv->target->NameIP(), info->cseq, response_hdr);
+
+      info->cseq++;
+ 
+#if 0
+      printf("outbuf: \n");
+      la = (char *)con->outbuf->get_dataptr();
+      for (int i = 0; i < con->outbuf->get_len(); i++)
+        printf("%c", *(la + i));
+      printf("------\n");
+#endif
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SIP_TIMEOUT, con,
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+
+      con->state = SIP_AUTH;
 
       break;
-  }
 
+    case SIP_AUTH:
+
+
+      if (sip_loop_read(nsp, con) < 0)
+        break;
+
+#if 0
+      printf("----------AUTH memprint-------------\n");
+      memprint((const char *)con->inbuf->get_dataptr(), con->inbuf->get_len());
+      printf("----------AUTH memprint-------------\n");
+#endif
+
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "200 OK", con->inbuf->get_len())) {
+        con->auth_success = true;
+      }
+
+      ncrack_module_end(nsp, con);
+      break;
+
+  }
 
 
 }
@@ -217,5 +341,62 @@ sip_loop_read(nsock_pool nsp, Connection *con)
   }
 
   return 0;
+}
+
+
+
+char *get_ip_address(void) {
+
+  struct ifaddrs *ifaddr, *ifa;
+  int family, s, n;
+  char host[NI_MAXHOST];
+  char *addr = NULL;
+  int addrlen;
+
+  if (getifaddrs(&ifaddr) == -1)
+    return NULL;
+
+  for (ifa = ifaddr, n = 0; ifa != NULL; ifa = ifa->ifa_next, n++) {
+    if (ifa->ifa_addr == NULL)
+      continue;
+
+    family = ifa->ifa_addr->sa_family;
+
+    if(ifa->ifa_flags & IFF_LOOPBACK)
+      continue;
+
+    /* For an AF_INET* interface address, display the address */
+    if (family == AF_INET || family == AF_INET6) {
+      s = getnameinfo(ifa->ifa_addr,
+                      (family == AF_INET) ? sizeof(struct sockaddr_in) :
+                      sizeof(struct sockaddr_in6),
+                      host, NI_MAXHOST,
+                      NULL, 0, NI_NUMERICHOST);
+      if (s != 0) {
+        printf("getnameinfo() failed: %s\n", gai_strerror(s));
+        return NULL;
+      }
+      if (family == AF_INET) {
+        addr = (char *)malloc(strlen(host) + 1);
+        memset(addr, 0, strlen(host) + 1);
+        memcpy(addr, host, strlen(host));
+        addrlen = strlen(host);
+        break;
+      }
+      printf("address: <%s>\n", host);
+
+    }
+  }
+
+  if (ifa == NULL) {
+    freeifaddrs(ifaddr);
+    return NULL;
+  }
+
+  //printf("final addr: %s\n", addr);
+  //printf("final addrlen: %d\n", addrlen);
+  freeifaddrs(ifaddr);
+
+  return addr;
 }
 
