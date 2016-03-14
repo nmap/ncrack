@@ -334,9 +334,9 @@ AC_CONFIG_SUBDIRS(opensshlib)
 # SSH, SMB, RDP modules rely on crypto functions which rely on OpenSSL, so
 # build them only in case the system has OpenSSL.
 MODULES_SRCS="ncrack_ssh.cc ncrack_smb.cc ncrack_rdp.cc ncrack_sip.cc \
-ncrack_redis.cc"
+ncrack_redis.cc ncrack_psql.cc"
 MODULES_OBJS="ncrack_ssh.o ncrack_smb.o ncrack_rdp.o ncrack_sip.o \
-ncrack_redis.o"
+ncrack_redis.o ncrack_psql.o"
 
 fi
 
