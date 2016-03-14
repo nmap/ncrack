@@ -21,6 +21,10 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
+#ifdef WIN32
+#include "winfixssh.h"
+#endif
+
 #include "sshbuf.h"
 
 #ifdef __cplusplus

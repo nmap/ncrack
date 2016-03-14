@@ -52,11 +52,13 @@
 
 #ifndef HAVE_GETRRSETBYNAME
 
+#ifndef WIN32
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/nameser.h>
 #include <netdb.h>
 #include <resolv.h>
+#endif
 
 #ifndef HFIXEDSZ
 #define HFIXEDSZ 12

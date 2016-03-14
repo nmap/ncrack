@@ -60,7 +60,7 @@ ssh_sha256_final(EVP_MD_CTX *ctxt, unsigned char *digest)
 static int
 ssh_sha256_cleanup(EVP_MD_CTX *ctxt)
 {
-	memset(ctxt->md_data, 0, sizeof(SHA256_CTX));
+	memset(ctxt->md_data, 0, sizeof(SHA256_CTX_struct));
 	return (1);
 }
 
@@ -77,7 +77,7 @@ evp_ssh_sha256(void)
 	ssh_sha256.final = ssh_sha256_final;
 	ssh_sha256.cleanup = ssh_sha256_cleanup;
 	ssh_sha256.block_size = SHA256_BLOCK_LENGTH;
-	ssh_sha256.ctx_size = sizeof(SHA256_CTX);
+	ssh_sha256.ctx_size = sizeof(SHA256_CTX_struct);
 
 	return (&ssh_sha256);
 }

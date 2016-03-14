@@ -26,8 +26,10 @@
 #include "includes.h"
 
 #include <sys/types.h>
+#ifndef WIN32
 #include <netinet/in.h>
 #include <resolv.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 

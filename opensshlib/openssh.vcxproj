@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -15,15 +15,18 @@
     <ProjectGuid>{B630C8F7-3138-1337-11FF-DEADBEEFAC5F}</ProjectGuid>
     <RootNamespace>opensshlib</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -41,8 +44,8 @@
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Debug\</IntDir>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Release\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -66,7 +69,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalOptions>/D "_CRT_SECURE_NO_DEPRECATE" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/D "_CRT_SECURE_NO_DEPRECATE" /DUMAC_OUTPUT_LEN=16 /Dumac_new=umac128_new /Dumac_update=umac128_update /Dumac_final=umac128_final /Dumac_delete=umac128_delete %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>..\mswin32;..\;..\mswin32\OpenSSL\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>
@@ -81,52 +84,87 @@
     <Lib />
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="acss.c" />
+    <ClCompile Include="addrmatch.c" />
+    <ClCompile Include="arc4random.c" />
+    <ClCompile Include="base64.c" />
+    <ClCompile Include="bcrypt_pbkdf.c" />
+    <ClCompile Include="blocks.c" />
     <ClCompile Include="bsd-asprintf.c" />
+    <ClCompile Include="blowfish.c" />
+    <ClCompile Include="bsd-misc.c" />
     <ClCompile Include="bsd-snprintf.c" />
     <ClCompile Include="bufaux.c" />
     <ClCompile Include="bufbn.c" />
     <ClCompile Include="buffer.c" />
-    <ClCompile Include="cipher-3des1.c" />
-    <ClCompile Include="cipher-acss.c" />
-    <ClCompile Include="cipher-aes.c" />
+    <ClCompile Include="chacha.c" />
+    <ClCompile Include="cipher-chachapoly.c" />
     <ClCompile Include="cipher-bf1.c" />
+    <ClCompile Include="cipher-3des1.c" />
+    <ClCompile Include="cipher-aes.c" />
     <ClCompile Include="cipher-ctr.c" />
     <ClCompile Include="cipher.c" />
     <ClCompile Include="cleanup.c" />
     <ClCompile Include="compat.c" />
     <ClCompile Include="crc32.c" />
     <ClCompile Include="deattack.c" />
-    <ClCompile Include="dh.c" />
+    <ClCompile Include="digest-libc.c" />
+    <ClCompile Include="digest-openssl.c" />
+    <ClCompile Include="ed25519.c" />
+    <ClCompile Include="explicit_bzero.c" />
     <ClCompile Include="fatal.c" />
+    <ClCompile Include="ge25519.c" />
+    <ClCompile Include="fe25519.c" />
+    <ClCompile Include="hash.c" />
+    <ClCompile Include="hmac.c" />
     <ClCompile Include="kex.c" />
+    <ClCompile Include="kexc25519.c" />
+    <ClCompile Include="kexc25519c.c" />
     <ClCompile Include="kexdh.c" />
     <ClCompile Include="kexdhc.c" />
+    <ClCompile Include="kexecdh.c" />
+    <ClCompile Include="kexecdhc.c" />
     <ClCompile Include="kexgex.c" />
-    <ClCompile Include="kexgexc.c" />
     <ClCompile Include="key.c" />
-    <ClCompile Include="log.c" />
+    <ClCompile Include="kexgexc.c" />
     <ClCompile Include="mac.c" />
-    <ClCompile Include="match.c" />
     <ClCompile Include="md-sha256.c" />
-    <ClCompile Include="misc.c" />
+    <ClCompile Include="match.c" />
     <ClCompile Include="moduli.c" />
-    <ClCompile Include="packet.c" />
+    <ClCompile Include="opacket.c" />
+    <ClCompile Include="poly1305.c" />
+    <ClCompile Include="reallocarray.c" />
     <ClCompile Include="rijndael.c" />
     <ClCompile Include="rsa.c" />
+    <ClCompile Include="sc25519.c" />
     <ClCompile Include="sha2.c" />
+    <ClCompile Include="smult_curve25519_ref.c" />
+    <ClCompile Include="ssh-ecdsa.c" />
     <ClCompile Include="ssh-dss.c" />
     <ClCompile Include="ssh-rsa.c" />
-    <ClCompile Include="sshconnect.c" />
-    <ClCompile Include="sshconnect2.c" />
+    <ClCompile Include="ssh-ed25519.c" />
+    <ClCompile Include="sshbuf-getput-basic.c" />
+    <ClCompile Include="sshbuf-misc.c" />
+    <ClCompile Include="sshbuf-getput-crypto.c" />
+    <ClCompile Include="sshbuf.c" />
+    <ClCompile Include="ssherr.c" />
+    <ClCompile Include="sshkey.c" />
     <ClCompile Include="strlcat.c" />
-    <ClCompile Include="strlcpy.c" />
+    <ClCompile Include="strtonum.c" />
     <ClCompile Include="strsep.c" />
-    <ClCompile Include="umac.c" />
+    <ClCompile Include="strlcpy.c" />
+    <ClCompile Include="timingsafe_bcmp.c" />
+    <ClCompile Include="verify.c" />
+    <ClCompile Include="uuencode.c" />
+    <ClCompile Include="vis.c" />
     <ClCompile Include="xmalloc.c" />
+    <ClCompile Include="packet.c" />
+    <ClCompile Include="log.c" />
+    <ClCompile Include="dh.c" />
+    <ClCompile Include="sshconnect2.c" />
+    <ClCompile Include="umac.c" />
+    <ClCompile Include="misc.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="acss.h" />
     <ClInclude Include="audit.h" />
     <ClInclude Include="auth.h" />
     <ClInclude Include="buffer.h" />
@@ -143,6 +181,8 @@
     <ClInclude Include="mac.h" />
     <ClInclude Include="match.h" />
     <ClInclude Include="misc.h" />
+    <ClInclude Include="opacket.h" />
+    <ClInclude Include="sshbuf.h" />
     <ClInclude Include="myproposal.h" />
     <ClInclude Include="openbsd-compat.h" />
     <ClInclude Include="openssh.h" />

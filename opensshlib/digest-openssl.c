@@ -82,7 +82,11 @@ ssh_digest_alg_by_name(const char *name)
 	int alg;
 
 	for (alg = 0; digests[alg].id != -1; alg++) {
+#ifndef WIN32
 		if (strcasecmp(name, digests[alg].name) == 0)
+#else
+		if (stricmp(name, digests[alg].name) == 0)
+#endif
 			return digests[alg].id;
 	}
 	return -1;

@@ -38,25 +38,37 @@
  */
 
 #include "includes.h"
+
+#ifdef WIN32
+#include "winfixssh.h"
+#endif
  
+#ifndef WIN32
 #include <sys/param.h>	/* MIN roundup */
+#endif
 #include <sys/types.h>
 #include "sys-queue.h"
+#ifndef WIN32
 #include <sys/socket.h>
+#endif
 #ifdef HAVE_SYS_TIME_H
 # include <sys/time.h>
 #endif
 
+#ifndef WIN32
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
+#endif
 
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 #include <limits.h>
 #include <signal.h>
 #include <time.h>
@@ -385,6 +397,7 @@ ssh_packet_start_discard(ncrack_ssh_state *nstate, struct sshenc *enc,
 int
 ssh_packet_connection_is_on_socket(struct ssh *ssh)
 {
+#if 0
 	struct session_state *state = ssh->state;
 	struct sockaddr_storage from, to;
 	socklen_t fromlen, tolen;
@@ -407,7 +420,9 @@ ssh_packet_connection_is_on_socket(struct ssh *ssh)
 	if (from.ss_family != AF_INET && from.ss_family != AF_INET6)
 		return 0;
 	return 1;
+#endif
 }
+
 
 void
 ssh_packet_get_bytes(struct ssh *ssh, u_int64_t *ibytes, u_int64_t *obytes)
@@ -423,6 +438,7 @@ ssh_packet_get_bytes(struct ssh *ssh, u_int64_t *ibytes, u_int64_t *obytes)
 int
 ssh_packet_connection_af(struct ssh *ssh)
 {
+#if 0
 	struct sockaddr_storage to;
 	socklen_t tolen = sizeof(to);
 
@@ -436,6 +452,7 @@ ssh_packet_connection_af(struct ssh *ssh)
 		return AF_INET;
 #endif
 	return to.ss_family;
+#endif
 }
 
 /* Sets the connection into non-blocking mode. */
@@ -491,6 +508,7 @@ ssh_remote_ipaddr(struct ssh *ssh)
 void
 ssh_packet_close(struct ssh *ssh)
 {
+#if 0
 	struct session_state *state = ssh->state;
 	int r;
 	u_int mode;
@@ -548,6 +566,7 @@ ssh_packet_close(struct ssh *ssh)
 	}
 	free(ssh->state);
 	ssh->state = NULL;
+#endif
 }
 
 /* Sets remote side protocol flags. */

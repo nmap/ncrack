@@ -50,6 +50,10 @@
 # define _NEED_SHA2 1
 #endif
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #if defined(_NEED_SHA2) && !defined(HAVE_SHA256_UPDATE)
 
 /*** SHA-256/384/512 Various Length Definitions ***********************/
@@ -69,23 +73,23 @@ typedef struct _SHA256_CTX {
 	u_int32_t	state[8];
 	u_int64_t	bitcount;
 	u_int8_t	buffer[SHA256_BLOCK_LENGTH];
-} SHA256_CTX;
+} SHA256_CTX_struct;
 typedef struct _SHA512_CTX {
 	u_int64_t	state[8];
 	u_int64_t	bitcount[2];
 	u_int8_t	buffer[SHA512_BLOCK_LENGTH];
-} SHA512_CTX;
+} SHA512_CTX_struct;
 
-typedef SHA512_CTX SHA384_CTX;
+typedef SHA512_CTX_struct SHA384_CTX;
 
-void SHA256_Init(SHA256_CTX *);
+void ssh_SHA256_Init(SHA256_CTX_struct *);
 void SHA256_Transform(u_int32_t state[8], const u_int8_t [SHA256_BLOCK_LENGTH]);
-void SHA256_Update(SHA256_CTX *, const u_int8_t *, size_t)
+void ssh_SHA256_Update(SHA256_CTX_struct *, const u_int8_t *, size_t)
 	__attribute__((__bounded__(__string__,2,3)));
-void SHA256_Pad(SHA256_CTX *);
-void SHA256_Final(u_int8_t [SHA256_DIGEST_LENGTH], SHA256_CTX *)
+void SHA256_Pad(SHA256_CTX_struct *);
+void ssh_SHA256_Final(u_int8_t [SHA256_DIGEST_LENGTH], SHA256_CTX_struct *)
 	__attribute__((__bounded__(__minbytes__,1,SHA256_DIGEST_LENGTH)));
-char *SHA256_End(SHA256_CTX *, char *)
+char *SHA256_End(SHA256_CTX_struct *, char *)
 	__attribute__((__bounded__(__minbytes__,2,SHA256_DIGEST_STRING_LENGTH)));
 char *SHA256_File(const char *, char *)
 	__attribute__((__bounded__(__minbytes__,2,SHA256_DIGEST_STRING_LENGTH)));
@@ -95,12 +99,12 @@ char *SHA256_Data(const u_int8_t *, size_t, char *)
 	__attribute__((__bounded__(__string__,1,2)))
 	__attribute__((__bounded__(__minbytes__,3,SHA256_DIGEST_STRING_LENGTH)));
 
-void SHA384_Init(SHA384_CTX *);
+void ssh_SHA384_Init(SHA384_CTX *);
 void SHA384_Transform(u_int64_t state[8], const u_int8_t [SHA384_BLOCK_LENGTH]);
-void SHA384_Update(SHA384_CTX *, const u_int8_t *, size_t)
+void ssh_SHA384_Update(SHA384_CTX *, const u_int8_t *, size_t)
 	__attribute__((__bounded__(__string__,2,3)));
 void SHA384_Pad(SHA384_CTX *);
-void SHA384_Final(u_int8_t [SHA384_DIGEST_LENGTH], SHA384_CTX *)
+void ssh_SHA384_Final(u_int8_t [SHA384_DIGEST_LENGTH], SHA384_CTX *)
 	__attribute__((__bounded__(__minbytes__,1,SHA384_DIGEST_LENGTH)));
 char *SHA384_End(SHA384_CTX *, char *)
 	__attribute__((__bounded__(__minbytes__,2,SHA384_DIGEST_STRING_LENGTH)));
@@ -112,14 +116,14 @@ char *SHA384_Data(const u_int8_t *, size_t, char *)
 	__attribute__((__bounded__(__string__,1,2)))
 	__attribute__((__bounded__(__minbytes__,3,SHA384_DIGEST_STRING_LENGTH)));
 
-void SHA512_Init(SHA512_CTX *);
+void ssh_SHA512_Init(SHA512_CTX_struct *);
 void SHA512_Transform(u_int64_t state[8], const u_int8_t [SHA512_BLOCK_LENGTH]);
-void SHA512_Update(SHA512_CTX *, const u_int8_t *, size_t)
+void ssh_SHA512_Update(SHA512_CTX_struct *, const u_int8_t *, size_t)
 	__attribute__((__bounded__(__string__,2,3)));
-void SHA512_Pad(SHA512_CTX *);
-void SHA512_Final(u_int8_t [SHA512_DIGEST_LENGTH], SHA512_CTX *)
+void SHA512_Pad(SHA512_CTX_struct *);
+void ssh_SHA512_Final(u_int8_t [SHA512_DIGEST_LENGTH], SHA512_CTX_struct *)
 	__attribute__((__bounded__(__minbytes__,1,SHA512_DIGEST_LENGTH)));
-char *SHA512_End(SHA512_CTX *, char *)
+char *SHA512_End(SHA512_CTX_struct *, char *)
 	__attribute__((__bounded__(__minbytes__,2,SHA512_DIGEST_STRING_LENGTH)));
 char *SHA512_File(const char *, char *)
 	__attribute__((__bounded__(__minbytes__,2,SHA512_DIGEST_STRING_LENGTH)));
@@ -130,5 +134,9 @@ char *SHA512_Data(const u_int8_t *, size_t, char *)
 	__attribute__((__bounded__(__minbytes__,3,SHA512_DIGEST_STRING_LENGTH)));
 
 #endif /* defined(_NEED_SHA2) && !defined(HAVE_SHA256_UPDATE) */
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* _SSHSHA2_H */

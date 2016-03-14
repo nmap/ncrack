@@ -214,7 +214,7 @@ static int handle_state_initial_socks4a(struct npool *nsp, struct nevent *nse,
 
   timeout = TIMEVAL_MSEC_SUBTRACT(nse->timeout, nsock_tod);
 
-  outgoing = safe_zalloc(outgoing_len);
+  outgoing = (uint8_t *)safe_zalloc(outgoing_len);
 
   /* Copy contents of socks4a data packet into memory */
   memcpy(outgoing, &socks4a, sizeof(socks4a));

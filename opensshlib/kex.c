@@ -25,7 +25,9 @@
 
 #include "includes.h"
 
+#ifndef WIN32
 #include <sys/param.h>	/* MAX roundup */
+#endif
 
 #include <signal.h>
 #include <stdarg.h>
@@ -569,10 +571,10 @@ ncrackssh_kex_input_kexinit(ncrack_ssh_state *nstate)
 	if ((r = kex_choose_conf(nstate)) != 0)
 		return r;
 
-	if (kex->kex_type < KEX_MAX && kex->kex[kex->kex_type] != NULL) {
+	if (kex->kex_type < KEX_MAX && kex->kexm[kex->kex_type] != NULL) {
     //printf("kex type %d\n", kex->kex_type);
     //printf("kex %d \n", kex->kex[kex->kex_type]);
-		return (kex->kex[kex->kex_type])(nstate);
+		return (kex->kexm[kex->kex_type])(nstate);
   }
 
 	return SSH_ERR_INTERNAL_ERROR;

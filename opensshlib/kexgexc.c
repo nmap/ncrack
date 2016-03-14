@@ -28,7 +28,9 @@
 
 #ifdef WITH_OPENSSL
 
+#ifndef WIN32
 #include <sys/param.h>
+#endif
 #include <sys/types.h>
 
 #include <openssl/dh.h>

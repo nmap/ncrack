@@ -15,32 +15,47 @@
 
 #include "includes.h"
 
+#ifndef WIN32
 #include <sys/param.h>	/* roundup */
+#endif
 #include <sys/types.h>
+
+#ifndef WIN32
 #include <sys/wait.h>
+#endif
 #include <sys/stat.h>
+#ifndef WIN32
 #include <sys/socket.h>
+#endif
 #ifdef HAVE_SYS_TIME_H
 # include <sys/time.h>
 #endif
 
+#ifndef WIN32
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif
 
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#ifndef WIN32
 #include <netdb.h>
+#endif
 #ifdef HAVE_PATHS_H
 #include <paths.h>
 #endif
+#ifndef WIN32
 #include <pwd.h>
+#endif
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 
 #include "xmalloc.h"
 #include "key.h"
@@ -57,12 +72,19 @@
 #include "log.h"
 #include "misc.h"
 #include "readconf.h"
+#ifndef WIN32
 #include "atomicio.h"
+#endif
+
+#ifndef WIN32
 #include "dns.h"
 #include "roaming.h"
 #include "monitor_fdpass.h"
+#endif
 #include "ssh2.h"
+#ifndef WIN32
 #include "version.h"
+#endif
 #include "authfile.h"
 #include "ssherr.h"
 
@@ -82,6 +104,8 @@ extern uid_t original_effective_uid;
 
 static int show_other_keys(struct hostkeys *, Key *);
 static void warn_changed_key(Key *);
+
+#if 0
 
 /* Expand a proxy command */
 static char *
@@ -1487,3 +1511,5 @@ ssh_local_cmd(const char *args)
 
 	return (WEXITSTATUS(status));
 }
+
+#endif

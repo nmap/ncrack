@@ -31,7 +31,9 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 
 #ifndef HAVE_ARC4RANDOM
 

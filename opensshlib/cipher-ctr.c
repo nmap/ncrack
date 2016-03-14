@@ -16,6 +16,8 @@
  */
 #include "includes.h"
 
+#include "openssl-compat.h"
+
 #if defined(WITH_OPENSSL) && !defined(OPENSSL_HAVE_EVPCTR)
 #include <sys/types.h>
 
@@ -28,7 +30,9 @@
 #include "log.h"
 
 /* compatibility with old or broken OpenSSL versions */
+#ifndef WIN32
 #include "openbsd-compat/openssl-compat.h"
+#endif
 
 #ifndef USE_BUILTIN_RIJNDAEL
 #include <openssl/aes.h>

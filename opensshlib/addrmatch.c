@@ -19,11 +19,13 @@
 #include "includes.h"
 
 #include <sys/types.h>
+#ifndef WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include <netdb.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -31,6 +33,8 @@
 
 #include "match.h"
 #include "log.h"
+
+#if 0
 
 struct xaddr {
 	sa_family_t	af;
@@ -497,3 +501,5 @@ addr_match_cidr_list(const char *addr, const char *_list)
 
 	return ret;
 }
+
+#endif

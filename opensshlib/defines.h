@@ -45,8 +45,11 @@ enum
 /*
  * Definitions for IP type of service (ip_tos)
  */
+#ifndef WIN32
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
+#endif
+
 #ifndef IPTOS_LOWDELAY
 # define IPTOS_LOWDELAY          0x10
 # define IPTOS_THROUGHPUT        0x08
@@ -106,7 +109,9 @@ enum
 #endif /* MAXPATHLEN */
 
 #ifndef HOST_NAME_MAX
+#ifndef WIN32
 # include "netdb.h" /* for MAXHOSTNAMELEN */
+#endif
 # if defined(_POSIX_HOST_NAME_MAX)
 #  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
 # elif defined(MAXHOSTNAMELEN)
@@ -621,7 +626,9 @@ struct winsize {
 #endif /* !defined(HAVE_MEMMOVE) && defined(HAVE_BCOPY) */
 
 #ifndef GETPGRP_VOID
+#ifndef WIN32
 # include <unistd.h>
+#endif
 # define getpgrp() getpgrp(0)
 #endif
 

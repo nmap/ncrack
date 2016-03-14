@@ -265,7 +265,11 @@ cipher_number(const char *name)
 	if (name == NULL)
 		return -1;
 	for (c = ciphers; c->name != NULL; c++)
+#ifndef WIN32
 		if (strcasecmp(c->name, name) == 0)
+#else
+		if (stricmp(c->name, name) == 0)
+#endif
 			return c->number;
 	return -1;
 }

@@ -29,7 +29,9 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <time.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 
 #ifndef HAVE___PROGNAME
 char *__progname;
@@ -104,6 +106,7 @@ const char *strssh_error(int e)
 }
 #endif
 
+#ifndef WIN32
 #ifndef HAVE_UTIMES
 int utimes(char *filename, struct timeval *tvp)
 {
@@ -115,7 +118,9 @@ int utimes(char *filename, struct timeval *tvp)
 	return (utime(filename, &ub));
 }
 #endif 
+#endif
 
+#ifndef WIN32
 #ifndef HAVE_TRUNCATE
 int truncate(const char *path, off_t length)
 {
@@ -134,6 +139,7 @@ int truncate(const char *path, off_t length)
 	return(ret);
 }
 #endif /* HAVE_TRUNCATE */
+#endif
 
 #if !defined(HAVE_NANOSLEEP) && !defined(HAVE_NSLEEP)
 int nanosleep(const struct timespec *req, struct timespec *rem)
@@ -177,6 +183,7 @@ int usleep(unsigned int useconds)
 }
 #endif
 
+#ifndef WIN32
 #ifndef HAVE_TCGETPGRP
 pid_t
 tcgetpgrp(int fd)
@@ -189,6 +196,7 @@ tcgetpgrp(int fd)
 		return(ctty_pgrp);
 }
 #endif /* HAVE_TCGETPGRP */
+#endif // WIN32
 
 #ifndef HAVE_TCSENDBREAK
 int
@@ -211,6 +219,7 @@ tcsendbreak(int fd, int duration)
 }
 #endif /* HAVE_TCSENDBREAK */
 
+#ifndef WIN32
 mysig_t
 mysignal(int sig, mysig_t act)
 {
@@ -237,6 +246,7 @@ mysignal(int sig, mysig_t act)
 	return (signal(sig, act));
 #endif
 }
+#endif
 
 #ifndef HAVE_STRDUP
 char *

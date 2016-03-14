@@ -19,6 +19,8 @@
 #ifndef _BSD_MISC_H
 #define _BSD_MISC_H
 
+#ifndef WIN32
+
 #include "includes.h"
 
 char *ssh_get_progname(char *);
@@ -121,5 +123,7 @@ pid_t getpgid(pid_t);
 #ifndef HAVE_KRB5_FREE_ERROR_MESSAGE
 # define krb5_free_error_message(a,b) do { } while(0)
 #endif
+
+#endif // WIN32
 
 #endif /* _BSD_MISC_H */

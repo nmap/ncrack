@@ -94,8 +94,12 @@
 #include "Service.h"
 #include "modules.h"
 #include "http.h"
-#include <ifaddrs.h>
-#include <net/if.h>
+#ifndef WIN32
+  #include <ifaddrs.h>
+  #include <net/if.h>
+#else
+  #include <Iptypes.h>
+#endif
 
 using namespace std;
 
@@ -347,10 +351,11 @@ sip_loop_read(nsock_pool nsp, Connection *con)
 
 char *get_ip_address(void) {
 
+  char *addr = NULL;
+#ifndef WIN32
   struct ifaddrs *ifaddr, *ifa;
   int family, s, n;
   char host[NI_MAXHOST];
-  char *addr = NULL;
   int addrlen;
 
   if (getifaddrs(&ifaddr) == -1)
@@ -396,6 +401,29 @@ char *get_ip_address(void) {
   //printf("final addr: %s\n", addr);
   //printf("final addrlen: %d\n", addrlen);
   freeifaddrs(ifaddr);
+
+#else
+
+  IP_ADAPTER_INFO  *pAdapterInfo;
+  ULONG            ulOutBufLen;
+  DWORD            dwRetVal;
+  PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
+
+  while (pAdapter) {
+	  printf("Adapter Name: %s\n", pAdapter->AdapterName);
+	  printf("Adapter Desc: %s\n", pAdapter->Description);
+	  printf("\tAdapter Addr: \t");
+	  for (UINT i = 0; i < pAdapter->AddressLength; i++) {
+		  if (i == (pAdapter->AddressLength - 1))
+			  printf("%.2X\n", (int)pAdapter->Address[i]);
+		  else
+			  printf("%.2X-", (int)pAdapter->Address[i]);
+	  }
+	  printf("IP Address: %s\n", pAdapter->IpAddressList.IpAddress.String);
+  }
+
+
+#endif
 
   return addr;
 }

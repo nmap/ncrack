@@ -16,9 +16,15 @@
 #ifndef PACKET_H
 #define PACKET_H
 
+#ifdef WIN32
+#include "winfixssh.h"
+#endif
+
 #include "opensshlib.h"
 
+#ifndef WIN32
 #include <termios.h>
+#endif
 
 #ifdef WITH_OPENSSL
 # include <openssl/bn.h>
@@ -36,8 +42,11 @@
 # define EC_POINT	void
 #endif /* WITH_OPENSSL */
 
+#ifndef WIN32
 #include <signal.h>
+#endif
 #include "sys-queue.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,7 +76,7 @@ struct ssh {
 	int remote_port;
 
 	/* Dispatcher table */
-	dispatch_fn *dispatch[DISPATCH_MAX];
+//	dispatch_fn *dispatch[DISPATCH_MAX];
 	/* number of packets to ignore in the dispatcher */
 	int dispatch_skip_packets;
 

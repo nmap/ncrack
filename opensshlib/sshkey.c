@@ -27,9 +27,12 @@
 
 #include "includes.h"
 
+#ifndef WIN32
 #include <sys/param.h>	/* MIN MAX */
 #include <sys/types.h>
 #include <netinet/in.h>
+#endif
+
 
 #ifdef WITH_OPENSSL
 #include <openssl/evp.h>
@@ -43,7 +46,9 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef WIN32
 #include <resolv.h>
+#endif
 #ifdef HAVE_UTIL_H
 #include <util.h>
 #endif /* HAVE_UTIL_H */
@@ -172,7 +177,11 @@ sshkey_type_from_name(const char *name)
 	for (kt = keytypes; kt->type != -1; kt++) {
 		/* Only allow shortname matches for plain key types */
 		if ((kt->name != NULL && strcmp(name, kt->name) == 0) ||
+#ifndef WIN32
 		    (!kt->cert && strcasecmp(kt->shortname, name) == 0))
+#else
+			(!kt->cert && stricmp(kt->shortname, name) == 0))
+#endif
 			return kt->type;
 	}
 	return KEY_UNSPEC;

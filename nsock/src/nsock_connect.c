@@ -361,7 +361,7 @@ nsock_event_id nsock_connect_tcp_socks4a(nsock_pool nsp, nsock_iod ms_iod,
   struct npool *ms = (struct npool *)nsp;
   struct nevent *nse;
 
-  nsi->hostname = safe_malloc(strlen(targetname));
+  nsi->hostname = (char *)safe_malloc(strlen(targetname));
   strncpy(nsi->hostname, targetname, strlen(targetname));
   assert(nsi->state == NSIOD_STATE_INITIAL || nsi->state == NSIOD_STATE_UNKNOWN);
 
@@ -378,7 +378,7 @@ nsock_event_id nsock_connect_tcp_socks4a(nsock_pool nsp, nsock_iod ms_iod,
   nsock_connect_internal(ms, nse, SOCK_STREAM, IPPROTO_TCP, &ss, sizeof(ss), port);
   nsock_pool_add_event(ms, nse);
 
-  return nse->iod;
+  return nse->id;
 }
 
 /* Request an SCTP association to another system (by IP address).  The in_addr

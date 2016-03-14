@@ -20,7 +20,9 @@
 
 #include <sys/types.h>
 
+#ifndef WIN32
 #include <pwd.h>
+#endif
 
 void solaris_contract_pre_fork(void);
 void solaris_contract_post_fork_child(void);

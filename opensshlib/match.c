@@ -180,6 +180,7 @@ match_hostname(const char *host, const char *pattern)
 	return match_pattern_list(host, pattern, 1);
 }
 
+#if 0
 /*
  * returns 0 if we get a negative match for the hostname or the ip
  * or if we get no match at all.  returns -1 on error, or 1 on
@@ -229,6 +230,7 @@ match_user(const char *user, const char *host, const char *ipaddr,
 
 	return ret;
 }
+#endif
 
 /*
  * Returns first item from client-list that is also supported by server-list,

@@ -36,6 +36,8 @@ enum {
 
 struct ssh;
 
+#if 0
+
 typedef int dispatch_fn(int, u_int32_t, void *);
 
 int	dispatch_protocol_error(int, u_int32_t, void *);
@@ -54,5 +56,7 @@ void	ssh_dispatch_run_fatal(struct ssh *, int, volatile sig_atomic_t *, void *);
 	ssh_dispatch_set(active_state, (type), (fn))
 #define dispatch_run(mode, done, ctxt) \
 	ssh_dispatch_run_fatal(active_state, (mode), (done), (ctxt))
+
+#endif
 
 #endif

@@ -34,7 +34,7 @@ struct Forward {
 /* Common server and client forwarding options. */
 struct ForwardOptions {
 	int	 gateway_ports; /* Allow remote connects to forwarded ports. */
-	mode_t	 streamlocal_bind_mask; /* umask for streamlocal binds */
+//	mode_t	 streamlocal_bind_mask; /* umask for streamlocal binds */
 	int	 streamlocal_bind_unlink; /* unlink socket before bind */
 };
 

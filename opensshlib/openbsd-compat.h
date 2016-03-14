@@ -32,9 +32,13 @@
 #include "includes.h"
 
 #include <sys/types.h>
+#ifndef WIN32
 #include <pwd.h>
+#endif
 
+#ifndef WIN32
 #include <sys/socket.h>
+#endif
 
 /* OpenBSD function replacements */
 #include "base64.h"
@@ -114,6 +118,8 @@ int mkstemp(char *path);
 char *mkdtemp(char *path);
 #endif 
 
+#ifndef WIN32
+
 #ifndef HAVE_DAEMON
 int daemon(int nochdir, int noclose);
 #endif 
@@ -134,6 +140,7 @@ int	scan_scaled(char *, long long *);
 #if defined(BROKEN_INET_NTOA) || !defined(HAVE_INET_NTOA)
 char *inet_ntoa(struct in_addr in);
 #endif
+
 
 #ifndef HAVE_INET_NTOP
 const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
@@ -201,7 +208,9 @@ int asprintf(char **, const char *, ...);
 #endif 
 
 #ifndef HAVE_OPENPTY
+#ifndef WIN32
 # include <sys/ioctl.h>	/* for struct winsize */
+#endif
 int openpty(int *, int *, char *, struct termios *, struct winsize *);
 #endif /* HAVE_OPENPTY */
 
@@ -298,5 +307,7 @@ int kludge_FD_ISSET(int, fd_set *);
 #  endif /* __GLIBC_PREREQ(2, 15) && (_FORTIFY_SOURCE > 0) */
 # endif /* __GNU_LIBRARY__ && __GLIBC_PREREQ */
 #endif /* HAVE_FEATURES_H && _FORTIFY_SOURCE */
+
+#endif // WIN32
 
 #endif /* _OPENBSD_COMPAT_H */

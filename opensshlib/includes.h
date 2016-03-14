@@ -16,15 +16,22 @@
 #ifndef INCLUDES_H
 #define INCLUDES_H
 
-#include "config.h"
+#ifndef WIN32
+ #include "config.h"
+ #include <sys/types.h>
+ #include <sys/param.h>
+ #include <sys/socket.h> /* For CMSG_* */
+#else
+ #include "winfixssh.h"
+ #include "winsock.h"
+ #include <stdlib.h> // for rand()
+#endif
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE /* activate extra prototypes for glibc */
 #endif
 
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/socket.h> /* For CMSG_* */
+
 
 #ifdef HAVE_LIMITS_H
 # include <limits.h> /* For PATH_MAX, _POSIX_HOST_NAME_MAX */
@@ -86,7 +93,7 @@
 #ifdef HAVE_STDINT_H
 # include <stdint.h>
 #endif
-#include <termios.h>
+//#include <termios.h>
 #ifdef HAVE_SYS_BITYPES_H
 # include <sys/bitypes.h> /* For u_intXX_t */
 #endif
@@ -112,8 +119,11 @@
 #include <sys/ptms.h>	/* for grantpt() and friends */
 #endif
 
-#include <netinet/in.h>
-#include <netinet/in_systm.h> /* For typedefs */
+#ifndef WIN32
+  #include <netinet/in.h>
+  #include <netinet/in_systm.h> /* For typedefs */
+#endif
+
 #ifdef HAVE_RPC_TYPES_H
 # include <rpc/types.h> /* For INADDR_LOOPBACK */
 #endif

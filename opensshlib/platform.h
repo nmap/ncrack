@@ -15,10 +15,11 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
+#ifndef WIN32
 #include <sys/types.h>
 
 #include <pwd.h>
+#endif
 
 void platform_pre_listen(void);
 void platform_pre_fork(void);

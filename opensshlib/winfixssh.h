@@ -5,12 +5,19 @@ typedef unsigned char u_int8_t;
 typedef __int16 int16_t;
 typedef unsigned __int16 u_int16_t;
 typedef __int32 int32_t;
+typedef __int64 int64_t;
 typedef unsigned __int32 u_int32_t;
 typedef unsigned __int64 u_int64_t;
+typedef unsigned int uid_t;
+typedef int socklen_t;
+typedef int sig_atomic_t;
 
 #define SIZEOF_CHAR 1
 #define SIZEOF_SHORT_INT 2
 #define SIZEOF_INT 4
+
+#define WITH_OPENSSL 1
+#define OPENSSL_HAS_ECC 1
 
 #ifdef _MSC_VER
 /* <wspiapi.h> only comes with Visual Studio. */
@@ -19,11 +26,14 @@ typedef unsigned __int64 u_int64_t;
 #undef HAVE_WSPIAPI_H
 #endif
 
+#define HAVE_USLEEP 1
+
 #define HAVE_GETADDRINFO 1
 #define HAVE_GETNAMEINFO 1
 
-#if 0
 #define HAVE_SNPRINTF 1
+
+#if 0
 #define HAVE_VASPRINTF 1
 #define HAVE_VSNPRINTF 1
 #endif

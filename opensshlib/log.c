@@ -43,8 +43,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef WIN32
 #include <syslog.h>
 #include <unistd.h>
+#endif
 #include <errno.h>
 #if defined(HAVE_STRNVIS) && defined(HAVE_VIS_H) && !defined(BROKEN_STRNVIS)
 # include <vis.h>
@@ -55,7 +57,9 @@
 static LogLevel log_level = SYSLOG_LEVEL_INFO;
 static int log_on_stderr = 1;
 static int log_stderr_fd = STDERR_FILENO;
+#ifndef WIN32
 static int log_facility = LOG_AUTH;
+#endif
 static char *argv0;
 static log_handler_fn *log_handler;
 static void *log_handler_ctx;
@@ -112,7 +116,11 @@ log_facility_number(char *name)
 
 	if (name != NULL)
 		for (i = 0; log_facilities[i].name; i++)
+#ifndef WIN32
 			if (strcasecmp(log_facilities[i].name, name) == 0)
+#else
+			if (stricmp(log_facilities[i].name, name) == 0)
+#endif
 				return log_facilities[i].val;
 	return SYSLOG_FACILITY_NOT_SET;
 }
@@ -135,7 +143,11 @@ log_level_number(char *name)
 
 	if (name != NULL)
 		for (i = 0; log_levels[i].name; i++)
+#ifndef WIN32
 			if (strcasecmp(log_levels[i].name, name) == 0)
+#else
+			if (stricmp(log_levels[i].name, name) == 0)
+#endif
 				return log_levels[i].val;
 	return SYSLOG_LEVEL_NOT_SET;
 }
@@ -240,6 +252,7 @@ debug3(const char *fmt,...)
 void
 log_init(char *av0, LogLevel level, SyslogFacility facility, int on_stderr)
 {
+#if 0
 #if defined(HAVE_OPENLOG_R) && defined(SYSLOG_DATA_INIT)
 	struct syslog_data sdata = SYSLOG_DATA_INIT;
 #endif
@@ -328,15 +341,18 @@ log_init(char *av0, LogLevel level, SyslogFacility facility, int on_stderr)
 	openlog(argv0 ? argv0 : __progname, LOG_PID, log_facility);
 	closelog();
 #endif
+#endif
 }
 
 void
 log_change_level(LogLevel new_log_level)
 {
+#if 0
 	/* no-op if log_init has not been called */
 	if (argv0 == NULL)
 		return;
 	log_init(argv0, new_log_level, log_facility, log_on_stderr);
+#endif
 }
 
 int
@@ -381,6 +397,7 @@ do_log2(LogLevel level, const char *fmt,...)
 void
 do_log(LogLevel level, const char *fmt, va_list args)
 {
+#if 0
 #if defined(HAVE_OPENLOG_R) && defined(SYSLOG_DATA_INIT)
 	struct syslog_data sdata = SYSLOG_DATA_INIT;
 #endif
@@ -457,4 +474,5 @@ do_log(LogLevel level, const char *fmt, va_list args)
 #endif
 	}
 	errno = saved_errno;
+#endif
 }

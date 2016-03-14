@@ -27,9 +27,11 @@
 #include "includes.h"
 
 #include <sys/types.h>
+#ifndef WIN32
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#endif
 
 #include <limits.h>
 #include <stdarg.h>
@@ -37,17 +39,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifndef WIN32
 #include <unistd.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
+#endif
 
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#ifndef WIN32
 #include <netdb.h>
+#endif
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #include <pwd.h>
@@ -81,6 +87,7 @@ chop(char *s)
 int
 set_nonblock(int fd)
 {
+#if 0
 	int val;
 
 	val = fcntl(fd, F_GETFL, 0);
@@ -100,11 +107,13 @@ set_nonblock(int fd)
 		return (-1);
 	}
 	return (0);
+#endif
 }
 
 int
 unset_nonblock(int fd)
 {
+#if 0
 	int val;
 
 	val = fcntl(fd, F_GETFL, 0);
@@ -124,14 +133,17 @@ unset_nonblock(int fd)
 		return (-1);
 	}
 	return (0);
+#endif
 }
 
 const char *
 ssh_gai_strerror(int gaierr)
 {
+#if 0
 	if (gaierr == EAI_SYSTEM && errno != 0)
 		return strerror(errno);
 	return gai_strerror(gaierr);
+#endif
 }
 
 /* disable nagle on socket */
@@ -204,6 +216,7 @@ strdelim(char **s)
 struct passwd *
 pwcopy(struct passwd *pw)
 {
+#if 0
 	struct passwd *copy = xcalloc(1, sizeof(*copy));
 
 	copy->pw_name = xstrdup(pw->pw_name);
@@ -225,6 +238,7 @@ pwcopy(struct passwd *pw)
 	copy->pw_dir = xstrdup(pw->pw_dir);
 	copy->pw_shell = xstrdup(pw->pw_shell);
 	return copy;
+#endif
 }
 
 /*
@@ -244,6 +258,7 @@ a2port(const char *s)
 	return (int)port;
 }
 
+#if 0
 int
 a2tun(const char *s, int *remote)
 {
@@ -274,6 +289,7 @@ a2tun(const char *s, int *remote)
 
 	return (tun);
 }
+#endif
 
 #define SECONDS		1
 #define MINUTES		(SECONDS * 60)
@@ -519,6 +535,7 @@ freeargs(arglist *args)
 char *
 tilde_expand_filename(const char *filename, uid_t uid)
 {
+#if 0
 	const char *path, *sep;
 	char user[128], *ret;
 	struct passwd *pw;
@@ -555,6 +572,7 @@ tilde_expand_filename(const char *filename, uid_t uid)
 		fatal("tilde_expand_filename: Path too long");
 
 	return (ret);
+#endif
 }
 
 /*
@@ -719,6 +737,7 @@ tun_open(int tun, int mode)
 void
 sanitise_stdfd(void)
 {
+#if 0
 	int nullfd, dupfd;
 
 	if ((nullfd = dupfd = open(_PATH_DEVNULL, O_RDWR)) == -1) {
@@ -737,6 +756,7 @@ sanitise_stdfd(void)
 	}
 	if (nullfd > 2)
 		close(nullfd);
+#endif
 }
 
 char *
@@ -1018,6 +1038,7 @@ static const struct {
 	{ NULL, -1 }
 };
 
+#if 0
 int
 parse_ipqos(const char *cp)
 {
@@ -1037,6 +1058,7 @@ parse_ipqos(const char *cp)
 		return -1;
 	return val;
 }
+#endif
 
 const char *
 iptos2str(int iptos)

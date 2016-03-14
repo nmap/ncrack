@@ -157,7 +157,7 @@ struct kex {
 	int	(*host_key_index)(struct sshkey *, int, ncrack_ssh_state *);
 	int	(*sign)(struct sshkey *, struct sshkey *,
 	    u_char **, size_t *, const u_char *, size_t, u_int);
-	int	(*kex[KEX_MAX])(ncrack_ssh_state *);
+	int	(*kexm[KEX_MAX])(ncrack_ssh_state *nstate);
 	/* kex specific state */
 	DH	*dh;			/* DH */
 	u_int	min, max, nbits;	/* GEX */

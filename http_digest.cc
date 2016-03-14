@@ -134,7 +134,10 @@
    
 
 #include "http.h"
+
+#ifndef WIN32
 #include <sys/time.h>
+#endif
 
 #include <openssl/md5.h>
 #include <openssl/rand.h>

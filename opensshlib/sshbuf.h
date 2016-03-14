@@ -18,6 +18,10 @@
 #ifndef _SSHBUF_H
 #define _SSHBUF_H
 
+#ifdef WIN32
+#include "winfixssh.h"
+#endif
+
 #include <sys/types.h>
 #include <stdarg.h>
 #include <stdio.h>

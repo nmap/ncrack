@@ -25,7 +25,9 @@
 
 #include "includes.h"
 
+#ifndef WIN32
 #include <sys/param.h>	/* MIN */
+#endif
 
 #include <openssl/bn.h>
 #include <openssl/dh.h>

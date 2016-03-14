@@ -27,19 +27,27 @@
 #include "includes.h"
 
 #include <sys/types.h>
+
+#ifndef WIN32
 #include <sys/socket.h>
 #include <sys/wait.h>
+#endif
+
 #include <sys/stat.h>
 
 #include <errno.h>
 #include <fcntl.h>
+#ifndef WIN32
 #include <netdb.h>
 #include <pwd.h>
+#endif
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 #if defined(HAVE_STRNVIS) && defined(HAVE_VIS_H) && !defined(BROKEN_STRNVIS)
 #include <vis.h>
 #endif
@@ -200,15 +208,15 @@ ncrackssh_ssh_kex2(ncrack_ssh_state *nstate, char *client_version_string,
 		fatal("kex_setup: %s", ssh_err(r));
 	kex = nstate->kex;
 #ifdef WITH_OPENSSL
-	kex->kex[KEX_DH_GRP1_SHA1] = kexdh_client;
-	kex->kex[KEX_DH_GRP14_SHA1] = kexdh_client;
-	kex->kex[KEX_DH_GEX_SHA1] = kexgex_client;
-	kex->kex[KEX_DH_GEX_SHA256] = kexgex_client;
+	kex->kexm[KEX_DH_GRP1_SHA1] = kexdh_client;
+	kex->kexm[KEX_DH_GRP14_SHA1] = kexdh_client;
+	kex->kexm[KEX_DH_GEX_SHA1] = kexgex_client;
+	kex->kexm[KEX_DH_GEX_SHA256] = kexgex_client;
 # ifdef OPENSSL_HAS_ECC
-	kex->kex[KEX_ECDH_SHA2] = kexecdh_client;
+	kex->kexm[KEX_ECDH_SHA2] = kexecdh_client;
 # endif
 #endif
-	kex->kex[KEX_C25519_SHA256] = kexc25519_client;
+	kex->kexm[KEX_C25519_SHA256] = kexc25519_client;
 	kex->client_version_string = client_version_string;
 	kex->server_version_string = server_version_string;
 	kex->verify_host_key = &verify_host_key_callback;

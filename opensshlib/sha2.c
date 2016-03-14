@@ -279,7 +279,7 @@ const static u_int64_t sha512_initial_hash_value[8] = {
 
 /*** SHA-256: *********************************************************/
 void
-SHA256_Init(SHA256_CTX *context)
+ssh_SHA256_Init(SHA256_CTX_struct *context)
 {
 	if (context == NULL)
 		return;
@@ -448,7 +448,7 @@ SHA256_Transform(u_int32_t state[8], const u_int8_t data[SHA256_BLOCK_LENGTH])
 #endif /* SHA2_UNROLL_TRANSFORM */
 
 void
-SHA256_Update(SHA256_CTX *context, const u_int8_t *data, size_t len)
+ssh_SHA256_Update(SHA256_CTX_struct *context, const u_int8_t *data, size_t len)
 {
 	size_t	freespace, usedspace;
 
@@ -504,7 +504,7 @@ SHA256_Update(SHA256_CTX *context, const u_int8_t *data, size_t len)
 
 
 void
-SHA256_Pad(SHA256_CTX *context)
+SHA256_Pad(SHA256_CTX_struct *context)
 {
 	unsigned int	usedspace;
 
@@ -547,7 +547,7 @@ SHA256_Pad(SHA256_CTX *context)
 }
 
 void
-SHA256_Final(u_int8_t digest[SHA256_DIGEST_LENGTH], SHA256_CTX *context)
+ssh_SHA256_Final(u_int8_t digest[SHA256_DIGEST_LENGTH], SHA256_CTX_struct *context)
 {
 	SHA256_Pad(context);
 
@@ -569,7 +569,7 @@ SHA256_Final(u_int8_t digest[SHA256_DIGEST_LENGTH], SHA256_CTX *context)
 
 /*** SHA-512: *********************************************************/
 void
-SHA512_Init(SHA512_CTX *context)
+ssh_SHA512_Init(SHA512_CTX_struct *context)
 {
 	if (context == NULL)
 		return;
@@ -739,7 +739,7 @@ SHA512_Transform(u_int64_t state[8], const u_int8_t data[SHA512_BLOCK_LENGTH])
 #endif /* SHA2_UNROLL_TRANSFORM */
 
 void
-SHA512_Update(SHA512_CTX *context, const u_int8_t *data, size_t len)
+ssh_SHA512_Update(SHA512_CTX_struct *context, const u_int8_t *data, size_t len)
 {
 	size_t	freespace, usedspace;
 
@@ -785,7 +785,7 @@ SHA512_Update(SHA512_CTX *context, const u_int8_t *data, size_t len)
 }
 
 void
-SHA512_Pad(SHA512_CTX *context)
+SHA512_Pad(SHA512_CTX_struct *context)
 {
 	unsigned int	usedspace;
 
@@ -828,7 +828,7 @@ SHA512_Pad(SHA512_CTX *context)
 }
 
 void
-SHA512_Final(u_int8_t digest[SHA512_DIGEST_LENGTH], SHA512_CTX *context)
+ssh_SHA512_Final(u_int8_t digest[SHA512_DIGEST_LENGTH], SHA512_CTX_struct *context)
 {
 	SHA512_Pad(context);
 
@@ -856,7 +856,7 @@ SHA512_Final(u_int8_t digest[SHA512_DIGEST_LENGTH], SHA512_CTX *context)
 #if 0
 /*** SHA-384: *********************************************************/
 void
-SHA384_Init(SHA384_CTX *context)
+ssh_SHA384_Init(SHA384_CTX *context)
 {
 	if (context == NULL)
 		return;
@@ -871,7 +871,7 @@ __weak_alias(SHA384_Update, SHA512_Update);
 __weak_alias(SHA384_Pad, SHA512_Pad);
 
 void
-SHA384_Final(u_int8_t digest[SHA384_DIGEST_LENGTH], SHA384_CTX *context)
+ssh_SHA384_Final(u_int8_t digest[SHA384_DIGEST_LENGTH], SHA384_CTX *context)
 {
 	SHA384_Pad(context);
 

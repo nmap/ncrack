@@ -27,6 +27,7 @@ explicit_bzero(void *p, size_t n)
  * Indirect bzero through a volatile pointer to hopefully avoid
  * dead-store optimisation eliminating the call.
  */
+#ifndef WIN32
 static void (* volatile ssh_bzero)(void *, size_t) = bzero;
 
 void
@@ -34,6 +35,13 @@ explicit_bzero(void *p, size_t n)
 {
 	ssh_bzero(p, n);
 }
+#else 
+void
+explicit_bzero(void *p, size_t n)
+{
+	(void)memset(p, 0, n);
+}
+#endif // WIN32
 
 #endif /* HAVE_MEMSET_S */
 
