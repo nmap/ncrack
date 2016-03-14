@@ -151,6 +151,7 @@
     <ClCompile Include="..\modules\ncrack_smb.cc" />
     <ClCompile Include="..\modules\ncrack_ssh.cc" />
     <ClCompile Include="..\modules\ncrack_telnet.cc" />
+	<ClCompile Include="..\modules\ncrack_redis.cc" />
     <ClCompile Include="..\ncrack_tty.cc" />
     <ClCompile Include="..\NcrackOps.cc" />
     <ClCompile Include="..\NcrackOutputTable.cc" />
