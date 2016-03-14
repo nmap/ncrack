@@ -711,13 +711,7 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_ftp(nsp, con);
   else if (!strcmp(name, "telnet"))
     ncrack_telnet(nsp, con);
-#if HAVE_OPENSSL
-  else if (!strcmp(name, "ssh"))
-    ncrack_ssh(nsp, con);
-#endif
   else if (!strcmp(name, "http"))
-    ncrack_http(nsp, con);
-  else if (!strcmp(name, "https"))
     ncrack_http(nsp, con);
   else if (!strcmp(name, "pop3"))
     ncrack_pop3(nsp, con);
@@ -725,9 +719,15 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_pop3(nsp, con);
   else if (!strcmp(name, "vnc"))
     ncrack_vnc(nsp, con);
+  else if (!strcmp(name, "redis"))
+    ncrack_redis(nsp, con);
+#if HAVE_OPENSSL
+  else if (!strcmp(name, "ssh"))
+    ncrack_ssh(nsp, con);
+  else if (!strcmp(name, "https"))
+    ncrack_http(nsp, con);
   else if (!strcmp(name, "sip"))
     ncrack_sip(nsp, con);
-#if HAVE_OPENSSL
   else if (!strcmp(name, "rdp") || !strcmp(name, "ms-wbt-server"))
     ncrack_rdp(nsp, con);
   else if (!strcmp(name, "smb") || !strcmp(name, "netbios-ssn"))
@@ -1575,9 +1575,14 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 
   } else {
     if (!serv->more_rounds) {
-      if (o.debugging > 6)
-        log_write(LOG_STDOUT, "%s (EID %li) Login failed: '%s' '%s'\n",
+      if (o.debugging > 6) {
+        if (!strcmp(serv->name, "redis"))
+          log_write(LOG_STDOUT, "%s (EID %li) Login failed: '%s'\n",
+            hostinfo, nsock_iod_id(con->niod), con->pass);
+        else 
+          log_write(LOG_STDOUT, "%s (EID %li) Login failed: '%s' '%s'\n",
             hostinfo, nsock_iod_id(con->niod), con->user, con->pass);
+      }
     } else {
       serv->appendToPool(con->user, con->pass);
     }

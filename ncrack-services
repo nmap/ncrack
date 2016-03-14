@@ -16,6 +16,7 @@ sip 5060/tcp
 pop3s 995/tcp
 ms-wbt-server 3389/tcp
 rdp 3389/tcp
+redis 6379/tcp
 vnc 5801/tcp
 vnc 5900/tcp
 vnc 5901/tcp

@@ -306,6 +306,19 @@ getNextPair(char **user, char **pass)
   if (loginlist_fini)
     return -1;
 
+  if (!strcmp(name, "redis")) {
+    if (passvi == PassArray->end()) {
+      if (o.debugging > 8)
+        log_write(LOG_STDOUT, "%s Password list finished!\n", HostInfo());
+      loginlist_fini = true;
+      return -1;
+    } 
+    *user = *uservi;
+    *pass = *passvi;
+    passvi++;
+    return 0;
+  }
+
   if (!strcmp(name, "ssh")) {
 
     //printf("ssh special case\n");
@@ -420,9 +433,13 @@ removeFromPool(char *user, char *pass)
       break;
   }
   if (li != mirror_pair_pool.end()) {
-    if (o.debugging > 8)
-      log_write(LOG_STDOUT, "%s Pool: Removed %s %s\n", HostInfo(),
+    if (o.debugging > 8) {
+      if (!strcmp(name, "redis"))
+        log_write(LOG_STDOUT, "%s Pool: Removed '%s' \n", HostInfo(), tmp.pass);
+      else
+        log_write(LOG_STDOUT, "%s Pool: Removed %s %s\n", HostInfo(),
           tmp.user, tmp.pass);
+    }
     mirror_pair_pool.erase(li);
   }
 }
@@ -444,9 +461,13 @@ appendToPool(char *user, char *pass)
   tmp.pass = pass;
   pair_pool.push_back(tmp);
 
-  if (o.debugging > 8)
-    log_write(LOG_STDOUT, "%s Pool: Append '%s' '%s' \n", HostInfo(),
+  if (o.debugging > 8) {
+    if (!strcmp(name, "redis"))
+      log_write(LOG_STDOUT, "%s Pool: Append '%s' \n", HostInfo(), tmp.pass);
+    else
+      log_write(LOG_STDOUT, "%s Pool: Append '%s' '%s' \n", HostInfo(),
         tmp.user, tmp.pass);
+  }
 
   /* 
    * Try and see if login pair was already in our mirror pool. Only if
