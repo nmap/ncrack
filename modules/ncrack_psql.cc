@@ -1,5 +1,6 @@
 /***************************************************************************
  * ncrack_psql.cc -- ncrack module for the PSQL protocol                   *
+ * Coded by edeirme                                                        *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
