@@ -253,7 +253,7 @@ print_usage(void)
       "  -6: Enable IPv6 cracking\n"
       "  -sL or --list: only list hosts and services\n"
       "  --datadir <dirname>: Specify custom Ncrack data file location\n"
-      "  --proxy <type://proxy:port>: Make connections via socks4,4a,http.\n"
+      "  --proxy <type://proxy:port>: Make connections via socks4, 4a, http.\n"
       "  -V: Print version number\n"
       "  -h: Print this help summary page.\n"
       "MODULES:\n"

@@ -5,7 +5,7 @@ by ithilgore
 ithilgore.ryu.l@gmail.com | ithilgore@sock-raw.org
 http://sock-raw.org
 
-Version: 0.3 (in accordance with Ncrack release versions)
+Version: 0.5 (in accordance with Ncrack release versions)
 
 
 ---[ Contents
@@ -522,7 +522,14 @@ ncrack_pop3.cc ncrack_yourprotocol.cc"
 MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o ncrack_http.o \
 ncrack_pop3.o ncrack_yourprotocol.o"
 
-You can now test your new module by recompiling Ncrack.
+The autoconf tool will need to be run again after changing "configure.ac" to
+create the new "configure" file. Run it by typing "autoconf" in the root
+ncrack dir.
+
+You can now test your new module by recompiling Ncrack using:
+
+$ ./configure
+$ make
 
 
 ---- [ 4.4 - More Module details

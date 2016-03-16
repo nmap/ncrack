@@ -55,7 +55,7 @@
       attacks against individual services.
     </para>
 
-    <warning><para>Ncrack is a new project started in the Summer of 2009.  While it is already useful for some purposes, it is still unfinished, alpha quality software.  You can help out by testing it and reporting any problems as described in <xref linkend="man-bugs"/>.</para></warning>
+    <warning><para>Ncrack is a project started in the Summer of 2009.  While it is already useful for some purposes, it is still unfinished, beta quality software.  You can help out by testing it and reporting any problems as described in <xref linkend="man-bugs"/>.</para></warning>
 
     <para>
       The output from Ncrack is a list of found credentials, if any, for each
@@ -80,7 +80,7 @@
 
 $ ncrack 10.0.0.130:21 192.168.1.2:22
 
-Starting Ncrack 0.01ALPHA ( http://ncrack.org ) at 2009-07-24 23:05 EEST
+Starting Ncrack 0.5 ( http://ncrack.org ) at 2016-01-03 22:10 EEST
 
 Discovered credentials for ftp on 10.0.0.130 21/tcp:
 10.0.0.130 21/tcp ftp: admin hello1
@@ -1245,7 +1245,7 @@ Ncrack finished.
           username list of -> "root, guest, admin" and the password list of
           "test, 12345, q1w2e3r4" Ncrack will normally go over them like
           this -> root:test, guest:test, admin:test, root:12345 etc. By
-          enabling this option it will over them like this -> root:test,
+          enabling this option it will go over them like this -> root:test,
           root:12345, root:q1w2e3r4, guest:test etc.
         </para>
 
@@ -1270,6 +1270,28 @@ Ncrack finished.
         </listitem>
       </varlistentry>
     </variablelist>
+
+    <variablelist>
+      <varlistentry>
+        <term>
+          <option>--pairwise</option>
+          (Choose usernames and passwords in pairs)
+        </term>
+        <listitem>
+
+          <para>
+            Enabling this option will make Ncrack iterate the username and password
+            list by choosing them in pairs. For example, given the username list of
+            "root, guest, admin" and the password list of "test, 12345, q1w2e3r4" Ncrack
+            will go over them like this: "root:test", "guest:12345", "admin:q1w2e3r4". 
+            This is particulary useful when inside knowledge of the infrastructure tested 
+            is available and special username and password lists have been made.
+        </para>
+                    
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
 
 
   </refsect1>
@@ -1735,6 +1757,22 @@ Ncrack finished.
 
       <varlistentry>
         <term>
+          <option>--proxy <replaceable>type</replaceable>://<replaceable>proxy</replaceable>:<replaceable>port</replaceable></option>
+          (Make connections via socks4, 4a, http)
+          <indexterm significance="preferred"><primary><option>--proxy
+          </option></primary></indexterm>
+        </term>
+        <listitem>
+
+          <para>
+            This will make Ncrack perform the authentication cracking session
+            through the proxy host specified. 
+        </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
           <option>-V</option>; <option>--version</option>
           (Print version number)
           <indexterm><primary><option>-V</option></primary></indexterm>
@@ -1798,6 +1836,14 @@ Ncrack finished.
       </varlistentry>
       <varlistentry>
         <term>
+          <option>p</option> / <option>P</option>
+        </term>
+        <listitem>
+          <para>Display found credentials</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
           <option>?</option>
         </term>
         <listitem>
@@ -1827,7 +1873,7 @@ Ncrack finished.
      <para>
        Ncrack's architecture is modular with each module corresponding to
        one particular service or protocol. Currently, Ncrack supports the
-       protocols FTP, TELNET, SSH, RDP, VNC and HTTP(S) (basic authentication).
+       protocols FTP, Telnet, SSH, RDP, VNC, HTTP(S), POP3(S), SIP, Redis and PostgreSQL.
        If you want to write and contribute your own Ncrack modules, be sure to read
        the Ncrack Developer's Guide at <ulink url="http://nmap.org/ncrack/devguide.html" />
        Below we describe some key points for each of them.
@@ -1852,7 +1898,7 @@ Ncrack finished.
       </varlistentry>
     </variablelist>
 
-    <variablelist><title>TELNET Module</title>
+    <variablelist><title>Telnet Module</title>
     <varlistentry>
         <listitem>
           <para>  
@@ -1876,7 +1922,7 @@ Ncrack finished.
           <para>  
             SSH is one of the most prevalent protocols in today's networks.
             For this reason, a special library, named opensshlib and based
-            on code from OpenSSH, was specifically build and tailored for
+            on code from OpenSSH, was specifically built and tailored for
             Ncrack's needs. Opensshlib ships in with Ncrack, so SSH support
             comes out of the box. OpenSSL will have to be installed in Unix
             systems though. Windows OpenSSL dlls are included in Ncrack, so
@@ -1900,9 +1946,9 @@ Ncrack finished.
       <varlistentry>
         <listitem>
           <para>  
-            The HTTP Module currently supports basic authentication only,
-            however additional methods will be added soon. Ncrack tries to
-            use the "Keepalive" HTTP option, whenever possible, which leads
+            The HTTP Module currently supports basic and digest authentication.
+            Ncrack tries to use the "Keepalive" HTTP option, whenever possible, 
+            which leads
             to really high speeds, since that allows dozens of attempts
             to be carried out per connection. The HTTP module can also be
             called over SSL.
@@ -1996,7 +2042,51 @@ Ncrack finished.
       </varlistentry>
     </variablelist>
 
+    <variablelist><title>SIP Module</title>
+      <varlistentry>
+        <listitem>
+          <para>  
+            The Session Initiation Protocol is a text-based protocol, very similar
+            to HTTP in its structure. The most common application of SIP is in 
+            Internet telephony for voice and video calls. Nearly all enterprises
+            have infrastructure that supports conference calls and part of them are
+            based on SIP, making the authentication part a significant threat vector.
+          </para>
+            
+        </listitem>
+      </varlistentry>
+    </variablelist>
 
+    <variablelist><title>Redis Module</title>
+      <varlistentry>
+        <listitem>
+          <para>  
+            Redis is one of the most widely used caching servers and the most
+            popular NoSQL database. Despite its reputation, the authentication
+            mechanism is very simple, only allowing for a password to protect
+            remote access to the service. Due to the high performance of Redis and
+            the fact that only 2 packets are needed for the authentication phase,
+            Ncrack can try a lot of passwords in parallel (<ulink url="http://redis.io/commands/AUTH" />).
+            Specifying a username list or single username will have no effect in this module, since
+            Redis only deals with passwords.
+          </para>
+            
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+     <variablelist><title>PostgreSQL Module</title>
+      <varlistentry>
+        <listitem>
+          <para> 
+            PostgreSQL is often used as a backend database. 
+            The PostgreSQL module supports md5 authentication, which is the most frequent 
+            password authentication method. 
+          </para>
+            
+        </listitem>
+      </varlistentry>
+    </variablelist>
 
     </refsect1>
 

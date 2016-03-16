@@ -1,4 +1,4 @@
-Ncrack 0.2ALPHA ( http://ncrack.org )
+Ncrack 0.5 ( http://ncrack.org )
 Usage: ncrack [Options] {target and service specification}
 TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc.
@@ -38,6 +38,7 @@ AUTHENTICATION:
   --user <username_list>: comma-separated username list
   --pass <password_list>: comma-separated password list
   --passwords-first: Iterate password list for each username. Default is opposite.
+  --pairwise: Choose usernames and passwords in pairs.
 OUTPUT:
   -oN/-oX <file>: Output scan in normal and XML format, respectively, to the given filename.
   -oA <basename>: Output in the two major formats at once
@@ -48,14 +49,16 @@ OUTPUT:
   --append-output: Append to rather than clobber specified output files
 MISC:
   --resume <file>: Continue previously saved session
+  --save <file>: Save restoration file with specific filename
   -f: quit cracking service after one found credential
   -6: Enable IPv6 cracking
   -sL or --list: only list hosts and services
   --datadir <dirname>: Specify custom Ncrack data file location
+  --proxy <type://proxy:port>: Make connections via socks4, 4a, http.
   -V: Print version number
   -h: Print this help summary page.
 MODULES:
-  FTP, SSH, TELNET, HTTP(S), POP3(S)
+  FTP, SSH, TELNET, HTTP(S), POP3(S), SMB, RDP, VNC, SIP, REDIS, PSQL
 EXAMPLES:
   ncrack -v --user root localhost:22
   ncrack -v -T5 https://192.168.0.1

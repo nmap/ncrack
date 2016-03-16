@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 04/23/2011
+.\"      Date: 03/16/2016
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "04/23/2011" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "03/16/2016" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -40,7 +40,7 @@ Ncrack is an open source tool for network authentication cracking\&. It was desi
 .ps -1
 .br
 .PP
-Ncrack is a new project started in the Summer of 2009\&. While it is already useful for some purposes, it is still unfinished, alpha quality software\&. You can help out by testing it and reporting any problems as described in
+Ncrack is a project started in the Summer of 2009\&. While it is already useful for some purposes, it is still unfinished, beta quality software\&. You can help out by testing it and reporting any problems as described in
 the section called \(lqBUGS\(rq\&.
 .sp .5v
 .RE
@@ -60,7 +60,7 @@ Example\ \&1\&. The only Ncrack arguments used in this example are the two targe
 
 $ ncrack 10\&.0\&.0\&.130:21 192\&.168\&.1\&.2:22
 
-Starting Ncrack 0\&.01ALPHA ( http://ncrack\&.org ) at 2009\-07\-24 23:05 EEST
+Starting Ncrack 0\&.5 ( http://ncrack\&.org ) at 2016\-01\-03 22:10 EEST
 
 Discovered credentials for ftp on 10\&.0\&.0\&.130 21/tcp:
 10\&.0\&.0\&.130 21/tcp ftp: admin hello1
@@ -90,7 +90,7 @@ This options summary is printed when Ncrack is run with no arguments\&. It helps
 .RS 4
 .\}
 .nf
-Ncrack 0\&.2ALPHA ( http://ncrack\&.org )
+Ncrack 0\&.5 ( http://ncrack\&.org )
 Usage: ncrack [Options] {target and service specification}
 TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc\&.
@@ -130,6 +130,7 @@ AUTHENTICATION:
   \-\-user <username_list>: comma\-separated username list
   \-\-pass <password_list>: comma\-separated password list
   \-\-passwords\-first: Iterate password list for each username\&. Default is opposite\&.
+  \-\-pairwise: Choose usernames and passwords in pairs\&.
 OUTPUT:
   \-oN/\-oX <file>: Output scan in normal and XML format, respectively, to the given filename\&.
   \-oA <basename>: Output in the two major formats at once
@@ -140,14 +141,16 @@ OUTPUT:
   \-\-append\-output: Append to rather than clobber specified output files
 MISC:
   \-\-resume <file>: Continue previously saved session
+  \-\-save <file>: Save restoration file with specific filename
   \-f: quit cracking service after one found credential
   \-6: Enable IPv6 cracking
   \-sL or \-\-list: only list hosts and services
   \-\-datadir <dirname>: Specify custom Ncrack data file location
+  \-\-proxy <type://proxy:port>: Make connections via socks4, 4a, http\&.
   \-V: Print version number
   \-h: Print this help summary page\&.
 MODULES:
-  FTP, SSH, TELNET, HTTP(S), POP3(S)
+  FTP, SSH, TELNET, HTTP(S), POP3(S), SMB, RDP, VNC, SIP, REDIS, PSQL
 EXAMPLES:
   ncrack \-v \-\-user root localhost:22
   ncrack \-v \-T5 https://192\&.168\&.0\&.1
@@ -643,11 +646,16 @@ Specify your own passwords directly in the command\-line as a comma\-separated l
 .PP
 \fB\-\-passwords\-first\fR (Reverse the way passwords are iterated)
 .RS 4
-Ncrack by default iterates the username list for each password\&. With this option, you can reverse that\&. For example, given the username list of \-> "root, guest, admin" and the password list of "test, 12345, q1w2e3r4" Ncrack will normally go over them like this \-> root:test, guest:test, admin:test, root:12345 etc\&. By enabling this option it will over them like this \-> root:test, root:12345, root:q1w2e3r4, guest:test etc\&.
+Ncrack by default iterates the username list for each password\&. With this option, you can reverse that\&. For example, given the username list of \-> "root, guest, admin" and the password list of "test, 12345, q1w2e3r4" Ncrack will normally go over them like this \-> root:test, guest:test, admin:test, root:12345 etc\&. By enabling this option it will go over them like this \-> root:test, root:12345, root:q1w2e3r4, guest:test etc\&.
 .sp
 Most network authentication cracking tools prefer by default to iterate the password list for each username\&. This is, however, ineffective compared to the opposite iteration in most cases\&. This holds true for the simple reason that password lists are usually sorted on a frequency basis, meaning that the more common a password is, the closer to the beginning of the password list it is\&. Thus, iterating over all usernames for the most common passwords first has usually more chances to get a positive result\&. With the
 \fB\-\-passwords\-first\fR
 iteration, very common passwords might not even be tried out for certain usernames if the user chooses to abort the session early\&. However, this option might prove valuable for cases where the attacker knows and has already verified that the username list contains real usernames, instead of blindly bruteforcing through them\&.
+.RE
+.PP
+\fB\-\-pairwise\fR (Choose usernames and passwords in pairs)
+.RS 4
+Enabling this option will make Ncrack iterate the username and password list by choosing them in pairs\&. For example, given the username list of "root, guest, admin" and the password list of "test, 12345, q1w2e3r4" Ncrack will go over them like this: "root:test", "guest:12345", "admin:q1w2e3r4"\&. This is particulary useful when inside knowledge of the infrastructure tested is available and special username and password lists have been made\&.
 .RE
 .SH "OUTPUT"
 .\" output formats
@@ -852,6 +860,11 @@ or
 /usr/share/ncrack\&. As a last resort, Ncrack will look in the current directory\&.
 .RE
 .PP
+\fB\-\-proxy \fR\fB\fItype\fR\fR\fB://\fR\fB\fIproxy\fR\fR\fB:\fR\fB\fIport\fR\fR (Make connections via socks4, 4a, http) .\" --proxy
+.RS 4
+This will make Ncrack perform the authentication cracking session through the proxy host specified\&.
+.RE
+.PP
 \fB\-V\fR; \fB\-\-version\fR (Print version number) .\" -V .\" --version
 .RS 4
 Prints the Ncrack version number and exits\&.
@@ -879,6 +892,11 @@ Increase / decrease the verbosity level
 Increase / decrease the debugging Level
 .RE
 .PP
+\fBp\fR / \fBP\fR
+.RS 4
+Display found credentials
+.RE
+.PP
 \fB?\fR
 .RS 4
 Print a runtime interaction help screen
@@ -894,7 +912,7 @@ Rate: 6\&.26; Found: 1; About 13\&.27% done; ETC: 21:06 (0:02:17 remaining)
 .RE
 .SH "MODULES"
 .PP
-Ncrack\'s architecture is modular with each module corresponding to one particular service or protocol\&. Currently, Ncrack supports the protocols FTP, TELNET, SSH, RDP, VNC and HTTP(S) (basic authentication)\&. If you want to write and contribute your own Ncrack modules, be sure to read the Ncrack Developer\'s Guide at
+Ncrack\'s architecture is modular with each module corresponding to one particular service or protocol\&. Currently, Ncrack supports the protocols FTP, Telnet, SSH, RDP, VNC, HTTP(S), POP3(S), SIP, Redis and PostgreSQL\&. If you want to write and contribute your own Ncrack modules, be sure to read the Ncrack Developer\'s Guide at
 \m[blue]\fB\%http://nmap.org/ncrack/devguide.html\fR\m[]
 Below we describe some key points for each of them\&.
 .PP
@@ -904,7 +922,7 @@ Below we describe some key points for each of them\&.
 FTP authentication is quite fast, since there is very little protocol negotiation overhead\&. Most FTP daemons allow 3 to 6 authentication attempts but usually impose a certain delay before replying with the results of a failed attempt\&. Filezilla is one of the most characteristic examples of this case, where the time delay is so great, that it is usually faster to open more connections against it, with each of them doing only 1 authentication per connection\&.
 .RE
 .PP
-\fBTELNET Module\fR
+\fBTelnet Module\fR
 .PP
 .RS 4
 Telnet daemons have been largely substituded by their safer \'counterpart\' of SSH\&. However, there are many boxes, mainly routers or printers, that still rely on Telnet for remote access\&. Usually these are also easier to crack, since default passwords for them are publicly known\&. The drawback is that telnet is a rather slow protocol, so you shouldn\'t be expecting really high rates against it\&.
@@ -913,7 +931,7 @@ Telnet daemons have been largely substituded by their safer \'counterpart\' of S
 \fBSSH Module\fR
 .PP
 .RS 4
-SSH is one of the most prevalent protocols in today\'s networks\&. For this reason, a special library, named opensshlib and based on code from OpenSSH, was specifically build and tailored for Ncrack\'s needs\&. Opensshlib ships in with Ncrack, so SSH support comes out of the box\&. OpenSSL will have to be installed in Unix systems though\&. Windows OpenSSL dlls are included in Ncrack, so Windows users shouldn\'t be worrying about it at all\&.
+SSH is one of the most prevalent protocols in today\'s networks\&. For this reason, a special library, named opensshlib and based on code from OpenSSH, was specifically built and tailored for Ncrack\'s needs\&. Opensshlib ships in with Ncrack, so SSH support comes out of the box\&. OpenSSL will have to be installed in Unix systems though\&. Windows OpenSSL dlls are included in Ncrack, so Windows users shouldn\'t be worrying about it at all\&.
 .sp
 SSH bruteforcing holds many pitfalls and challenges, and you are well advised to read a paper that was written to explain them\&. The latest version of the "Hacking the OpenSSH library for Ncrack" document can be found under
 \fIdocs/openssh_library\&.txt\fR
@@ -924,7 +942,7 @@ or at
 \fBHTTP(S) Module\fR
 .PP
 .RS 4
-The HTTP Module currently supports basic authentication only, however additional methods will be added soon\&. Ncrack tries to use the "Keepalive" HTTP option, whenever possible, which leads to really high speeds, since that allows dozens of attempts to be carried out per connection\&. The HTTP module can also be called over SSL\&.
+The HTTP Module currently supports basic and digest authentication\&. Ncrack tries to use the "Keepalive" HTTP option, whenever possible, which leads to really high speeds, since that allows dozens of attempts to be carried out per connection\&. The HTTP module can also be called over SSL\&.
 .RE
 .PP
 \fBSMB Module \fR
@@ -962,6 +980,24 @@ option when cracking VNC systems to exploit the fact that the username often has
 .PP
 .RS 4
 POP3 support is still experimental and hasn\'t been thoroughly tested\&. You can expect it to work against common mail servers, nevertheless\&.
+.RE
+.PP
+\fBSIP Module\fR
+.PP
+.RS 4
+The Session Initiation Protocol is a text\-based protocol, very similar to HTTP in its structure\&. The most common application of SIP is in Internet telephony for voice and video calls\&. Nearly all enterprises have infrastructure that supports conference calls and part of them are based on SIP, making the authentication part a significant threat vector\&.
+.RE
+.PP
+\fBRedis Module\fR
+.PP
+.RS 4
+Redis is one of the most widely used caching servers and the most popular NoSQL database\&. Despite its reputation, the authentication mechanism is very simple, only allowing for a password to protect remote access to the service\&. Due to the high performance of Redis and the fact that only 2 packets are needed for the authentication phase, Ncrack can try a lot of passwords in parallel (\m[blue]\fB\%http://redis.io/commands/AUTH\fR\m[])\&. Specifying a username list or single username will have no effect in this module, since Redis only deals with passwords\&.
+.RE
+.PP
+\fBPostgreSQL Module\fR
+.PP
+.RS 4
+PostgreSQL is often used as a backend database\&. The PostgreSQL module supports md5 authentication, which is the most frequent password authentication method\&.
 .RE
 .SH "BUGS"
 .\" bugs, reporting
