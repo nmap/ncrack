@@ -723,7 +723,7 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_redis(nsp, con);
 #if HAVE_OPENSSL
   else if (!strcmp(name, "psql"))
-    ncrack_redis(nsp, con);
+    ncrack_psql(nsp, con);
   else if (!strcmp(name, "ssh"))
     ncrack_ssh(nsp, con);
   else if (!strcmp(name, "https"))

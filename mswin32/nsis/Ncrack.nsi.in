@@ -1,4 +1,3 @@
-; Automatically generated from nsis/Ncrack.nsi.in.
 ;Ncrack Installer 
 ;-------------------------------- 
 ;Include Modern UI 
@@ -22,8 +21,8 @@
   ;Get installation folder from registry if available 
   InstallDirRegKey HKCU "Software\Ncrack" "" 
  
-  !define VERSION "0.5"
-  VIProductVersion "0.5.0.0"
+  !define VERSION @@VERSION@@
+  VIProductVersion @@VIPRODUCTVERSION@@
   VIAddVersionKey /LANG=1033 "FileVersion" "${VERSION}"
   VIAddVersionKey /LANG=1033 "ProductName" "Ncrack" 
   VIAddVersionKey /LANG=1033 "CompanyName" "Insecure.org" 
