@@ -39,6 +39,21 @@
                   -- [ Ncrack Changelog ] --
 
 
+Ncrack 0.5 [2016-03-17]
+
+o Added 3 new modules: Redis, PostgreSQL, SIP. Thanks to eiderme for
+  implementing the Redis and PostgreSQL modules.
+
+o Added --pairwise option for special username/password iteration.
+
+o Added --proxy option and proxy support implementation. Many thanks
+  to Andrew Farabee (https://github.com/andrewfarabee/) for implementing
+  it.
+
+o Updated the Ncrack openssh library, now based on the OpenSSH 7.1
+  codebase and updated the SSH module to support all the latest ciphers.
+
+
 Ncrack 0.4ALPHA [2011-04-23]
 
 o Added the VNC module to Ncrack's arsenal. Thanks to rhh of rycon.hu for
