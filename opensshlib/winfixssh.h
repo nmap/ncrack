@@ -17,7 +17,9 @@ typedef int sig_atomic_t;
 #define SIZEOF_INT 4
 
 #define WITH_OPENSSL 1
+#define WITH_SSH1 1
 #define OPENSSL_HAS_ECC 1
+#define HAVE_EVP_SHA256 1
 
 #ifdef _MSC_VER
 /* <wspiapi.h> only comes with Visual Studio. */
