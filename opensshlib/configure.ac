@@ -2258,10 +2258,10 @@ AC_FUNC_GETPGRP
 saved_CPPFLAGS="$CPPFLAGS"
 saved_LDFLAGS="$LDFLAGS"
 AC_ARG_WITH([ssl-dir],
-	[  --with-ssl-dir=PATH     Specify path to OpenSSL installation ],
+	[  --with-openssl=PATH     Specify path to OpenSSL installation ],
 	[
 		if test "x$openssl" = "xno" ; then
-			AC_MSG_ERROR([cannot use --with-ssl-dir when OpenSSL disabled])
+			AC_MSG_ERROR([cannot use --with-openssl when OpenSSL disabled])
 		fi
 		if test "x$withval" != "xno" ; then
 			case "$withval" in

@@ -1443,7 +1443,7 @@ Optional Packages:
   --with-libedit[=PATH]   Enable libedit support for sftp
   --with-audit=module     Enable audit support (modules=debug,bsm,linux)
   --with-pie              Build Position Independent Executables if possible
-  --with-ssl-dir=PATH     Specify path to OpenSSL installation
+  --with-openssl=PATH     Specify path to OpenSSL installation
   --without-openssl-header-check Disable OpenSSL version consistency check
   --with-ssl-engine       Enable OpenSSL (hardware) ENGINE support
   --with-prngd-port=PORT  read entropy from PRNGD/EGD TCP localhost:PORT
@@ -11911,7 +11911,7 @@ saved_LDFLAGS="$LDFLAGS"
 if test "${with_ssl_dir+set}" = set; then :
   withval=$with_ssl_dir;
 		if test "x$openssl" = "xno" ; then
-			as_fn_error $? "cannot use --with-ssl-dir when OpenSSL disabled" "$LINENO" 5
+			as_fn_error $? "cannot use --with-openssl when OpenSSL disabled" "$LINENO" 5
 		fi
 		if test "x$withval" != "xno" ; then
 			case "$withval" in
