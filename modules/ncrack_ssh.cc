@@ -156,7 +156,12 @@ ssh_loop_read(nsock_pool nsp, Connection *con, ncrack_ssh_state *info)
     //printf("ssh loop MSG NONE\n");
     nsock_read(nsp, con->niod, ncrack_read_handler, SSH_TIMEOUT, con);
     return -1;
+  } else if (info->type == SSH2_MSG_DISCONNECT) {
+    //printf("ssh loop MSG DISCONNECT\n");
+    return -2;
   }
+
+  //printf("info->type: %d\n", info->type);
 
   //printf("final input packet length %d\n", sshbuf_len(info->input));
 
@@ -176,7 +181,7 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
   u_int buflen;
   ncrack_ssh_state *info = NULL;
   con->ops_free = &ssh_free;
-
+  int r = 0;
 
   if (con->misc_info)
     info = (ncrack_ssh_state *) con->misc_info;
@@ -255,8 +260,15 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
     case SSH_KEY2:
 
-      if (ssh_loop_read(nsp, con, info) < 0)
+      r = ssh_loop_read(nsp, con, info);
+      if (r == -1)
         break;
+      else if (r == -2) {
+        con->force_close = true;
+        con->close_reason = MODULE_ERR;
+        return ncrack_module_end(nsp, con);
+      }
+
 
       /* Receives: "Key Exchange Init"
        * Sends: "Diffie-Hellman GEX Request"
@@ -273,8 +285,14 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
     case SSH_KEY3:
 
-      if (ssh_loop_read(nsp, con, info) < 0)
+      r = ssh_loop_read(nsp, con, info);
+      if (r == -1)
         break;
+      else if (r == -2) {
+        con->force_close = true;
+        con->close_reason = MODULE_ERR;
+        return ncrack_module_end(nsp, con);
+      }
 
       /* Receives: "Diffie-Hellman Key Exchange Reply" and
        * Sends: "Diffie-Hellman GEX Init"
@@ -307,9 +325,15 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
       break;
 
     case SSH_KEY4:
-
-      if (ssh_loop_read(nsp, con, info) < 0)
+      
+      r = ssh_loop_read(nsp, con, info);
+      if (r == -1)
         break;
+      else if (r == -2) {
+        con->force_close = true;
+        con->close_reason = MODULE_ERR;
+        return ncrack_module_end(nsp, con);
+      }
 
       /* Receives: "Diffie-Hellman GEX Reply" and
        * Sends: "New keys"
@@ -326,8 +350,14 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
     case SSH_AUTH:
 
-      if (ssh_loop_read(nsp, con, info) < 0)
+      r = ssh_loop_read(nsp, con, info);
+      if (r == -1)
         break;
+      else if (r == -2) {
+        con->force_close = true;
+        con->close_reason = MODULE_ERR;
+        return ncrack_module_end(nsp, con);
+      }
 
       /* Receives: "New keys"
        * Sends "Encrypted Request 1"
@@ -347,14 +377,20 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
 #if 0
       if (info->kex->kex_type == KEX_DH_GEX_SHA1 || info->kex->kex_type == KEX_DH_GEX_SHA256) {
-        printf("SSH AUTH 2 loop read \n");
+        //printf("SSH AUTH 2 loop read \n");
         if (ssh_loop_read(nsp, con, info) < 0)
           break;
       }
 #endif
 
-      if (ssh_loop_read(nsp, con, info) < 0)
-          break;
+      r = ssh_loop_read(nsp, con, info);
+      if (r == -1)
+        break;
+      else if (r == -2) {
+        con->force_close = true;
+        con->close_reason = MODULE_ERR;
+        return ncrack_module_end(nsp, con);
+      }
 
       con->state = SSH_AUTH3;
 
@@ -420,8 +456,16 @@ ncrack_ssh(nsock_pool nsp, Connection *con)
 
     case SSH_FINI:
 
-      if (ssh_loop_read(nsp, con, info) < 0)
+      r = ssh_loop_read(nsp, con, info);
+      if (r == -1)
         break;
+#if 0
+      else if (r == -2) {
+        con->force_close = true;
+        con->close_reason = MODULE_ERR;
+        return ncrack_module_end(nsp, con);
+      }
+#endif
 
       /*
        * If we get a disconnect message at this stage, then it probably
