@@ -54,13 +54,13 @@
 
 #include "log.h"
 
-static LogLevel log_level = SYSLOG_LEVEL_INFO;
+//static LogLevel log_level = SYSLOG_LEVEL_INFO;
 static int log_on_stderr = 1;
 static int log_stderr_fd = STDERR_FILENO;
-#ifndef WIN32
-static int log_facility = LOG_AUTH;
-#endif
-static char *argv0;
+//#ifndef WIN32
+//static int log_facility = LOG_AUTH;
+//#endif
+//static char *argv0;
 static log_handler_fn *log_handler;
 static void *log_handler_ctx;
 

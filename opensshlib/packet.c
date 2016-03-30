@@ -419,8 +419,8 @@ ssh_packet_connection_is_on_socket(struct ssh *ssh)
 		return 0;
 	if (from.ss_family != AF_INET && from.ss_family != AF_INET6)
 		return 0;
-	return 1;
 #endif
+	return 1;
 }
 
 
@@ -453,6 +453,7 @@ ssh_packet_connection_af(struct ssh *ssh)
 #endif
 	return to.ss_family;
 #endif
+  return -1; // temp
 }
 
 /* Sets the connection into non-blocking mode. */
@@ -501,6 +502,7 @@ ssh_remote_ipaddr(struct ssh *ssh)
 		return "UNKNOWN";
 	return ssh->remote_ipaddr;
 #endif
+  return NULL; // temp
 }
 
 /* Closes the connection and clears and frees internal data structures. */
