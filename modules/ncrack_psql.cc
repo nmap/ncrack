@@ -100,12 +100,11 @@
 #define PSQL_AUTH_TYPE 4
 #define PSQL_SALT 4
 
-extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void
-*mydata);
-extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void
-*mydata);
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
-static int psql_loop_read(nsock_pool nsp, Connection *con);
+static int psql_loop_read(nsock_pool nsp, Connection *con, char *psql_code_ret, char *psql_salt_ret);
+
 unsigned char charToHexDigit(char c);
 enum states { PSQL_INIT, PSQL_AUTH, PSQL_FINI };
 
@@ -125,15 +124,13 @@ static char *enhex(char *dest, const unsigned char *src, size_t n)
 
 
 /* Arguments are assumed to be non-NULL, with the exception of nc and
-cnonce,
-   which may be garbage only if qop == QOP_NONE. */
-static void make_response(char buf[MD5_DIGEST_LENGTH * 2 + 3 + 1],
+   cnonce, which may be garbage only if qop == QOP_NONE. */
+static void make_response(char buf[MD5_DIGEST_LENGTH * 2 + 1],
     const char *username, const char *password, const char *salt)
 {
-    char HA1_hex[MD5_DIGEST_LENGTH * 2 + 1], HA2_hex[MD5_DIGEST_LENGTH * 2
-+ 1];
+    char HA1_hex[MD5_DIGEST_LENGTH * 2 + 1];
     unsigned char hashbuf[MD5_DIGEST_LENGTH];
-    char finalhash[MD5_DIGEST_LENGTH * 2 + 3];
+    char finalhash[MD5_DIGEST_LENGTH * 2 + 3 + 1];
     MD5_CTX md5;
 
     /* Calculate MD5(Password + Username) */
@@ -152,7 +149,7 @@ static void make_response(char buf[MD5_DIGEST_LENGTH * 2 + 3 + 1],
 
     /* Add the string md5 at the beggining. */
     strncpy(finalhash,"md5", sizeof("md5"));
-    strncat(finalhash, buf, sizeof(finalhash));
+    strncat(finalhash, buf, sizeof(finalhash) - 1);
     buf[0] = '\0';
     strncpy(buf, finalhash, MD5_DIGEST_LENGTH * 2 + 3);
     buf[MD5_DIGEST_LENGTH * 2 + 3] = '\0';
@@ -162,12 +159,12 @@ static int
 psql_loop_read(nsock_pool nsp, Connection *con, char *psql_code_ret, char
 *psql_salt_ret)
 {
-  int i,j = 0;
+  int i = 0;
   char psql_code[PSQL_DIGITS + 1]; /* 1 char + '\0' */
   char psql_salt[PSQL_SALT + 1]; /* 4 + '\0' */
-  char dig[2]; /* temporary digit string */
+  char dig[PSQL_PACKET_LENGTH + 1]; /* temporary digit string */
   char *p;
-  int packet_length;
+  size_t packet_length;
   int authentication_type;
 
   if (con->inbuf == NULL || con->inbuf->get_len() < PSQL_DIGITS + 1) {
@@ -248,8 +245,6 @@ void
 ncrack_psql(nsock_pool nsp, Connection *con)
 {
   nsock_iod nsi = con->niod;
-  Service *serv = con->service;
-  const char *hostinfo = serv->HostInfo();
 
   char packet_length;
   char psql_code[PSQL_DIGITS + 1];
@@ -327,6 +322,4 @@ ncrack_psql(nsock_pool nsp, Connection *con)
 
       return ncrack_module_end(nsp, con);
   }
-  /* make sure that ncrack_module_end() is always called last or returned to
-   * have tail recursion or else stack space overflow might occur */
 }

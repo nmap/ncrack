@@ -592,7 +592,7 @@ static const char *read_token_list(const char *s, char **tokens[], size_t *n)
     for (;;) {
         s = read_token(s, &token);
         if (s == NULL) {
-            int i;
+            size_t i;
 
             for (i = 0; i < *n; i++)
                 free((*tokens)[i]);
@@ -1280,7 +1280,7 @@ static const char *http_read_challenge(const char *s, struct http_challenge *cha
             } else if (str_equal_i(name, "qop")) {
                 char **tokens;
                 size_t n;
-                int i;
+                size_t i;
                 const char *tmp;
 
                 tmp = read_token_list(value, &tokens, &n);
