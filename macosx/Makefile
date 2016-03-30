@@ -49,8 +49,8 @@ $(IMAGE_STAGING_DIR)/$(PKG_NAME): stage-ncrack README COPYING.formatted
 
 export-%:
 	rm -rf $*
-# Using @BASE discards local changes.
-	svn export ..@BASE $*
+	mkdir $*
+	git -C .. archive master | tar -x -C $*
 
 stage-ncrack: export-$(NCRACK_BUILD_DIR)
 	cd $(NCRACK_BUILD_DIR) && ./configure $(CONFIGURE_ARGS)
