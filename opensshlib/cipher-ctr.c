@@ -31,7 +31,7 @@
 
 /* compatibility with old or broken OpenSSL versions */
 #ifndef WIN32
-#include "openbsd-compat/openssl-compat.h"
+#include "openbsd-compat.h"
 #endif
 
 #ifndef USE_BUILTIN_RIJNDAEL
