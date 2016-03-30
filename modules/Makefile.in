@@ -6,6 +6,7 @@ OBJS = @MODULES_OBJS@
 
 include_dirs := .. ../nsock/include ../nbase ../opensshlib
 CPPFLAGS += $(addprefix -I,$(include_dirs)) -DHAVE_CONFIG_H
+CXXFLAGS = @CXXFLAGS@
 
 vpath %.h $(include_dirs)
 
