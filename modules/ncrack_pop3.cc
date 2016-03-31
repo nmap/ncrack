@@ -114,8 +114,6 @@ enum states { POP3_INIT, POP3_USER, POP3_FINI };
 static int
 pop3_response_parser(nsock_pool nsp, Connection *con)
 {
-  char *p;
-  int i;
 
   if (con->inbuf == NULL || con->inbuf->get_len() < 3) {
     nsock_read(nsp, con->niod, ncrack_read_handler, POP3_TIMEOUT, con);
