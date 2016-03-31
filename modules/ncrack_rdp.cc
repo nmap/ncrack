@@ -194,8 +194,8 @@ static void rdp_control(Connection *con, uint16_t action);
 static void rdp_confirm_active(Connection *con);
 static void rdp_input_msg(Connection *con, uint32_t time, uint16_t message_type,
     uint16_t device_flags, uint16_t param1, uint16_t param2);
-static void rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
-    uint8_t scancode);
+//static void rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
+//    uint8_t scancode);
 static void rdp_demand_active_confirm(Connection *con, u_char *p);
 static int rdp_parse_rdpdata_pdu(Connection *con, u_char *p);
 static char *rdp_disc_reason(uint32_t code);
@@ -3668,6 +3668,7 @@ rdp_client_info(Connection *con)
  * Sends a certain scancode by calling 'rdp_input_msg()' accordingly. Note
  * that the data will be saved in Ncrack's 'outbuf'.
  */
+#if 0
 static void
 rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
     uint8_t scancode)
@@ -3675,6 +3676,7 @@ rdp_scancode_msg(Connection *con, uint32_t time, uint16_t flags,
   rdp_input_msg(con, time, RDP_INPUT_SCANCODE, flags, scancode, 0);
 
 }
+#endif
 
 
 /*****************************************************************************
