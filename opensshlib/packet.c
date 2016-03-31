@@ -1421,6 +1421,7 @@ ssh_packet_read_seqnr(struct ssh *ssh, u_char *typep, u_int32_t *seqnr_p)
 	free(setp);
 	return r;
 #endif
+  return 0; // temp
 }
 
 #if 0
@@ -2612,6 +2613,7 @@ ssh_packet_get_state(struct ssh *ssh, struct sshbuf *m)
 }
 #endif
 
+#if 0
 /* restore key exchange results from blob for packet state de-serialization */
 static int
 newkeys_from_blob(struct sshbuf *m, struct ssh *ssh, int mode)
@@ -2683,7 +2685,9 @@ newkeys_from_blob(struct sshbuf *m, struct ssh *ssh, int mode)
 		sshbuf_free(b);
 	return r;
 }
+#endif
 
+#if 0
 /* restore kex from blob for packet state de-serialization */
 static int
 kex_from_blob(struct sshbuf *m, struct kex **kexp)
@@ -2726,6 +2730,7 @@ kex_from_blob(struct sshbuf *m, struct kex **kexp)
 	}
 	return r;
 }
+#endif
 
 /*
  * Restore packet state from content of blob 'm' (de-serialization).
@@ -2816,6 +2821,7 @@ ssh_packet_set_state(struct ssh *ssh, struct sshbuf *m)
 	debug3("%s: done", __func__);
 	return 0;
 #endif
+  return 0; // temp
 }
 
 /* NEW API */

@@ -106,8 +106,8 @@ set_nonblock(int fd)
 		    strerror(errno));
 		return (-1);
 	}
-	return (0);
 #endif
+	return (0);
 }
 
 int
@@ -132,8 +132,8 @@ unset_nonblock(int fd)
 		    fd, strerror(errno));
 		return (-1);
 	}
-	return (0);
 #endif
+	return (0);
 }
 
 const char *
@@ -144,6 +144,7 @@ ssh_gai_strerror(int gaierr)
 		return strerror(errno);
 	return gai_strerror(gaierr);
 #endif
+  return NULL; // temp
 }
 
 /* disable nagle on socket */
@@ -239,6 +240,7 @@ pwcopy(struct passwd *pw)
 	copy->pw_shell = xstrdup(pw->pw_shell);
 	return copy;
 #endif
+  return NULL; // temp
 }
 
 /*
@@ -573,6 +575,7 @@ tilde_expand_filename(const char *filename, uid_t uid)
 
 	return (ret);
 #endif
+  return NULL; // temp
 }
 
 /*

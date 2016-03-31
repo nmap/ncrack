@@ -247,13 +247,13 @@ packet_restore_state(void)
 {
 	ssh_packet_restore_state(active_state, backup_state);
 }
-#endif
 
 u_int
 packet_get_char(void)
 {
 	return (ssh_packet_get_char(active_state));
 }
+#endif
 
 u_int
 packet_get_int(void)
