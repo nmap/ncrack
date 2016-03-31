@@ -145,8 +145,6 @@ ncrack_sip(nsock_pool nsp, Connection *con)
   struct http_challenge challenge;
   char *response_hdr;
 
-  char *la;
-
 
   if (con->misc_info) {
     info = (sip_info *) con->misc_info;
@@ -356,7 +354,7 @@ char *get_ip_address(void) {
   struct ifaddrs *ifaddr, *ifa;
   int family, s, n;
   char host[NI_MAXHOST];
-  int addrlen;
+  //int addrlen;
 
   if (getifaddrs(&ifaddr) == -1)
     return NULL;
@@ -385,7 +383,7 @@ char *get_ip_address(void) {
         addr = (char *)malloc(strlen(host) + 1);
         memset(addr, 0, strlen(host) + 1);
         memcpy(addr, host, strlen(host));
-        addrlen = strlen(host);
+        //addrlen = strlen(host);
         break;
       }
       printf("address: <%s>\n", host);
