@@ -272,7 +272,7 @@ ncrack_sip(nsock_pool nsp, Connection *con)
       con->outbuf->snprintf(strlen(serv->target->NameIP()) + strlen(info->local_ip) + strlen(localport_s) + strlen(con->user) \
           + strlen(serv->target->NameIP()) + strlen(con->user) + strlen(serv->target->NameIP()) + strlen(serv->target->NameIP()) \
           + strlen(cseq_s) + strlen(response_hdr) +
-          strlen("REGISTER sip: SIP/2.0\r\nVia: SIP/2.0/TCP :\r\nFrom: <sip:@>\r\nTo: <sip:@>\r\n" "Call-ID: 1234@\r\nCSeq:  REGISTER\r\n\Authorization:\r\nContent-Length: 0\r\n\r\n"),
+          strlen("REGISTER sip: SIP/2.0\r\nVia: SIP/2.0/TCP :\r\nFrom: <sip:@>\r\nTo: <sip:@>\r\n" "Call-ID: 1234@\r\nCSeq:  REGISTER\r\nAuthorization:\r\nContent-Length: 0\r\n\r\n"),
       "REGISTER sip:%s SIP/2.0\r\n"
       "Via: SIP/2.0/TCP %s:%d\r\n"
       "From: <sip:%s@%s>\r\n"
