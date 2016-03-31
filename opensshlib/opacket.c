@@ -227,6 +227,7 @@ ssh_packet_get_cstring(ncrack_ssh_state *nstate, u_int *length_ptr)
 
 /* Old API, that had to be reimplemented */
 
+#if 0
 void
 packet_set_connection(int fd_in, int fd_out)
 {
@@ -235,7 +236,6 @@ packet_set_connection(int fd_in, int fd_out)
 		fatal("%s: ssh_packet_set_connection failed", __func__);
 }
 
-#if 0
 void
 packet_backup_state(void)
 {
@@ -253,13 +253,13 @@ packet_get_char(void)
 {
 	return (ssh_packet_get_char(active_state));
 }
-#endif
 
 u_int
 packet_get_int(void)
 {
 	return (ssh_packet_get_int(active_state));
 }
+#endif
 
 int
 packet_read_seqnr(u_int32_t *seqnr)
@@ -272,6 +272,7 @@ packet_read_seqnr(u_int32_t *seqnr)
 	return type;
 }
 
+#if 0
 int
 packet_read_poll_seqnr(u_int32_t *seqnr)
 {
@@ -282,6 +283,7 @@ packet_read_poll_seqnr(u_int32_t *seqnr)
 		sshpkt_fatal(active_state, __func__, r);
 	return type;
 }
+#endif
 
 void
 packet_close(void)
@@ -290,6 +292,7 @@ packet_close(void)
 	active_state = NULL;
 }
 
+#if 0
 void
 packet_process_incoming(const char *buf, u_int len)
 {
@@ -317,7 +320,6 @@ packet_write_poll(void)
 		sshpkt_fatal(active_state, __func__, r);
 }
 
-#if 0
 void
 packet_read_expect(int expected_type)
 {

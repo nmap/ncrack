@@ -645,7 +645,7 @@ done:
 }
 
 
-
+#if 0
 #ifdef GSSAPI
 int
 userauth_gssapi(Authctxt *authctxt)
@@ -879,6 +879,7 @@ input_gssapi_error(int type, u_int32_t plen, void *ctxt)
 	return 0;
 }
 #endif /* GSSAPI */
+#endif
 
 int
 userauth_none(Authctxt *authctxt)
