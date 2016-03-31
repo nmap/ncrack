@@ -125,7 +125,7 @@ static int smb_check_auth(Connection *con);
 
 
 
-static void smb_free(Connection *con);
+//static void smb_free(Connection *con);
 
 enum hash_types { HASH_V1, HASH_LM, HASH_NTLM, HASH_V2, HASH_LMV2 };
 
@@ -459,10 +459,7 @@ static int
 smb_check_auth(Connection *con)
 {
 
-  smb_state *info;
   smb_header *header;
-
-  info = (smb_state *) con->misc_info;
 
   /* Point to SMB header, 4 bytes after the beginning of NetBIOS header.
    * Without any need for additional memory-copy operations, just have the
@@ -613,13 +610,7 @@ void
 ncrack_smb(nsock_pool nsp, Connection *con)
 {
   nsock_iod nsi = con->niod;
-  Service *serv = con->service;
-  void *ioptr;
-  con->ops_free = &smb_free;
-  smb_state *info = NULL;
-
-  if (con->misc_info)
-    info = (smb_state *) con->misc_info;
+  //con->ops_free = &smb_free;
 
   switch (con->state)
   {
@@ -695,10 +686,11 @@ ncrack_smb(nsock_pool nsp, Connection *con)
 }
 
 
-
+#if 0
 static void
 smb_free(Connection *con)
 {
 
 
 }
+#endif
