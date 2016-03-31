@@ -128,8 +128,7 @@ void
 ncrack_redis(nsock_pool nsp, Connection *con)
 {
   nsock_iod nsi = con->niod;
-  Service *serv = con->service;
-  const char *hostinfo = serv->HostInfo();
+
   switch (con->state)
   {
     case REDIS_INIT:
