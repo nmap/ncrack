@@ -255,7 +255,7 @@ gen_candidates(FILE *out, u_int32_t memory, u_int32_t power, BIGNUM *start)
 
 	if (memory != 0 &&
 	    (memory < LARGE_MINIMUM || memory > LARGE_MAXIMUM)) {
-		error("Invalid memory amount (min %ld, max %ld)",
+		ssh_error("Invalid memory amount (min %ld, max %ld)",
 		    LARGE_MINIMUM, LARGE_MAXIMUM);
 		return (-1);
 	}
@@ -265,10 +265,10 @@ gen_candidates(FILE *out, u_int32_t memory, u_int32_t power, BIGNUM *start)
 	 * This is changed to 1 less than the desired safe prime moduli p.
 	 */
 	if (power > TEST_MAXIMUM) {
-		error("Too many bits: %u > %lu", power, TEST_MAXIMUM);
+		ssh_error("Too many bits: %u > %lu", power, TEST_MAXIMUM);
 		return (-1);
 	} else if (power < TEST_MINIMUM) {
-		error("Too few bits: %u < %u", power, TEST_MINIMUM);
+		ssh_error("Too few bits: %u < %u", power, TEST_MINIMUM);
 		return (-1);
 	}
 	power--; /* decrement before squaring */
@@ -586,7 +586,7 @@ prime_test(FILE *in, FILE *out, u_int32_t trials, u_int32_t generator_wanted,
 	int res;
 
 	if (trials < TRIAL_MINIMUM) {
-		error("Minimum primality trials is %d", TRIAL_MINIMUM);
+		ssh_error("Minimum primality trials is %d", TRIAL_MINIMUM);
 		return (-1);
 	}
 

@@ -81,7 +81,7 @@ ssh_rijndael_cbc(EVP_CIPHER_CTX *ctx, u_char *dest, const u_char *src,
 	if (len % RIJNDAEL_BLOCKSIZE)
 		fatal("ssh_rijndael_cbc: bad len %d", len);
 	if ((c = EVP_CIPHER_CTX_get_app_data(ctx)) == NULL) {
-		error("ssh_rijndael_cbc: no context");
+		ssh_error("ssh_rijndael_cbc: no context");
 		return (0);
 	}
 	if (ctx->encrypt) {

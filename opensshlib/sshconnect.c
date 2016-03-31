@@ -301,7 +301,7 @@ ssh_create_socket(int privileged, struct addrinfo *ai)
 
 	sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 	if (sock < 0) {
-		error("socket: %s", strerror(errno));
+		ssh_error("socket: %s", strerror(errno));
 		return -1;
 	}
 	fcntl(sock, F_SETFD, FD_CLOEXEC);
@@ -318,7 +318,7 @@ ssh_create_socket(int privileged, struct addrinfo *ai)
 		hints.ai_flags = AI_PASSIVE;
 		gaierr = getaddrinfo(options.bind_address, NULL, &hints, &res);
 		if (gaierr) {
-			error("getaddrinfo: %s: %s", options.bind_address,
+			ssh_error("getaddrinfo: %s: %s", options.bind_address,
 			    ssh_gai_strerror(gaierr));
 			close(sock);
 			return -1;
@@ -333,13 +333,13 @@ ssh_create_socket(int privileged, struct addrinfo *ai)
 		r = bindresvport_sa(sock, res ? res->ai_addr : NULL);
 		PRIV_END;
 		if (r < 0) {
-			error("bindresvport_sa: af=%d %s", ai->ai_family,
+			ssh_error("bindresvport_sa: af=%d %s", ai->ai_family,
 			    strerror(errno));
 			goto fail;
 		}
 	} else {
 		if (bind(sock, res->ai_addr, res->ai_addrlen) < 0) {
-			error("bind: %s: %s", options.bind_address,
+			ssh_error("bind: %s: %s", options.bind_address,
 			    strerror(errno));
  fail:
 			close(sock);
@@ -475,7 +475,7 @@ ssh_connect_direct(const char *host, struct addrinfo *aitop,
 			if (getnameinfo(ai->ai_addr, ai->ai_addrlen,
 			    ntop, sizeof(ntop), strport, sizeof(strport),
 			    NI_NUMERICHOST|NI_NUMERICSERV) != 0) {
-				error("ssh_connect: getnameinfo failed");
+				ssh_error("ssh_connect: getnameinfo failed");
 				continue;
 			}
 			debug("Connecting to %.200s [%.100s] port %s.",
@@ -505,7 +505,7 @@ ssh_connect_direct(const char *host, struct addrinfo *aitop,
 
 	/* Return failure if we didn't get a successful connection. */
 	if (sock == -1) {
-		error("ssh: connect to host %s port %s: %s",
+		ssh_error("ssh: connect to host %s port %s: %s",
 		    host, strport, strerror(errno));
 		return (-1);
 	}
@@ -516,7 +516,7 @@ ssh_connect_direct(const char *host, struct addrinfo *aitop,
 	if (want_keepalive &&
 	    setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&on,
 	    sizeof(on)) < 0)
-		error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
+		ssh_error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
 
 	/* Set the connection. */
 	packet_set_connection(sock, sock);
@@ -734,11 +734,11 @@ check_host_cert(const char *host, const Key *host_key)
 	const char *reason;
 
 	if (key_cert_check_authority(host_key, 1, 0, host, &reason) != 0) {
-		error("%s", reason);
+		ssh_error("%s", reason);
 		return 0;
 	}
 	if (buffer_len(host_key->cert->critical) != 0) {
-		error("Certificate for %s contains unsupported "
+		ssh_error("Certificate for %s contains unsupported "
 		    "critical options(s)", host);
 		return 0;
 	}
@@ -975,7 +975,7 @@ check_host_key(char *hostname, struct sockaddr *hostaddr, u_short port,
 			 * will not add the host key automatically.  The only
 			 * alternative left is to abort.
 			 */
-			error("No %s host key is known for %.200s and you "
+			ssh_error("No %s host key is known for %.200s and you "
 			    "have requested strict checking.", type, host);
 			goto fail;
 		} else if (options.strict_host_key_checking == 2) {
@@ -1054,19 +1054,19 @@ check_host_key(char *hostname, struct sockaddr *hostaddr, u_short port,
 			    "list of known hosts.", hostp, type);
 		break;
 	case HOST_REVOKED:
-		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-		error("@       WARNING: REVOKED HOST KEY DETECTED!               @");
-		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-		error("The %s host key for %s is marked as revoked.", type, host);
-		error("This could mean that a stolen key is being used to");
-		error("impersonate this host.");
+		ssh_error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+		ssh_error("@       WARNING: REVOKED HOST KEY DETECTED!               @");
+		ssh_error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+		ssh_error("The %s host key for %s is marked as revoked.", type, host);
+		ssh_error("This could mean that a stolen key is being used to");
+		ssh_error("impersonate this host.");
 
 		/*
 		 * If strict host key checking is in use, the user will have
 		 * to edit the key manually and we can only abort.
 		 */
 		if (options.strict_host_key_checking) {
-			error("%s host key for %.200s was revoked and you have "
+			ssh_error("%s host key for %.200s was revoked and you have "
 			    "requested strict checking.", type, host);
 			goto fail;
 		}
@@ -1094,23 +1094,23 @@ check_host_key(char *hostname, struct sockaddr *hostaddr, u_short port,
 				key_msg = "is unchanged";
 			else
 				key_msg = "has a different value";
-			error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-			error("@       WARNING: POSSIBLE DNS SPOOFING DETECTED!          @");
-			error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-			error("The %s host key for %s has changed,", type, host);
-			error("and the key for the corresponding IP address %s", ip);
-			error("%s. This could either mean that", key_msg);
-			error("DNS SPOOFING is happening or the IP address for the host");
-			error("and its host key have changed at the same time.");
+			ssh_error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+			ssh_error("@       WARNING: POSSIBLE DNS SPOOFING DETECTED!          @");
+			ssh_error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+			ssh_error("The %s host key for %s has changed,", type, host);
+			ssh_error("and the key for the corresponding IP address %s", ip);
+			ssh_error("%s. This could either mean that", key_msg);
+			ssh_error("DNS SPOOFING is happening or the IP address for the host");
+			ssh_error("and its host key have changed at the same time.");
 			if (ip_status != HOST_NEW)
-				error("Offending key for IP in %s:%lu",
+				ssh_error("Offending key for IP in %s:%lu",
 				    ip_found->file, ip_found->line);
 		}
 		/* The host key has changed. */
 		warn_changed_key(host_key);
-		error("Add correct host key in %.100s to get rid of this message.",
+		ssh_error("Add correct host key in %.100s to get rid of this message.",
 		    user_hostfiles[0]);
-		error("Offending %s key in %s:%lu", key_type(host_found->key),
+		ssh_error("Offending %s key in %s:%lu", key_type(host_found->key),
 		    host_found->file, host_found->line);
 
 		/*
@@ -1118,7 +1118,7 @@ check_host_key(char *hostname, struct sockaddr *hostaddr, u_short port,
 		 * to edit the key manually and we can only abort.
 		 */
 		if (options.strict_host_key_checking) {
-			error("%s host key for %.200s has changed and you have "
+			ssh_error("%s host key for %.200s has changed and you have "
 			    "requested strict checking.", type, host);
 			goto fail;
 		}
@@ -1130,46 +1130,46 @@ check_host_key(char *hostname, struct sockaddr *hostaddr, u_short port,
 		 * forwarding.
 		 */
 		if (options.password_authentication) {
-			error("Password authentication is disabled to avoid "
+			ssh_error("Password authentication is disabled to avoid "
 			    "man-in-the-middle attacks.");
 			options.password_authentication = 0;
 			cancelled_forwarding = 1;
 		}
 		if (options.kbd_interactive_authentication) {
-			error("Keyboard-interactive authentication is disabled"
+			ssh_error("Keyboard-interactive authentication is disabled"
 			    " to avoid man-in-the-middle attacks.");
 			options.kbd_interactive_authentication = 0;
 			options.challenge_response_authentication = 0;
 			cancelled_forwarding = 1;
 		}
 		if (options.challenge_response_authentication) {
-			error("Challenge/response authentication is disabled"
+			ssh_error("Challenge/response authentication is disabled"
 			    " to avoid man-in-the-middle attacks.");
 			options.challenge_response_authentication = 0;
 			cancelled_forwarding = 1;
 		}
 		if (options.forward_agent) {
-			error("Agent forwarding is disabled to avoid "
+			ssh_error("Agent forwarding is disabled to avoid "
 			    "man-in-the-middle attacks.");
 			options.forward_agent = 0;
 			cancelled_forwarding = 1;
 		}
 		if (options.forward_x11) {
-			error("X11 forwarding is disabled to avoid "
+			ssh_error("X11 forwarding is disabled to avoid "
 			    "man-in-the-middle attacks.");
 			options.forward_x11 = 0;
 			cancelled_forwarding = 1;
 		}
 		if (options.num_local_forwards > 0 ||
 		    options.num_remote_forwards > 0) {
-			error("Port forwarding is disabled to avoid "
+			ssh_error("Port forwarding is disabled to avoid "
 			    "man-in-the-middle attacks.");
 			options.num_local_forwards =
 			    options.num_remote_forwards = 0;
 			cancelled_forwarding = 1;
 		}
 		if (options.tun_open != SSH_TUNMODE_NO) {
-			error("Tunnel forwarding is disabled to avoid "
+			ssh_error("Tunnel forwarding is disabled to avoid "
 			    "man-in-the-middle attacks.");
 			options.tun_open = SSH_TUNMODE_NO;
 			cancelled_forwarding = 1;
@@ -1206,7 +1206,7 @@ check_host_key(char *hostname, struct sockaddr *hostaddr, u_short port,
 		}
 		if (options.strict_host_key_checking == 1) {
 			logit("%s", msg);
-			error("Exiting, you have requested strict checking.");
+			ssh_error("Exiting, you have requested strict checking.");
 			goto fail;
 		} else if (options.strict_host_key_checking == 2) {
 			strlcat(msg, "\nAre you sure you want "
@@ -1266,7 +1266,7 @@ verify_host_key(char *host, struct sockaddr *hostaddr, Key *host_key)
 
 	if ((fp = sshkey_fingerprint(host_key,
 	    options.fingerprint_hash, SSH_FP_DEFAULT)) == NULL) {
-		error("%s: fingerprint host key: %s", __func__, ssh_err(r));
+		ssh_error("%s: fingerprint host key: %s", __func__, ssh_err(r));
 		r = -1;
 		goto out;
 	}
@@ -1288,13 +1288,13 @@ verify_host_key(char *host, struct sockaddr *hostaddr, Key *host_key)
 		case 0:
 			break; /* not revoked */
 		case SSH_ERR_KEY_REVOKED:
-			error("Host key %s %s revoked by file %s",
+			ssh_error("Host key %s %s revoked by file %s",
 			    sshkey_type(host_key), fp,
 			    options.revoked_host_keys);
 			r = -1;
 			goto out;
 		default:
-			error("Error checking host key %s %s in "
+			ssh_error("Error checking host key %s %s in "
 			    "revoked keys file %s: %s", sshkey_type(host_key),
 			    fp, options.revoked_host_keys, ssh_err(r));
 			r = -1;
@@ -1323,7 +1323,7 @@ verify_host_key(char *host, struct sockaddr *hostaddr, Key *host_key)
 					matching_host_key_dns = 1;
 				} else {
 					warn_changed_key(plain);
-					error("Update the SSHFP RR in DNS "
+					ssh_error("Update the SSHFP RR in DNS "
 					    "with the new host key to get rid "
 					    "of this message.");
 				}
@@ -1459,15 +1459,15 @@ warn_changed_key(Key *host_key)
 	if (fp == NULL)
 		fatal("%s: sshkey_fingerprint fail", __func__);
 
-	error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-	error("@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @");
-	error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-	error("IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!");
-	error("Someone could be eavesdropping on you right now (man-in-the-middle attack)!");
-	error("It is also possible that a host key has just been changed.");
-	error("The fingerprint for the %s key sent by the remote host is\n%s.",
+	ssh_error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+	ssh_error("@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @");
+	ssh_error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+	ssh_error("IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!");
+	ssh_error("Someone could be eavesdropping on you right now (man-in-the-middle attack)!");
+	ssh_error("It is also possible that a host key has just been changed.");
+	ssh_error("The fingerprint for the %s key sent by the remote host is\n%s.",
 	    key_type(host_key), fp);
-	error("Please contact your system administrator.");
+	ssh_error("Please contact your system administrator.");
 
 	free(fp);
 }
@@ -1496,7 +1496,7 @@ ssh_local_cmd(const char *args)
 		signal(SIGPIPE, SIG_DFL);
 		debug3("Executing %s -c \"%s\"", shell, args);
 		execl(shell, shell, "-c", args, (char *)NULL);
-		error("Couldn't execute %s -c \"%s\": %s",
+		ssh_error("Couldn't execute %s -c \"%s\": %s",
 		    shell, args, strerror(errno));
 		_exit(1);
 	} else if (pid == -1)

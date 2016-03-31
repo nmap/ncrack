@@ -92,7 +92,7 @@ set_nonblock(int fd)
 
 	val = fcntl(fd, F_GETFL, 0);
 	if (val < 0) {
-		error("fcntl(%d, F_GETFL, 0): %s", fd, strerror(errno));
+		ssh_error("fcntl(%d, F_GETFL, 0): %s", fd, strerror(errno));
 		return (-1);
 	}
 	if (val & O_NONBLOCK) {
@@ -118,7 +118,7 @@ unset_nonblock(int fd)
 
 	val = fcntl(fd, F_GETFL, 0);
 	if (val < 0) {
-		error("fcntl(%d, F_GETFL, 0): %s", fd, strerror(errno));
+		ssh_error("fcntl(%d, F_GETFL, 0): %s", fd, strerror(errno));
 		return (-1);
 	}
 	if (!(val & O_NONBLOCK)) {
@@ -166,7 +166,7 @@ set_nodelay(int fd)
 	opt = 1;
 	debug2("fd %d setting TCP_NODELAY", fd);
 	if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof opt) == -1)
-		error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
+		ssh_error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
 }
 
 /* Characters considered whitespace in strsep calls. */
@@ -732,7 +732,7 @@ tun_open(int tun, int mode)
 	    mode, strerror(errno));
 	return (-1);
 #else
-	error("Tunnel interfaces are not supported on this platform");
+	ssh_error("Tunnel interfaces are not supported on this platform");
 	return (-1);
 #endif
 }
@@ -1093,7 +1093,7 @@ unix_listener(const char *path, int backlog, int unlink_first)
 	memset(&sunaddr, 0, sizeof(sunaddr));
 	sunaddr.sun_family = AF_UNIX;
 	if (strlcpy(sunaddr.sun_path, path, sizeof(sunaddr.sun_path)) >= sizeof(sunaddr.sun_path)) {
-		error("%s: \"%s\" too long for Unix domain socket", __func__,
+		ssh_error("%s: \"%s\" too long for Unix domain socket", __func__,
 		    path);
 		errno = ENAMETOOLONG;
 		return -1;
@@ -1102,28 +1102,28 @@ unix_listener(const char *path, int backlog, int unlink_first)
 	sock = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (sock < 0) {
 		saved_errno = errno;
-		error("socket: %.100s", strerror(errno));
+		ssh_error("socket: %.100s", strerror(errno));
 		errno = saved_errno;
 		return -1;
 	}
 	if (unlink_first == 1) {
 		if (unlink(path) != 0 && errno != ENOENT)
-			error("unlink(%s): %.100s", path, strerror(errno));
+			ssh_error("unlink(%s): %.100s", path, strerror(errno));
 	}
 	if (bind(sock, (struct sockaddr *)&sunaddr, sizeof(sunaddr)) < 0) {
 		saved_errno = errno;
-		error("bind: %.100s", strerror(errno));
+		ssh_error("bind: %.100s", strerror(errno));
 		close(sock);
-		error("%s: cannot bind to path: %s", __func__, path);
+		ssh_error("%s: cannot bind to path: %s", __func__, path);
 		errno = saved_errno;
 		return -1;
 	}
 	if (listen(sock, backlog) < 0) {
 		saved_errno = errno;
-		error("listen: %.100s", strerror(errno));
+		ssh_error("listen: %.100s", strerror(errno));
 		close(sock);
 		unlink(path);
-		error("%s: cannot listen on path: %s", __func__, path);
+		ssh_error("%s: cannot listen on path: %s", __func__, path);
 		errno = saved_errno;
 		return -1;
 	}
@@ -1138,6 +1138,6 @@ sock_set_v6only(int s)
 
 	debug3("%s: set socket %d IPV6_V6ONLY", __func__, s);
 	if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1)
-		error("setsockopt IPV6_V6ONLY: %s", strerror(errno));
+		ssh_error("setsockopt IPV6_V6ONLY: %s", strerror(errno));
 #endif
 }
