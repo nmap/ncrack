@@ -154,7 +154,7 @@ void
 ncrack_http(nsock_pool nsp, Connection *con)
 {
   char *start, *end;  /* auxiliary pointers */
-  int i;
+  size_t i;
   char *http_reply = NULL;   /* server's message reply */
   size_t tmpsize;
   nsock_iod nsi = con->niod;
@@ -666,7 +666,6 @@ http_free(Connection *con)
   //printf("http free\n");
 
   http_info *p = NULL;
-  http_state *s = NULL;
   if (con->misc_info == NULL)
     return;
 
@@ -675,8 +674,8 @@ http_free(Connection *con)
   //printf("free scheme: %s\n", p->auth_scheme);
   //printf("free substate: %d\n", p->substate);
 
-  if (con->service->module_data)
-    s = (http_state *)con->service->module_data;
+  //if (con->service->module_data)
+  // s = (http_state *)con->service->module_data;
 
   //printf("free service scheme: %s\n", s->auth_scheme);
   /* We only deallocate the 'auth_scheme' string from the http_info struct
