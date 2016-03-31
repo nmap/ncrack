@@ -643,7 +643,6 @@ typedef struct rdp_order_caps {
     max_order = 1;
     num_fonts = 0x147;
     cap_flags = 0x2a;
-    order;
     text_cap_flags = 0x6a1;
     memset(&pad2, 0, sizeof(pad2));
     desk_cache_size = 0x38400;
