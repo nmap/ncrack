@@ -169,7 +169,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
 
       /* Telnet Option Parsing */
       while (*recvbufptr == (char) IAC
-          && ((recvbufptr - (char *)con->inbuf->get_dataptr()) < recvbuflen)
+          && ((size_t)(recvbufptr - (char *)con->inbuf->get_dataptr()) < recvbuflen)
           && ((localbufptr - lbuf) < BUFSIZE - 3)) {
 
         /* For every option other than linemode we reject it */
@@ -224,7 +224,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
           /* We just ignore any suboption we receive */
         } else if (recvbufptr[1] == (char) SB) {
           while (*recvbufptr != (char) SE
-              && (recvbufptr - (char *)con->inbuf->get_dataptr()) < recvbuflen)
+              && (size_t)((recvbufptr - (char *)con->inbuf->get_dataptr())) < recvbuflen)
             recvbufptr++;
           recvbufptr++;
         }
@@ -313,7 +313,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
          * order to go on sending the rest of the username.
          */
         if (con->inbuf && info->userptr > con->user
-            && (info->userptr - con->user) != strlen(con->user)) {
+            && (size_t)((info->userptr - con->user)) != strlen(con->user)) {
           /* Some telnet daemons send the echo reply with a \0 byte in front of
            * the echoed characted. Damn inconsistencies. */
           if ((recvbuflen > 2 && recvbufptr[1] != *(info->userptr - 1))
@@ -334,7 +334,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
           break;
         }
 
-        if (info->userptr - con->user == strlen(con->user)) {
+        if ((size_t)(info->userptr - con->user) == strlen(con->user)) {
           lbuf[0] = '\r'; 
           lbuf[1] = '\0';
           nsock_write(nsp, nsi, ncrack_write_handler, 10000, con, lbuf, 2);

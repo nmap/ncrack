@@ -204,7 +204,7 @@ static void rdp_disconnect(Connection *con);
 static u_char *rdp_iso_recv_data_loop(Connection *con);
 static void rdp_parse_update_pdu(Connection *con, u_char *p);
 static void rdp_parse_orders(Connection *con, u_char *p, uint16_t num);
-static void rdp_parse_second_order(u_char *p);
+//static void rdp_parse_second_order(u_char *p);
 static u_char *rdp_parse_destblt(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_coord(u_char *p, bool delta, int16_t *coord = NULL);
 static u_char *rdp_parse_brush(u_char *p, uint32_t params);
