@@ -2717,7 +2717,6 @@ rdp_parse_update_pdu(Connection *con, u_char *p)
 static int
 rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
 {
-  rdp_state *info = (rdp_state *)con->misc_info;
   uint8_t pdu_type;
   uint32_t disc_reason;
   char *disc_msg;
@@ -2799,7 +2798,6 @@ static int
 rdp_process_loop(Connection *con)
 {
   bool loop = true;
-  bool disc = false;
   uint8_t pdu_type = 0;
   rdp_state *info = (rdp_state *)con->misc_info;
   u_char *p;
@@ -3022,7 +3020,6 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
   u_char *p;
   char error[64];
   uint8_t opcode;
-  rdp_state *info = (rdp_state *)con->misc_info;
 
   p = rdp_iso_recv_data_loop(con);
   if (p == NULL)
@@ -3113,7 +3110,6 @@ rdp_iso_recv_data(Connection *con)
   iso_tpkt *tpkt;
   iso_itu_t_data *itu_t;
   char error[64];
-  rdp_state *info = (rdp_state *)con->misc_info;
 
 
   tpkt = (iso_tpkt *) ((const char *)con->inbuf->get_dataptr());
@@ -3160,7 +3156,7 @@ rdp_get_crypto(Connection *con, u_char *p)
   uint32_t rc4_size;  
   uint32_t encryption_level;
   uint32_t rsa_len;
-  uint32_t mod_len;
+  uint32_t mod_len = 0;
   char error[128];
   rdp_state *info;
 
@@ -3862,8 +3858,6 @@ void
 ncrack_rdp(nsock_pool nsp, Connection *con)
 {
   nsock_iod nsi = con->niod;
-  Service *serv = con->service;
-  void *ioptr;
   rdp_state *info = NULL;
   int loop_val;
 
