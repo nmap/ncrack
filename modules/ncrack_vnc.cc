@@ -156,7 +156,7 @@ static uint8_t*
 str2uint8(char* p, int str_length, int uint_length)
 {
   uint8_t* retme;
-  retme = new(uint8_t[str_length]);
+  retme = new uint8_t[str_length];
 
   for(int i=0; i < str_length; i++)
     retme[i] = (uint8_t)p[i];
