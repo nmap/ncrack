@@ -105,6 +105,7 @@ void ncrack_vnc(nsock_pool nsp, Connection *con);
 void ncrack_sip(nsock_pool nsp, Connection *con);
 void ncrack_redis(nsock_pool nsp, Connection *con);
 void ncrack_psql(nsock_pool nsp, Connection *con);
+void ncrack_mysql(nsock_pool nsp, Connection *con);
 
 
 #endif
