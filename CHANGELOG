@@ -41,8 +41,8 @@
 
 Ncrack 0.5 [2016-03-17]
 
-o Added 3 new modules: Redis, PostgreSQL, SIP. Thanks to edeirme for
-  implementing the Redis and PostgreSQL modules.
+o Added 4 new modules: Redis, PostgreSQL, MySQL, SIP. Thanks to edeirme for
+  implementing the Redis, PostgreSQL and MySQL modules.
 
 o Added --pairwise option for special username/password iteration.
 

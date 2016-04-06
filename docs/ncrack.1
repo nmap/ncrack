@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 03/16/2016
+.\"      Date: 04/06/2016
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "03/16/2016" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "04/06/2016" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -150,7 +150,7 @@ MISC:
   \-V: Print version number
   \-h: Print this help summary page\&.
 MODULES:
-  FTP, SSH, TELNET, HTTP(S), POP3(S), SMB, RDP, VNC, SIP, REDIS, PSQL
+  FTP, SSH, Telnet, HTTP(S), POP3(S), SMB, RDP, VNC, SIP, Redis, PostgreSQL, MySQL
 EXAMPLES:
   ncrack \-v \-\-user root localhost:22
   ncrack \-v \-T5 https://192\&.168\&.0\&.1
@@ -998,6 +998,12 @@ Redis is one of the most widely used caching servers and the most popular NoSQL 
 .PP
 .RS 4
 PostgreSQL is often used as a backend database\&. The PostgreSQL module supports md5 authentication, which is the most frequent password authentication method\&.
+.RE
+.PP
+\fBMySQL Module\fR
+.PP
+.RS 4
+The MySQL module supports native authentication\&.
 .RE
 .SH "BUGS"
 .\" bugs, reporting

@@ -58,7 +58,7 @@ MISC:
   -V: Print version number
   -h: Print this help summary page.
 MODULES:
-  FTP, SSH, TELNET, HTTP(S), POP3(S), SMB, RDP, VNC, SIP, REDIS, PSQL
+  FTP, SSH, Telnet, HTTP(S), POP3(S), SMB, RDP, VNC, SIP, Redis, PostgreSQL, MySQL
 EXAMPLES:
   ncrack -v --user root localhost:22
   ncrack -v -T5 https://192.168.0.1

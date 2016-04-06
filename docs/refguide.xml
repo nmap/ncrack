@@ -2088,6 +2088,17 @@ Ncrack finished.
       </varlistentry>
     </variablelist>
 
+     <variablelist><title>MySQL Module</title>
+      <varlistentry>
+        <listitem>
+          <para>
+           The MySQL module supports native authentication.
+          </para>
+            
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
     </refsect1>
 
 
