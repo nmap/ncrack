@@ -212,7 +212,7 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
           }
         }
         server_authentication_method[strlen(server_authentication_method) + 1] = '\0';
-        printf("Server default authentication: %s\n", server_authentication_method);
+        //printf("Server default authentication: %s\n", server_authentication_method);
         strncpy(mysql_auth_method, server_authentication_method, strlen(server_authentication_method));
         return 0;
       } else {
