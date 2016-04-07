@@ -704,6 +704,8 @@ ssh_exchange_identification(int timeout_ms)
 	chop(server_version_string);
 }
 
+
+#if 0
 /* defaults to 'no' */
 static int
 confirm(const char *prompt)
@@ -1511,5 +1513,7 @@ ssh_local_cmd(const char *args)
 
 	return (WEXITSTATUS(status));
 }
+
+#endif
 
 #endif

@@ -375,6 +375,7 @@ check_follow_cname(char **namep, const char *cname)
  * if no name was found after canonicalization.
  * NB. this function must operate with a options having undefined members.
  */
+#if 0
 static struct addrinfo *
 resolve_canonicalize(char **hostp, int port)
 {
@@ -445,6 +446,7 @@ resolve_canonicalize(char **hostp, int port)
 	debug2("%s: host %s not found in any suffix", __func__, *hostp);
 	return NULL;
 }
+#endif
 
 /*
  * Read per-user configuration file.  Ignore the system wide config
@@ -1939,6 +1941,7 @@ ssh_session2(void)
 	    options.escape_char : SSH_ESCAPECHAR_NONE, id);
 }
 
+#if 0
 static void
 load_public_identity_files(void)
 {
@@ -2037,6 +2040,7 @@ load_public_identity_files(void)
 	explicit_bzero(pwdir, strlen(pwdir));
 	free(pwdir);
 }
+#endif
 
 static void
 main_sigchld_handler(int sig)

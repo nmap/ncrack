@@ -1604,6 +1604,7 @@ ssh_keysign(struct sshkey *key, u_char **sigp, size_t *lenp,
 	return 0;
 }
 
+#if 0
 int
 userauth_hostbased(Authctxt *authctxt)
 {
@@ -1750,6 +1751,7 @@ userauth_hostbased(Authctxt *authctxt)
 
 	return success;
 }
+#endif
 
 /* find auth method */
 

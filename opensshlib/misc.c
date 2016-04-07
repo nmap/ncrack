@@ -380,6 +380,7 @@ convtime(const char *s)
  * Returns a standardized host+port identifier string.
  * Caller must free returned string.
  */
+#if 0
 char *
 put_host_port(const char *host, u_short port)
 {
@@ -392,6 +393,7 @@ put_host_port(const char *host, u_short port)
 	debug3("put_host_port: %s", hoststr);
 	return hoststr;
 }
+#endif
 
 /*
  * Search for next delimiter between hostnames/addresses and ports.
@@ -468,6 +470,7 @@ colon(char *cp)
 	return NULL;
 }
 
+#if 0
 /* function to assist building execv() arguments */
 void
 addargs(arglist *args, char *fmt, ...)
@@ -529,6 +532,7 @@ freeargs(arglist *args)
 		args->list = NULL;
 	}
 }
+#endif
 
 /*
  * Expands tildes in the file name.  Returns data allocated by xmalloc.
