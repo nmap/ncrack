@@ -83,11 +83,11 @@ chop(char *s)
 
 }
 
+#if 0
 /* set/unset filedescriptor to non-blocking */
 int
 set_nonblock(int fd)
 {
-#if 0
 	int val;
 
 	val = fcntl(fd, F_GETFL, 0);
@@ -107,13 +107,13 @@ set_nonblock(int fd)
 		return (-1);
 	}
 	return (0);
-#endif
 }
+#endif
 
+#if 0
 int
 unset_nonblock(int fd)
 {
-#if 0
 	int val;
 
 	val = fcntl(fd, F_GETFL, 0);
@@ -133,18 +133,18 @@ unset_nonblock(int fd)
 		return (-1);
 	}
 	return (0);
-#endif
 }
+#endif
 
+#if 0
 const char *
 ssh_gai_strerror(int gaierr)
 {
-#if 0
 	if (gaierr == EAI_SYSTEM && errno != 0)
 		return strerror(errno);
 	return gai_strerror(gaierr);
-#endif
 }
+#endif
 
 /* disable nagle on socket */
 void
@@ -213,10 +213,10 @@ strdelim(char **s)
 	return (old);
 }
 
+#if 0
 struct passwd *
 pwcopy(struct passwd *pw)
 {
-#if 0
 	struct passwd *copy = xcalloc(1, sizeof(*copy));
 
 	copy->pw_name = xstrdup(pw->pw_name);
@@ -238,8 +238,8 @@ pwcopy(struct passwd *pw)
 	copy->pw_dir = xstrdup(pw->pw_dir);
 	copy->pw_shell = xstrdup(pw->pw_shell);
 	return copy;
-#endif
 }
+#endif
 
 /*
  * Convert ASCII string to TCP/IP port number.
@@ -536,10 +536,10 @@ freeargs(arglist *args)
  * Expands tildes in the file name.  Returns data allocated by xmalloc.
  * Warning: this calls getpw*.
  */
+#if 0
 char *
 tilde_expand_filename(const char *filename, uid_t uid)
 {
-#if 0
 	const char *path, *sep;
 	char user[128], *ret;
 	struct passwd *pw;
@@ -576,8 +576,8 @@ tilde_expand_filename(const char *filename, uid_t uid)
 		fatal("tilde_expand_filename: Path too long");
 
 	return (ret);
-#endif
 }
+#endif
 
 /*
  * Expand a string with a set of %[char] escapes. A number of escapes may be

@@ -67,7 +67,7 @@ extern const EVP_MD *evp_ssh_sha256(void);
 
 /* prototype */
 static int kex_choose_conf(ncrack_ssh_state *nstate);
-static int kex_input_newkeys(ncrack_ssh_state *nstate);
+//static int kex_input_newkeys(ncrack_ssh_state *nstate);
 static int choose_enc(struct sshenc *enc, char *client, char *server);
 static int choose_mac(ncrack_ssh_state *ssh, struct sshmac *mac, char *client, char *server);
 static int choose_comp(struct sshcomp *comp, char *client, char *server);
@@ -429,6 +429,7 @@ kex_prop_free(char **proposal)
 	free(proposal);
 }
 
+#if 0
 /* ARGSUSED */
 static int
 kex_protocol_error(int type, u_int32_t seq, void *ctxt)
@@ -436,16 +437,17 @@ kex_protocol_error(int type, u_int32_t seq, void *ctxt)
 	ssh_error("Hm, kex protocol error: type %d seq %u", type, seq);
 	return 0;
 }
+#endif
 
+#if 0
 static void
 kex_reset_dispatch(struct ssh *ssh)
 {
-#if 0
 	ssh_dispatch_range(ssh, SSH2_MSG_TRANSPORT_MIN,
 	    SSH2_MSG_TRANSPORT_MAX, &kex_protocol_error);
 	ssh_dispatch_set(ssh, SSH2_MSG_KEXINIT, &kex_input_kexinit);
-#endif
 }
+#endif
 
 int
 kex_send_newkeys(ncrack_ssh_state *nstate)
@@ -465,6 +467,7 @@ kex_send_newkeys(ncrack_ssh_state *nstate)
 	return 0;
 }
 
+#if 0
 static int
 kex_input_newkeys(ncrack_ssh_state *nstate)
 {
@@ -485,6 +488,7 @@ kex_input_newkeys(ncrack_ssh_state *nstate)
 
 	return 0;
 }
+#endif
 
 
 int

@@ -458,6 +458,7 @@ ssh_packet_connection_af(struct ssh *ssh)
 
 /* Sets the connection into non-blocking mode. */
 
+#if 0
 void
 ssh_packet_set_nonblocking(struct ssh *ssh)
 {
@@ -467,6 +468,7 @@ ssh_packet_set_nonblocking(struct ssh *ssh)
 	if (ssh->state->connection_out != ssh->state->connection_in)
 		set_nonblock(ssh->state->connection_out);
 }
+#endif
 
 /* Returns the socket used for reading. */
 
