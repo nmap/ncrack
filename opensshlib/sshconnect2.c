@@ -100,13 +100,15 @@ char *xxx_host;
 struct sockaddr *xxx_hostaddr;
 
 static int
-verify_host_key_callback(Key *hostkey, struct ssh *ssh)
+//verify_host_key_callback(Key *hostkey, struct ssh *ssh)
+verify_host_key_callback(struct sshkey *hostkey, ncrack_ssh_state *state)
 {
 	//if (verify_host_key(xxx_host, xxx_hostaddr, hostkey) == -1)
 	//	fatal("Host key verification failed.");
 	return 0;
 }
 
+#if 0
 static char *
 order_hostkeyalgs(char *host, struct sockaddr *hostaddr, u_short port)
 {
@@ -160,7 +162,7 @@ order_hostkeyalgs(char *host, struct sockaddr *hostaddr, u_short port)
 
 	return ret;
 }
-
+#endif
 
 // was ssh_kex2
 void
@@ -400,6 +402,7 @@ ncrackssh_ssh_userauth2(ncrack_ssh_state *nstate, const char *server_user,
 	ssh_packet_put_cstring(nstate, password);
 	sshpkt_add_padding(nstate, 64);
 	ssh_packet_send(nstate);
+  return 0;
 }
 
 
