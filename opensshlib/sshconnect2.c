@@ -99,7 +99,6 @@ u_int session_id2_len = 0;
 char *xxx_host;
 struct sockaddr *xxx_hostaddr;
 
-#if 0
 static int
 verify_host_key_callback(Key *hostkey, struct ssh *ssh)
 {
@@ -161,7 +160,6 @@ order_hostkeyalgs(char *host, struct sockaddr *hostaddr, u_short port)
 
 	return ret;
 }
-#endif
 
 
 // was ssh_kex2
@@ -221,7 +219,7 @@ ncrackssh_ssh_kex2(ncrack_ssh_state *nstate, char *client_version_string,
 	kex->kexm[KEX_C25519_SHA256] = kexc25519_client;
 	kex->client_version_string = client_version_string;
 	kex->server_version_string = server_version_string;
-	//kex->verify_host_key = &verify_host_key_callback;
+	kex->verify_host_key = &verify_host_key_callback;
 
 
 #ifdef DEBUG_KEXDH
@@ -402,7 +400,6 @@ ncrackssh_ssh_userauth2(ncrack_ssh_state *nstate, const char *server_user,
 	ssh_packet_put_cstring(nstate, password);
 	sshpkt_add_padding(nstate, 64);
 	ssh_packet_send(nstate);
-  return 0;
 }
 
 
@@ -541,7 +538,6 @@ input_userauth_success_unexpected(int type, u_int32_t seq, void *ctxt)
 	return 0;
 }
 
-#if 0
 /* ARGSUSED */
 int
 input_userauth_failure(int type, u_int32_t seq, void *ctxt)
@@ -568,7 +564,6 @@ input_userauth_failure(int type, u_int32_t seq, void *ctxt)
 	userauth(authctxt, authlist);
 	return 0;
 }
-#endif
 
 /* ARGSUSED */
 int
