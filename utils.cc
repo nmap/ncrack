@@ -640,7 +640,7 @@ int strbuf_sprintf(char **buf, size_t *size, size_t *offset, const char *fmt, ..
         va_end(va);
         if (n < 0)
             *size = MAX(*size, 1) * 2;
-        else if (n >= *size - *offset)
+        else if ((size_t)n >= *size - *offset)
             *size += n + 1;
         else
             break;

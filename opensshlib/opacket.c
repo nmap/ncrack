@@ -247,7 +247,6 @@ packet_restore_state(void)
 {
 	ssh_packet_restore_state(active_state, backup_state);
 }
-#endif
 
 u_int
 packet_get_char(void)
@@ -260,7 +259,6 @@ packet_get_int(void)
 {
 	return (ssh_packet_get_int(active_state));
 }
-#endif
 
 int
 packet_read_seqnr(u_int32_t *seqnr)
@@ -273,7 +271,6 @@ packet_read_seqnr(u_int32_t *seqnr)
 	return type;
 }
 
-#if 0
 int
 packet_read_poll_seqnr(u_int32_t *seqnr)
 {

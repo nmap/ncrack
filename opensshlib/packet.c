@@ -1325,10 +1325,10 @@ ssh_packet_send2(ncrack_ssh_state *nstate)
  * be used during the interactive session.
  */
 
+#if 0
 int
 ssh_packet_read_seqnr(struct ssh *ssh, u_char *typep, u_int32_t *seqnr_p)
 {
-#if 0
 	struct session_state *state = ssh->state;
 	int len, r, ms_remain, cont;
 	fd_set *setp;
@@ -1420,10 +1420,8 @@ ssh_packet_read_seqnr(struct ssh *ssh, u_char *typep, u_int32_t *seqnr_p)
  out:
 	free(setp);
 	return r;
-#endif
 }
 
-#if 0
 int
 ssh_packet_read(struct ssh *ssh)
 {
@@ -2612,6 +2610,7 @@ ssh_packet_get_state(struct ssh *ssh, struct sshbuf *m)
 }
 #endif
 
+#if 0
 /* restore key exchange results from blob for packet state de-serialization */
 static int
 newkeys_from_blob(struct sshbuf *m, struct ssh *ssh, int mode)
@@ -2817,6 +2816,7 @@ ssh_packet_set_state(struct ssh *ssh, struct sshbuf *m)
 	return 0;
 #endif
 }
+#endif
 
 /* NEW API */
 
