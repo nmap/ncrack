@@ -631,8 +631,10 @@ prime_test(FILE *in, FILE *out, u_int32_t trials, u_int32_t generator_wanted,
 			    "specified start line", count_in);
 			continue;
 		}
+#if 0
 		if (checkpoint_file != NULL)
 			write_checkpoint(checkpoint_file, count_in);
+#endif
 		print_progress(start_lineno, count_in, end_lineno);
 		if (strlen(lp) < 14 || *lp == '!' || *lp == '#') {
 			debug2("%10u: comment or short line", count_in);
