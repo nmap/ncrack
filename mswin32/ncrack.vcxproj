@@ -145,6 +145,7 @@
     <ClCompile Include="..\modules\ncrack_http.cc" />
     <ClCompile Include="..\ncrack_input.cc" />
     <ClCompile Include="..\modules\ncrack_pop3.cc" />
+	<ClCompile Include="..\modules\ncrack_mysql.cc" />
     <ClCompile Include="..\modules\ncrack_rdp.cc" />
     <ClCompile Include="..\modules\ncrack_sip.cc" />
     <ClCompile Include="..\ncrack_resume.cc" />

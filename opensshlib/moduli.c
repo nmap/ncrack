@@ -41,7 +41,9 @@
 
 #ifdef WITH_OPENSSL
 
+#ifndef WIN32
 #include <sys/param.h>	/* MAX */
+#endif
 #include <sys/types.h>
 
 #include <openssl/bn.h>
@@ -53,7 +55,9 @@
 #include <string.h>
 #include <stdarg.h>
 #include <time.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 #include <limits.h>
 
 #include "xmalloc.h"
@@ -446,6 +450,7 @@ gen_candidates(FILE *out, u_int32_t memory, u_int32_t power, BIGNUM *start)
 	return (ret);
 }
 
+#if 0
 static void
 write_checkpoint(char *cpfile, u_int32_t lineno)
 {
@@ -476,6 +481,7 @@ write_checkpoint(char *cpfile, u_int32_t lineno)
 		logit("failed to write to checkpoint file '%s': %s", cpfile,
 		    strerror(errno));
 }
+#endif
 
 static unsigned long
 read_checkpoint(char *cpfile)

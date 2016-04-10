@@ -1225,7 +1225,11 @@ read_decimal_bignum(char **cpp, BIGNUM *v)
 		return SSH_ERR_BIGNUM_TOO_LARGE;
 	if (cp[e] == '\0')
 		skip = 0;
+#ifndef WIN32
 	else if (index(" \t\r\n", cp[e]) == NULL)
+#else
+	else if (cp[e] != ' ' && cp[e] != '\t' && cp[e] != '\r' && cp[e] != '\n')
+#endif
 		return SSH_ERR_INVALID_FORMAT;
 	cp[e] = '\0';
 	if (BN_dec2bn(&v, cp) <= 0)
@@ -1256,8 +1260,13 @@ sshkey_read(struct sshkey *ret, char **cpp)
 #ifdef WITH_SSH1
 		/* Get number of bits. */
 		bits = strtoul(cp, &ep, 10);
-		if (*cp == '\0' || index(" \t\r\n", *ep) == NULL ||
-		    bits == 0 || bits > SSHBUF_MAX_BIGNUM * 8)
+		if (*cp == '\0' || 
+#ifndef WIN32
+			index(" \t\r\n", *ep) == NULL 
+#else
+			(*ep != ' ' && *ep != '\t' && *ep != '\r' && *ep != '\n')
+#endif
+			|| bits == 0 || bits > SSHBUF_MAX_BIGNUM * 8)
 			return SSH_ERR_INVALID_FORMAT;	/* Bad bit count... */
 		/* Get public exponent, public modulus. */
 		if ((r = read_decimal_bignum(&ep, ret->rsa->e)) < 0)
