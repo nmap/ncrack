@@ -292,7 +292,7 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
 
 
 static void
-xor_hashes(char *to, const u_char *s1, const u_char *s2, uint len)
+xor_hashes(char *to, const u_char *s1, const u_char *s2, u_int len)
 {
   const uint8_t *s1_end= s1 + len;
   while (s1 < s1_end)
