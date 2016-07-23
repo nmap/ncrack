@@ -217,7 +217,7 @@ static int hostInExclude(struct sockaddr *checksock, size_t checksocklen,
       }
 #if HAVE_IPV6
       else if (targets_type == TargetGroup::IPV6_ADDRESS) {
-        fatal("exclude file not supported for IPV6 -- If it is important to you, send a mail to fyodor@insecure.org so I can guage support\n");
+        fatal("exclude file not supported for IPV6 -- If it is important to you, send a mail to fyodor@insecure.org so I can gauge support\n");
       }
 #endif
     }
