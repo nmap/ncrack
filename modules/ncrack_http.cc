@@ -154,7 +154,9 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 static int http_loop_read(nsock_pool nsp, Connection *con);
 static void http_basic(nsock_pool nsp, Connection *con);
-static void http_digest(nsock_pool nsp, Connection *con);
+#if HAVE_OPENSSL
+    static void http_digest(nsock_pool nsp, Connection *con);
+#endif
 static void http_set_error(Service *serv, const char *reply);
 static char *http_decode(int http_code);
 
@@ -333,6 +335,8 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
       } else if (!strcmp("Digest", info->auth_scheme)) {
 
+#if HAVE_OPENSSL
+
         con->state = HTTP_DIGEST_AUTH;
 
         serv->module_data = (http_state *)safe_zalloc(sizeof(http_state));
@@ -348,6 +352,7 @@ ncrack_http(nsock_pool nsp, Connection *con)
         http_digest(nsp, con);
 
         //return ncrack_module_end(nsp, con);
+#endif
       
       } else {
         serv->end.orly = true;
@@ -373,7 +378,9 @@ ncrack_http(nsock_pool nsp, Connection *con)
 
     case HTTP_DIGEST_AUTH:
 
+#if HAVE_OPENSSL
       http_digest(nsp, con);
+#endif
       break;
 
   }
@@ -463,7 +470,7 @@ http_loop_read(nsock_pool nsp, Connection *con)
 }
 
 
-
+#if HAVE_OPENSSL
 static void
 http_digest(nsock_pool nsp, Connection *con)
 {
@@ -590,7 +597,7 @@ http_digest(nsock_pool nsp, Connection *con)
   }
 
 }
-
+#endif
 
 
 

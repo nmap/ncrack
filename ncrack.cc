@@ -748,15 +748,15 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_http(nsp, con);
   else if (!strcmp(name, "pop3"))
     ncrack_pop3(nsp, con);
-  else if (!strcmp(name, "pop3s"))
-    ncrack_pop3(nsp, con);
   else if (!strcmp(name, "vnc"))
     ncrack_vnc(nsp, con);
   else if (!strcmp(name, "redis"))
     ncrack_redis(nsp, con);
+#if HAVE_OPENSSL
+  else if (!strcmp(name, "pop3s"))
+    ncrack_pop3(nsp, con);
   else if (!strcmp(name, "mysql"))
     ncrack_mysql(nsp, con);
-#if HAVE_OPENSSL
   else if (!strcmp(name, "psql"))
     ncrack_psql(nsp, con);
   else if (!strcmp(name, "ssh"))

@@ -139,8 +139,9 @@
 #include <sys/time.h>
 #endif
 
-#include <openssl/md5.h>
-#include <openssl/rand.h>
+#if HAVE_OPENSSL
+  #include <openssl/md5.h>
+  #include <openssl/rand.h>
 
 /* What's a good length for this? I think it exists only to prevent us from
    hashing known plaintext from the server. */
@@ -153,75 +154,75 @@ static int secret_initialized = 0;
 
 static int append_quoted_string(char **buf, size_t *size, size_t *offset, const char *s)
 {
-    const char *t;
+  const char *t;
 
-    strbuf_append_str(buf, size, offset, "\"");
-    for (;;) {
-        t = s;
-        while (!((*t >= 0 && *t <= 31) || *t == 127 || *t == '\\'))
-            t++;
-        strbuf_append(buf, size, offset, s, t - s);
-        if (*t == '\0')
-            break;
-        strbuf_sprintf(buf, size, offset, "\\%c", *t);
-        s = t + 1;
-    }
-    strbuf_append_str(buf, size, offset, "\"");
+  strbuf_append_str(buf, size, offset, "\"");
+  for (;;) {
+    t = s;
+    while (!((*t >= 0 && *t <= 31) || *t == 127 || *t == '\\'))
+      t++;
+    strbuf_append(buf, size, offset, s, t - s);
+    if (*t == '\0')
+      break;
+    strbuf_sprintf(buf, size, offset, "\\%c", *t);
+    s = t + 1;
+  }
+  strbuf_append_str(buf, size, offset, "\"");
 
-    return *size;
+  return *size;
 }
 
 /* n is the size of src. dest must have at least n * 2 + 1 allocated bytes. */
 static char *enhex(char *dest, const unsigned char *src, size_t n)
 {
-    unsigned int i;
+  unsigned int i;
 
-    for (i = 0; i < n; i++)
-        Snprintf(dest + i * 2, 3, "%02x", src[i]);
+  for (i = 0; i < n; i++)
+    Snprintf(dest + i * 2, 3, "%02x", src[i]);
 
-    return dest;
+  return dest;
 }
 
 /* Initialize the server secret used in generating nonces. Return -1 on
    failure. */
 int http_digest_init_secret(void)
 {
-    if (!RAND_status())
-        return -1;
-    if (RAND_bytes(secret, sizeof(secret)) != 1)
-        return -1;
-    secret_initialized = 1;
+  if (!RAND_status())
+    return -1;
+  if (RAND_bytes(secret, sizeof(secret)) != 1)
+    return -1;
+  secret_initialized = 1;
 
-    return 0;
+  return 0;
 }
 
 static char *make_nonce(const struct timeval *tv)
 {
-    char *buf = NULL;
-    size_t size = 0, offset = 0;
-    MD5_CTX md5;
-    unsigned char hashbuf[MD5_DIGEST_LENGTH];
-    char hash_hex[MD5_DIGEST_LENGTH * 2 + 1];
-    char time_buf[32];
+  char *buf = NULL;
+  size_t size = 0, offset = 0;
+  MD5_CTX md5;
+  unsigned char hashbuf[MD5_DIGEST_LENGTH];
+  char hash_hex[MD5_DIGEST_LENGTH * 2 + 1];
+  char time_buf[32];
 
-    /* Crash if someone forgot to call http_digest_init_secret. */
-    if (!secret_initialized)
-      return NULL;
-//        bye("Server secret not initialized for Digest authentication. Call http_digest_init_secret.");
+  /* Crash if someone forgot to call http_digest_init_secret. */
+  if (!secret_initialized)
+    return NULL;
+  //        bye("Server secret not initialized for Digest authentication. Call http_digest_init_secret.");
 
-    Snprintf(time_buf, sizeof(time_buf), "%lu.%06lu",
-        (long unsigned) tv->tv_sec, (long unsigned) tv->tv_usec);
+  Snprintf(time_buf, sizeof(time_buf), "%lu.%06lu",
+      (long unsigned) tv->tv_sec, (long unsigned) tv->tv_usec);
 
-    MD5_Init(&md5);
-    MD5_Update(&md5, secret, sizeof(secret));
-    MD5_Update(&md5, ":", 1);
-    MD5_Update(&md5, time_buf, strlen(time_buf));
-    MD5_Final(hashbuf, &md5);
-    enhex(hash_hex, hashbuf, sizeof(hashbuf));
+  MD5_Init(&md5);
+  MD5_Update(&md5, secret, sizeof(secret));
+  MD5_Update(&md5, ":", 1);
+  MD5_Update(&md5, time_buf, strlen(time_buf));
+  MD5_Final(hashbuf, &md5);
+  enhex(hash_hex, hashbuf, sizeof(hashbuf));
 
-    strbuf_sprintf(&buf, &size, &offset, "%s-%s", time_buf, hash_hex);
+  strbuf_sprintf(&buf, &size, &offset, "%s-%s", time_buf, hash_hex);
 
-    return buf;
+  return buf;
 }
 
 /* Arguments are assumed to be non-NULL, with the exception of nc and cnonce,
@@ -231,153 +232,153 @@ static void make_response(char buf[MD5_DIGEST_LENGTH * 2 + 1],
     const char *method, const char *uri, const char *nonce,
     enum http_digest_qop qop, const char *nc, const char *cnonce)
 {
-    char HA1_hex[MD5_DIGEST_LENGTH * 2 + 1], HA2_hex[MD5_DIGEST_LENGTH * 2 + 1];
-    unsigned char hashbuf[MD5_DIGEST_LENGTH];
-    MD5_CTX md5;
+  char HA1_hex[MD5_DIGEST_LENGTH * 2 + 1], HA2_hex[MD5_DIGEST_LENGTH * 2 + 1];
+  unsigned char hashbuf[MD5_DIGEST_LENGTH];
+  MD5_CTX md5;
 
-    /* Calculate H(A1). */
-    MD5_Init(&md5);
-    MD5_Update(&md5, username, strlen(username));
-    MD5_Update(&md5, ":", 1);
-    MD5_Update(&md5, realm, strlen(realm));
-    MD5_Update(&md5, ":", 1);
-    MD5_Update(&md5, password, strlen(password));
-    MD5_Final(hashbuf, &md5);
-    enhex(HA1_hex, hashbuf, sizeof(hashbuf));
+  /* Calculate H(A1). */
+  MD5_Init(&md5);
+  MD5_Update(&md5, username, strlen(username));
+  MD5_Update(&md5, ":", 1);
+  MD5_Update(&md5, realm, strlen(realm));
+  MD5_Update(&md5, ":", 1);
+  MD5_Update(&md5, password, strlen(password));
+  MD5_Final(hashbuf, &md5);
+  enhex(HA1_hex, hashbuf, sizeof(hashbuf));
 
-    /* Calculate H(A2). */
-    MD5_Init(&md5);
-    MD5_Update(&md5, method, strlen(method));
-    MD5_Update(&md5, ":", 1);
-    MD5_Update(&md5, uri, strlen(uri));
-    MD5_Final(hashbuf, &md5);
-    enhex(HA2_hex, hashbuf, sizeof(hashbuf));
+  /* Calculate H(A2). */
+  MD5_Init(&md5);
+  MD5_Update(&md5, method, strlen(method));
+  MD5_Update(&md5, ":", 1);
+  MD5_Update(&md5, uri, strlen(uri));
+  MD5_Final(hashbuf, &md5);
+  enhex(HA2_hex, hashbuf, sizeof(hashbuf));
 
-    /* Calculate response. */
-    MD5_Init(&md5);
-    MD5_Update(&md5, HA1_hex, strlen(HA1_hex));
+  /* Calculate response. */
+  MD5_Init(&md5);
+  MD5_Update(&md5, HA1_hex, strlen(HA1_hex));
+  MD5_Update(&md5, ":", 1);
+  MD5_Update(&md5, nonce, strlen(nonce));
+  if (qop == QOP_AUTH) {
     MD5_Update(&md5, ":", 1);
-    MD5_Update(&md5, nonce, strlen(nonce));
-    if (qop == QOP_AUTH) {
-        MD5_Update(&md5, ":", 1);
-        MD5_Update(&md5, nc, strlen(nc));
-        MD5_Update(&md5, ":", 1);
-        MD5_Update(&md5, cnonce, strlen(cnonce));
-        MD5_Update(&md5, ":", 1);
-        MD5_Update(&md5, "auth", strlen("auth"));
-    }
+    MD5_Update(&md5, nc, strlen(nc));
     MD5_Update(&md5, ":", 1);
-    MD5_Update(&md5, HA2_hex, strlen(HA2_hex));
-    MD5_Final(hashbuf, &md5);
+    MD5_Update(&md5, cnonce, strlen(cnonce));
+    MD5_Update(&md5, ":", 1);
+    MD5_Update(&md5, "auth", strlen("auth"));
+  }
+  MD5_Update(&md5, ":", 1);
+  MD5_Update(&md5, HA2_hex, strlen(HA2_hex));
+  MD5_Final(hashbuf, &md5);
 
-    enhex(buf, hashbuf, sizeof(hashbuf));
+  enhex(buf, hashbuf, sizeof(hashbuf));
 }
 
 /* Extract the issuance time from a nonce (without checking other aspects of
    validity. If the time can't be extracted, returns -1, 0 otherwise. */
 int http_digest_nonce_time(const char *nonce, struct timeval *tv)
 {
-    unsigned long sec, usec;
+  unsigned long sec, usec;
 
-    if (sscanf(nonce, "%lu.%lu", &sec, &usec) != 2)
-        return -1;
+  if (sscanf(nonce, "%lu.%lu", &sec, &usec) != 2)
+    return -1;
 
-    tv->tv_sec = sec;
-    tv->tv_usec = usec;
+  tv->tv_sec = sec;
+  tv->tv_usec = usec;
 
-    return 0;
+  return 0;
 }
 
 char *http_digest_proxy_authenticate(const char *realm, int stale)
 {
-    char *buf = NULL;
-    size_t size = 0, offset = 0;
-    struct timeval tv;
-    char *nonce;
+  char *buf = NULL;
+  size_t size = 0, offset = 0;
+  struct timeval tv;
+  char *nonce;
 
-    if (gettimeofday(&tv, NULL) == -1)
-        return NULL;
+  if (gettimeofday(&tv, NULL) == -1)
+    return NULL;
 
-    strbuf_append_str(&buf, &size, &offset, "Digest realm=");
-    append_quoted_string(&buf, &size, &offset, realm);
+  strbuf_append_str(&buf, &size, &offset, "Digest realm=");
+  append_quoted_string(&buf, &size, &offset, realm);
 
-    nonce = make_nonce(&tv);
-    strbuf_append_str(&buf, &size, &offset, ", nonce=");
-    append_quoted_string(&buf, &size, &offset, nonce);
-    free(nonce);
-    strbuf_append_str(&buf, &size, &offset, ", qop=\"auth\"");
+  nonce = make_nonce(&tv);
+  strbuf_append_str(&buf, &size, &offset, ", nonce=");
+  append_quoted_string(&buf, &size, &offset, nonce);
+  free(nonce);
+  strbuf_append_str(&buf, &size, &offset, ", qop=\"auth\"");
 
-    if (stale)
-        strbuf_append_str(&buf, &size, &offset, ", stale=true");
+  if (stale)
+    strbuf_append_str(&buf, &size, &offset, ", stale=true");
 
-    return buf;
+  return buf;
 }
 
 char *http_digest_proxy_authorization(const struct http_challenge *challenge,
     const char *username, const char *password,
     const char *method, const char *uri)
 {
-    /* For now we authenticate successfully at most once, so we don't need a
-       varying client nonce count. */
-    static const u32 nc = 0x00000001;
+  /* For now we authenticate successfully at most once, so we don't need a
+     varying client nonce count. */
+  static const u32 nc = 0x00000001;
 
-    char response_hex[MD5_DIGEST_LENGTH * 2 + 1];
-    unsigned char cnonce[CNONCE_LENGTH];
-    char cnonce_buf[CNONCE_LENGTH * 2 + 1];
-    char nc_buf[8 + 1];
-    char *buf = NULL;
-    size_t size = 0, offset = 0;
-    enum http_digest_qop qop;
+  char response_hex[MD5_DIGEST_LENGTH * 2 + 1];
+  unsigned char cnonce[CNONCE_LENGTH];
+  char cnonce_buf[CNONCE_LENGTH * 2 + 1];
+  char nc_buf[8 + 1];
+  char *buf = NULL;
+  size_t size = 0, offset = 0;
+  enum http_digest_qop qop;
 
-    if (challenge->scheme != AUTH_DIGEST || challenge->realm == NULL
-        || challenge->digest.nonce == NULL
-        || challenge->digest.algorithm != ALGORITHM_MD5)
-        return NULL;
+  if (challenge->scheme != AUTH_DIGEST || challenge->realm == NULL
+      || challenge->digest.nonce == NULL
+      || challenge->digest.algorithm != ALGORITHM_MD5)
+    return NULL;
 
-    if (challenge->digest.qop & QOP_AUTH) {
-        Snprintf(nc_buf, sizeof(nc_buf), "%08x", nc);
-        if (!RAND_status())
-            return NULL;
-        if (RAND_bytes(cnonce, sizeof(cnonce)) != 1)
-            return NULL;
-        enhex(cnonce_buf, cnonce, sizeof(cnonce));
-        qop = QOP_AUTH;
-    } else {
-        qop = QOP_NONE;
-    }
+  if (challenge->digest.qop & QOP_AUTH) {
+    Snprintf(nc_buf, sizeof(nc_buf), "%08x", nc);
+    if (!RAND_status())
+      return NULL;
+    if (RAND_bytes(cnonce, sizeof(cnonce)) != 1)
+      return NULL;
+    enhex(cnonce_buf, cnonce, sizeof(cnonce));
+    qop = QOP_AUTH;
+  } else {
+    qop = QOP_NONE;
+  }
 
-    strbuf_append_str(&buf, &size, &offset, " Digest");
-    strbuf_append_str(&buf, &size, &offset, " username=");
-    append_quoted_string(&buf, &size, &offset, username);
-    strbuf_append_str(&buf, &size, &offset, ", realm=");
-    append_quoted_string(&buf, &size, &offset, challenge->realm);
-    strbuf_append_str(&buf, &size, &offset, ", nonce=");
-    append_quoted_string(&buf, &size, &offset, challenge->digest.nonce);
-    strbuf_append_str(&buf, &size, &offset, ", uri=");
-    append_quoted_string(&buf, &size, &offset, uri);
+  strbuf_append_str(&buf, &size, &offset, " Digest");
+  strbuf_append_str(&buf, &size, &offset, " username=");
+  append_quoted_string(&buf, &size, &offset, username);
+  strbuf_append_str(&buf, &size, &offset, ", realm=");
+  append_quoted_string(&buf, &size, &offset, challenge->realm);
+  strbuf_append_str(&buf, &size, &offset, ", nonce=");
+  append_quoted_string(&buf, &size, &offset, challenge->digest.nonce);
+  strbuf_append_str(&buf, &size, &offset, ", uri=");
+  append_quoted_string(&buf, &size, &offset, uri);
 
-    if (qop == QOP_AUTH) {
-        strbuf_append_str(&buf, &size, &offset, ", qop=auth");
-        strbuf_append_str(&buf, &size, &offset, ", cnonce=");
-        append_quoted_string(&buf, &size, &offset, cnonce_buf);
-        strbuf_sprintf(&buf, &size, &offset, ", nc=%s", nc_buf);
-    }
+  if (qop == QOP_AUTH) {
+    strbuf_append_str(&buf, &size, &offset, ", qop=auth");
+    strbuf_append_str(&buf, &size, &offset, ", cnonce=");
+    append_quoted_string(&buf, &size, &offset, cnonce_buf);
+    strbuf_sprintf(&buf, &size, &offset, ", nc=%s", nc_buf);
+  }
 
-    make_response(response_hex, username, challenge->realm, password,
-        method, uri, challenge->digest.nonce, qop, nc_buf, cnonce_buf);
-    strbuf_append_str(&buf, &size, &offset, ", response=");
-    append_quoted_string(&buf, &size, &offset, response_hex);
+  make_response(response_hex, username, challenge->realm, password,
+      method, uri, challenge->digest.nonce, qop, nc_buf, cnonce_buf);
+  strbuf_append_str(&buf, &size, &offset, ", response=");
+  append_quoted_string(&buf, &size, &offset, response_hex);
 
-    if (challenge->digest.opaque != NULL) {
-        strbuf_append_str(&buf, &size, &offset, ", opaque=");
-        append_quoted_string(&buf, &size, &offset, challenge->digest.opaque);
-    }
+  if (challenge->digest.opaque != NULL) {
+    strbuf_append_str(&buf, &size, &offset, ", opaque=");
+    append_quoted_string(&buf, &size, &offset, challenge->digest.opaque);
+  }
 
-    strbuf_append_str(&buf, &size, &offset, ", algorithm=MD5");
+  strbuf_append_str(&buf, &size, &offset, ", algorithm=MD5");
 
-    strbuf_append_str(&buf, &size, &offset, "\r\n");
+  strbuf_append_str(&buf, &size, &offset, "\r\n");
 
-    return buf;
+  return buf;
 }
 
 /* Check that a nonce is one that we issued, and that the response is what is
@@ -386,46 +387,48 @@ int http_digest_check_credentials(const char *username, const char *realm,
     const char *password, const char *method,
     const struct http_credentials *credentials)
 {
-    char response_hex[MD5_DIGEST_LENGTH * 2 + 1];
-    struct timeval tv;
-    char *nonce;
+  char response_hex[MD5_DIGEST_LENGTH * 2 + 1];
+  struct timeval tv;
+  char *nonce;
 
-    if (credentials->scheme != AUTH_DIGEST
-        || credentials->u.digest.username == NULL
-        || credentials->u.digest.realm == NULL
-        || credentials->u.digest.nonce == NULL
-        || credentials->u.digest.uri == NULL
-        || credentials->u.digest.response == NULL) {
-        return 0;
-    }
-    if (credentials->u.digest.qop != QOP_NONE && credentials->u.digest.qop != QOP_AUTH)
-        return 0;
-    if (credentials->u.digest.qop == QOP_AUTH
-        && (credentials->u.digest.nc == NULL
-            || credentials->u.digest.cnonce == NULL)) {
-        return 0;
-    }
+  if (credentials->scheme != AUTH_DIGEST
+      || credentials->u.digest.username == NULL
+      || credentials->u.digest.realm == NULL
+      || credentials->u.digest.nonce == NULL
+      || credentials->u.digest.uri == NULL
+      || credentials->u.digest.response == NULL) {
+    return 0;
+  }
+  if (credentials->u.digest.qop != QOP_NONE && credentials->u.digest.qop != QOP_AUTH)
+    return 0;
+  if (credentials->u.digest.qop == QOP_AUTH
+      && (credentials->u.digest.nc == NULL
+        || credentials->u.digest.cnonce == NULL)) {
+    return 0;
+  }
 
-    if (strcmp(username, credentials->u.digest.username) != 0)
-        return 0;
-    if (strcmp(realm, credentials->u.digest.realm) != 0)
-        return 0;
+  if (strcmp(username, credentials->u.digest.username) != 0)
+    return 0;
+  if (strcmp(realm, credentials->u.digest.realm) != 0)
+    return 0;
 
-    if (http_digest_nonce_time(credentials->u.digest.nonce, &tv) == -1)
-        return 0;
+  if (http_digest_nonce_time(credentials->u.digest.nonce, &tv) == -1)
+    return 0;
 
-    nonce = make_nonce(&tv);
-    if (strcmp(nonce, credentials->u.digest.nonce) != 0) {
-        /* We could not have handed out this nonce. */
-        free(nonce);
-        return 0;
-    }
+  nonce = make_nonce(&tv);
+  if (strcmp(nonce, credentials->u.digest.nonce) != 0) {
+    /* We could not have handed out this nonce. */
     free(nonce);
+    return 0;
+  }
+  free(nonce);
 
-    make_response(response_hex, credentials->u.digest.username, realm,
-        password, method, credentials->u.digest.uri,
-        credentials->u.digest.nonce, credentials->u.digest.qop,
-        credentials->u.digest.nc, credentials->u.digest.cnonce);
+  make_response(response_hex, credentials->u.digest.username, realm,
+      password, method, credentials->u.digest.uri,
+      credentials->u.digest.nonce, credentials->u.digest.qop,
+      credentials->u.digest.nc, credentials->u.digest.cnonce);
 
-    return strcmp(response_hex, credentials->u.digest.response) == 0;
+  return strcmp(response_hex, credentials->u.digest.response) == 0;
 }
+
+#endif
