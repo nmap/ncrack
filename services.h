@@ -151,5 +151,6 @@ void parse_services(char *const exp, vector <service_lookup *> &services);
 void prepare_timing_template(timing_options *timing);
 void apply_timing_template(Service *service, timing_options *timing);
 void clean_spec(ts_spec *spec);
+char *port2name(char *portno);
 
 #endif

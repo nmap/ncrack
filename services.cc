@@ -144,7 +144,7 @@ static int check_duplicate_services(vector <service_lookup *> services,
     service_lookup *serv);
 static global_service parse_services_options(char *const exp);
 static int check_supported_services(service_lookup *serv);
-static char *port2name(char *portno);
+char *port2name(char *portno);
 
 
 /* 
@@ -578,7 +578,7 @@ check_supported_services(service_lookup *serv)
  * check ServicesTable for the availability of support for the service with
  * that default port number.
  */
-static char *
+char *
 port2name(char *port)
 {
   vector <global_service>::iterator vi;

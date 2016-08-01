@@ -125,6 +125,7 @@
 #include "ncrack.h"
 #include "utils.h"
 #include "ncrack_input.h"
+#include "services.h"
 
 
 /*
@@ -145,6 +146,7 @@ xml_input(FILE *inputfd, char *host_spec)
   char portnum[7];
   char service_name[64];
   char cpe[4];
+  char *dynamic_service_name;
 
   /* check if file is indeed in Nmap's XML output format */
   if (begin) {
@@ -294,7 +296,7 @@ xml_input(FILE *inputfd, char *host_spec)
             else
               fatal("-iX possible buffer overflow inside port parsing\n");
           }
-          if (port_section_length < 100)
+          if (port_section_length < 40)
             fatal("-iX corrupted Nmap XML output file: too little length in "
                 "<port> section\n");
           port_section_length--;
@@ -326,8 +328,18 @@ xml_input(FILE *inputfd, char *host_spec)
           if (!strncmp(p, "open", 4)) {
 
             p = NULL;
-            if (!(p = memsearch(buf, "name", port_section_length)))
-              fatal("-iX cannot find service 'name' inside <port> section!\n");
+            if (!(p = memsearch(buf, "name", port_section_length))) {
+                //fatal("-iX cannot find service 'name' inside <port> section!\n");
+
+                /* No service name was found, so assume default association of port */
+                dynamic_service_name = port2name(portnum);
+                Snprintf(host_spec, 1024, "%s://%s:%s", dynamic_service_name, ip, portnum);
+                if (dynamic_service_name)
+                    free(dynamic_service_name);
+
+                memset(ip, '\0', sizeof(ip));
+                return 0;
+            }
             p += sizeof("name=");
 
             i = 0;
