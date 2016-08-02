@@ -1,8 +1,5 @@
-
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_winrm.cc -- ncrack module for the WinRM protocol                 *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -122,23 +119,234 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef MODULES_H 
-#define MODULES_H 1
 
+#include "ncrack.h"
 #include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
+#include "http.h"
+#include <list>
 
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
-void ncrack_smb(nsock_pool nsp, Connection *con);
-void ncrack_rdp(nsock_pool nsp, Connection *con);
-void ncrack_vnc(nsock_pool nsp, Connection *con);
-void ncrack_sip(nsock_pool nsp, Connection *con);
-void ncrack_redis(nsock_pool nsp, Connection *con);
-void ncrack_psql(nsock_pool nsp, Connection *con);
-void ncrack_mysql(nsock_pool nsp, Connection *con);
-void ncrack_winrm(nsock_pool nsp, Connection *con);
+#include <map>
+using namespace std;
 
+#define USER_AGENT "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1) Gecko/20090703 Shiretoko/3.5\r\n"
+#define HTTP_LANG "Accept-Language: en-us,en;q=0.5\r\n"
+#define HTTP_ENCODING "Accept-Encoding: gzip,deflate\r\n"
+#define HTTP_CHARSET "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7\r\n"
+#define HTTP_ACCEPT "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
+#define HTTP_CACHE "Cache-Control: max-age=0, max-age=0, max-age=0, max-age=0\r\n"
+
+//#define USER_AGENT "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)"
+#define HTTP_UNKNOWN "Service might not be HTTP."
+#define HTTP_NOAUTH_SCHEME "Service didn't reply with authentication scheme."
+#define WINRM_TIMEOUT 10000
+
+extern NcrackOps o;
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+static void winrm_basic(nsock_pool nsp, Connection *con);
+static int winrm_loop_read(nsock_pool nsp, Connection *con);
+static void winrm_free(Connection *con);
+
+
+enum states { WINRM_INIT, WINRM_BASIC_AUTH, WINRM_FINI };
+
+/* Basic Authentication substates */
+enum { BASIC_SEND, BASIC_RESULTS };
+
+
+typedef struct winrm_info {
+  char *auth_scheme;
+  int substate;
+} winrm_info;
+
+typedef struct winrm_state {
+  bool reconnaissance;
+  char *auth_scheme;
+  int state;
+  int keep_alive;
+} winrm_state;
+
+
+void
+ncrack_winrm(nsock_pool nsp, Connection *con)
+{
+  char *start, *end;  /* auxiliary pointers */
+  size_t i;
+  char *winrm_reply = NULL;   /* server's message reply */
+  size_t tmpsize;
+  nsock_iod nsi = con->niod;
+  Service *serv = con->service;
+  winrm_info *info = NULL;
+  winrm_state *hstate = NULL;
+  con->ops_free = &winrm_free;
+
+  if (con->misc_info) {
+    info = (winrm_info *) con->misc_info;
+    //printf("info substate: %d \n", info->substate);
+  }
+
+  if (con->misc_info == NULL) {
+    con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
+    info = (winrm_info *)con->misc_info;
+  } 
+
+  switch (con->state)
+  {
+    case WINRM_INIT:
+ 
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      winrm_basic(nsp, con);
+  
+      break;
+
+
+    case WINRM_BASIC_AUTH:
+
+      //winrm_basic(nsp, con);
+      break;
+
+  }
+
+}
+
+static int
+winrm_loop_read(nsock_pool nsp, Connection *con)
+{
+  //printf("loop read\n");
+
+  if (con->inbuf == NULL) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, WINRM_TIMEOUT, con);
+    return -1;
+  }
+
+  if (!memsearch((const char *)con->inbuf->get_dataptr(), "\r\n\r\n",
+        con->inbuf->get_len())) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, WINRM_TIMEOUT, con);
+    return -1;
+  }
+
+  return 0;
+}
+
+
+
+static void
+winrm_basic(nsock_pool nsp, Connection *con)
+{
+  char *tmp;
+  char *b64;
+  size_t tmplen;
+  Service *serv = con->service;
+  nsock_iod nsi = con->niod;
+  winrm_info *info = (winrm_info *)con->misc_info;
+
+  switch (info->substate) {
+    case BASIC_SEND:
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      con->outbuf->append("POST ", 5);
+      con->outbuf->append("/wsman", 6);
+
+      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+          serv->path);
+      if (serv->target->targetname)
+        con->outbuf->append(serv->target->targetname, 
+            strlen(serv->target->targetname));
+      else 
+        con->outbuf->append(serv->target->NameIP(),
+            strlen(serv->target->NameIP()));
+
+      con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+
+#if 0
+      con->outbuf->append(HTTP_ACCEPT, sizeof(HTTP_ACCEPT) - 1);
+      con->outbuf->append(HTTP_LANG, sizeof(HTTP_LANG) - 1);
+      con->outbuf->append(HTTP_ENCODING, sizeof(HTTP_ENCODING) - 1);
+      con->outbuf->append(HTTP_CHARSET, sizeof(HTTP_CHARSET) - 1);
 #endif
+
+      /* Try sending keep-alive values and see how much authentication attempts
+       * we can do in that time-period.
+       */
+      //con->outbuf->append(HTTP_CACHE, sizeof(HTTP_CACHE) - 1);
+
+      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+
+      con->outbuf->append("Content-Length: 0\r\n", 19);
+      con->outbuf->append("Authorization: Basic ", 21);
+
+      tmplen = strlen(con->user) + strlen(con->pass) + 1;
+      tmp = (char *)safe_malloc(tmplen + 1);
+      sprintf(tmp, "%s:%s", con->user, con->pass);
+
+      b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen) + 1);
+      base64_encode(tmp, tmplen, b64);
+
+      con->outbuf->append(b64, strlen(b64));
+      free(b64);
+      free(tmp);
+      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      
+      info->substate = BASIC_RESULTS;
+      break;
+
+    case BASIC_RESULTS:
+      if (winrm_loop_read(nsp, con) < 0)
+        break;
+
+      info->substate = BASIC_SEND;
+      //memprint((const char *)con->iobuf->get_dataptr(),
+      //  con->iobuf->get_len());
+
+      /* If we get a "200 OK" HTTP response OR a "301 Moved Permanently" 
+       * OR 411 (which is the server's way of telling us we didn't issue
+       * any command because the Content Length was 0 */
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "200 OK", con->inbuf->get_len()) 
+          || memsearch((const char *)con->inbuf->get_dataptr(),
+            "301", con->inbuf->get_len())
+          || memsearch((const char *)con->inbuf->get_dataptr(),
+            "411", con->inbuf->get_len())) {
+        con->auth_success = true;
+      }
+
+      /* The in buffer has to be cleared out, because we are expecting
+       * possibly new answers in the same connection.
+       */
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      ncrack_module_end(nsp, con);
+      break;
+  }
+}
+
+
+static void
+winrm_free(Connection *con)
+{
+
+  winrm_info *p = NULL;
+  if (con->misc_info == NULL)
+    return;
+
+  p = (winrm_info *)con->misc_info;
+  free(p->auth_scheme);
+
+}
+

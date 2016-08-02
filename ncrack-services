@@ -23,3 +23,5 @@ vnc 5900/tcp
 vnc 5901/tcp
 vnc 6001/tcp
 redis 6379/tcp
+winrm 5985/tcp
+winrm 5986/tcp
