@@ -341,9 +341,9 @@ ncrack_psql.o ncrack_mysql.o"
 fi
 
 MODULES_SRCS="$MODULES_SRCS ncrack_ftp.cc ncrack_telnet.cc ncrack_http.cc \
-ncrack_pop3.cc ncrack_vnc.cc ncrack_redis.cc ncrack_winrm.cc"
+ncrack_pop3.cc ncrack_vnc.cc ncrack_redis.cc ncrack_winrm.cc ncrack_owa.cc"
 MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o ncrack_http.o \
-ncrack_pop3.o ncrack_vnc.o ncrack_redis.o ncrack_winrm.o"
+ncrack_pop3.o ncrack_vnc.o ncrack_redis.o ncrack_winrm.o ncrack_owa.o"
 AC_SUBST(MODULES_SRCS)
 AC_SUBST(MODULES_OBJS)
 

@@ -140,5 +140,6 @@ void ncrack_redis(nsock_pool nsp, Connection *con);
 void ncrack_psql(nsock_pool nsp, Connection *con);
 void ncrack_mysql(nsock_pool nsp, Connection *con);
 void ncrack_winrm(nsock_pool nsp, Connection *con);
+void ncrack_owa(nsock_pool nsp, Connection *con);
 
 #endif
