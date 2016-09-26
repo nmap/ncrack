@@ -341,7 +341,8 @@ lookup_init(const char *const filename)
      * need a more generic scheme
      */
     if (!strncmp(servicename, "https", sizeof("https"))
-      || !strncmp(servicename, "pop3s", sizeof("pop3s")))
+      || !strncmp(servicename, "pop3s", sizeof("pop3s"))
+      || !strncmp(servicename, "owa", sizeof("owa")))
       temp.misc.ssl = true;
 
     for (vi = ServicesTable.begin(); vi != ServicesTable.end(); vi++) {
@@ -754,8 +755,6 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_redis(nsp, con);
   else if (!strcmp(name, "winrm"))
     ncrack_winrm(nsp, con);
-  else if (!strcmp(name, "owa"))
-    ncrack_owa(nsp, con);
 #if HAVE_OPENSSL
   else if (!strcmp(name, "pop3s"))
     ncrack_pop3(nsp, con);
@@ -765,6 +764,8 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_psql(nsp, con);
   else if (!strcmp(name, "ssh"))
     ncrack_ssh(nsp, con);
+  else if (!strcmp(name, "owa"))
+    ncrack_owa(nsp, con);
   else if (!strcmp(name, "https"))
     ncrack_http(nsp, con);
   else if (!strcmp(name, "sip"))

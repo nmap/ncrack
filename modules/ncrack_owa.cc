@@ -131,17 +131,18 @@
 #include <map>
 using namespace std;
 
-#define USER_AGENT "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1) Gecko/20090703 Shiretoko/3.5\r\n"
-#define HTTP_LANG "Accept-Language: en-us,en;q=0.5\r\n"
-#define HTTP_ENCODING "Accept-Encoding: gzip,deflate\r\n"
-#define HTTP_CHARSET "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7\r\n"
+#define USER_AGENT "User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:49.0) Gecko/20100101 Firefox/49.0\r\n"
+#define HTTP_LANG "Accept-Language: en-US,en;q=0.5\r\n"
+#define HTTP_ENCODING "Accept-Encoding: gzip, deflate, br\r\n"
 #define HTTP_ACCEPT "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
-#define HTTP_CACHE "Cache-Control: max-age=0, max-age=0, max-age=0, max-age=0\r\n"
+#define HTTP_COOKIE "Cookie: PrivateComputer=true; PBack=0\r\n"
+#define HTTP_CONNECTION "Connection: close\r\n"
+#define HTTP_CONTENT_TYPE "Content-Type: application/x-www-form-urlencoded\r\n"
+#define HTTP_UPGRADE "Upgrade-Insecure-Requests: 1\r\n"
 
-//#define USER_AGENT "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)"
 #define HTTP_UNKNOWN "Service might not be HTTP."
 #define HTTP_NOAUTH_SCHEME "Service didn't reply with authentication scheme."
-#define owa_TIMEOUT 10000
+#define OWA_TIMEOUT 10000
 
 extern NcrackOps o;
 
@@ -176,19 +177,12 @@ typedef struct owa_state {
 void
 ncrack_owa(nsock_pool nsp, Connection *con)
 {
-  char *start, *end;  /* auxiliary pointers */
-  size_t i;
-  char *owa_reply = NULL;   /* server's message reply */
-  size_t tmpsize;
-  nsock_iod nsi = con->niod;
-  Service *serv = con->service;
   owa_info *info = NULL;
-  owa_state *hstate = NULL;
   con->ops_free = &owa_free;
 
   if (con->misc_info) {
     info = (owa_info *) con->misc_info;
-    //printf("info substate: %d \n", info->substate);
+    printf("info substate: %d \n", info->substate);
   }
 
   if (con->misc_info == NULL) {
@@ -221,16 +215,17 @@ ncrack_owa(nsock_pool nsp, Connection *con)
 static int
 owa_loop_read(nsock_pool nsp, Connection *con)
 {
-  //printf("loop read\n");
+  printf("loop read\n");
 
   if (con->inbuf == NULL) {
-    nsock_read(nsp, con->niod, ncrack_read_handler, owa_TIMEOUT, con);
+      printf("inbuf null\n");
+    nsock_read(nsp, con->niod, ncrack_read_handler, OWA_TIMEOUT, con);
     return -1;
   }
 
-  if (!memsearch((const char *)con->inbuf->get_dataptr(), "\r\n\r\n",
+  if (!memsearch((const char *)con->inbuf->get_dataptr(), "</html>\r\n",
         con->inbuf->get_len())) {
-    nsock_read(nsp, con->niod, ncrack_read_handler, owa_TIMEOUT, con);
+    nsock_read(nsp, con->niod, ncrack_read_handler, OWA_TIMEOUT, con);
     return -1;
   }
 
@@ -242,8 +237,7 @@ owa_loop_read(nsock_pool nsp, Connection *con)
 static void
 owa_basic(nsock_pool nsp, Connection *con)
 {
-  char *tmp;
-  char *b64;
+  char tmp[16];
   size_t tmplen;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
@@ -256,11 +250,44 @@ owa_basic(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      con->outbuf->append("POST ", 5);
-      con->outbuf->append("/wsman", 6);
 
-      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
-          serv->path);
+      con->outbuf->append("POST ", 5);
+      con->outbuf->append("/owa/auth.owa HTTP/1.1\r\n", 24);
+      con->outbuf->append("Host: ", 6);
+      if (serv->target->targetname)
+        con->outbuf->append(serv->target->targetname, 
+            strlen(serv->target->targetname));
+      else 
+        con->outbuf->append(serv->target->NameIP(),
+            strlen(serv->target->NameIP()));
+      con->outbuf->append("\r\n", sizeof("\r\n") - 1);
+
+      con->outbuf->append(USER_AGENT, sizeof(USER_AGENT) - 1);
+      con->outbuf->append(HTTP_ACCEPT, sizeof(HTTP_ACCEPT) - 1);
+      con->outbuf->append(HTTP_LANG, sizeof(HTTP_LANG) - 1);
+      con->outbuf->append(HTTP_ENCODING, sizeof(HTTP_ENCODING) - 1);
+      con->outbuf->append(HTTP_COOKIE, sizeof(HTTP_COOKIE) - 1);
+      con->outbuf->append(HTTP_CONNECTION, sizeof(HTTP_CONNECTION) - 1);
+      con->outbuf->append(HTTP_UPGRADE, sizeof(HTTP_UPGRADE) - 1);
+      con->outbuf->append(HTTP_CONTENT_TYPE, sizeof(HTTP_CONTENT_TYPE) - 1);
+
+      tmplen = strlen(con->user) + strlen(con->pass) +
+          sizeof("destination=https%3A%2F%2F") - 1 +
+          sizeof("%2Fowa%2F&flags=4&forcedownlevel=0&username=") - 1 +
+          sizeof("&password=") - 1 + 
+          sizeof("&isUtf8=1") - 1;
+      if (serv->target->targetname)
+        tmplen += strlen(serv->target->targetname);
+      else 
+        tmplen += strlen(serv->target->NameIP());
+
+      snprintf(tmp, sizeof(tmp) - 1, "%d", tmplen);
+
+      con->outbuf->snprintf(20 + strlen(tmp), "Content-Length: %s\r\n\r\n", tmp);
+
+      //destination=https%3A%2F%2F172.16.127.139%2Fowa%2F&flags=4&forcedownlevel=0&username=ithilgore&password=test&isUtf8=1
+      
+      con->outbuf->append("destination=https%3A%2F%2F", sizeof("destination=https%3A%2F%2F") - 1);
       if (serv->target->targetname)
         con->outbuf->append(serv->target->targetname, 
             strlen(serv->target->targetname));
@@ -268,38 +295,16 @@ owa_basic(nsock_pool nsp, Connection *con)
         con->outbuf->append(serv->target->NameIP(),
             strlen(serv->target->NameIP()));
 
-      con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+      con->outbuf->append("%2Fowa%2F&flags=4&forcedownlevel=0&username=", sizeof("%2Fowa%2F&flags=4&forcedownlevel=0&username=") - 1);
+      con->outbuf->snprintf(strlen(con->user), "%s", con->user);
+      con->outbuf->append("&password=", sizeof("&password=") - 1);
+      con->outbuf->snprintf(strlen(con->pass), "%s", con->pass);
+      con->outbuf->append("&isUtf8=1", sizeof("&isUtf8=1") - 1);
 
-#if 0
-      con->outbuf->append(HTTP_ACCEPT, sizeof(HTTP_ACCEPT) - 1);
-      con->outbuf->append(HTTP_LANG, sizeof(HTTP_LANG) - 1);
-      con->outbuf->append(HTTP_ENCODING, sizeof(HTTP_ENCODING) - 1);
-      con->outbuf->append(HTTP_CHARSET, sizeof(HTTP_CHARSET) - 1);
-#endif
+      //memprint((const char *)con->outbuf->get_dataptr(),
+      //  con->outbuf->get_len());
 
-      /* Try sending keep-alive values and see how much authentication attempts
-       * we can do in that time-period.
-       */
-      //con->outbuf->append(HTTP_CACHE, sizeof(HTTP_CACHE) - 1);
-
-      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
-
-      con->outbuf->append("Content-Length: 0\r\n", 19);
-      con->outbuf->append("Authorization: Basic ", 21);
-
-      tmplen = strlen(con->user) + strlen(con->pass) + 1;
-      tmp = (char *)safe_malloc(tmplen + 1);
-      sprintf(tmp, "%s:%s", con->user, con->pass);
-
-      b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen) + 1);
-      base64_encode(tmp, tmplen, b64);
-
-      con->outbuf->append(b64, strlen(b64));
-      free(b64);
-      free(tmp);
-      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
-
-      nsock_write(nsp, nsi, ncrack_write_handler, owa_TIMEOUT, con,
+      nsock_write(nsp, nsi, ncrack_write_handler, OWA_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       
       info->substate = BASIC_RESULTS;
@@ -310,18 +315,11 @@ owa_basic(nsock_pool nsp, Connection *con)
         break;
 
       info->substate = BASIC_SEND;
-      //memprint((const char *)con->iobuf->get_dataptr(),
-      //  con->iobuf->get_len());
+      memprint((const char *)con->inbuf->get_dataptr(),
+        con->inbuf->get_len());
 
-      /* If we get a "200 OK" HTTP response OR a "301 Moved Permanently" 
-       * OR 411 (which is the server's way of telling us we didn't issue
-       * any command because the Content Length was 0 */
       if (memsearch((const char *)con->inbuf->get_dataptr(),
-            "200 OK", con->inbuf->get_len()) 
-          || memsearch((const char *)con->inbuf->get_dataptr(),
-            "301", con->inbuf->get_len())
-          || memsearch((const char *)con->inbuf->get_dataptr(),
-            "411", con->inbuf->get_len())) {
+            "cadataKey", con->inbuf->get_len())) {
         con->auth_success = true;
       }
 

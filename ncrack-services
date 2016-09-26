@@ -12,6 +12,7 @@ netbios-ssn 445/tcp
 smb 445/tcp
 smb 139/tcp
 https 443/tcp
+owa 443/tcp
 sip 5060/tcp
 pop3s 995/tcp
 mysql 3306/tcp
