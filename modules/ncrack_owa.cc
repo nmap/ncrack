@@ -182,7 +182,7 @@ ncrack_owa(nsock_pool nsp, Connection *con)
 
   if (con->misc_info) {
     info = (owa_info *) con->misc_info;
-    printf("info substate: %d \n", info->substate);
+    //printf("info substate: %d \n", info->substate);
   }
 
   if (con->misc_info == NULL) {
@@ -215,10 +215,10 @@ ncrack_owa(nsock_pool nsp, Connection *con)
 static int
 owa_loop_read(nsock_pool nsp, Connection *con)
 {
-  printf("loop read\n");
+  //printf("loop read\n");
 
   if (con->inbuf == NULL) {
-      printf("inbuf null\n");
+    //printf("inbuf null\n");
     nsock_read(nsp, con->niod, ncrack_read_handler, OWA_TIMEOUT, con);
     return -1;
   }
