@@ -261,7 +261,7 @@ print_usage(void)
       "  -T<0-5>: Set timing template (higher is faster)\n"
       "  --connection-limit <number>: threshold for total concurrent "
         "connections\n"
-      "  --stealthy-linear: try one credential pair using one connection against "
+      "  --stealthy-linear: try credentials using only one connection against "
         "each specified host \n    until you hit the same host again. "
         "Overrides all other timing options.\n"
       "AUTHENTICATION:\n"
