@@ -167,6 +167,8 @@ class ServiceGroup {
 
     double getCompletionFraction(void);
 
+    bool checkLinearPending(void);
+
     /* ********************* Members ********************* */
 
     /* All Services. This includes all active and inactive services.
@@ -196,6 +198,7 @@ class ServiceGroup {
      * until initiating another connection
      */
     list<Service *> services_wait;
+
 
     /* 
      * Services that have to wait until our pair pool has at least one element

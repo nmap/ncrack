@@ -206,6 +206,8 @@ class NcrackOps {
     
     char *save_file;
 
+    bool stealthy_linear; /* true if stealty linear mode is enabled */
+
   private:
     struct timeval start_time;
     int addressfamily; /* Address family:  AF_INET or AF_INET6 */  

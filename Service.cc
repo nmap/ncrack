@@ -179,6 +179,8 @@ Service()
   htn.msecs_used = 0;
   htn.toclock_running = false;
   htn.host_start = htn.host_end = 0;
+
+  linear_state = LINEAR_INIT;
 }
 
 /* copy constructor */
@@ -239,6 +241,8 @@ Service(const Service& ref)
   htn.msecs_used = 0;
   htn.toclock_running = false;
   htn.host_start = htn.host_end = 0;
+
+  linear_state = ref.linear_state;
 }
 
 Service::
@@ -624,4 +628,15 @@ timedOut(const struct timeval *now) {
   return (used > (unsigned long)timeout)? true : false;
 }
 
+void Service::
+setLinearState(size_t state) {
 
+  linear_state = state;
+}
+
+
+size_t Service::
+getLinearState(void) {
+
+  return linear_state;
+}

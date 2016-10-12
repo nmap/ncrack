@@ -133,9 +133,9 @@ extern NcrackOps o;
 ServiceGroup::
 ServiceGroup()
 {
-	/* members initialization */
-	total_services = 0;
-	active_connections = 0;
+  /* members initialization */
+  total_services = 0;
+  active_connections = 0;
   connections_total = 0;
   connections_timedout = 0;
   connections_closed = 0;
@@ -226,7 +226,7 @@ pushServiceToList(Service *serv, list <Service *> *dst)
 
   if (dst == &services_active) {
     if (o.debugging > 8)
-      error("%s cannot be pushed into 'services_active'.This is not allowed!\n",
+      error("%s cannot be pushed into 'services_active'. This is not allowed!\n",
           serv->HostInfo());
   }
 
@@ -259,7 +259,7 @@ popServiceFromList(Service *serv, list <Service *> *src)
 
   if (src == &services_active) {
     if (o.debugging > 8)
-      error("%s cannot be popped from 'services_active'.This is not allowed!\n",
+      error("%s cannot be popped from 'services_active'. This is not allowed!\n",
           serv->HostInfo());
   }  
 
@@ -409,3 +409,18 @@ getCompletionFraction(void)
   return total;
 }
 
+
+/* 
+ * Return true if there is still a pending connection from the rest of the services
+ */
+bool ServiceGroup::
+checkLinearPending(void)
+{
+  list <Service *>::iterator li;
+  for (li = services_all.begin(); li != services_all.end(); li++) {
+    if ((*li)->getLinearState() == LINEAR_INIT || (*li)->getLinearState() == LINEAR_ACTIVE)
+      return true;
+  }
+
+  return false;
+}

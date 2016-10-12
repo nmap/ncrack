@@ -161,6 +161,7 @@ NcrackOps() {
   socks4a = false;
   resume = false;
   finish = 0;
+  stealthy_linear = false;
 }
 
 NcrackOps::

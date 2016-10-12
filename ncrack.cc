@@ -261,6 +261,9 @@ print_usage(void)
       "  -T<0-5>: Set timing template (higher is faster)\n"
       "  --connection-limit <number>: threshold for total concurrent "
         "connections\n"
+      "  --stealthy-linear: try one credential pair using one connection against "
+        "each specified host \n    until you hit the same host again. "
+        "Overrides all other timing options.\n"
       "AUTHENTICATION:\n"
       "  -U <filename>: username file\n"
       "  -P <filename>: password file\n"
@@ -882,6 +885,8 @@ ncrack_main(int argc, char **argv)
     {"append-output", no_argument, 0, 0},
     {"log_errors", no_argument, 0, 0},
     {"log-errors", no_argument, 0, 0},
+    {"stealthy_linear", no_argument, 0, 0},
+    {"stealthy-linear", no_argument, 0, 0},
     {"connection_limit", required_argument, 0, 0},
     {"connection-limit", required_argument, 0, 0},
     {"passwords_first", no_argument, 0, 0},
@@ -976,6 +981,8 @@ ncrack_main(int argc, char **argv)
             o.socks4a = true;
         } else if (!optcmp(long_options[option_index].name, "log-errors")) {
           o.log_errors = true;
+        } else if (!optcmp(long_options[option_index].name, "stealthy-linear")) {
+          o.stealthy_linear = true;
         } else if (!optcmp(long_options[option_index].name, "append-output")) {
           o.append_output = true;
         } else if (strcmp(long_options[option_index].name, "datadir") == 0) {
@@ -1255,6 +1262,7 @@ ncrack_main(int argc, char **argv)
   SG = new ServiceGroup();
   SG->connection_limit = o.connection_limit;
 
+
   while ((host_spec = grab_next_host_spec(inputfd, argc, argv))) {
 
     /* preparse and separate host - service */
@@ -1488,6 +1496,10 @@ ncrack_main(int argc, char **argv)
     signal(SIGHUP, sigcatch); 
 #endif
 #endif
+
+    if (o.stealthy_linear)
+      SG->connection_limit = SG->services_all.size();
+
 
     SG->last_accessed = SG->services_active.end();
     /* Ncrack 'em all! */
@@ -1895,6 +1907,17 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     SG->popServiceFromList(serv, &SG->services_full);
 
 
+  /* 
+   * If linear stealthy mode is enabled, then mark the corresponding state as DONE
+   * since the connection just ended. If all connections from all services are done,
+   * then the next active connection can start.
+   */
+  if (serv->getLinearState() == LINEAR_ACTIVE) {
+    serv->setLinearState(LINEAR_DONE);
+    serv->ideal_parallelism = 1;
+  }
+    
+
   /*
    * If service was on 'services_finishing' (credential list finished, pool
    * empty but still pending connections) then:
@@ -2253,6 +2276,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
   int pair_ret;
   char *login, *pass;
   const char *hostinfo;
+  size_t i = 0;
 
 
   /* First check for every service if connection_delay time has already
@@ -2298,6 +2322,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
       li = SG->pushServiceToList(serv, &SG->services_wait);
       goto next;
     }
+
 
     /* If the service's active connections surpass its imposed connection limit
      * then don't initiate any more connections for it and also move service in
@@ -2345,9 +2370,22 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
       goto next;
 
 
+    /* 
+     * If service belongs to list linear, then we have to wait until all others have
+     * first iterated.
+     */
+    if ((serv->getLinearState() != LINEAR_INIT)
+        && (serv->getLinearState() == LINEAR_ACTIVE || SG->checkLinearPending() == true)) {
+      goto next;
+    }
+
     /* Schedule 1 connection for this service */
     con = new Connection(serv);
     SG->connections_total++;
+
+    if (o.stealthy_linear) {
+      serv->setLinearState(LINEAR_ACTIVE);
+    }
 
     if (pair_ret == 1)
       con->from_pool = true;
@@ -2400,6 +2438,10 @@ next:
     SG->last_accessed = li;
     if (li == SG->services_active.end() || ++li == SG->services_active.end())
       li = SG->services_active.begin();
+
+    i++;
+    if (o.stealthy_linear && i == SG->services_all.size())
+      return;
 
   }
 

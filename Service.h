@@ -162,6 +162,7 @@ struct host_timeout_nfo {
   time_t host_start, host_end; /* The absolute start and end for this host */
 };
 
+enum linear_states { LINEAR_INIT, LINEAR_ACTIVE, LINEAR_DONE };
 
 class Service
 {
@@ -212,6 +213,9 @@ class Service
     void setUserlistIndex(uint32_t index);
     uint32_t getPasslistIndex(void);
     void setPasslistIndex(uint32_t index);
+
+    void setLinearState(size_t state);
+    size_t getLinearState(void);
 
 
     /* ********************* Members ********************* */
@@ -356,6 +360,14 @@ class Service
     bool list_full;     /* service appended to 'services_full' list */
     bool list_finishing;/* service appended to 'services_finishing' list */
     bool list_finished; /* service is now on 'services_finished' list */
+
+
+    /* 
+     * LINEAR_INIT: service hasn't started connection yet
+     * LINEAR_ACTIVE: service has active connection
+     * LINEAR_DONE: service has finished connection
+     */
+    size_t linear_state;
 
     struct host_timeout_nfo htn;
 
