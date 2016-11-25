@@ -8,6 +8,7 @@ ssh 22/tcp
 telnet 23/tcp
 http 80/tcp
 pop3 110/tcp
+imap 143/tcp
 netbios-ssn 445/tcp
 smb 445/tcp
 smb 139/tcp

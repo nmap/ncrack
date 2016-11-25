@@ -293,7 +293,7 @@ print_usage(void)
       "  -V: Print version number\n"
       "  -h: Print this help summary page.\n"
       "MODULES:\n"
-      "  FTP, SSH, Telnet, HTTP(S), POP3(S), SMB, RDP, VNC, SIP, Redis, PostgreSQL, MySQL, WinRM, OWA\n"
+      "  FTP, SSH, Telnet, HTTP(S), POP3(S), IMAP, SMB, RDP, VNC, SIP, Redis, PostgreSQL, MySQL, WinRM, OWA\n"
       "EXAMPLES:\n"
       "  ncrack -v --user root localhost:22\n"
       "  ncrack -v -T5 https://192.168.0.1\n"
@@ -758,6 +758,8 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_redis(nsp, con);
   else if (!strcmp(name, "winrm"))
     ncrack_winrm(nsp, con);
+  else if (!strcmp(name, "imap"))
+    ncrack_imap(nsp, con);
 #if HAVE_OPENSSL
   else if (!strcmp(name, "pop3s"))
     ncrack_pop3(nsp, con);
@@ -1154,7 +1156,7 @@ ncrack_main(int argc, char **argv)
       case 'V': 
         log_write(LOG_STDOUT, "\n%s version %s ( %s )\n",
             NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
-        log_write(LOG_STDOUT, "Modules: FTP, SSH, Telnet, HTTP(S), POP3(S), "
+        log_write(LOG_STDOUT, "Modules: FTP, SSH, Telnet, HTTP(S), POP3(S), IMAP, "
             "SMB, RDP, VNC, SIP, Redis, PostgreSQL, MySQL, WinRM, OWA\n");
         exit(EXIT_SUCCESS);
         break;
