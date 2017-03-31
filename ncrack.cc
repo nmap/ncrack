@@ -760,6 +760,8 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_winrm(nsp, con);
   else if (!strcmp(name, "imap"))
     ncrack_imap(nsp, con);
+  else if (!strcmp(name, "cassandra"))
+    ncrack_imap(nsp, con);
 #if HAVE_OPENSSL
   else if (!strcmp(name, "pop3s"))
     ncrack_pop3(nsp, con);

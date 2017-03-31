@@ -27,3 +27,5 @@ vnc 6001/tcp
 redis 6379/tcp
 winrm 5985/tcp
 winrm 5986/tcp
+cassandra 9160/tcp
+cassandra 9042/tcp

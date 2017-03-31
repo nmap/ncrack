@@ -1,8 +1,6 @@
-
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_cassandra.cc -- ncrack module for the Cassandra DBMS Service     *
+ * Created by Barrend                                                      *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -122,26 +120,188 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef MODULES_H 
-#define MODULES_H 1
 
+
+#include "ncrack.h"
 #include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
 
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
-void ncrack_imap(nsock_pool nsp, Connection *con);
-void ncrack_smb(nsock_pool nsp, Connection *con);
-void ncrack_rdp(nsock_pool nsp, Connection *con);
-void ncrack_vnc(nsock_pool nsp, Connection *con);
-void ncrack_sip(nsock_pool nsp, Connection *con);
-void ncrack_redis(nsock_pool nsp, Connection *con);
-void ncrack_psql(nsock_pool nsp, Connection *con);
-void ncrack_mysql(nsock_pool nsp, Connection *con);
-void ncrack_winrm(nsock_pool nsp, Connection *con);
-void ncrack_owa(nsock_pool nsp, Connection *con);
-void ncrack_cassandra(nsock_pool nsp, Connection *con);
+#define CASS_TIMEOUT 20000 //here
 
-#endif
+extern NcrackOps o;
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+static int cass_loop_read(nsock_pool nsp, Connection *con);
+static void cass_encode_CALL(Connection *con);
+static void cass_encode_data(Connection *con);
+    
+
+enum states { CASS_INIT, CASS_USER };
+
+typedef struct cass_CALL {
+
+  uint8_t len[4];
+  uint16_t version[1];
+  uint8_t zero;
+  uint8_t call_id;
+  uint8_t length[4];
+  uint16_t sequence_id[2];
+};
+
+typedef struct cass_data {
+
+  uint8_t t_struct;
+  u_char field_id[2];
+  uint8_t t_stop;
+  struct {
+    uint8_t t_map;
+    u_char field_id[2];
+    uint8_t t_stop;
+    struct {
+      uint8_t t_utf7;
+      uint8_t nomitems[4];
+      uint8_t length1[4];
+      u_char string1[8];
+      uint8_t length2[4];
+      uint8_t length3[4];
+      u_char string3[8];
+      uint8_t length4[4];
+    } map;
+  } Struct;
+};
+
+
+static int
+cass_loop_read(nsock_pool nsp, Connection *con)
+{
+  if ((con->inbuf == NULL) || (con->inbuf->get_len()<22)) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, CASS_TIMEOUT, con);
+    return -1;
+  }
+  return 0;
+}
+
+
+static void
+cass_encode_CALL(Connection *con) {
+  cass_CALL call;
+  call.len[0] = 0;
+  call.len[1] = 0;
+  call.len[2] = 0;
+  call.len[3] = 63 + strlen(con->user) + strlen(con->pass);//total length of the packet
+  con->outbuf->append(&call.len, sizeof(call.len));
+  call.version[0] = 0x0180; //2byte
+  con->outbuf->append(&call.version, sizeof(call.version));
+  call.zero = 0;
+  con->outbuf->append(&call.zero, sizeof(call.zero));
+  call.call_id = 1;
+  con->outbuf->append(&call.call_id, sizeof(call.call_id));
+  call.length[0] = 0;
+  call.length[1] = 0;
+  call.length[2] = 0;
+  call.length[3] = 5;
+  con->outbuf->append(&call.length, sizeof(call.length));
+  con->outbuf->snprintf(5, "login");  
+  call.sequence_id[0]=0;
+  call.sequence_id[1]=0;
+  call.sequence_id[2]=0;
+  call.sequence_id[3]=0;
+  con->outbuf->append(&call.sequence_id, sizeof(call.sequence_id));
+}
+
+static void
+cass_encode_data(Connection *con) {
+  cass_data data;
+
+  data.t_struct = 12; //T_STRUCT (12)=1byte
+  con->outbuf->append(&data.t_struct, sizeof(data.t_struct));  
+  data.field_id[0] = 0;
+  data.field_id[1] = 1; // Field Id: 1 =2byte
+  con->outbuf->append(&data.field_id, sizeof(data.field_id));  
+  data.Struct.t_map = 13; // T_MAP (13) =1byte
+  con->outbuf->append(&data.Struct.t_map, sizeof(data.Struct.t_map));  
+  data.Struct.field_id[0] = 0;
+  data.Struct.field_id[1] = 1;
+  con->outbuf->append(&data.Struct.field_id, sizeof(data.Struct.field_id));  
+  data.Struct.map.t_utf7 = 11;
+  con->outbuf->append(&data.Struct.map.t_utf7, sizeof(data.Struct.map.t_utf7));   con->outbuf->append(&data.Struct.map.t_utf7, sizeof(data.Struct.map.t_utf7));  
+  data.Struct.map.nomitems[0] = 0;
+  data.Struct.map.nomitems[1] = 0;
+  data.Struct.map.nomitems[2] = 0;
+  data.Struct.map.nomitems[3] = 2;
+  con->outbuf->append(&data.Struct.map.nomitems, sizeof(data.Struct.map.nomitems));  
+  data.Struct.map.length1[0] = 0; //4byte
+  data.Struct.map.length1[1] = 0;
+  data.Struct.map.length1[2] = 0;
+  data.Struct.map.length1[3] = strlen("username");
+  con->outbuf->append(&data.Struct.map.length1, sizeof(data.Struct.map.length1));  
+  strncpy((char * )&data.Struct.map.string1[0],"username",8);  
+  con->outbuf->append(&data.Struct.map.string1, sizeof(data.Struct.map.string1));  
+  data.Struct.map.length2[0] = 0;
+  data.Struct.map.length2[1] = 0;
+  data.Struct.map.length2[2] = 0;
+  data.Struct.map.length2[3] = strlen(con->user);
+  con->outbuf->append(&data.Struct.map.length2, sizeof(data.Struct.map.length2));  
+  con->outbuf->snprintf(strlen(con->user), "%s", con->user);  
+
+  data.Struct.map.length3[0] = 0; //4byte
+  data.Struct.map.length3[1] = 0;
+  data.Struct.map.length3[2] = 0;
+  data.Struct.map.length3[3] = strlen("password");
+  con->outbuf->append(&data.Struct.map.length3, sizeof(data.Struct.map.length3));  
+  strncpy((char * )&data.Struct.map.string3[0],"password",8);  
+  con->outbuf->append(&data.Struct.map.string3, sizeof(data.Struct.map.string3));  
+  data.Struct.map.length4[0] = 0; //4byte
+  data.Struct.map.length4[1] = 0; //4byte
+  data.Struct.map.length4[2] = 0; //4byte
+  data.Struct.map.length4[3] = strlen(con->pass); //4byte
+  con->outbuf->append(&data.Struct.map.length4, sizeof(data.Struct.map.length4));
+  con->outbuf->snprintf(strlen(con->pass), "%s", con->pass);  
+  data.Struct.t_stop = 0; //2->1byte
+  con->outbuf->append(&data.Struct.t_stop, sizeof(data.Struct.t_stop));
+  data.t_stop = 0;
+  con->outbuf->append(&data.t_stop, sizeof(data.t_stop));
+
+}
+
+void
+ncrack_cassandra(nsock_pool nsp, Connection *con)
+{
+  nsock_iod nsi = con->niod;
+
+  switch(con->state)
+  {
+    case CASS_INIT:
+
+      con->state = CASS_USER;    
+      delete con->inbuf;
+      con->inbuf = NULL;
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+      cass_encode_CALL(con);
+      cass_encode_data(con);
+      nsock_write(nsp, nsi, ncrack_write_handler, CASS_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case CASS_USER: 
+      if (cass_loop_read(nsp,con) < 0){
+        break;
+      }
+      //The difference of the successful and failed authentication resides on the 22th byte of the reply packet
+      const char *p = (const char *)con->inbuf->get_dataptr();
+      if (p[21] == '\x0c')//find the 22th byte and compare it to 0c
+        ;//printf("%x", p[21]); 
+      else if (p[21] == '\x00')//find the 22th byte and compare it to 00
+        con->auth_success = true;
+      con->state = CASS_INIT;
+
+      return ncrack_module_end(nsp, con);
+  }
+}
+
