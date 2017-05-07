@@ -207,7 +207,7 @@ TODO:
   Ron. Thus, a lot of our work can be based on his NSE-scripts.
 
 * Implement option to make Ncrack stop scanning after finding the
-  first credential pair (there is such an option in Hydra).  We should
+  first credential pair (there is such an option in THC-Hydra (https://www.thc.org/thc-hydra).  We should
   probably provide 2 different versions of the option. One would
   finish Ncrack after finding 1 password regardless of how many
   services it is cracking in parallel. The other would finish Ncrack
