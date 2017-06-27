@@ -162,6 +162,7 @@ NcrackOps() {
   resume = false;
   finish = 0;
   stealthy_linear = false;
+  stop = 15;
 }
 
 NcrackOps::

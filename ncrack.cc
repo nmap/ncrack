@@ -902,6 +902,7 @@ ncrack_main(int argc, char **argv)
     {"nsock_trace", required_argument, 0, 0},
     {"proxy", required_argument, 0, 0},
     {"proxies", required_argument, 0, 0},
+    {"stop", required_argument, 0, 0},
     {0, 0, 0, 0}
   };
 
@@ -1045,6 +1046,10 @@ ncrack_main(int argc, char **argv)
           o.verbose += 2;  
         } else if (strcmp(long_options[option_index].name, "save") == 0) {
           o.save_file = logfilename(optarg, tm);
+        } else if (strcmp(long_options[option_index].name, "stop") == 0) {
+          if (optarg && isdigit(optarg[0])){
+          o.max_failed_attemps = atoi(optarg);
+          }
         }
         break;
       case '6':
@@ -2153,6 +2158,8 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   } else if (status == NSE_STATUS_SUCCESS) {
 
+    serv->failed_connections = 0;
+
 #if HAVE_OPENSSL
     // Snag our SSL_SESSION from the nsi for use in subsequent connections.
     if (nsock_iod_check_ssl(nsi)) {
@@ -2183,6 +2190,11 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->failed_connections++;
     serv->appendToPool(con->user, con->pass);
 
+    if (serv->failed_connections > o.max_failed_attemps) {
+      SG->pushServiceToList(serv, &SG->services_finished);
+      if (o.verbose)
+        log_write(LOG_STDOUT, "%s finished. Too many failed attemps. \n", hostinfo);
+    }
     /* Failure of connecting on first attempt means we should probably drop
      * the service for good. */
     if (serv->just_started) {
