@@ -2185,7 +2185,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->failed_connections++;
     serv->appendToPool(con->user, con->pass);
 
-    if (serv->failed_connections > SG->connection_retries) {
+    if (serv->failed_connections > serv->connection_retries) {
       SG->pushServiceToList(serv, &SG->services_finished);
       if (o.verbose)
         log_write(LOG_STDOUT, "%s finished. Too many failed attemps. \n", hostinfo);
