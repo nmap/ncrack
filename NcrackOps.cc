@@ -162,7 +162,6 @@ NcrackOps() {
   resume = false;
   finish = 0;
   stealthy_linear = false;
-  max_failed_attemps = 15;
 }
 
 NcrackOps::

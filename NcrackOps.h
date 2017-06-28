@@ -207,7 +207,6 @@ class NcrackOps {
     char *save_file;
 
     bool stealthy_linear; /* true if stealty linear mode is enabled */
-    int max_failed_attemps;
 
   private:
     struct timeval start_time;
