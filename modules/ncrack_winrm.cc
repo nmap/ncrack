@@ -128,6 +128,10 @@
 #include "http.h"
 #include <list>
 
+
+#include <time.h>
+#include <stdlib.h>
+
 #include <map>
 using namespace std;
 
@@ -149,15 +153,24 @@ extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
+static void winrm_methods(nsock_pool nsp, Connection *con);
 static void winrm_basic(nsock_pool nsp, Connection *con);
 static int winrm_loop_read(nsock_pool nsp, Connection *con);
 static void winrm_free(Connection *con);
 
+static void rand_str(char *dest, size_t length);
 
-enum states { WINRM_INIT, WINRM_BASIC_AUTH, WINRM_FINI };
+enum states { WINRM_INIT, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH, 
+              WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
+
+/* Method identification substates */
+enum { METHODS_SEND, METHODS_RESULTS };
 
 /* Basic Authentication substates */
 enum { BASIC_SEND, BASIC_RESULTS };
+
+/* Negotiate Authentication substates */
+enum { NEGOTIATE_CHALLENGE, NEGOTIATE_SEND, NEGOTIATE_RESULTS };
 
 
 typedef struct winrm_info {
@@ -172,14 +185,15 @@ typedef struct winrm_state {
   int keep_alive;
 } winrm_state;
 
+srand(time(NULL)); 
 
-void
 ncrack_winrm(nsock_pool nsp, Connection *con)
 {
   char *start, *end;  /* auxiliary pointers */
   size_t i;
   char *winrm_reply = NULL;   /* server's message reply */
   size_t tmpsize;
+  char *methods; 
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   winrm_info *info = NULL;
@@ -204,14 +218,39 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      winrm_basic(nsp, con);
-  
+      winrm_methods(nsp, con);
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate: Basic", con->inbuf->get_len()))
+        con->state = WINRM_BASIC_AUTH;
+      else if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
+        con->state = WINRM_NEGOTIATE_AUTH;        
+      else if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate: Kerberos", con->inbuf->get_len()))
+        con->state = WINRM_KERBEROS_AUTH;
+      else if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate: CredSSP", con->inbuf->get_len()))
+        con->state = WINRM_CREDSSP_AUTH;
+        
       break;
 
 
     case WINRM_BASIC_AUTH:
 
-      //winrm_basic(nsp, con);
+      winrm_basic(nsp, con);
+      break;
+
+    case WINRM_NEGOTIATE_AUTH;
+
+      winrm_negotiate(nsp, con);
+      break;
+
+    case WINRM_KERBEROS_AUTH;
+
+      break;
+
+    case WINRM_CREDSSP_AUTH;
+
       break;
 
   }
@@ -221,8 +260,6 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
 static int
 winrm_loop_read(nsock_pool nsp, Connection *con)
 {
-  //printf("loop read\n");
-
   if (con->inbuf == NULL) {
     nsock_read(nsp, con->niod, ncrack_read_handler, WINRM_TIMEOUT, con);
     return -1;
@@ -336,6 +373,193 @@ winrm_basic(nsock_pool nsp, Connection *con)
   }
 }
 
+static char
+winrm_methods(nsock_pool nsp, Connection *con)
+{
+  char *tmp;
+  char *b64;
+  size_t tmplen;
+  Service *serv = con->service;
+  nsock_iod nsi = con->niod;
+  winrm_info *info = (winrm_info *)con->misc_info;
+
+  switch (info->substate) {
+    case METHODS_SEND:
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      con->outbuf->append("POST ", 5);
+      con->outbuf->append("/wsman", 6);
+
+      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+          serv->path);
+      if (serv->target->targetname)
+        con->outbuf->append(serv->target->targetname, 
+            strlen(serv->target->targetname));
+      else 
+        con->outbuf->append(serv->target->NameIP(),
+            strlen(serv->target->NameIP()));
+
+      con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+
+      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+
+      con->outbuf->append("Content-Length: 8\r\n", 19);
+      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1)
+
+      //send 8 random chars
+      tmplen = 8 + 1;
+      tmp = (char *)safe_malloc(tmplen + 1);
+      rand_str(tmp, 8);
+      // sprintf(tmp, "%s:%s", con->user, con->pass);
+
+      // b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen) + 1);
+      // base64_encode(tmp, tmplen, b64);
+
+      con->outbuf->append(tmp, strlen(tmp));
+      //free(b64);
+      free(tmp);
+      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      
+      info->substate = METHODS_RESULTS;
+      break;
+
+    case METHODS_RESULTS:
+      if (winrm_loop_read(nsp, con) < 0)
+        break;
+
+      // info->substate = BASIC_SEND;
+      /* We expect a 401 response which will contain all
+       * the accepted authentication methods in the
+       * WWW-Authenticate header. */
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "401", con->inbuf->get_len()) 
+          && memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate", con->inbuf->get_len())) {
+        return;
+      } 
+      else {
+        // Something is wrong better terminate
+        return;
+      }
+
+      /* The in buffer has to be cleared out, because we are expecting
+       * possibly new answers in the same connection.
+       */
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      ncrack_module_end(nsp, con);
+      break;
+  }
+}
+
+static void
+winrm_negotiate(nsock_pool nsp, Connection *con)
+{
+  char *tmp;
+  char *b64;
+  size_t tmplen;
+  Service *serv = con->service;
+  nsock_iod nsi = con->niod;
+  winrm_info *info = (winrm_info *)con->misc_info;
+
+  switch (info->substate) {
+    case NEGOTIATE_CHALLENGE:
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      con->outbuf->append("POST ", 5);
+      con->outbuf->append("/wsman", 6);
+
+      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+          serv->path);
+      if (serv->target->targetname)
+        con->outbuf->append(serv->target->targetname, 
+            strlen(serv->target->targetname));
+      else 
+        con->outbuf->append(serv->target->NameIP(),
+            strlen(serv->target->NameIP()));
+
+      con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+
+      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+
+      con->outbuf->append("Content-Length: 8\r\n", 19);
+      con->outbuf->append("Authorization: Negotiate ", 25);
+
+
+
+      tmplen = rand(8) + 1;
+      tmp = (char *)safe_malloc(tmplen + 1);
+      rand_str(tmp, templen + 5);  // rand(8) + 6 - 1 
+      
+     
+      // Here we need NTLM Client to do its stuff.
+      con->outbuf->append(b64, strlen(b64));
+
+      free(tmp);
+      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      
+      info->substate = METHODS_RESULTS;
+      break;
+
+    case NEGOTIATE_SEND:
+      if (winrm_loop_read(nsp, con) < 0)
+        break;
+
+      /* If the response has the code 401 and the header
+      * WWW-Authenticate probably we have received the challenge 
+      * reponse.
+      */
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "401", con->inbuf->get_len()) 
+          && memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate: Negotiate", con->inbuf->get_len())) {
+        //Extract the challenge, craft next request and send
+      }
+
+      /* The in buffer has to be cleared out, because we are expecting
+       * possibly new answers in the same connection.
+       */
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      ncrack_module_end(nsp, con);
+      break;
+
+    case NEGOTIATE_RESULTS:
+      if (winrm_loop_read(nsp, con) < 0)
+        break;
+      /* Successful login attempt results in empty 200 response.
+      * Else a 401 response will appear containing the authentication
+      * methods.
+      */
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "200", con->inbuf->get_len())) {
+        con->auth_success = true;
+      }
+
+      /* The in buffer has to be cleared out, because we are expecting
+       * possibly new answers in the same connection.
+       */
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      ncrack_module_end(nsp, con);
+      break;
+  }
+}
 
 static void
 winrm_free(Connection *con)
@@ -350,3 +574,17 @@ winrm_free(Connection *con)
 
 }
 
+
+static void 
+rand_str(char *dest, size_t length) 
+{
+    char charset[] = "0123456789"
+                     "abcdefghijklmnopqrstuvwxyz"
+                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    while (length-- > 0) {
+        size_t index = (double) rand() / RAND_MAX * (sizeof charset - 1);
+        *dest++ = charset[index];
+    }
+    *dest = '\0';
+}
