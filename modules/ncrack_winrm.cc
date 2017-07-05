@@ -409,25 +409,19 @@ winrm_methods(nsock_pool nsp, Connection *con)
       con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
 
       con->outbuf->append("Content-Length: 8\r\n", 19);
-      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+      con->outbuf->append("\r\n", 2);
 
       //send 8 random chars
       tmplen = 8 + 1;
       tmp = (char *)safe_malloc(tmplen + 1);
       rand_str(tmp, 8);
-      // sprintf(tmp, "%s:%s", con->user, con->pass);
-
-      // b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen) + 1);
-      // base64_encode(tmp, tmplen, b64);
-
+    
       con->outbuf->append(tmp, strlen(tmp));
-      //free(b64);
       free(tmp);
-      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
       nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
-      
+
       info->substate = METHODS_RESULTS;
       break;
 
@@ -475,141 +469,142 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
   winrm_info *info = (winrm_info *)con->misc_info;
 
-  switch (info->substate) {
-    case NEGOTIATE_CHALLENGE:
+  // switch (info->substate) {
+  //   case NEGOTIATE_CHALLENGE:
 
-      if (con->outbuf)
-        delete con->outbuf;
-      con->outbuf = new Buf();
+  //     if (con->outbuf)
+  //       delete con->outbuf;
+  //     con->outbuf = new Buf();
 
-      con->outbuf->append("POST ", 5);
-      con->outbuf->append("/wsman", 6);
+  //     con->outbuf->append("POST ", 5);
+  //     con->outbuf->append("/wsman", 6);
 
-      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
-          serv->path);
-      if (serv->target->targetname)
-        con->outbuf->append(serv->target->targetname, 
-            strlen(serv->target->targetname));
-      else 
-        con->outbuf->append(serv->target->NameIP(),
-            strlen(serv->target->NameIP()));
+  //     con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+  //         serv->path);
+  //     if (serv->target->targetname)
+  //       con->outbuf->append(serv->target->targetname, 
+  //           strlen(serv->target->targetname));
+  //     else 
+  //       con->outbuf->append(serv->target->NameIP(),
+  //           strlen(serv->target->NameIP()));
 
-      con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+  //     con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
 
-      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+  //     con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
 
-      con->outbuf->append("Content-Length: 8\r\n", 19);
-      con->outbuf->append("Authorization: Negotiate ", 25);
-
-
-      tmplen = strlen("Workstation") + 1;
-      domain_temp = (char *)safe_malloc(tmplen + 1);
-      sprintf(domain_temp, "Workstation");
-      domainlen = (value == 0 ? 1 : (int)(log10(domain_temp)+1));
-      hostlen = (value == 0 ? 1 : (int)(log10(host)+1));
+  //     con->outbuf->append("Content-Length: 8\r\n", 19);
+  //     con->outbuf->append("Authorization: Negotiate ", 25);
 
 
-      tmplen = 1;
-      host = (char *)safe_malloc(tmplen + 1);
-      sprintf(host, "");
+  //     tmplen = strlen("Workstation") + 1;
+  //     domain_temp = (char *)safe_malloc(tmplen + 1);
+  //     sprintf(domain_temp, "Workstation");
+  //     domainlen = (strlen(domain_temp) == 0 ? 1 : (int)(log10(strlen(domain_temp)+1));
+  //     hostlen = (strlen(host) == 0 ? 1 : (int)(log10(strlen(host)+1));
 
-      tmplen = rand() % 8 + 1;
-      // tmp = (char *)safe_malloc(tmplen + 1);
-      rand_str(tmp, templen + 5);  // rand(8) + 6 - 1 
-      domain_temp->append("%s", tmp);
-      // Here domain will have to 
-      tmplen = strlen("NTLMSSP\x00\x01\x00\x00\x00") + strlen("\x37\x82\x08\xe0") +
-      domainlen + domainlen + strlen("\x20\x00") + 
-      strlen("\x00\x00") + hostlen + hostlen + 
-      strlen("\x29\x00") + strlen("\x00\x00") + strlen(host) + 
-      strlen(domain_temp);
-      //user  database postgres application_name psql client_encoding UTF8  ");
 
-      // tmplen = strlen(con->user) + strlen(con->pass) + 1;
-      // tmp = (char *)safe_malloc(tmplen + 1);
-      // sprintf(tmp, "%s:%s", con->user, con->pass);
-      snprintf((char *)tmp, tmplen,
-               "NTLMSSP" "\x00"
-               "\x01\x00\x00\x00" /* 32-bit type = 1 */
-               "\x37\x82\x08\xe0"   /* 32-bit NTLM flag field */
-               "%c%c"       /* domain length */
-               "%c%c"       /* domain allocated space */
-               "\x20\x00"   /* domain name offset offset 32*/
-               "\x00\x00"       /* 2 zeroes */
-               "%c%c"       /* host length */
-               "%c%c"       /* host allocated space */
-               "\x29\x00"   /* host name offset offset 32 +9 for domain length?*/
-               "\x00\x00"       /* 2 zeroes */
-               "%s"         /* host name */
-               "%s",        /* domain string */               
+  //     tmplen = 1;
+  //     host = (char *)safe_malloc(tmplen + 1);
+  //     sprintf(host, "");
 
-               strlen(domain_temp),
-               strlen(domain_temp),
-               strlen(host),
-               strlen(host),
-               host,  /* hostname is empty, we don't need it */
-               domain_temp /* this is domain/workstation name */);
+  //     tmplen = rand() % 8 + 1;
+  //     // tmp = (char *)safe_malloc(tmplen + 1);
+  //     rand_str(tmp, tmplen + 5);  // rand(8) + 6 - 1 
+  //     //domain_temp->append("%s", tmp);
+  //     strcat(domain_temp,tmp);
+  //     // Here domain will have to 
+  //     tmplen = strlen("NTLMSSP\x00\x01\x00\x00\x00") + strlen("\x37\x82\x08\xe0") +
+  //     domainlen + domainlen + strlen("\x20\x00") + 
+  //     strlen("\x00\x00") + hostlen + hostlen + 
+  //     strlen("\x29\x00") + strlen("\x00\x00") + strlen(host) + 
+  //     strlen(domain_temp);
+  //     //user  database postgres application_name psql client_encoding UTF8  ");
 
-      b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen) + 1);
-      base64_encode(tmp, tmplen, b64);
+  //     // tmplen = strlen(con->user) + strlen(con->pass) + 1;
+  //     // tmp = (char *)safe_malloc(tmplen + 1);
+  //     // sprintf(tmp, "%s:%s", con->user, con->pass);
+  //     snprintf((char *)tmp, tmplen,
+  //              "NTLMSSP" "\x00"
+  //              "\x01\x00\x00\x00" /* 32-bit type = 1 */
+  //              "\x37\x82\x08\xe0"   /* 32-bit NTLM flag field */
+  //              "%c%c"       /* domain length */
+  //              "%c%c"       /* domain allocated space */
+  //              "\x20\x00"   /* domain name offset offset 32*/
+  //              "\x00\x00"       /* 2 zeroes */
+  //              "%c%c"       /* host length */
+  //              "%c%c"       /* host allocated space */
+  //              "\x29\x00"   /* host name offset offset 32 +9 for domain length?*/
+  //              "\x00\x00"       /* 2 zeroes */
+  //              "%s"         /* host name */
+  //              "%s",        /* domain string */               
 
-      // Here we need NTLM Client to do its stuff.
-      con->outbuf->append(b64, strlen(b64));
+  //              strlen(domain_temp),
+  //              strlen(domain_temp),
+  //              strlen(host),
+  //              strlen(host),
+  //              host,  /* hostname is empty, we don't need it */
+  //              domain_temp /* this is domain/workstation name */);
 
-      free(tmp);
-      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+  //     b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen) + 1);
+  //     base64_encode(tmp, tmplen, b64);
 
-      nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
-        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+  //     // Here we need NTLM Client to do its stuff.
+  //     con->outbuf->append(b64, strlen(b64));
+
+  //     free(tmp);
+  //     con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+
+  //     nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
+  //       (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       
-      info->substate = METHODS_RESULTS;
-      break;
+  //     info->substate = METHODS_RESULTS;
+  //     break;
 
-    case NEGOTIATE_SEND:
-      if (winrm_loop_read(nsp, con) < 0)
-        break;
+  //   case NEGOTIATE_SEND:
+  //     if (winrm_loop_read(nsp, con) < 0)
+  //       break;
 
-      /* If the response has the code 401 and the header
-      * WWW-Authenticate probably we have received the challenge 
-      * reponse.
-      */
-      if (memsearch((const char *)con->inbuf->get_dataptr(),
-            "401", con->inbuf->get_len()) 
-          && memsearch((const char *)con->inbuf->get_dataptr(),
-            "WWW-Authenticate: Negotiate", con->inbuf->get_len())) {
-        //Extract the challenge, craft next request and send
-      }
+  //     /* If the response has the code 401 and the header
+  //     * WWW-Authenticate probably we have received the challenge 
+  //     * reponse.
+  //     */
+  //     if (memsearch((const char *)con->inbuf->get_dataptr(),
+  //           "401", con->inbuf->get_len()) 
+  //         && memsearch((const char *)con->inbuf->get_dataptr(),
+  //           "WWW-Authenticate: Negotiate", con->inbuf->get_len())) {
+  //       //Extract the challenge, craft next request and send
+  //     }
 
-      /* The in buffer has to be cleared out, because we are expecting
-       * possibly new answers in the same connection.
-       */
-      delete con->inbuf;
-      con->inbuf = NULL;
+  //     /* The in buffer has to be cleared out, because we are expecting
+  //      * possibly new answers in the same connection.
+  //      */
+  //     delete con->inbuf;
+  //     con->inbuf = NULL;
 
-      ncrack_module_end(nsp, con);
-      break;
+  //     ncrack_module_end(nsp, con);
+  //     break;
 
-    case NEGOTIATE_RESULTS:
-      if (winrm_loop_read(nsp, con) < 0)
-        break;
-      /* Successful login attempt results in empty 200 response.
-      * Else a 401 response will appear containing the authentication
-      * methods.
-      */
-      if (memsearch((const char *)con->inbuf->get_dataptr(),
-            "200", con->inbuf->get_len())) {
-        con->auth_success = true;
-      }
+  //   case NEGOTIATE_RESULTS:
+  //     if (winrm_loop_read(nsp, con) < 0)
+  //       break;
+  //     /* Successful login attempt results in empty 200 response.
+  //     * Else a 401 response will appear containing the authentication
+  //     * methods.
+  //     */
+  //     if (memsearch((const char *)con->inbuf->get_dataptr(),
+  //           "200", con->inbuf->get_len())) {
+  //       con->auth_success = true;
+  //     }
 
-      /* The in buffer has to be cleared out, because we are expecting
-       * possibly new answers in the same connection.
-       */
-      delete con->inbuf;
-      con->inbuf = NULL;
+  //     /* The in buffer has to be cleared out, because we are expecting
+  //      * possibly new answers in the same connection.
+  //      */
+  //     delete con->inbuf;
+  //     con->inbuf = NULL;
 
-      ncrack_module_end(nsp, con);
-      break;
-  }
+  //     ncrack_module_end(nsp, con);
+  //     break;
+  // }
 }
 
 static void
