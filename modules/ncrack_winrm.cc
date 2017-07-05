@@ -464,6 +464,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 {
   char *tmp;
   char *b64;
+  char *host;
+  char *domain_temp;
   size_t tmplen;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
@@ -496,12 +498,51 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       con->outbuf->append("Authorization: Negotiate ", 25);
 
 
+      tmplen = strlen("Workstation") + 1;
+      domain_temp = (char *)safe_malloc(tmplen + 1);
+      sprintf(domain_temp, "Workstation");
 
+      host = "";
       tmplen = rand(8) + 1;
-      tmp = (char *)safe_malloc(tmplen + 1);
+      // tmp = (char *)safe_malloc(tmplen + 1);
       rand_str(tmp, templen + 5);  // rand(8) + 6 - 1 
-      
-     
+      domain_temp->append("%s", tmp);
+      // Here domain will have to 
+      tmplen = strlen("NTLMSSP\x00\x01\x00\x00\x00") + strlen("\x37\x82\x08\xe0") +
+      strlen(strlen(domain_temp)) + strlen(strlen(domain_temp)) + strlen("\x20\x00") + 
+      strlen("\x00\x00") + strlen(strlen(host)) + strlen(strlen(host)) + 
+      strlen("\x29\x00") + strlen("\x00\x00") + strlen(host) + 
+      strlen(domain_temp);
+      //user  database postgres application_name psql client_encoding UTF8  ");
+
+      // tmplen = strlen(con->user) + strlen(con->pass) + 1;
+      // tmp = (char *)safe_malloc(tmplen + 1);
+      // sprintf(tmp, "%s:%s", con->user, con->pass);
+      snprintf((char *)tmp, NTLM_BUFSIZE,
+               "NTLMSSP" "\x00"
+               "\x01\x00\x00\x00" /* 32-bit type = 1 */
+               "\x37\x82\x08\xe0"   /* 32-bit NTLM flag field */
+               "%c%c"       /* domain length */
+               "%c%c"       /* domain allocated space */
+               "\x20\x00"   /* domain name offset offset 32*/
+               "\x00\x00"       /* 2 zeroes */
+               "%c%c"       /* host length */
+               "%c%c"       /* host allocated space */
+               "\x29\x00"   /* host name offset offset 32 +9 for domain length?*/
+               "\x00\x00"       /* 2 zeroes */
+               "%s"         /* host name */
+               "%s",        /* domain string */               
+
+               strlen(domain_temp),
+               strlen(domain_temp),
+               strlen(host),
+               strlen(host),
+               host,  /* hostname is empty, we don't need it */
+               domain_temp /* this is domain/workstation name */);
+
+      b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen) + 1);
+      base64_encode(tmp, tmplen, b64);
+
       // Here we need NTLM Client to do its stuff.
       con->outbuf->append(b64, strlen(b64));
 
