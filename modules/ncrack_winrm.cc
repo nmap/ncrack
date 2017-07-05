@@ -155,6 +155,7 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 static void winrm_methods(nsock_pool nsp, Connection *con);
 static void winrm_basic(nsock_pool nsp, Connection *con);
+static void winrm_negotiate(nsock_pool nsp, Connection *con);
 static int winrm_loop_read(nsock_pool nsp, Connection *con);
 static void winrm_free(Connection *con);
 
@@ -185,8 +186,7 @@ typedef struct winrm_state {
   int keep_alive;
 } winrm_state;
 
-srand(time(NULL)); 
-
+void
 ncrack_winrm(nsock_pool nsp, Connection *con)
 {
   char *start, *end;  /* auxiliary pointers */
@@ -199,6 +199,8 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
   winrm_info *info = NULL;
   winrm_state *hstate = NULL;
   con->ops_free = &winrm_free;
+
+  srand(time(NULL)); 
 
   if (con->misc_info) {
     info = (winrm_info *) con->misc_info;
@@ -240,16 +242,16 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
       winrm_basic(nsp, con);
       break;
 
-    case WINRM_NEGOTIATE_AUTH;
+    case WINRM_NEGOTIATE_AUTH:
 
       winrm_negotiate(nsp, con);
       break;
 
-    case WINRM_KERBEROS_AUTH;
+    case WINRM_KERBEROS_AUTH:
 
       break;
 
-    case WINRM_CREDSSP_AUTH;
+    case WINRM_CREDSSP_AUTH:
 
       break;
 
@@ -373,7 +375,7 @@ winrm_basic(nsock_pool nsp, Connection *con)
   }
 }
 
-static char
+static void
 winrm_methods(nsock_pool nsp, Connection *con)
 {
   char *tmp;
@@ -407,7 +409,7 @@ winrm_methods(nsock_pool nsp, Connection *con)
       con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
 
       con->outbuf->append("Content-Length: 8\r\n", 19);
-      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1)
+      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
       //send 8 random chars
       tmplen = 8 + 1;
@@ -466,6 +468,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *b64;
   char *host;
   char *domain_temp;
+  size_t domainlen;
+  size_t hostlen;
   size_t tmplen;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
@@ -501,16 +505,22 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       tmplen = strlen("Workstation") + 1;
       domain_temp = (char *)safe_malloc(tmplen + 1);
       sprintf(domain_temp, "Workstation");
+      domainlen = (value == 0 ? 1 : (int)(log10(domain_temp)+1));
+      hostlen = (value == 0 ? 1 : (int)(log10(host)+1));
 
-      host = "";
-      tmplen = rand(8) + 1;
+
+      tmplen = 1;
+      host = (char *)safe_malloc(tmplen + 1);
+      sprintf(host, "");
+
+      tmplen = rand() % 8 + 1;
       // tmp = (char *)safe_malloc(tmplen + 1);
       rand_str(tmp, templen + 5);  // rand(8) + 6 - 1 
       domain_temp->append("%s", tmp);
       // Here domain will have to 
       tmplen = strlen("NTLMSSP\x00\x01\x00\x00\x00") + strlen("\x37\x82\x08\xe0") +
-      strlen(strlen(domain_temp)) + strlen(strlen(domain_temp)) + strlen("\x20\x00") + 
-      strlen("\x00\x00") + strlen(strlen(host)) + strlen(strlen(host)) + 
+      domainlen + domainlen + strlen("\x20\x00") + 
+      strlen("\x00\x00") + hostlen + hostlen + 
       strlen("\x29\x00") + strlen("\x00\x00") + strlen(host) + 
       strlen(domain_temp);
       //user  database postgres application_name psql client_encoding UTF8  ");
@@ -518,7 +528,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       // tmplen = strlen(con->user) + strlen(con->pass) + 1;
       // tmp = (char *)safe_malloc(tmplen + 1);
       // sprintf(tmp, "%s:%s", con->user, con->pass);
-      snprintf((char *)tmp, NTLM_BUFSIZE,
+      snprintf((char *)tmp, tmplen,
                "NTLMSSP" "\x00"
                "\x01\x00\x00\x00" /* 32-bit type = 1 */
                "\x37\x82\x08\xe0"   /* 32-bit NTLM flag field */
