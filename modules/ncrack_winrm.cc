@@ -596,12 +596,14 @@ static void
 winrm_negotiate(nsock_pool nsp, Connection *con)
 {
   char *tmp;
+  char *tmp2;
   char *b64;
   char *host;
   char *domain_temp;
   size_t domainlen;
   size_t hostlen;
   size_t tmplen;
+  size_t tmplen2;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   winrm_info *info = (winrm_info *)con->misc_info;
@@ -636,7 +638,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       tmplen = strlen("Workstation") + 1;
       domain_temp = (char *)safe_malloc(tmplen + 1);
       sprintf(domain_temp, "Workstation");
-      domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1
+      domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1;
       // (strlen(domain_temp) == 0 ? 1 : (int)(log10(strlen(domain_temp)+1)));
       
       //(strlen(host) == 0 ? 1 : (int)(log10(strlen(host)+1)));
@@ -645,49 +647,54 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       tmplen = 1;
       host = (char *)safe_malloc(tmplen + 1);
       sprintf(host, "");
-      hostlen = floor (log10 (abs (strlen(host)))) + 1
+      hostlen = floor (log10 (abs (strlen(host)))) + 1;
       tmplen = rand() % 8 + 1;
       tmp = (char *)safe_malloc(tmplen + 1);
       rand_str(tmp, tmplen + 5);  // rand(8) + 6 - 1 
       //domain_temp->append("%s", tmp);
       strcat(domain_temp,tmp);
+
+
       // Here domain will have to 
-      tmplen = strlen("NTLMSSP") + 5 + 4 + domainlen + domainlen + 2 + 
+      tmplen2 = strlen("NTLMSSP") + 5 + 4 + domainlen + domainlen + 2 + 
       2 + hostlen + hostlen + 2 + 2 + strlen(host) + strlen(domain_temp);
       //user  database postgres application_name psql client_encoding UTF8  ");
-
+      tmp2 = (char *)safe_malloc(tmplen2 + 1);
       // tmplen = strlen(con->user) + strlen(con->pass) + 1;
       // tmp = (char *)safe_malloc(tmplen + 1);
       // sprintf(tmp, "%s:%s", con->user, con->pass);
-      snprintf((char *)tmp, tmplen,
-               "NTLMSSP" "\x00"
-               "\x01\x00\x00\x00" /* 32-bit type = 1 */
+      snprintf((char *)tmp2, tmplen2,
+               "NTLMSSP" "%c"
+               "\x01%c%c%c" /* 32-bit type = 1 */
                "\x37\x82\x08\xe0"   /* 32-bit NTLM flag field */
                "%c%c"       /* domain length */
                "%c%c"       /* domain allocated space */
-               "\x20\x00"   /* domain name offset offset 32*/
-               "\x00\x00"       /* 2 zeroes */
+               "\x20%c"   /* domain name offset offset 32*/
+               "%c%c"       /* 2 zeroes */
                "%c%c"       /* host length */
                "%c%c"       /* host allocated space */
-               "\x29\x00"   /* host name offset offset 32 +9 for domain length?*/
-               "\x00\x00"       /* 2 zeroes */
+               "\x29%c"   /* host name offset offset 32 +9 for domain length?*/
+               "%c%c"       /* 2 zeroes */
                "%s"         /* host name */
                "%s",        /* domain string */               
-
+               0,0,0,0,
                strlen(domain_temp),
-               strlen(domain_temp),
+               strlen(domain_temp), 0,
+               0,0,
                strlen(host),
-               strlen(host),
+               strlen(host), 0,
+               0,0,
                host,  /* hostname is empty, we don't need it */
                domain_temp /* this is domain/workstation name */);
 
-      b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen) + 1);
-      base64_encode(tmp, tmplen, b64);
+      b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
+      base64_encode(tmp2, tmplen2, b64);
 
       // Here we need NTLM Client to do its stuff.
       con->outbuf->append(b64, strlen(b64));
 
       free(tmp);
+      free(tmp2);
       con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
       nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
