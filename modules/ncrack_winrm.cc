@@ -202,7 +202,7 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
 
   char *tmp;
   size_t tmplen;
-  
+
   srand(time(NULL)); 
 
   if (con->misc_info) {
@@ -282,24 +282,19 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
             "401", con->inbuf->get_len()) 
           && memsearch((const char *)con->inbuf->get_dataptr(),
             "WWW-Authenticate", con->inbuf->get_len())) {
-        start += sizeof("WWW-Authenticate: ") -1;
-        end = start;
-        i = 0;
-        while (*end != ' ' && i != con->inbuf->get_len()) {
-          end++;
-          i++;
-        }
+        /* The response may contain more than one WWW-Authenticate
+        *  header.
+        */
 
-        if (info == NULL) {
-          con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
-          info = (winrm_info *)con->misc_info;
-          info->auth_scheme = Strndup(start, i);
-        }
+        if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate: Basic", con->inbuf->get_len()))
+          {
 
-        if (!strcmp("Basic", info->auth_scheme)) {
-
-          //con->state = HTTP_BASIC_AUTH;
-          //info->substate = BASIC_SEND;
+          if (info == NULL) {
+              con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
+              info = (winrm_info *)con->misc_info;
+              info->auth_scheme = "Basic";
+            }
           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
           hstate = (winrm_state *)serv->module_data;
           hstate->auth_scheme = Strndup(info->auth_scheme, 
@@ -307,16 +302,18 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
           hstate->state = WINRM_BASIC_AUTH;
           hstate->reconnaissance = true;
           serv->more_rounds = true;
-
           return ncrack_module_end(nsp, con);
 
-        } else if (!strcmp("Negotiate", info->auth_scheme)) {
-        // if (memsearch((const char *)con->inbuf->get_dataptr(),
-        //     "WWW-Authenticate: Basic", con->inbuf->get_len()))
-        //   con->state = WINRM_BASIC_AUTH;
-        // else if (memsearch((const char *)con->inbuf->get_dataptr(),
-        //       "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
-        //   {
+        } else if (memsearch((const char *)con->inbuf->get_dataptr(),
+              "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
+          {
+        
+
+          if (info == NULL) {
+            con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
+            info = (winrm_info *)con->misc_info;
+            info->auth_scheme = "Negotiate";
+          }
           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
           hstate = (winrm_state *)serv->module_data;
           hstate->auth_scheme = Strndup(info->auth_scheme, 
@@ -325,8 +322,31 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
           hstate->reconnaissance = true;
           serv->more_rounds = true;
           return ncrack_module_end(nsp, con);
-        }       
+        }
 
+        // if (!strcmp("Basic", info->auth_scheme)) {
+
+        //   //con->state = HTTP_BASIC_AUTH;
+        //   //info->substate = BASIC_SEND;
+        //   serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
+        //   hstate = (winrm_state *)serv->module_data;
+        //   hstate->auth_scheme = Strndup(info->auth_scheme, 
+        //       strlen(info->auth_scheme));
+        //   hstate->state = WINRM_BASIC_AUTH;
+        //   hstate->reconnaissance = true;
+        //   serv->more_rounds = true;
+
+        //   return ncrack_module_end(nsp, con);
+
+        // } else if (!strcmp("Negotiate", info->auth_scheme)) {
+        // // if (memsearch((const char *)con->inbuf->get_dataptr(),
+        // //     "WWW-Authenticate: Basic", con->inbuf->get_len()))
+        // //   con->state = WINRM_BASIC_AUTH;
+        // // else if (memsearch((const char *)con->inbuf->get_dataptr(),
+        // //       "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
+        // //   {
+          
+        // }     
       } 
      
       break;
