@@ -210,20 +210,21 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
     printf("info substate: %d \n", info->substate);
   }
 
-  if (serv->module_data && con->misc_info == NULL) {
+  // if (serv->module_data && con->misc_info == NULL) {
+  if (con->misc_info == NULL) {
 
-    hstate = (winrm_state *)serv->module_data;
+    //hstate = (winrm_state *)serv->module_data;
     con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
     info = (winrm_info *)con->misc_info;
-    if (!strcmp(hstate->auth_scheme, "Basic")) {
-      con->state = hstate->state;
-    }
-    info->auth_scheme = Strndup(hstate->auth_scheme, 
-            strlen(hstate->auth_scheme));
+    // if (!strcmp(hstate->auth_scheme, "Basic")) {
+    //   con->state = hstate->state;
+    // }
+    // info->auth_scheme = Strndup(hstate->auth_scheme, 
+    //         strlen(hstate->auth_scheme));
 
     printf("got here scheme: %s\n", info->auth_scheme);
 
-    serv->more_rounds = false;
+    // serv->more_rounds = false;
   } 
 
   printf("con->state: %d\n", con->state);
@@ -635,25 +636,24 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       tmplen = strlen("Workstation") + 1;
       domain_temp = (char *)safe_malloc(tmplen + 1);
       sprintf(domain_temp, "Workstation");
-      domainlen = (strlen(domain_temp) == 0 ? 1 : (int)(log10(strlen(domain_temp)+1)));
-      hostlen = (strlen(host) == 0 ? 1 : (int)(log10(strlen(host)+1)));
+      domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1
+      // (strlen(domain_temp) == 0 ? 1 : (int)(log10(strlen(domain_temp)+1)));
+      
+      //(strlen(host) == 0 ? 1 : (int)(log10(strlen(host)+1)));
 
 
       tmplen = 1;
       host = (char *)safe_malloc(tmplen + 1);
       sprintf(host, "");
-
+      hostlen = floor (log10 (abs (strlen(host)))) + 1
       tmplen = rand() % 8 + 1;
-      // tmp = (char *)safe_malloc(tmplen + 1);
+      tmp = (char *)safe_malloc(tmplen + 1);
       rand_str(tmp, tmplen + 5);  // rand(8) + 6 - 1 
       //domain_temp->append("%s", tmp);
       strcat(domain_temp,tmp);
       // Here domain will have to 
-      tmplen = strlen("NTLMSSP\x00\x01\x00\x00\x00") + strlen("\x37\x82\x08\xe0") +
-      domainlen + domainlen + strlen("\x20\x00") + 
-      strlen("\x00\x00") + hostlen + hostlen + 
-      strlen("\x29\x00") + strlen("\x00\x00") + strlen(host) + 
-      strlen(domain_temp);
+      tmplen = strlen("NTLMSSP") + 5 + 4 + domainlen + domainlen + 2 + 
+      2 + hostlen + hostlen + 2 + 2 + strlen(host) + strlen(domain_temp);
       //user  database postgres application_name psql client_encoding UTF8  ");
 
       // tmplen = strlen(con->user) + strlen(con->pass) + 1;
