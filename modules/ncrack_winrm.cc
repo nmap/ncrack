@@ -161,7 +161,7 @@ static void winrm_free(Connection *con);
 
 static void rand_str(char *dest, size_t length);
 
-enum states { WINRM_NEGOTIATE_AUTH, WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, 
+enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH,
               WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
 
 /* Method identification substates */
@@ -210,17 +210,18 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
     printf("info substate: %d \n", info->substate);
   }
 
-  // if (serv->module_data && con->misc_info == NULL) {
-  if (con->misc_info == NULL) {
+  if (serv->module_data && con->misc_info == NULL) {
+  //if (con->misc_info == NULL) {
 
-    //hstate = (winrm_state *)serv->module_data;
+    hstate = (winrm_state *)serv->module_data;
     con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
     info = (winrm_info *)con->misc_info;
-    // if (!strcmp(hstate->auth_scheme, "Basic")) {
-    //   con->state = hstate->state;
-    // }
-    // info->auth_scheme = Strndup(hstate->auth_scheme, 
-    //         strlen(hstate->auth_scheme));
+    if (!strcmp(hstate->auth_scheme, "Basic")) {
+      printf("setting connection state\n");
+      con->state = hstate->state;
+    }
+    info->auth_scheme = Strndup(hstate->auth_scheme, 
+            strlen(hstate->auth_scheme));
 
     printf("got here scheme: %s\n", info->auth_scheme);
 
@@ -233,98 +234,93 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
   {
     case WINRM_INIT:
  
-      // if (con->outbuf)
-      //   delete con->outbuf;
-      // con->outbuf = new Buf();
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
 
-      // // winrm_methods(nsp, con);  
-      // con->outbuf->append("POST ", 5);
-      // con->outbuf->append("/wsman", 6);
+      // winrm_methods(nsp, con);  
+      con->outbuf->append("POST ", 5);
+      con->outbuf->append("/wsman", 6);
 
-      // con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
-      //     serv->path);
-      // if (serv->target->targetname)
-      //   con->outbuf->append(serv->target->targetname, 
-      //       strlen(serv->target->targetname));
-      // else 
-      //   con->outbuf->append(serv->target->NameIP(),
-      //       strlen(serv->target->NameIP()));
+      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+          serv->path);
+      if (serv->target->targetname)
+        con->outbuf->append(serv->target->targetname, 
+            strlen(serv->target->targetname));
+      else 
+        con->outbuf->append(serv->target->NameIP(),
+            strlen(serv->target->NameIP()));
 
-      // con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+      con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
 
-      // con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
 
-      // con->outbuf->append("Content-Length: 8\r\n", 19);
-      // con->outbuf->append("\r\n", 2);
+      con->outbuf->append("Content-Length: 8\r\n", 19);
+      con->outbuf->append("\r\n", 2);
 
-      // //send 8 random chars
-      // tmplen = 8 + 1;
-      // tmp = (char *)safe_malloc(tmplen + 1);
-      // rand_str(tmp, 8);
+      //send 8 random chars
+      tmplen = 8 + 1;
+      tmp = (char *)safe_malloc(tmplen + 1);
+      rand_str(tmp, 8);
     
-      // con->outbuf->append(tmp, strlen(tmp));
-      // free(tmp);
+      con->outbuf->append(tmp, strlen(tmp));
+      free(tmp);
 
-      // nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
-      //   (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;      
 
     case WINRM_GET_AUTH:
-      // if (winrm_loop_read(nsp, con) < 0)
-      //   break;
+      if (winrm_loop_read(nsp, con) < 0)
+        break;
 
 
-      // /* We expect a 401 response which will contain all
-      //  * the accepted authentication methods in the
-      //  * WWW-Authenticate header. */
-      // if (memsearch((const char *)con->inbuf->get_dataptr(),
-      //       "401", con->inbuf->get_len()) 
-      //     && memsearch((const char *)con->inbuf->get_dataptr(),
-      //       "WWW-Authenticate", con->inbuf->get_len())) {
-      //   /* The response may contain more than one WWW-Authenticate
-      //   *  header.
-      //   */
+      /* We expect a 401 response which will contain all
+       * the accepted authentication methods in the
+       * WWW-Authenticate header. */
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "401", con->inbuf->get_len()) 
+          && memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate", con->inbuf->get_len())) {
+        /* The response may contain more than one WWW-Authenticate
+        *  header.
+        */
 
-      //   if (memsearch((const char *)con->inbuf->get_dataptr(),
-      //       "WWW-Authenticate: Basic", con->inbuf->get_len()))
-      //     {
+        if (info == NULL) {
+          con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
+          info = (winrm_info *)con->misc_info;
+          info->auth_scheme = "Basic";
+        }
+        if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate: Basic", con->inbuf->get_len()))
+          {
 
-      //     if (info == NULL) {
-      //         con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
-      //         info = (winrm_info *)con->misc_info;
-      //         info->auth_scheme = "Basic";
-      //       }
-      //     serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
-      //     hstate = (winrm_state *)serv->module_data;
-      //     hstate->auth_scheme = Strndup(info->auth_scheme, 
-      //         strlen(info->auth_scheme));
-      //     hstate->state = WINRM_BASIC_AUTH;
-      //     hstate->reconnaissance = true;
-      //     serv->more_rounds = true;
-      //     return ncrack_module_end(nsp, con);
-
-      //   } else if (memsearch((const char *)con->inbuf->get_dataptr(),
-      //         "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
-      //     {
-        
-
-      //     if (info == NULL) {
-      //       con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
-      //       info = (winrm_info *)con->misc_info;
-      //       info->auth_scheme = "Basic";
-      //     }
-      //     con->state = WINRM_BASIC_AUTH;
-
-      //     serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
-      //     hstate = (winrm_state *)serv->module_data;
-      //     hstate->auth_scheme = Strndup(info->auth_scheme, 
-      //         strlen(info->auth_scheme));
           
-      //     serv->more_rounds = true;
-      //     con->peer_alive = true;
-      //     winrm_basic(nsp, con);
-      //   }   
-      // } 
+          serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
+          hstate = (winrm_state *)serv->module_data;
+          hstate->auth_scheme = Strndup(info->auth_scheme, 
+              strlen(info->auth_scheme));
+          hstate->state = WINRM_BASIC_AUTH;
+          hstate->reconnaissance = true;
+          serv->more_rounds = true;
+          return ncrack_module_end(nsp, con);
+
+        } else if (memsearch((const char *)con->inbuf->get_dataptr(),
+              "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
+          {
+
+          //con->state = WINRM_BASIC_AUTH;
+
+          serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
+          hstate = (winrm_state *)serv->module_data;
+          hstate->auth_scheme = Strndup(info->auth_scheme, 
+              strlen(info->auth_scheme));
+          hstate->state = WINRM_BASIC_AUTH;
+          hstate->reconnaissance = true;
+          serv->more_rounds = true;
+          return ncrack_module_end(nsp, con);
+        }   
+      } 
      
       break;
 
@@ -600,6 +596,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *b64;
   char *host;
   char *domain_temp;
+  char *start, *end;
+  char *challenge;
+  size_t i;
   size_t domainlen;
   size_t hostlen;
   size_t tmplen;
@@ -713,9 +712,43 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       */
       if (memsearch((const char *)con->inbuf->get_dataptr(),
             "401", con->inbuf->get_len()) 
-          && memsearch((const char *)con->inbuf->get_dataptr(),
-            "WWW-Authenticate: Negotiate", con->inbuf->get_len())) {
+          && (start = memsearch((const char *)con->inbuf->get_dataptr(),
+            "WWW-Authenticate: Negotiate", con->inbuf->get_len()))) {
         //Extract the challenge, craft next request and send
+
+          start += sizeof("WWW-Authenticate: Negotiate ") - 1;
+          end = start;
+          i = 0;
+          while (*end != ' ' && i != con->inbuf->get_len()) {
+            end++;
+            i++;
+          }
+
+          // challenge = Strndup(start, i);
+          // b64 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge)) + 1);
+          //  Base64 decode the type2 message (challenge)
+          
+          // base64_decode(challenge, strlen(challenge), b64);
+
+          // if (!b64) {
+          //   //if decoded message is not valid exit.
+          // }
+
+  /* NTLM type-2 message structure:
+          Index  Description            Content
+            0    NTLMSSP Signature      Null-terminated ASCII "NTLMSSP"
+                                        (0x4e544c4d53535000)
+            8    NTLM Message Type      long (0x02000000)
+           12    Target Name            security buffer
+           20    Flags                  long
+           24    Challenge              8 bytes
+          (32)   Context                8 bytes (two consecutive longs) (*)
+          (40)   Target Information     security buffer (*)
+          (48)   OS Version Structure   8 bytes (*)
+  32 (48) (56)   Start of data block    (*)
+                                        (*) -> Optional
+  */
+
       }
 
       /* The in buffer has to be cleared out, because we are expecting
