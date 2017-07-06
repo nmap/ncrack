@@ -465,131 +465,131 @@ winrm_basic(nsock_pool nsp, Connection *con)
   }
 }
 
-static void
-winrm_methods(nsock_pool nsp, Connection *con)
-{
-  char *tmp;
-  char *b64;
-  size_t tmplen;
-  Service *serv = con->service;
-  nsock_iod nsi = con->niod;
-  winrm_info *info = (winrm_info *)con->misc_info;
-  winrm_state *winstate = NULL;
+// static void
+// winrm_methods(nsock_pool nsp, Connection *con)
+// {
+//   char *tmp;
+//   char *b64;
+//   size_t tmplen;
+//   Service *serv = con->service;
+//   nsock_iod nsi = con->niod;
+//   winrm_info *info = (winrm_info *)con->misc_info;
+//   winrm_state *winstate = NULL;
 
-  switch (info->substate) {
-    case METHODS_SEND:
+//   switch (info->substate) {
+//     case METHODS_SEND:
 
-      if (con->outbuf)
-        delete con->outbuf;
-      con->outbuf = new Buf();
+//       if (con->outbuf)
+//         delete con->outbuf;
+//       con->outbuf = new Buf();
 
-      con->outbuf->append("POST ", 5);
-      con->outbuf->append("/wsman", 6);
+//       con->outbuf->append("POST ", 5);
+//       con->outbuf->append("/wsman", 6);
 
-      con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
-          serv->path);
-      if (serv->target->targetname)
-        con->outbuf->append(serv->target->targetname, 
-            strlen(serv->target->targetname));
-      else 
-        con->outbuf->append(serv->target->NameIP(),
-            strlen(serv->target->NameIP()));
+//       con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+//           serv->path);
+//       if (serv->target->targetname)
+//         con->outbuf->append(serv->target->targetname, 
+//             strlen(serv->target->targetname));
+//       else 
+//         con->outbuf->append(serv->target->NameIP(),
+//             strlen(serv->target->NameIP()));
 
-      con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+//       con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
 
-      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+//       con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
 
-      con->outbuf->append("Content-Length: 8\r\n", 19);
-      con->outbuf->append("\r\n", 2);
+//       con->outbuf->append("Content-Length: 8\r\n", 19);
+//       con->outbuf->append("\r\n", 2);
 
-      //send 8 random chars
-      tmplen = 8 + 1;
-      tmp = (char *)safe_malloc(tmplen + 1);
-      rand_str(tmp, 8);
+//       //send 8 random chars
+//       tmplen = 8 + 1;
+//       tmp = (char *)safe_malloc(tmplen + 1);
+//       rand_str(tmp, 8);
     
-      con->outbuf->append(tmp, strlen(tmp));
-      free(tmp);
+//       con->outbuf->append(tmp, strlen(tmp));
+//       free(tmp);
 
-      nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
-        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+//       nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
+//         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
 
-      info->substate = METHODS_RESULTS;
-      break;
+//       info->substate = METHODS_RESULTS;
+//       break;
 
-    case METHODS_RESULTS:
-      if (winrm_loop_read(nsp, con) < 0)
-        break;
+//     case METHODS_RESULTS:
+//       if (winrm_loop_read(nsp, con) < 0)
+//         break;
 
 
-      /* We expect a 401 response which will contain all
-       * the accepted authentication methods in the
-       * WWW-Authenticate header. */
-      if (memsearch((const char *)con->inbuf->get_dataptr(),
-            "401", con->inbuf->get_len()) 
-          && memsearch((const char *)con->inbuf->get_dataptr(),
-            "WWW-Authenticate", con->inbuf->get_len())) {
-        start += sizeof("WWW-Authenticate: ") -1;
-        end = start;
-        i = 0;
-        while (*end != ' ' && i != con->inbuf->get_len()) {
-          end++;
-          i++;
-        }
+//       /* We expect a 401 response which will contain all
+//        * the accepted authentication methods in the
+//        * WWW-Authenticate header. */
+//       if (memsearch((const char *)con->inbuf->get_dataptr(),
+//             "401", con->inbuf->get_len()) 
+//           && memsearch((const char *)con->inbuf->get_dataptr(),
+//             "WWW-Authenticate", con->inbuf->get_len())) {
+//         start += sizeof("WWW-Authenticate: ") -1;
+//         end = start;
+//         i = 0;
+//         while (*end != ' ' && i != con->inbuf->get_len()) {
+//           end++;
+//           i++;
+//         }
 
-        if (info == NULL) {
-          con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
-          info = (http_info *)con->misc_info;
-          info->auth_scheme = Strndup(start, i);
-        }
+//         if (info == NULL) {
+//           con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
+//           info = (http_info *)con->misc_info;
+//           info->auth_scheme = Strndup(start, i);
+//         }
 
-        if (!strcmp("Basic", info->auth_scheme)) {
+//         if (!strcmp("Basic", info->auth_scheme)) {
 
-          //con->state = HTTP_BASIC_AUTH;
-          //info->substate = BASIC_SEND;
-          serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
-          hstate = (winrm_state *)serv->module_data;
-          hstate->auth_scheme = Strndup(info->auth_scheme, 
-              strlen(info->auth_scheme));
-          hstate->state = WINRM_BASIC_AUTH;
-          hstate->reconnaissance = true;
-          serv->more_rounds = true;
+//           //con->state = HTTP_BASIC_AUTH;
+//           //info->substate = BASIC_SEND;
+//           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
+//           hstate = (winrm_state *)serv->module_data;
+//           hstate->auth_scheme = Strndup(info->auth_scheme, 
+//               strlen(info->auth_scheme));
+//           hstate->state = WINRM_BASIC_AUTH;
+//           hstate->reconnaissance = true;
+//           serv->more_rounds = true;
 
-          return ncrack_module_end(nsp, con);
+//           return ncrack_module_end(nsp, con);
 
-        } else if (!strcmp("Negotiate", info->auth_scheme)) {
-        // if (memsearch((const char *)con->inbuf->get_dataptr(),
-        //     "WWW-Authenticate: Basic", con->inbuf->get_len()))
-        //   con->state = WINRM_BASIC_AUTH;
-        // else if (memsearch((const char *)con->inbuf->get_dataptr(),
-        //       "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
-        //   {
-          serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
-          hstate = (winrm_state *)serv->module_data;
-          hstate->auth_scheme = Strndup(info->auth_scheme, 
-              strlen(info->auth_scheme));
-          hstate->state = WINRM_NEGOTIATE_AUTH;
-          hstate->reconnaissance = true;
-          serv->more_rounds = true;
-          return ncrack_module_end(nsp, con);
-        }       
-        // else if (memsearch((const char *)con->inbuf->get_dataptr(),
-        //       "WWW-Authenticate: Kerberos", con->inbuf->get_len()))
-        //   con->state = WINRM_KERBEROS_AUTH;
-        // else if (memsearch((const char *)con->inbuf->get_dataptr(),
-        //       "WWW-Authenticate: CredSSP", con->inbuf->get_len()))
-        //   con->state = WINRM_CREDSSP_AUTH;
-      } 
+//         } else if (!strcmp("Negotiate", info->auth_scheme)) {
+//         // if (memsearch((const char *)con->inbuf->get_dataptr(),
+//         //     "WWW-Authenticate: Basic", con->inbuf->get_len()))
+//         //   con->state = WINRM_BASIC_AUTH;
+//         // else if (memsearch((const char *)con->inbuf->get_dataptr(),
+//         //       "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
+//         //   {
+//           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
+//           hstate = (winrm_state *)serv->module_data;
+//           hstate->auth_scheme = Strndup(info->auth_scheme, 
+//               strlen(info->auth_scheme));
+//           hstate->state = WINRM_NEGOTIATE_AUTH;
+//           hstate->reconnaissance = true;
+//           serv->more_rounds = true;
+//           return ncrack_module_end(nsp, con);
+//         }       
+//         // else if (memsearch((const char *)con->inbuf->get_dataptr(),
+//         //       "WWW-Authenticate: Kerberos", con->inbuf->get_len()))
+//         //   con->state = WINRM_KERBEROS_AUTH;
+//         // else if (memsearch((const char *)con->inbuf->get_dataptr(),
+//         //       "WWW-Authenticate: CredSSP", con->inbuf->get_len()))
+//         //   con->state = WINRM_CREDSSP_AUTH;
+//       } 
 
-      /* The in buffer has to be cleared out, because we are expecting
-       * possibly new answers in the same connection.
-       */
-      // delete con->inbuf;
-      // con->inbuf = NULL;
+//       /* The in buffer has to be cleared out, because we are expecting
+//        * possibly new answers in the same connection.
+//        */
+//       // delete con->inbuf;
+//       // con->inbuf = NULL;
 
-      // ncrack_module_end(nsp, con);
-      break;
-  }
-}
+//       // ncrack_module_end(nsp, con);
+//       break;
+//   }
+// }
 
 static void
 winrm_negotiate(nsock_pool nsp, Connection *con)
