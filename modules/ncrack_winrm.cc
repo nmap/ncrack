@@ -233,7 +233,9 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
   switch (con->state)
   {
     case WINRM_INIT:
- 
+      
+      con->state = WINRM_GET_AUTH;
+      
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
