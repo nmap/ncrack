@@ -312,16 +312,18 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
           if (info == NULL) {
             con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
             info = (winrm_info *)con->misc_info;
-            info->auth_scheme = "Negotiate";
+            info->auth_scheme = "Basic";
           }
+          con->state = WINRM_BASIC_AUTH;
+
           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
           hstate = (winrm_state *)serv->module_data;
           hstate->auth_scheme = Strndup(info->auth_scheme, 
               strlen(info->auth_scheme));
-          hstate->state = WINRM_NEGOTIATE_AUTH;
-          hstate->reconnaissance = true;
+          
           serv->more_rounds = true;
-          return ncrack_module_end(nsp, con);
+          con->peer_alive = true;
+          winrm_basic(nsp, con);
         }
 
         // if (!strcmp("Basic", info->auth_scheme)) {
@@ -352,6 +354,7 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
       break;
 
     case WINRM_BASIC_AUTH:
+    
       winrm_basic(nsp, con);
       break;
 
