@@ -200,6 +200,9 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
   winrm_state *hstate = NULL;
   con->ops_free = &winrm_free;
 
+  char *tmp;
+  size_t tmplen;
+  
   srand(time(NULL)); 
 
   if (con->misc_info) {
@@ -288,8 +291,8 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
         }
 
         if (info == NULL) {
-          con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
-          info = (http_info *)con->misc_info;
+          con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
+          info = (winrm_info *)con->misc_info;
           info->auth_scheme = Strndup(start, i);
         }
 
