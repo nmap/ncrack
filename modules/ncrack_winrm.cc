@@ -161,7 +161,7 @@ static void winrm_free(Connection *con);
 
 static void rand_str(char *dest, size_t length);
 
-enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH, 
+enum states { WINRM_NEGOTIATE_AUTH, WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, 
               WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
 
 /* Method identification substates */
@@ -232,8 +232,6 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
   {
     case WINRM_INIT:
  
-      con->state = WINRM_NEGOTIATE_AUTH;
-
       // if (con->outbuf)
       //   delete con->outbuf;
       // con->outbuf = new Buf();
@@ -695,7 +693,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       
-      info->substate = METHODS_RESULTS;
+      info->substate = NEGOTIATE_SEND;
       break;
 
     case NEGOTIATE_SEND:
