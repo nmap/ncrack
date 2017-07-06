@@ -204,13 +204,26 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
 
   if (con->misc_info) {
     info = (winrm_info *) con->misc_info;
-    //printf("info substate: %d \n", info->substate);
+    printf("info substate: %d \n", info->substate);
   }
 
-  if (con->misc_info == NULL) {
+  if (serv->module_data && con->misc_info == NULL) {
+
+    hstate = (winrm_state *)serv->module_data;
     con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
     info = (winrm_info *)con->misc_info;
+    if (!strcmp(hstate->auth_scheme, "Basic")) {
+      con->state = hstate->state;
+    }
+    info->auth_scheme = Strndup(hstate->auth_scheme, 
+            strlen(hstate->auth_scheme));
+
+    printf("got here scheme: %s\n", info->auth_scheme);
+
+    serv->more_rounds = false;
   } 
+
+  printf("con->state: %d\n", con->state);
 
   switch (con->state)
   {
@@ -234,11 +247,11 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
       break;
 
     case WINRM_KERBEROS_AUTH:
-      printf("Kerberos authentication technique not implemented yet.")
+      printf("Kerberos authentication technique not implemented yet.");
       break;
 
     case WINRM_CREDSSP_AUTH:
-      printf("CREDSSP authentication technique not implemented yet.")
+      printf("CREDSSP authentication technique not implemented yet.");
       break;
 
   }
@@ -370,6 +383,7 @@ winrm_methods(nsock_pool nsp, Connection *con)
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   winrm_info *info = (winrm_info *)con->misc_info;
+  winrm_state *winstate = NULL;
 
   switch (info->substate) {
     case METHODS_SEND:
@@ -423,27 +437,65 @@ winrm_methods(nsock_pool nsp, Connection *con)
             "401", con->inbuf->get_len()) 
           && memsearch((const char *)con->inbuf->get_dataptr(),
             "WWW-Authenticate", con->inbuf->get_len())) {
-         if (memsearch((const char *)con->inbuf->get_dataptr(),
-            "WWW-Authenticate: Basic", con->inbuf->get_len()))
-          con->state = WINRM_BASIC_AUTH;
-        else if (memsearch((const char *)con->inbuf->get_dataptr(),
-              "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
-          con->state = WINRM_NEGOTIATE_AUTH;        
-        else if (memsearch((const char *)con->inbuf->get_dataptr(),
-              "WWW-Authenticate: Kerberos", con->inbuf->get_len()))
-          con->state = WINRM_KERBEROS_AUTH;
-        else if (memsearch((const char *)con->inbuf->get_dataptr(),
-              "WWW-Authenticate: CredSSP", con->inbuf->get_len()))
-          con->state = WINRM_CREDSSP_AUTH;
+        start += sizeof("WWW-Authenticate: ") -1;
+        end = start;
+        i = 0;
+        while (*end != ' ' && i != con->inbuf->get_len()) {
+          end++;
+          i++;
+        }
+
+        if (info == NULL) {
+          con->misc_info = (http_info *)safe_zalloc(sizeof(http_info));
+          info = (http_info *)con->misc_info;
+          info->auth_scheme = Strndup(start, i);
+        }
+
+        if (!strcmp("Basic", info->auth_scheme)) {
+
+          //con->state = HTTP_BASIC_AUTH;
+          //info->substate = BASIC_SEND;
+          serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
+          hstate = (winrm_state *)serv->module_data;
+          hstate->auth_scheme = Strndup(info->auth_scheme, 
+              strlen(info->auth_scheme));
+          hstate->state = WINRM_BASIC_AUTH;
+          hstate->reconnaissance = true;
+          serv->more_rounds = true;
+
+          return ncrack_module_end(nsp, con);
+
+        } else if (!strcmp("Negotiate", info->auth_scheme)) {
+        // if (memsearch((const char *)con->inbuf->get_dataptr(),
+        //     "WWW-Authenticate: Basic", con->inbuf->get_len()))
+        //   con->state = WINRM_BASIC_AUTH;
+        // else if (memsearch((const char *)con->inbuf->get_dataptr(),
+        //       "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
+        //   {
+          serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
+          hstate = (winrm_state *)serv->module_data;
+          hstate->auth_scheme = Strndup(info->auth_scheme, 
+              strlen(info->auth_scheme));
+          hstate->state = WINRM_NEGOTIATE_AUTH;
+          hstate->reconnaissance = true;
+          serv->more_rounds = true;
+          return ncrack_module_end(nsp, con);
+        }       
+        // else if (memsearch((const char *)con->inbuf->get_dataptr(),
+        //       "WWW-Authenticate: Kerberos", con->inbuf->get_len()))
+        //   con->state = WINRM_KERBEROS_AUTH;
+        // else if (memsearch((const char *)con->inbuf->get_dataptr(),
+        //       "WWW-Authenticate: CredSSP", con->inbuf->get_len()))
+        //   con->state = WINRM_CREDSSP_AUTH;
       } 
 
       /* The in buffer has to be cleared out, because we are expecting
        * possibly new answers in the same connection.
        */
-      delete con->inbuf;
-      con->inbuf = NULL;
+      // delete con->inbuf;
+      // con->inbuf = NULL;
 
-      ncrack_module_end(nsp, con);
+      // ncrack_module_end(nsp, con);
       break;
   }
 }
@@ -493,7 +545,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       domain_temp = (char *)safe_malloc(tmplen + 1);
       sprintf(domain_temp, "Workstation");
       domainlen = (strlen(domain_temp) == 0 ? 1 : (int)(log10(strlen(domain_temp)+1));
-      hostlen = (strlen(host) == 0 ? 1 : (int)(log10(strlen(host)+1));
+      hostlen = (strlen(host) == 0 ? 1 : (int)(log10(strlen(host)+1)));
 
 
       tmplen = 1;
