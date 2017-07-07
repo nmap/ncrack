@@ -161,6 +161,10 @@ static void winrm_free(Connection *con);
 
 static void rand_str(char *dest, size_t length);
 
+unsigned char *base64_decode(const char *data, size_t input_length, size_t *output_length);
+void build_decoding_table();
+void base64_cleanup();
+
 enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH,
               WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
 
@@ -216,7 +220,8 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
     hstate = (winrm_state *)serv->module_data;
     con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
     info = (winrm_info *)con->misc_info;
-    if (!strcmp(hstate->auth_scheme, "Basic")) {
+    if (!strcmp(hstate->auth_scheme, "Basic") 
+      || !strcmp(hstate->auth_scheme, "Negotiate")) {
       printf("setting connection state\n");
       con->state = hstate->state;
     }
@@ -235,7 +240,7 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
     case WINRM_INIT:
       
       con->state = WINRM_GET_AUTH;
-      
+
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
@@ -291,20 +296,20 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
         if (info == NULL) {
           con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
           info = (winrm_info *)con->misc_info;
-          info->auth_scheme = "Basic";
+          
         }
         if (memsearch((const char *)con->inbuf->get_dataptr(),
             "WWW-Authenticate: Basic", con->inbuf->get_len()))
           {
 
-          
+          info->auth_scheme = Strndup("Basic", strlen("Basic"));
           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
           hstate = (winrm_state *)serv->module_data;
           hstate->auth_scheme = Strndup(info->auth_scheme, 
               strlen(info->auth_scheme));
           hstate->state = WINRM_BASIC_AUTH;
           hstate->reconnaissance = true;
-          serv->more_rounds = true;
+          //serv->more_rounds = true;
           return ncrack_module_end(nsp, con);
 
         } else if (memsearch((const char *)con->inbuf->get_dataptr(),
@@ -312,14 +317,14 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
           {
 
           //con->state = WINRM_BASIC_AUTH;
-
+          info->auth_scheme = Strndup("Negotiate", strlen("Negotiate"));
           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
           hstate = (winrm_state *)serv->module_data;
           hstate->auth_scheme = Strndup(info->auth_scheme, 
               strlen(info->auth_scheme));
-          hstate->state = WINRM_BASIC_AUTH;
+          hstate->state = WINRM_NEGOTIATE_AUTH;
           hstate->reconnaissance = true;
-          serv->more_rounds = true;
+          //serv->more_rounds = true;
           return ncrack_module_end(nsp, con);
         }   
       } 
@@ -639,7 +644,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       tmplen = strlen("Workstation") + 1;
       domain_temp = (char *)safe_malloc(tmplen + 1);
       sprintf(domain_temp, "Workstation");
-      domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1;
       // (strlen(domain_temp) == 0 ? 1 : (int)(log10(strlen(domain_temp)+1)));
       
       //(strlen(host) == 0 ? 1 : (int)(log10(strlen(host)+1)));
@@ -654,7 +658,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       rand_str(tmp, tmplen + 5);  // rand(8) + 6 - 1 
       //domain_temp->append("%s", tmp);
       strcat(domain_temp,tmp);
-
+      domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1;
 
       // Here domain will have to 
       tmplen2 = strlen("NTLMSSP") + 5 + 4 + domainlen + domainlen + 2 + 
@@ -676,7 +680,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                "%c%c"       /* host allocated space */
                "\x29%c"   /* host name offset offset 32 +9 for domain length?*/
                "%c%c"       /* 2 zeroes */
-               "%s"         /* host name */
+            //   "%s"         /* host name */
                "%s",        /* domain string */               
                0,0,0,0,
                strlen(domain_temp),
@@ -685,9 +689,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                strlen(host),
                strlen(host), 0,
                0,0,
-               host,  /* hostname is empty, we don't need it */
+              // host,  /* hostname is empty, we don't need it */
                domain_temp /* this is domain/workstation name */);
-
+// we are missing a few bytes on domain_temp. around 5 bytes
       b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
       base64_encode(tmp2, tmplen2, b64);
 
@@ -726,16 +730,17 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             i++;
           }
 
-          // challenge = Strndup(start, i);
-          // b64 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge)) + 1);
+          challenge = Strndup(start, i);
+          b64 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge)) + 1);
           //  Base64 decode the type2 message (challenge)
           
           // base64_decode(challenge, strlen(challenge), b64);
+          base64_decode(challenge, strlen(challenge), b64);
 
           // if (!b64) {
           //   //if decoded message is not valid exit.
           // }
-
+          printf("%s\n", b64);
   /* NTLM type-2 message structure:
           Index  Description            Content
             0    NTLMSSP Signature      Null-terminated ASCII "NTLMSSP"
@@ -811,4 +816,67 @@ rand_str(char *dest, size_t length)
         *dest++ = charset[index];
     }
     *dest = '\0';
+}
+
+
+static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+                                'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+                                'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+                                'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+                                'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+                                'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+                                'w', 'x', 'y', 'z', '0', '1', '2', '3',
+                                '4', '5', '6', '7', '8', '9', '+', '/'};
+static char *decoding_table = NULL;
+static int mod_table[] = {0, 2, 1};
+
+
+
+unsigned char *base64_decode(const char *data,
+                             size_t input_length,
+                             size_t *output_length) {
+
+    if (decoding_table == NULL) build_decoding_table();
+
+    if (input_length % 4 != 0) return NULL;
+
+    *output_length = input_length / 4 * 3;
+    if (data[input_length - 1] == '=') (*output_length)--;
+    if (data[input_length - 2] == '=') (*output_length)--;
+
+    unsigned char *decoded_data = malloc(*output_length);
+    if (decoded_data == NULL) return NULL;
+
+    for (int i = 0, j = 0; i < input_length;) {
+
+        uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+        uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+        uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+        uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+
+        uint32_t triple = (sextet_a << 3 * 6)
+        + (sextet_b << 2 * 6)
+        + (sextet_c << 1 * 6)
+        + (sextet_d << 0 * 6);
+
+        if (j < *output_length) decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
+        if (j < *output_length) decoded_data[j++] = (triple >> 1 * 8) & 0xFF;
+        if (j < *output_length) decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
+    }
+
+    return decoded_data;
+}
+
+
+void build_decoding_table() {
+
+    decoding_table = malloc(256);
+
+    for (int i = 0; i < 64; i++)
+        decoding_table[(unsigned char) encoding_table[i]] = i;
+}
+
+
+void base64_cleanup() {
+    free(decoding_table);
 }
