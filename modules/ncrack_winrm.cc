@@ -501,6 +501,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t tmplen;
   size_t tmplen2;
   size_t type2len;
+  int type2templen;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   winrm_info *info = (winrm_info *)con->misc_info;
@@ -622,9 +623,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
           /*  Base64 decode the type2 message (challenge)
           */
-          type2len = BASE64_LENGTH(strlen(challenge) + 1);
-          size_t2int(type2len);
-          base64_decode(challenge, strlen(challenge), type2, type2len);
+          // type2len = BASE64_LENGTH(strlen(challenge) + 1);
+          
+          // type2templen = size_t2int(type2len);
+          base64_decode(challenge, type2);
 
           if (!type2) {
             //if decoded message is not valid exit.

@@ -404,70 +404,84 @@ int base64_encode(const char *str, int length, char *b64store)
   return p - b64store;
 }
 
-static const char map[256] = {
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255,  62, 255, 255, 255,  63,
- 52,  53,  54,  55,  56,  57,  58,  59,  60,  61, 255, 255,
-255, 254, 255, 255, 255,   0,   1,   2,   3,   4,   5,   6,
-  7,   8,   9,  10,  11,  12,  13,  14,  15,  16,  17,  18,
- 19,  20,  21,  22,  23,  24,  25, 255, 255, 255, 255, 255,
-255,  26,  27,  28,  29,  30,  31,  32,  33,  34,  35,  36,
- 37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,
- 49,  50,  51, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-255, 255, 255, 255 };
-
-int base64_decode(const char *in,  int inlen, 
-                        char *out, int *outlen)
+int
+base64_decode (const char *base64, char *to)
 {
-   int t, x, y, z;
-   char c;
-   int g;
+  /* Table of base64 values for first 128 characters.  Note that this
+     assumes ASCII (but so does Wget in other places).  */
+  static short base64_char_to_value[128] =
+    {
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  /*   0-  9 */
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  /*  10- 19 */
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  /*  20- 29 */
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  /*  30- 39 */
+      -1,  -1,  -1,  62,  -1,  -1,  -1,  63,  52,  53,  /*  40- 49 */
+      54,  55,  56,  57,  58,  59,  60,  61,  -1,  -1,  /*  50- 59 */
+      -1,  -1,  -1,  -1,  -1,  0,   1,   2,   3,   4, /*  60- 69 */
+      5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  /*  70- 79 */
+      15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  /*  80- 89 */
+      25,  -1,  -1,  -1,  -1,  -1,  -1,  26,  27,  28,  /*  90- 99 */
+      29,  30,  31,  32,  33,  34,  35,  36,  37,  38,  /* 100-109 */
+      39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  /* 110-119 */
+      49,  50,  51,  -1,  -1,  -1,  -1,  -1   /* 120-127 */
+    };
 
+  const char *p = base64;
+  char *q = to;
 
-   g = 3;
-   for (x = y = z = t = 0; x < inlen; x++) {
-       c = map[in[x]&0xFF];
-       if (c == 255) continue;
+  while (1)
+  {
+    unsigned char c;
+    unsigned long value;
 
-       if (c == 254) { 
-          c = 0; 
-          if (--g < 0) {
-             return 1;
-          }
-       } else if (g != 3) {
-          return 1;
-       }
+    /* Process first byte of a quadruplet.  */
+    NEXT_BASE64_CHAR (c, p);
+    if (!c)
+      break;
+    if (c == '=')
+      return -1;    /* illegal '=' while decoding base64 */
+    value = base64_char_to_value[c] << 18;
 
-       t = (t<<6)|c;
+    /* Process scond byte of a quadruplet.  */
+    NEXT_BASE64_CHAR (c, p);
+    if (!c)
+      return -1;    /* premature EOF while decoding base64 */
+    if (c == '=')
+      return -1;    /* illegal `=' while decoding base64 */
+    value |= base64_char_to_value[c] << 12;
+    *q++ = value >> 16;
 
-       if (++y == 4) {
-          if (z + g > *outlen) { 
-             return 1; 
-          }
-          out[z++] = (char)((t>>16)&255);
-          if (g > 1) out[z++] = (char)((t>>8)&255);
-          if (g > 2) out[z++] = (char)(t&255);
-          y = t = 0;
-       }
-   }
-   if (y != 0) {
-       return 1;
-   }
-   *outlen = z;
-   return 0;
-} 
+    /* Process third byte of a quadruplet.  */
+    NEXT_BASE64_CHAR (c, p);
+    if (!c)
+      return -1;    /* premature EOF while decoding base64 */
+
+    if (c == '=')
+    {
+      NEXT_BASE64_CHAR (c, p);
+      if (!c)
+        return -1;    /* premature EOF while decoding base64 */
+      if (c != '=')
+        return -1;    /* padding `=' expected but not found */
+      continue;
+    }
+
+    value |= base64_char_to_value[c] << 6;
+    *q++ = 0xff & value >> 8;
+
+    /* Process fourth byte of a quadruplet.  */
+    NEXT_BASE64_CHAR (c, p);
+    if (!c)
+      return -1;    /* premature EOF while decoding base64 */
+    if (c == '=')
+      continue;
+
+    value |= base64_char_to_value[c];
+    *q++ = 0xff & value;
+  }
+
+  return q - to;
+}
 
 /* mmap() an entire file into the address space.  Returns a pointer
    to the beginning of the file.  The mmap'ed length is returned
