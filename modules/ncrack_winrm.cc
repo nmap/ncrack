@@ -622,7 +622,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
           /*  Base64 decode the type2 message (challenge)
           */
-          type2len = size_t2int(BASE64_LENGTH(strlen(challenge) + 1))
+          type2len = BASE64_LENGTH(strlen(challenge) + 1);
+          size_t2int(type2len);
           base64_decode(challenge, strlen(challenge), type2, type2len);
 
           if (!type2) {
