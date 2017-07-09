@@ -167,7 +167,7 @@ static int winrm_loop_read(nsock_pool nsp, Connection *con);
 static void winrm_free(Connection *con);
 
 static void rand_str(char *dest, size_t length);
-static int size_t2int(size_t val);
+// static int size_t2int(size_t val);
 
 enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH,
               WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
@@ -339,7 +339,7 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
               strlen(info->auth_scheme));
           hstate->state = WINRM_NEGOTIATE_AUTH;
           hstate->reconnaissance = true;
-          //serv->more_rounds = true;
+          serv->more_rounds = true;
           return ncrack_module_end(nsp, con);
         }   
       } 
@@ -500,8 +500,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t hostlen;
   size_t tmplen;
   size_t tmplen2;
-  size_t type2len;
-  int type2templen;
+  // size_t type2len;
+  // int type2templen;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   winrm_info *info = (winrm_info *)con->misc_info;
@@ -620,18 +620,18 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * string.
           */
 
-          type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
-          /*  Base64 decode the type2 message (challenge)
-          */
-          // type2len = BASE64_LENGTH(strlen(challenge) + 1);
+          // type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
+          // /*  Base64 decode the type2 message (challenge)
+          // */
+          // // type2len = BASE64_LENGTH(strlen(challenge) + 1);
           
-          // type2templen = size_t2int(type2len);
-          base64_decode(challenge, type2);
+          // // type2templen = size_t2int(type2len);
+          // base64_decode(challenge, type2);
 
-          if (!type2) {
-            //if decoded message is not valid exit.
-          }
-          printf("%s\n", b64);
+          // if (!type2) {
+          //   //if decoded message is not valid exit.
+          // }
+          // printf("%s\n", b64);
   /* NTLM type-2 message structure:
           Index  Description            Content
             0    NTLMSSP Signature      Null-terminated ASCII "NTLMSSP"
@@ -834,8 +834,8 @@ rand_str(char *dest, size_t length)
     *dest = '\0';
 }
 
-static int 
-size_t2int(size_t val) 
-{
-    return (val <= INT_MAX) ? (int)((ssize_t)val) : -1;
-}
+// static int 
+// size_t2int(size_t val) 
+// {
+//     return (val <= INT_MAX) ? (int)((ssize_t)val) : -1;
+// }
