@@ -225,9 +225,11 @@ long long timeval_msec_subtract(struct timeval a, struct timeval b);
 /* Take in plain text and encode into base64. */
 char *b64enc(const unsigned char *data, int len);
 
+
+
 #define BASE64_LENGTH(len) (4 * (((len) + 2) / 3))
 int base64_encode(const char *str, int length, char *b64store);
-
+int base64_decode(const char *in,  int inlen, char *out, int *outlen);
 /* mmap() an entire file into the address space.  Returns a pointer
    to the beginning of the file.  The mmap'ed length is returned
    inside the length parameter.  If there is a problem, NULL is
