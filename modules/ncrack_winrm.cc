@@ -167,6 +167,7 @@ static int winrm_loop_read(nsock_pool nsp, Connection *con);
 static void winrm_free(Connection *con);
 
 static void rand_str(char *dest, size_t length);
+static int size_t2int(size_t val);
 
 enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH,
               WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
@@ -194,14 +195,14 @@ typedef struct winrm_state {
 } winrm_state;
 
 
-typedef struct ntlm_type2 {
-    uint32_t flags;
-    char *targetname; 
-    struct ntlm_buf targetinfo; 
-    unsigned char challenge[8]; 
-    uint32_t context[2];
-    uint32_t os[2]; 
-} ntlm_type2;
+// typedef struct ntlm_type2 {
+//     uint32_t flags;
+//     char *targetname; 
+//     struct ntlm_buf targetinfo; 
+//     unsigned char challenge[8]; 
+//     uint32_t context[2];
+//     uint32_t os[2]; 
+// } ntlm_type2;
 
 
 void
@@ -493,11 +494,13 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *domain_temp;
   char *start, *end;
   char *challenge;
+  char *type2;
   size_t i;
   size_t domainlen;
   size_t hostlen;
   size_t tmplen;
   size_t tmplen2;
+  size_t type2len;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   winrm_info *info = (winrm_info *)con->misc_info;
@@ -619,8 +622,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
           /*  Base64 decode the type2 message (challenge)
           */
-          
-          base64_decode(challenge, strlen(challenge), type2, BASE64_LENGTH(strlen(challenge) + 1));
+          type2len = size_t2int(BASE64_LENGTH(strlen(challenge) + 1))
+          base64_decode(challenge, strlen(challenge), type2, type2len);
 
           if (!type2) {
             //if decoded message is not valid exit.
@@ -766,7 +769,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 //                   0x0, 0x0,
 
 //                   LONGQUARTET(ntlm->flags));
-//       }
+      }
 
       /* The in buffer has to be cleared out, because we are expecting
        * possibly new answers in the same connection.
@@ -826,4 +829,10 @@ rand_str(char *dest, size_t length)
         *dest++ = charset[index];
     }
     *dest = '\0';
+}
+
+static int 
+size_t2int(size_t val) 
+{
+    return (val <= INT_MAX) ? (int)((ssize_t)val) : -1;
 }
