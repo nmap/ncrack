@@ -568,11 +568,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             //   "%s"         /* host name */
                "%s",        /* domain string */               
                0,0,0,0,
-               strlen(domain_temp),
-               strlen(domain_temp), 0,
+               SHORTPAIR(strlen(domain_temp)),
+               SHORTPAIR(strlen(domain_temp)), 0,
                0,0,
-               strlen(host),
-               strlen(host), 0,
+               SHORTPAIR(strlen(host)),
+               SHORTPAIR(strlen(host)), 0,
                0,0,
               // host,  /* hostname is empty, we don't need it */
                domain_temp /* this is domain/workstation name */);
