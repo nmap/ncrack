@@ -494,7 +494,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *domain_temp;
   char *start, *end;
   char *challenge;
-  unsigned char *type2;
+  char *type2;
   size_t i;
   size_t domainlen;
   size_t hostlen;
@@ -621,15 +621,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * string.
           */
 
-          //type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
+          type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
           /*  Base64 decode the type2 message (challenge)
           */
           // type2len = BASE64_LENGTH(strlen(challenge) + 1);
           
           // type2templen = size_t2int(type2len);
-          type2 = NULL;
-          type2_len = 0;
-          base64_decode(challenge, &type2_len, &type2);
+          // type2 = NULL;
+          // type2_len = 0;
+          base64_decode(challenge, type2);
 
           if (!type2) {
             //if decoded message is not valid exit.
