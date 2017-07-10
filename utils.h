@@ -229,16 +229,16 @@ char *b64enc(const unsigned char *data, int len);
 
 #define BASE64_LENGTH(len) (4 * (((len) + 2) / 3))
 int base64_encode(const char *str, int length, char *b64store);
-//#define IS_ASCII(c) (((c) & 0x80) == 0)
-// #define IS_BASE64(c) ((IS_ASCII (c) && base64_char_to_value[c] >= 0) || c == '=')
+#define IS_ASCII(c) (((c) & 0x80) == 0)
+#define IS_BASE64(c) ((IS_ASCII (c) && base64_char_to_value[c] >= 0) || c == '=')
 
-//  Get next character from the string, except that non-base64
-//    characters are ignored, as mandated by rfc2045.  
-// #define NEXT_BASE64_CHAR(c, p) do {     \
-//   c = *p++;           \
-// } while (c != '\0' && !IS_BASE64 (c))
-
-int base64_decode(const char *src, size_t *outlen, unsigned char **outptr);
+ Get next character from the string, except that non-base64
+   characters are ignored, as mandated by rfc2045.  
+#define NEXT_BASE64_CHAR(c, p) do {     \
+  c = *p++;           \
+} while (c != '\0' && !IS_BASE64 (c))
+int base64_encode(const char *str, int length, char *b64store);
+// int base64_decode(const char *src, size_t *outlen, unsigned char **outptr);
 
 /* mmap() an entire file into the address space.  Returns a pointer
    to the beginning of the file.  The mmap'ed length is returned
