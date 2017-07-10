@@ -620,18 +620,18 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * string.
           */
 
-          // type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
-          // /*  Base64 decode the type2 message (challenge)
-          // */
-          // // type2len = BASE64_LENGTH(strlen(challenge) + 1);
+          type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
+          /*  Base64 decode the type2 message (challenge)
+          */
+          // type2len = BASE64_LENGTH(strlen(challenge) + 1);
           
-          // // type2templen = size_t2int(type2len);
-          // base64_decode(challenge, type2);
+          // type2templen = size_t2int(type2len);
+          base64_decode(challenge, type2);
 
-          // if (!type2) {
-          //   //if decoded message is not valid exit.
-          // }
-          // printf("%s\n", b64);
+          if (!type2) {
+            //if decoded message is not valid exit.
+          }
+          printf("%s\n", b64);
   /* NTLM type-2 message structure:
           Index  Description            Content
             0    NTLMSSP Signature      Null-terminated ASCII "NTLMSSP"
