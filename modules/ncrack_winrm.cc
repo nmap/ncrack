@@ -628,8 +628,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           
           // type2templen = size_t2int(type2len);
           type2 = NULL;
-          type2len = 0;
-          base64_decode(challenge, &type2, &type2len);
+          type2_len = 0;
+          base64_decode(challenge, &type2, &type2_len);
 
           if (!type2) {
             //if decoded message is not valid exit.
