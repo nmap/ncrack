@@ -494,7 +494,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *domain_temp;
   char *start, *end;
   char *challenge;
-  unsigned char *type2;
+  char *type2;
   size_t i;
   size_t domainlen;
   size_t hostlen;
@@ -621,7 +621,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * string.
           */
 
-          type2 = (unsigned char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
+          type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
           /*  Base64 decode the type2 message (challenge)
           */
           // type2len = BASE64_LENGTH(strlen(challenge) + 1);
@@ -633,12 +633,20 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           base64_decode(challenge, tmplen2, type2);
 
           if (!type2) {
-            //if decoded message is not valid exit.
+            /* Type2 message decoding failed.
+            */
+            serv->end.orly = true;
+            tmpsize = sizeof("Invalid type2 message.\n");
+            serv->end.reason = (char *)safe_malloc(tmpsize);
+            snprintf(serv->end.reason, tmpsize,
+                "Invalid type2 message.\n",;
+
+            return ncrack_module_end(nsp, con);
           }
-          printf("%s\n", type2);
-          for (i=0; i <tmplen2;i++){
-            printf("%02x", type2[i]);
-          }printf("\n");
+          // printf("%s\n", type2);
+          // for (i=0; i <tmplen2;i++){
+          //   printf("%02x", type2[i]);
+          // }printf("\n");
   /* NTLM type-2 message structure:
           Index  Description            Content
             0    NTLMSSP Signature      Null-terminated ASCII "NTLMSSP"
