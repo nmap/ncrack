@@ -405,7 +405,7 @@ int base64_encode(const char *str, int length, char *b64store)
 }
 
 int
-base64_decode (char *base64, int length, unsigned char *to)
+base64_decode (const char *base64, int length, unsigned char *to)
 {
   /* Table of base64 values for first 128 characters.  Note that this
      assumes ASCII (but so does Wget in other places).  */
@@ -439,12 +439,12 @@ base64_decode (char *base64, int length, unsigned char *to)
   if (pad)
     {
         int n = base64_char_to_value[p[L]] << 18 | base64_char_to_value[p[L + 1]] << 12;
-        q[strlen(q) - 1] = n >> 16;
+        q[(L/4) - 1] = n >> 16;
 
         if (length > L + 2 && p[L + 2] != '=')
         {
             n |= base64_char_to_value[p[L + 2]] << 6;
-            q[strlen(q) - 1] = n >> 8 & 0xFF;
+            q[(L/4) - 1] = n >> 8 & 0xFF;
         }
     }
   return q - to;
