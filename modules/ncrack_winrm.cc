@@ -494,7 +494,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *domain_temp;
   char *start, *end;
   char *challenge;
-  char *type2;
+  unsigned char *type2;
   size_t i;
   size_t domainlen;
   size_t hostlen;
@@ -621,7 +621,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * string.
           */
 
-          type2 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
+          type2 = (unsigned char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
           /*  Base64 decode the type2 message (challenge)
           */
           // type2len = BASE64_LENGTH(strlen(challenge) + 1);
