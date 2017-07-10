@@ -629,13 +629,16 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           // type2templen = size_t2int(type2len);
           // type2 = NULL;
           // type2_len = 0;
-          tmplen2 = strlen(challenge)
+          tmplen2 = strlen(challenge);
           base64_decode(challenge, tmplen2, type2);
 
           if (!type2) {
             //if decoded message is not valid exit.
           }
           printf("%s\n", type2);
+          for (i=0; i <tmplen2;i++){
+            printf("%02x", type2[i]);
+          }printf("\n");
   /* NTLM type-2 message structure:
           Index  Description            Content
             0    NTLMSSP Signature      Null-terminated ASCII "NTLMSSP"

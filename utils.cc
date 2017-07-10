@@ -425,61 +425,65 @@ base64_decode (const char *base64, int length, char *to)
       39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  /* 110-119 */
       49,  50,  51,  -1,  -1,  -1,  -1,  -1   /* 120-127 */
     };
-
+  int i;
   const char *p = base64;
   char *q = to;
 
   // while (1)
   // {
-  for (i = 0; i < length; i += 3)
+  for (i = 0; i < length; i += 4)
     {
     unsigned char c;
     unsigned long value;
 
-    /* Process first byte of a quadruplet.  */
-    NEXT_BASE64_CHAR (c, p);
-    if (!c)
-      break;
-    if (c == '=')
-      return -1;    /* illegal '=' while decoding base64 */
-    value = base64_char_to_value[c] << 18;
+    int n = base64_char_to_value[p[i]] << 18 | base64_char_to_value[p[i + 1]] << 12 | base64_char_to_value[p[i + 2]] << 6 | base64_char_to_value[p[i + 3]];
+    *q++ = n >> 16;
+    *q++ = n >> 8 & 0xFF;
+    *q++ = n & 0xFF;
+    // /* Process first byte of a quadruplet.  */
+    // NEXT_BASE64_CHAR (c, p);
+    // if (!c)
+    //   break;
+    // if (c == '=')
+    //   return -1;    /* illegal '=' while decoding base64 */
+    // value = base64_char_to_value[c] << 18;
 
-    /* Process scond byte of a quadruplet.  */
-    NEXT_BASE64_CHAR (c, p);
-    if (!c)
-      return -1;    /* premature EOF while decoding base64 */
-    if (c == '=')
-      return -1;    /* illegal `=' while decoding base64 */
-    value |= base64_char_to_value[c] << 12;
-    *q++ = value >> 16;
-
-    /* Process third byte of a quadruplet.  */
-    NEXT_BASE64_CHAR (c, p);
-    if (!c)
-      return -1;    /* premature EOF while decoding base64 */
-
-    if (c == '=')
-    {
-      NEXT_BASE64_CHAR (c, p);
-      if (!c)
-        return -1;    /* premature EOF while decoding base64 */
-      if (c != '=')
-        return -1;    /* padding `=' expected but not found */
-      continue;
-    }
-
-    value |= base64_char_to_value[c] << 6;
-    *q++ = 0xff & value >> 8;
-
-    /* Process fourth byte of a quadruplet.  */
-    NEXT_BASE64_CHAR (c, p);
+    // /* Process scond byte of a quadruplet.  */
+    // NEXT_BASE64_CHAR (c, p);
     // if (!c)
     //   return -1;    /* premature EOF while decoding base64 */
-    if (c == '=')
-      continue;
+    // if (c == '=')
+    //   return -1;    /* illegal `=' while decoding base64 */
+    // value |= base64_char_to_value[c] << 12;
+    // *q++ = value >> 16;
 
-    value |= base64_char_to_value[c];
-    *q++ = 0xff & value;
+    // /* Process third byte of a quadruplet.  */
+    // NEXT_BASE64_CHAR (c, p);
+    // if (!c)
+    //   return -1;    /* premature EOF while decoding base64 */
+
+    // if (c == '=')
+    // {
+    //   NEXT_BASE64_CHAR (c, p);
+    //   if (!c)
+    //     return -1;    /* premature EOF while decoding base64 */
+    //   if (c != '=')
+    //     return -1;    /* padding `=' expected but not found */
+    //   continue;
+    // }
+
+    // value |= base64_char_to_value[c] << 6;
+    // *q++ = 0xff & value >> 8;
+
+    // /* Process fourth byte of a quadruplet.  */
+    // NEXT_BASE64_CHAR (c, p);
+    // // if (!c)
+    // //   return -1;    /* premature EOF while decoding base64 */
+    // if (c == '=')
+    //   continue;
+
+    // value |= base64_char_to_value[c];
+    // *q++ = 0xff & value;
   }
 
   return q - to;
