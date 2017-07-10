@@ -513,8 +513,8 @@ base64_decode (const char *base64, char *to)
 
     /* Process fourth byte of a quadruplet.  */
     NEXT_BASE64_CHAR (c, p);
-    if (!c)
-      return -1;    /* premature EOF while decoding base64 */
+    // if (!c)
+    //   return -1;    /* premature EOF while decoding base64 */
     if (c == '=')
       continue;
 
