@@ -403,51 +403,9 @@ int base64_encode(const char *str, int length, char *b64store)
 
   return p - b64store;
 }
-// /* ---- Base64 Encoding/Decoding Table --- */
-// static const char base64[]=
-//   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-// static size_t decodeQuantum(unsigned char *dest, const char *src)
-// {
-//   size_t padding = 0;
-//   const char *s, *p;
-//   unsigned long i, x = 0;
 
-//   for(i = 0, s = src; i < 4; i++, s++) {
-//     unsigned long v = 0;
-
-//     if(*s == '=') {
-//       x = (x << 6);
-//       padding++;
-//     }
-//     else {
-//       p = base64;
-
-//       while(*p && (*p != *s)) {
-//         v++;
-//         p++;
-//       }
-
-//       if(*p == *s)
-//         x = (x << 6) + v;
-//       else
-//         return 0;
-//     }
-//   }
-
-//   if(padding < 1)
-//     dest[2] = (unsigned char)((x & 0xFFUL) & (unsigned char) 0xFF);
-
-//   x >>= 8;
-//   if(padding < 2)
-//     dest[1] = (unsigned char)((x & 0xFFUL) & (unsigned char) 0xFF);
-
-//   x >>= 8;
-//   dest[0] = (unsigned char)((x & 0xFFUL) & (unsigned char) 0xFF);
-
-//   return 3 - padding;
-// }
 int
-base64_decode (const char *base64, char *to)
+base64_decode (const char *base64, int length, char *to)
 {
   /* Table of base64 values for first 128 characters.  Note that this
      assumes ASCII (but so does Wget in other places).  */
@@ -471,8 +429,10 @@ base64_decode (const char *base64, char *to)
   const char *p = base64;
   char *q = to;
 
-  while (1)
-  {
+  // while (1)
+  // {
+  for (i = 0; i < length; i += 3)
+    {
     unsigned char c;
     unsigned long value;
 
