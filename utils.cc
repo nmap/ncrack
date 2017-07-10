@@ -422,9 +422,9 @@ base64_decode (const char *base64, int length, char *to)
   int i;
   const char *p = base64;
   char *q = to;
+  int pad = length > 0 && (length % 4 || p[length - 1] == '=');
+  const size_t L = ((length + 3) / 4 - pad) * 4;
 
-  // while (1)
-  // {
   for (i = 0; i < length; i += 4)
     {
     unsigned char c;
@@ -434,123 +434,21 @@ base64_decode (const char *base64, int length, char *to)
     *q++ = n >> 16;
     *q++ = n >> 8 & 0xFF;
     *q++ = n & 0xFF;
-    // /* Process first byte of a quadruplet.  */
-    // NEXT_BASE64_CHAR (c, p);
-    // if (!c)
-    //   break;
-    // if (c == '=')
-    //   return -1;    /* illegal '=' while decoding base64 */
-    // value = base64_char_to_value[c] << 18;
-
-    // /* Process scond byte of a quadruplet.  */
-    // NEXT_BASE64_CHAR (c, p);
-    // if (!c)
-    //   return -1;    /* premature EOF while decoding base64 */
-    // if (c == '=')
-    //   return -1;    /* illegal `=' while decoding base64 */
-    // value |= base64_char_to_value[c] << 12;
-    // *q++ = value >> 16;
-
-    // /* Process third byte of a quadruplet.  */
-    // NEXT_BASE64_CHAR (c, p);
-    // if (!c)
-    //   return -1;    /* premature EOF while decoding base64 */
-
-    // if (c == '=')
-    // {
-    //   NEXT_BASE64_CHAR (c, p);
-    //   if (!c)
-    //     return -1;    /* premature EOF while decoding base64 */
-    //   if (c != '=')
-    //     return -1;    /* padding `=' expected but not found */
-    //   continue;
-    // }
-
-    // value |= base64_char_to_value[c] << 6;
-    // *q++ = 0xff & value >> 8;
-
-    // /* Process fourth byte of a quadruplet.  */
-    // NEXT_BASE64_CHAR (c, p);
-    // // if (!c)
-    // //   return -1;    /* premature EOF while decoding base64 */
-    // if (c == '=')
-    //   continue;
-
-    // value |= base64_char_to_value[c];
-    // *q++ = 0xff & value;
+    
   }
+  if (pad)
+    {
+        int n = base64_char_to_value[p[L]] << 18 | base64_char_to_value[p[L + 1]] << 12;
+        *q[strlen(q) - 1] = n >> 16;
 
+        if (length > L + 2 && p[L + 2] != '=')
+        {
+            n |= base64_char_to_value[p[L + 2]] << 6;
+            *q[strlen(q) - 1] = n >> 8 & 0xFF;
+        }
+    }
   return q - to;
 }
-// int base64_decode(const char *src, size_t *outlen, unsigned char **outptr )
-// {
-//   size_t srclen = 0;
-//   size_t length = 0;
-//   size_t padding = 0;
-//   size_t i;
-//   size_t numQuantums;
-//   size_t rawlen = 0;
-//   unsigned char *pos;
-//   unsigned char *newstr;
-
-//   *outptr = NULL;
-//   *outlen = 0;
-//   srclen = strlen(src);
-
-//   /* Check the length of the input string is valid */
-//   if(!srclen || srclen % 4)
-//     return 1;
-
-//   /* Find the position of any = padding characters */
-//   while((src[length] != '=') && src[length])
-//     length++;
-
-//   /* A maximum of two = padding characters is allowed */
-//   if(src[length] == '=') {
-//     padding++;
-//     if(src[length + 1] == '=')
-//       padding++;
-//   }
-
-//    Check the = padding characters weren't part way through the input 
-//   if(length + padding != srclen)
-//     return 1;
-
-//   /* Calculate the number of quantums */
-//   numQuantums = srclen / 4;
-
-//   /* Calculate the size of the decoded string */
-//   rawlen = (numQuantums * 3) - padding;
-
-//   /* Allocate our buffer including room for a zero terminator */
-//   newstr = malloc(rawlen + 1);
-//   if(!newstr)
-//     return 1;
-
-//   pos = newstr;
-
-//   /* Decode the quantums */
-//   for(i = 0; i < numQuantums; i++) {
-//     size_t result = decodeQuantum(pos, src);
-//     if(!result) {
-//       free(newstr);
-
-//       return 1;
-//     }
-
-//     pos += result;
-//     src += 4;
-//   }
-
-//   /* Zero terminate */
-//   *pos = '\0';
-
-//   /* Return the decoded data */
-//   *outptr = newstr;
-//   *outlen = rawlen;
-
-//   return 2;
-// }
 
 /* mmap() an entire file into the address space.  Returns a pointer
    to the beginning of the file.  The mmap'ed length is returned
