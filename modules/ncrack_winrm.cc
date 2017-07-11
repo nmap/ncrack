@@ -505,6 +505,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t tmplen2;
   size_t type2_len;
   size_t tmpsize;
+  char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                            
+  char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
+  int ntlm_challenge;
+  char tmp_challenge[4];
   // size_t type2len;
   // int type2templen;
   Service *serv = con->service;
@@ -666,19 +670,18 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   32 (48) (56)   Start of data block    (*)
                                         (*) -> Optional
   */
-            char ntlm_sig[strlen(NTLMSSP)];                            
-            char dig[strlen(NTLMSSP) + 1]; /* temporary string */
-            dig[strlen(NTLMSSP)] = '\0';
+
+            dig[strlen(NTLMSSP_SIGNATURE)] = '\0';
 
             /* The first 7 bytes are the string NTLMSSP
             * followed by a null byte.
             */
-            for (i = 0; i < strlen(NTLMSSP) + 1; i++) {
+            for (i = 0; i < strlen(NTLMSSP_SIGNATURE) + 1; i++) {
               ntlm_sig[i] = *type2++;
             }
             // strncpy(psql_code_ret, ntlm_sig, strlen(NTLMSSP));
 
-            if (strncmp(ntlm_sig, NTLMSSP, strlen(NTLMSSP))) {
+            if (strncmp(ntlm_sig, NTLMSSP_SIGNATURE, strlen(NTLMSSP_SIGNATURE))) {
               /* In this case the NTLMSSP flag is not present.
               *  Exit gracefully.
               */
@@ -724,8 +727,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             /* Next 4 bytes are the NTLM challenge
             */
-            char ntlm_challenge[4];
-            char tmp_challenge[4];
             for (i = 0; i < 3; i++) {
               tmp_challenge[i] =  *type2++;
               
