@@ -421,7 +421,7 @@ base64_decode (const char *base64, int length, char *to)
     };
   int i;
   unsigned char* p = (unsigned char*) base64;
-  unsigned char *q = to;
+  char *q = to;
   int pad = length > 0 && (length % 4 || p[length - 1] == '=');
   const size_t L = ((length + 3) / 4 - pad) * 4;
 

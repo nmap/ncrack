@@ -296,7 +296,10 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
       if (winrm_loop_read(nsp, con) < 0)
         break;
 
+      //TODO we are missing something with the state.
+      // serv->more_rounds = true is causing this behavior.
 
+      
       /* We expect a 401 response which will contain all
        * the accepted authentication methods in the
        * WWW-Authenticate header. */
@@ -501,6 +504,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t tmplen;
   size_t tmplen2;
   size_t type2_len;
+  size_t tmpsize;
   // size_t type2len;
   // int type2templen;
   Service *serv = con->service;
@@ -577,7 +581,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                0,0,
               // host,  /* hostname is empty, we don't need it */
                domain_temp /* this is domain/workstation name */);
-//TODO we are missing a few bytes on domain_temp. around 5 bytes
+      //TODO we are missing a few bytes on domain_temp. around 5 bytes
       b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
       base64_encode(tmp2, tmplen2, b64);
 
@@ -635,18 +639,19 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           if (!type2) {
             /* Type2 message decoding failed.
             */
+            free(type2);
             serv->end.orly = true;
             tmpsize = sizeof("Invalid type2 message.\n");
             serv->end.reason = (char *)safe_malloc(tmpsize);
             snprintf(serv->end.reason, tmpsize,
-                "Invalid type2 message.\n",;
+                "Invalid type2 message.\n");
 
             return ncrack_module_end(nsp, con);
           }
-          // printf("%s\n", type2);
-          // for (i=0; i <tmplen2;i++){
-          //   printf("%02x", type2[i]);
-          // }printf("\n");
+          printf("%s\n", type2);
+          for (i=0; i <tmplen2;i++){
+            printf("%02x", type2[i]);
+          }printf("\n");
   /* NTLM type-2 message structure:
           Index  Description            Content
             0    NTLMSSP Signature      Null-terminated ASCII "NTLMSSP"
@@ -661,8 +666,83 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   32 (48) (56)   Start of data block    (*)
                                         (*) -> Optional
   */
+            char ntlm_sig[strlen(NTLMSSP)];                            
+            char dig[strlen(NTLMSSP) + 1]; /* temporary string */
+            dig[strlen(NTLMSSP)] = '\0';
 
-//             // char dig[PSQL_PACKET_LENGTH + 1]; /* temporary digit string */
+            /* The first 7 bytes are the string NTLMSSP
+            * followed by a null byte.
+            */
+            for (i = 0; i < strlen(NTLMSSP) + 1; i++) {
+              ntlm_sig[i] = *type2++;
+            }
+            // strncpy(psql_code_ret, ntlm_sig, strlen(NTLMSSP));
+
+            if (strncmp(ntlm_sig, NTLMSSP, strlen(NTLMSSP))) {
+              /* In this case the NTLMSSP flag is not present.
+              *  Exit gracefully.
+              */
+              free(type2);
+              serv->end.orly = true;
+              tmpsize = sizeof("Invalid type2 message.\n");
+              serv->end.reason = (char *)safe_malloc(tmpsize);
+              snprintf(serv->end.reason, tmpsize,
+                  "Invalid type2 message.\n");
+
+              return ncrack_module_end(nsp, con);
+            }
+
+            /* Checking for type 2 message flag
+            *  The next four bytes should contain the value
+            *  \x02\x00\x00\x00
+            */
+            char type2_marker_check[4];
+            for (i = 0; i < 4; i++) {
+              type2_marker_check[i] = *type2++;
+            }
+
+            if (strncmp(type2_marker_check, type2_marker, strlen(type2_marker))) {
+              /* In this case the type2 message flag is not present.
+              *  Exit gracefully.
+              */
+              free(type2);
+              serv->end.orly = true;
+              tmpsize = sizeof("Invalid type2 message.\n");
+              serv->end.reason = (char *)safe_malloc(tmpsize);
+              snprintf(serv->end.reason, tmpsize,
+                  "Invalid type2 message.\n");
+
+              return ncrack_module_end(nsp, con);
+            }
+
+            /* Next 8 bytes are the target name which we 
+            *  will skip for the moment.            
+            */
+            for (i = 0; i < 7; i++) {
+              *type2++;
+            }
+
+            /* Next 4 bytes are the NTLM challenge
+            */
+            char ntlm_challenge[4];
+            char tmp_challenge[4];
+            for (i = 0; i < 3; i++) {
+              tmp_challenge[i] =  *type2++;
+              
+            }
+            /* Convert to big endian
+            */
+            ntlm_challenge = ((unsigned int)tmp_challenge[0]) | ((unsigned int)tmp_challenge[1] << 8) |
+            ((unsigned int)tmp_challenge[2] << 16) | ((unsigned int)tmp_challenge[3] << 24);
+           
+
+            printf("NTLM CHALLENGE: ");
+            for (i=0; i <3;i++){
+              printf("%02x", ntlm_challenge[i]);
+            }printf("\n");
+            /* The challenge is extracted, we can now safely
+            *  proceed in construction of type 3 message.
+            */
 //             ntlm->flags = 0;
 //             if(strlen(type2) < 32)   ||
 //                (memcmp(type2, NTLMSSP_SIGNATURE, 8) != 0) ||
