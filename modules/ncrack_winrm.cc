@@ -128,7 +128,8 @@
 #include "http.h"
 #include <list>
 
-
+#include <openssl/des.h>
+#include <openssl/md4.h>
 #include <time.h>
 #include <stdlib.h>
 
@@ -772,35 +773,69 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * 52 (64) (72)  start of data block
             */   
 
-          if (con->outbuf)
-            delete con->outbuf;
-          con->outbuf = new Buf();
+          // if (con->outbuf)
+          //   delete con->outbuf;
+          // con->outbuf = new Buf();
 
-          con->outbuf->append("POST ", 5);
-          con->outbuf->append("/wsman", 6);
+          // con->outbuf->append("POST ", 5);
+          // con->outbuf->append("/wsman", 6);
 
-          con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
-              serv->path);
-          if (serv->target->targetname)
-            con->outbuf->append(serv->target->targetname, 
-                strlen(serv->target->targetname));
-          else 
-            con->outbuf->append(serv->target->NameIP(),
-                strlen(serv->target->NameIP()));
+          // con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+          //     serv->path);
+          // if (serv->target->targetname)
+          //   con->outbuf->append(serv->target->targetname, 
+          //       strlen(serv->target->targetname));
+          // else 
+          //   con->outbuf->append(serv->target->NameIP(),
+          //       strlen(serv->target->NameIP()));
 
-          con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+          // con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
 
-          con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+          // con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
 
-          con->outbuf->append("Content-Length: 8\r\n", 19);
-          con->outbuf->append("Authorization: Negotiate ", 25);
+          // con->outbuf->append("Content-Length: 8\r\n", 19);
+          // con->outbuf->append("Authorization: Negotiate ", 25);
 
-          tmplen2 = strlen(NTLMSSP_SIGNATURE) + 1 + 4;          
-          tmp2 = (char *)safe_malloc(tmplen2 + 1);
+          // tmplen2 = strlen(NTLMSSP_SIGNATURE) + 1 + 4;          
+          // tmp2 = (char *)safe_malloc(tmplen2 + 1);
 
           /* Let's create LM response
           */
 
+
+          size_t len = strlen(con->pass);
+          unsigned char *pw = (unsigned char *)safe_malloc((len * 2) + 1);
+
+          /* Transform ascii to unicode le
+          */
+          for(i = 0; i < len; i++) {
+            pw[2 * i] = (unsigned char)con->pass[i];
+            pw[2 * i + 1] = '\0';
+          }
+
+          // I don't think that we need this part.
+          //  * The NT hashed password needs to be created using the password in the
+          //  * network encoding not the host encoding.
+           
+          // result = Curl_convert_to_network(data, (char *)pw, len * 2);
+          // if(result)
+          //   return result;
+          unsigned char hashbuf[20];
+
+            /* Create NT hashed password. */
+
+            MD4_CTX MD4pw;
+
+            MD4_Init(&MD4pw);
+            MD4_Update(&MD4pw, pw, 2 * len);
+            MD4_Final(hashbuf, &MD4pw);
+
+            /* This should be added later.
+            */
+            //con->outbuf->append(ntbuffer, sizeof(25));
+
+            printf("MD4 Hash: %s\n", hashbuf);
+          free(pw);
           // DES_key_schedule ks;
 
           // setup_des_key(keys, DESKEY(ks));
