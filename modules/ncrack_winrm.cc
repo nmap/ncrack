@@ -508,7 +508,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                            
   char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
   int ntlm_challenge;
-  char tmp_challenge[4];
+  char tmp_challenge[8];
   // size_t type2len;
   // int type2templen;
   Service *serv = con->service;
@@ -725,22 +725,34 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
               *type2++;
             }
 
-            /* Next 4 bytes are the NTLM challenge
+            /* Next 4 bytes are the NTLM flags we will
+            * skip them for the moment.
             */
             for (i = 0; i < 3; i++) {
-              tmp_challenge[i] =  *type2++;
-              
+              // tmp_challenge[i] =  *type2++;
+              *type2++;
             }
             /* Convert to big endian
             */
-            ntlm_challenge = ((unsigned int)tmp_challenge[0]) | ((unsigned int)tmp_challenge[1] << 8) |
-            ((unsigned int)tmp_challenge[2] << 16) | ((unsigned int)tmp_challenge[3] << 24);
+            // ntlm_challenge = ((unsigned int)tmp_challenge[0]) | ((unsigned int)tmp_challenge[1] << 8) |
+            // ((unsigned int)tmp_challenge[2] << 16) | ((unsigned int)tmp_challenge[3] << 24);
            
 
+           
+
+            /* Next 8 bytes are the NTLM flags
+            */
+            for (i = 0; i < 7; i++) {
+              tmp_challenge[i] =  *type2++;
+              // *type2++;
+            }
+
             printf("NTLM CHALLENGE: ");
-            for (i=0; i <3;i++){
-              printf("%02x", ntlm_challenge[i]);
+            for (i=0; i <7;i++){
+              printf("%02x", tmp_challenge[i]);
             }printf("\n");
+
+            free(type2);
             /* The challenge is extracted, we can now safely
             *  proceed in construction of type 3 message.
             */
