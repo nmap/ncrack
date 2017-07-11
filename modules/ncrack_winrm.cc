@@ -194,17 +194,6 @@ typedef struct winrm_state {
   int keep_alive;
 } winrm_state;
 
-
-// typedef struct ntlm_type2 {
-//     uint32_t flags;
-//     char *targetname; 
-//     struct ntlm_buf targetinfo; 
-//     unsigned char challenge[8]; 
-//     uint32_t context[2];
-//     uint32_t os[2]; 
-// } ntlm_type2;
-
-
 void
 ncrack_winrm(nsock_pool nsp, Connection *con)
 {
@@ -507,8 +496,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t tmpsize;
   char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                            
   char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
-  int ntlm_challenge;
-  char tmp_challenge[8];
+  int ntlm_flags;
+  unsigned char tmp_challenge[8];
+  unsigned char tmp_flags[4];
   // size_t type2len;
   // int type2templen;
   Service *serv = con->service;
@@ -572,7 +562,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                "%c%c"       /* 2 zeroes */
                "%c%c"       /* host length */
                "%c%c"       /* host allocated space */
-               "\x29%c"   /* host name offset offset 32 +9 for domain length?*/
+               "%c%c"   /* host name offset offset 32 +9 for domain length?*/
                "%c%c"       /* 2 zeroes */
             //   "%s"         /* host name */
                "%s",        /* domain string */               
@@ -581,7 +571,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                SHORTPAIR(strlen(domain_temp)), 0,
                0,0,
                SHORTPAIR(strlen(host)),
-               SHORTPAIR(strlen(host)), 0,
+               SHORTPAIR(strlen(host)), 
+               SHORTPAIR(32 + strlen(domain_temp)),
                0,0,
               // host,  /* hostname is empty, we don't need it */
                domain_temp /* this is domain/workstation name */);
@@ -593,6 +584,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
       free(tmp);
       free(tmp2);
+      free(b64);
       con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
       nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
@@ -721,91 +713,118 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* Next 8 bytes are the target name which we 
             *  will skip for the moment.            
             */
-            for (i = 0; i < 7; i++) {
+            for (i = 0; i < 8; i++) {
               *type2++;
             }
 
             /* Next 4 bytes are the NTLM flags we will
             * skip them for the moment.
             */
-            for (i = 0; i < 3; i++) {
-              // tmp_challenge[i] =  *type2++;
-              *type2++;
+            for (i = 0; i < 4; i++) {
+              tmp_flags[i] =  (unsigned char) *type2++;
             }
             /* Convert to big endian
             */
-            // ntlm_challenge = ((unsigned int)tmp_challenge[0]) | ((unsigned int)tmp_challenge[1] << 8) |
-            // ((unsigned int)tmp_challenge[2] << 16) | ((unsigned int)tmp_challenge[3] << 24);
+            ntlm_flags = ((unsigned int)tmp_flags[0]) | ((unsigned int)tmp_flags[1] << 8) |
+            ((unsigned int)tmp_flags[2] << 16) | ((unsigned int)tmp_flags[3] << 24);
            
-
+            if (ntlm_flags & ( 1 << 1)){
+              //supports OEM
+            }
+            if (ntlm_flags & ( 1 << 0)){
+              //supports unicode
+            }
            
 
             /* Next 8 bytes are the NTLM flags
             */
-            for (i = 0; i < 7; i++) {
-              tmp_challenge[i] =  *type2++;
+            for (i = 0; i < 8; i++) {
+              tmp_challenge[i] =  (unsigned char) *type2++;
               // *type2++;
             }
 
+
+            /* Reminder: challenge is signed.
+            */
             printf("NTLM CHALLENGE: ");
-            for (i=0; i <7;i++){
-              printf("%02x", tmp_challenge[i]);
+            for (i=0; i <8;i++){
+              printf("%x", tmp_challenge[i]);
             }printf("\n");
 
-            free(type2);
+            //free(type2);
             /* The challenge is extracted, we can now safely
             *  proceed in construction of type 3 message.
             */
-//             ntlm->flags = 0;
-//             if(strlen(type2) < 32)   ||
-//                (memcmp(type2, NTLMSSP_SIGNATURE, 8) != 0) ||
-//                (memcmp(type2 + 8, type2_marker, sizeof(type2_marker)) != 0)) {
-//               /* This was not a good enough type-2 message */
-//               free(type2);
-//               /* Should terminate at this point
-//               */
-//             }
-//             //need a read 32 le function
-//             // need an ntlm struct with nonce, flags etc..
-//               ntlm->flags = read32_le(&type2[20]);
-//               memcpy(ntlm->nonce, &type2[24], 8);
-//               /* curl ntlm client at this point check for target info
-//               *  
-//               */
-//               if(ntlm->flags & NTLM_NEG_UNICODE) {
-//                 result = ntlm_decode_type2_target(data, type2, type2_len, ntlm);
-//                 if(result) {
-//                   free(type2);
-//                   /* Should terminate at this point
-//                   */
-//                 }
-//               }
-//             free(type2);
-//             /* Now let's craft type 3 message
-//             */
-//         /*
-//         *
-//         * Description               Content
-//         * 0 NTLMSSP Signature       Null-terminated ASCII "NTLMSSP"
-//         * 8 NTLM Message Type       long (0x03000000)
-//         * 12  LM/LMv2 Response      security buffer
-//         * 20  NTLM/NTLMv2 Response  security buffer
-//         * 28  Target Name           security buffer
-//         * 36  User Name             security buffer
-//         * 44  Workstation Name      security buffer
-//         * (52)  Session Key (optional)  security buffer
-//         * (60)  Flags (optional)    long
-//         * (64)  OS Version Structure (Optional) 8 bytes
-//         * 52 (64) (72)  start of data block
-//         */    
-//           size = snprintf((char *)ntlmbuf, NTLM_BUFSIZE,
-//                   NTLMSSP_SIGNATURE "%c"
-//                   "\x03%c%c%c"  /* 32-bit type = 3 */
 
-//                   "%c%c"  /* LanManager length */
-//                   "%c%c"  /* LanManager allocated space */
+            /*
+            *
+            * Description               Content
+            * 0 NTLMSSP Signature       Null-terminated ASCII "NTLMSSP"
+            * 8 NTLM Message Type       long (0x03000000)
+            * 12  LM/LMv2 Response      security buffer
+            * 20  NTLM/NTLMv2 Response  security buffer
+            * 28  Target Name           security buffer
+            * 36  User Name             security buffer
+            * 44  Workstation Name      security buffer
+            * (52)  Session Key (optional)  security buffer
+            * (60)  Flags (optional)    long
+            * (64)  OS Version Structure (Optional) 8 bytes
+            * 52 (64) (72)  start of data block
+            */   
+
+          if (con->outbuf)
+            delete con->outbuf;
+          con->outbuf = new Buf();
+
+          con->outbuf->append("POST ", 5);
+          con->outbuf->append("/wsman", 6);
+
+          con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+              serv->path);
+          if (serv->target->targetname)
+            con->outbuf->append(serv->target->targetname, 
+                strlen(serv->target->targetname));
+          else 
+            con->outbuf->append(serv->target->NameIP(),
+                strlen(serv->target->NameIP()));
+
+          con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+
+          con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+
+          con->outbuf->append("Content-Length: 8\r\n", 19);
+          con->outbuf->append("Authorization: Negotiate ", 25);
+
+          tmplen2 = strlen(NTLMSSP_SIGNATURE) + 1 + 4;          
+          tmp2 = (char *)safe_malloc(tmplen2 + 1);
+
+          /* Let's create LM response
+          */
+
+          // DES_key_schedule ks;
+
+          // setup_des_key(keys, DESKEY(ks));
+          // DES_ecb_encrypt((DES_cblock*) plaintext, (DES_cblock*) results,
+          //                 DESKEY(ks), DES_ENCRYPT);
+
+          // setup_des_key(keys + 7, DESKEY(ks));
+          // DES_ecb_encrypt((DES_cblock*) plaintext, (DES_cblock*) (results + 8),
+          //                 DESKEY(ks), DES_ENCRYPT);
+
+          // setup_des_key(keys + 14, DESKEY(ks));
+          // DES_ecb_encrypt((DES_cblock*) plaintext, (DES_cblock*) (results + 16),
+          // DESKEY(ks), DES_ENCRYPT);
+
+
+
+          size = snprintf((char *)tmp2, tmplen2,
+                  NTLMSSP_SIGNATURE "%c"
+                  "\x03%c%c%c"  /* 32-bit type = 3 */
+
+                  "%c%c"  /* LanManager length */
+                  "%c%c"  /* LanManager allocated space */
 //                   "%c%c"  /* LanManager offset */
-//                   "%c%c"  /* 2 zeroes */
+                  "%c%c"  /* 2 zeroes */
 
 //                   "%c%c"  /* NT-response length */
 //                   "%c%c"  /* NT-response allocated space */
@@ -840,13 +859,13 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 //                   /* LanManager response */
 //                   /* NT response */
 
-//                   0,                /* zero termination */
-//                   0, 0, 0,          /* type-3 long, the 24 upper bits */
+                  0,                /* zero termination */
+                  0, 0, 0,          /* type-3 long, the 24 upper bits */
 
-//                   SHORTPAIR(0x18),  /* LanManager response length, twice */
-//                   SHORTPAIR(0x18),
+                  SHORTPAIR(0x18),  /* LanManager response length, twice */
+                  SHORTPAIR(0x18),
 //                   SHORTPAIR(lmrespoff),
-//                   0x0, 0x0,
+                  0x0, 0x0,
 
 // #ifdef USE_NTRESPONSES
 //                   SHORTPAIR(ntresplen),  /* NT-response length, twice */
@@ -879,7 +898,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 //                   0x0, 0x0,
 //                   0x0, 0x0,
 
-//                   LONGQUARTET(ntlm->flags));
+//                   LONGQUARTET(ntlm->flags)
+                  );
       }
 
       /* The in buffer has to be cleared out, because we are expecting
