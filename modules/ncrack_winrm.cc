@@ -527,8 +527,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
 
       con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
-
-      con->outbuf->append("Content-Length: 8\r\n", 19);
       con->outbuf->append("Authorization: Negotiate ", 25);
 
 
@@ -536,13 +534,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       domain_temp = (char *)safe_malloc(tmplen + 1);
       sprintf(domain_temp, "Workstation");
 
-      tmplen = 1;
-      host = (char *)safe_malloc(tmplen + 1);
-      sprintf(host, "");
-      hostlen = floor (log10 (abs (strlen(host)))) + 1;
       tmplen = rand() % 8 + 1;
       tmp = (char *)safe_malloc(tmplen + 1);
       rand_str(tmp, tmplen + 5);  // rand(8) + 6 - 1 
+
+      host = (char *)safe_malloc(tmplen + 1);
+      sprintf(host, "%s", tmp);
+
+      hostlen = floor (log10 (abs (strlen(host)))) + 1;
+
 
       // strcat(domain_temp,tmp);
       domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1;
@@ -561,9 +561,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                "%c%c"       /* 2 zeroes */
                "%c%c"       /* host length */
                "%c%c"       /* host allocated space */
-               "%c%c"   /* host name offset offset 32 +9 for domain length?*/
+               "%c%c"   /* host name offset offset 32 (0x20) + domain length*/
                "%c%c"       /* 2 zeroes */
-            //   "%s"         /* host name */
+               "%s"         /* host name */
                "%s",        /* domain string */               
                0,0,0,0,
                SHORTPAIR(strlen(domain_temp)),
@@ -573,7 +573,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                SHORTPAIR(strlen(host)), 
                SHORTPAIR(32 + strlen(domain_temp)),
                0x0,0x0,
-              // host,  /* hostname is empty, we don't need it */
+               host,  /* hostname is empty, we don't need it */
                domain_temp /* this is domain/workstation name */);
       //TODO we are missing a few bytes on domain_temp. around 5 bytes
       b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
@@ -584,6 +584,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       free(tmp);
       free(tmp2);
       free(b64);
+
+      con->outbuf->append("\r\nContent-Length: 0", 19);
       con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
       nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
@@ -794,7 +796,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
 
-          con->outbuf->append("Content-Length: 8\r\n", 19);
+
           con->outbuf->append("Authorization: Negotiate ", 25);
 
 
@@ -1024,7 +1026,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           base64_encode(tmp2, tmplen2, b64);
 
           con->outbuf->append(b64, strlen(b64));
-
+          con->outbuf->append("\r\nContent-Length: 0", 19);
 
           free(tmp2);
           free(b64);
