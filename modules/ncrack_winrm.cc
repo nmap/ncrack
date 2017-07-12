@@ -568,11 +568,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                0,0,0,0,
                SHORTPAIR(strlen(domain_temp)),
                SHORTPAIR(strlen(domain_temp)), 0,
-               0,0,
+               0x0,0x0,
                SHORTPAIR(strlen(host)),
                SHORTPAIR(strlen(host)), 
                SHORTPAIR(32 + strlen(domain_temp)),
-               0,0,
+               0x0,0x0,
               // host,  /* hostname is empty, we don't need it */
                domain_temp /* this is domain/workstation name */);
       //TODO we are missing a few bytes on domain_temp. around 5 bytes
@@ -828,9 +828,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             *s = toupper((unsigned char) *s);
             s++;
           }
-          
-          for (i=0; pw_len; i++){
-            pw_upper[i] = (unsigned char) tmp[i]);
+
+          for (i=0; i < pw_len; i++){
+            pw_upper[i] = (unsigned char) tmp[i];
           } 
           
           userlen = strlen(con->user);
@@ -880,7 +880,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           tmplen = strlen("Workstation") + 1;
           domain_temp = (char *)safe_malloc(tmplen + 1);
           sprintf(domain_temp, "Workstation");
-          domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1;
+          domainlen = strlen(domain_temp);
 
           hostlen = 0;
           lmrespoff = 64;
@@ -930,7 +930,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                     + 2 + 2 + 2 + 2 /* session key */
                     + 4 /* flag */
                     + strlen(domain_temp) + strlen(con->user)
-                    + strlen(host) + 0x18
+                    //+ strlen(host) 
+                    + 0x18
                     /* we skip NM response */
                     ;    
 
@@ -944,7 +945,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   "%c%c"  /* LanManager length */
                   "%c%c"  /* LanManager allocated space */
                   "%c%c"  /* LanManager offset */
-                  "%c%c",  /* 2 zeroes */
+                  "%c%c"  /* 2 zeroes */
 
                   "%c%c"  /* NT-response length */
                   "%c%c"  /* NT-response allocated space */
@@ -1011,10 +1012,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   0x0, 0x0,
                   0x0, 0x0,
                   0x0, 0x0,
+                  lmresp,
                   domain_temp,
-                  con->user,
+                  con->user
                 //  host,
-                  lmresp
+                  // lmresp
                   );
 
 
@@ -1047,6 +1049,13 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
     case NEGOTIATE_RESULTS:
       if (winrm_loop_read(nsp, con) < 0)
         break;
+      serv->end.orly = true;
+      tmpsize = sizeof("Test termination.\n");
+      serv->end.reason = (char *)safe_malloc(tmpsize);
+      snprintf(serv->end.reason, tmpsize,
+          "Test termination.\n");
+
+      return ncrack_module_end(nsp, con);
       /* Successful login attempt results in empty 200 response.
       * Else a 401 response will appear containing the authentication
       * methods.
