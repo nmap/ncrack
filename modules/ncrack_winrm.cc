@@ -536,19 +536,14 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
       tmplen = rand() % 8;
       tmp = (char *)safe_malloc(tmplen + 1);
-      rand_str(tmp, tmplen + 5);  // rand(8) + 6 - 1 
+      rand_str(tmp, tmplen + 5);  /* random string for host variable */
 
       host = (char *)safe_malloc(strlen(tmp) + 1);
       sprintf(host, "%s", tmp);
 
       hostlen = floor (log10 (abs (strlen(host)))) + 1;
 
-
-      // strcat(domain_temp,tmp);
       domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1;
-
-      size_t hostoff = 0;
-      size_t domoff = hostoff + strlen(host);
 
       tmplen2 = strlen(NTLMSSP_SIGNATURE) + 5 
                 + 4 /* NTLM flags */ 
@@ -585,7 +580,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                domain_temp /* this is domain/workstation name */);
 
       /* Setting the domain or the host seems to be useless.
-      * Windows server 2012 negotiate request does not contain 
+      * A Windows Server 2012 negotiate request does not contain 
       * those fields. It did contain OS version though. 
       * We should rely on the host and domain values heavily 
       * for type 1 messages.
@@ -599,6 +594,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       free(tmp2);
       free(b64);
 
+      /* Content length should be last as the packet will not
+      * be recognized by Wireshark as NTLM. 
+      */
       con->outbuf->append("\r\nContent-Length: 0", 19);
       con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
@@ -1040,6 +1038,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           base64_encode(tmp2, tmplen2, b64);
 
           con->outbuf->append(b64, strlen(b64));
+        /* Content length should be last as the packet will not
+        * be recognized by Wireshark as NTLM. 
+        */
           con->outbuf->append("\r\nContent-Length: 0", 19);
 
           free(tmp2);
