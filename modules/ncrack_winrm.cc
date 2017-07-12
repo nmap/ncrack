@@ -148,12 +148,9 @@ using namespace std;
 #define HTTP_NOAUTH_SCHEME "Service didn't reply with authentication scheme."
 #define WINRM_TIMEOUT 10000
 
-
-/* "NTLMSSP" signature is always in ASCII regardless of the platform */
 #define NTLMSSP_SIGNATURE "\x4e\x54\x4c\x4d\x53\x53\x50"
 #define SHORTPAIR(x) ((x) & 0xff), (((x) >> 8) & 0xff)
 
-#define NTLM_NEG_UNICODE    0x00000001
 
 extern NcrackOps o;
 
@@ -161,7 +158,6 @@ extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
-static void winrm_methods(nsock_pool nsp, Connection *con);
 static void winrm_basic(nsock_pool nsp, Connection *con);
 static void winrm_negotiate(nsock_pool nsp, Connection *con);
 static int winrm_loop_read(nsock_pool nsp, Connection *con);
@@ -170,10 +166,10 @@ static void winrm_free(Connection *con);
 static void rand_str(char *dest, size_t length);
 static void extend_key_56_to_64(const unsigned char *key_56, char *key);
 static void setup_des_key(const unsigned char *key_56, DES_key_schedule *ks);
-// static int size_t2int(size_t val);
 
-enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH,
-              WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
+
+enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, 
+              WINRM_NEGOTIATE_AUTH, WINRM_FINI };
 
 /* Method identification substates */
 enum { METHODS_SEND, METHODS_RESULTS };
@@ -200,11 +196,11 @@ typedef struct winrm_state {
 void
 ncrack_winrm(nsock_pool nsp, Connection *con)
 {
-  char *start, *end;  /* auxiliary pointers */
-  size_t i;
-  char *winrm_reply = NULL;   /* server's message reply */
-  size_t tmpsize;
-  char *methods; 
+  // char *start, *end;  /* auxiliary pointers */
+  // size_t i;
+  // char *winrm_reply = NULL;   /* server's message reply */
+  // size_t tmpsize;
+  // char *methods; 
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   winrm_info *info = NULL;
@@ -252,7 +248,6 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      // winrm_methods(nsp, con);  
       con->outbuf->append("POST ", 5);
       con->outbuf->append("/wsman", 6);
 
@@ -495,7 +490,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t hostlen;
   size_t tmplen;
   size_t tmplen2;
-  size_t type2_len;
+  // size_t type2_len;
   size_t tmpsize;
   char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                            
   char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
@@ -823,12 +818,12 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           tmp = (char *)safe_zalloc(pw_len + 1);
 
           sprintf(tmp, "%s", con->pass);
-          size_t pw_len = 14;
+
           /* First convert password to uppercase and pad it 
           * to 14 characters with zeros.
           */
           for (i=0; pw_len; i++){
-            pw_upper[i] = toupper((unsigned char) *tmp[i]);
+            pw_upper[i] = toupper((unsigned char) tmp[i]);
           } 
           
           userlen = strlen(con->user);
@@ -849,8 +844,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * The LM hash is then padded with zeros to 21 bytes.
           */
 
-          DES_cblock key;
-
           setup_des_key(pw_upper, &ks);
           DES_ecb_encrypt((DES_cblock *)magic, (DES_cblock *)lmbuffer,
                           &ks, DES_ENCRYPT);
@@ -870,7 +863,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           setup_des_key(lmbuffer + 7, &ks2);
           DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 8),
-                          &ks), DES_ENCRYPT);
+                          &ks2, DES_ENCRYPT);
 
           setup_des_key(lmbuffer + 14, &ks2);
           DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 16),
