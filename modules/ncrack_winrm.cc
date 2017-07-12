@@ -547,6 +547,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       // strcat(domain_temp,tmp);
       domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1;
 
+      size_t hostoff = 0;
+      size_t domoff = hostoff + strlen(host);
+
       tmplen2 = strlen(NTLMSSP_SIGNATURE) + 5 
                 + 4 /* NTLM flags */ 
                 + 2 + 2 + 2 + 2 /* domain */ 
@@ -554,6 +557,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                 + strlen(host) + strlen(domain_temp) + 1;
 
       tmp2 = (char *)safe_malloc(tmplen2 + 1);
+
 
       snprintf((char *)tmp2, tmplen2,
                NTLMSSP_SIGNATURE "%c"
@@ -579,7 +583,13 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                0x0,0x0,
                host,  /* hostname is empty, we don't need it */
                domain_temp /* this is domain/workstation name */);
-      //TODO we are missing a few bytes on domain_temp. around 5 bytes
+
+      /* Setting the domain or the host seems to be useless.
+      * Windows server 2012 negotiate request does not contain 
+      * those fields. It did contain OS version though. 
+      * We should rely on the host and domain values heavily 
+      * for type 1 messages.
+      */
       b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
       base64_encode(tmp2, tmplen2, b64);
 
