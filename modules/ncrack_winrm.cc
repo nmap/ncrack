@@ -544,7 +544,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       tmp = (char *)safe_malloc(tmplen + 1);
       rand_str(tmp, tmplen + 5);  // rand(8) + 6 - 1 
 
-      strcat(domain_temp,tmp);
+      // strcat(domain_temp,tmp);
       domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1;
 
       tmplen2 = strlen(NTLMSSP_SIGNATURE ) + 5 + 4 + domainlen + domainlen + 2 + 
