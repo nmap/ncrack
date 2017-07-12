@@ -534,11 +534,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       domain_temp = (char *)safe_malloc(tmplen + 1);
       sprintf(domain_temp, "Workstation");
 
-      tmplen = rand() % 8 + 1;
+      tmplen = rand() % 8;
       tmp = (char *)safe_malloc(tmplen + 1);
       rand_str(tmp, tmplen + 5);  // rand(8) + 6 - 1 
 
-      host = (char *)safe_malloc(tmplen + 1);
+      host = (char *)safe_malloc(strlen(tmp) + 1);
       sprintf(host, "%s", tmp);
 
       hostlen = floor (log10 (abs (strlen(host)))) + 1;
@@ -547,8 +547,12 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       // strcat(domain_temp,tmp);
       domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1;
 
-      tmplen2 = strlen(NTLMSSP_SIGNATURE ) + 5 + 4 + domainlen + domainlen + 2 + 
-      2 + hostlen + hostlen + 2 + 2 + strlen(host) + strlen(domain_temp);
+      tmplen2 = strlen(NTLMSSP_SIGNATURE) + 5 
+                + 4 /* NTLM flags */ 
+                + 2 + 2 + 2 + 2 /* domain */ 
+                + 2 + 2 + 2 + 2 /* host */
+                + strlen(host) + strlen(domain_temp) + 1;
+
       tmp2 = (char *)safe_malloc(tmplen2 + 1);
 
       snprintf((char *)tmp2, tmplen2,
