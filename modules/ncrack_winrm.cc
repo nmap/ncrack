@@ -169,7 +169,7 @@ static void winrm_free(Connection *con);
 
 static void rand_str(char *dest, size_t length);
 static void extend_key_56_to_64(const unsigned char *key_56, char *key);
-static void setup_des_key(const unsigned char *key_56, DES_key_schedule DESKEYARG(ks));
+static void setup_des_key(const unsigned char *key_56, DES_key_schedule *ks);
 // static int size_t2int(size_t val);
 
 enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH,
@@ -851,30 +851,30 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           DES_cblock key;
 
-          setup_des_key(pw_upper, DESKEY(ks));
+          setup_des_key(pw_upper, &ks);
           DES_ecb_encrypt((DES_cblock *)magic, (DES_cblock *)lmbuffer,
-                          DESKEY(ks), DES_ENCRYPT);
+                          &ks, DES_ENCRYPT);
 
-          setup_des_key(pw_upper + 7, DESKEY(ks));
+          setup_des_key(pw_upper + 7, &ks);
           DES_ecb_encrypt((DES_cblock *)magic, (DES_cblock *)(lmbuffer + 8),
-          DESKEY(ks), DES_ENCRYPT);
+          &ks, DES_ENCRYPT);
 
           memset(lmbuffer + 16, 0, 21 - 16);
 
 
-          DES_key_schedule ks;
+          DES_key_schedule ks2;
 
-          setup_des_key(lmbuffer, DESKEY(ks));
+          setup_des_key(lmbuffer, &ks2);
           DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) lmresp,
-                          DESKEY(ks), DES_ENCRYPT);
+                          &ks2, DES_ENCRYPT);
 
-          setup_des_key(lmbuffer + 7, DESKEY(ks));
+          setup_des_key(lmbuffer + 7, &ks2);
           DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 8),
-                          DESKEY(ks), DES_ENCRYPT);
+                          &ks), DES_ENCRYPT);
 
-          setup_des_key(lmbuffer + 14, DESKEY(ks));
+          setup_des_key(lmbuffer + 14, &ks2);
           DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 16),
-                          DESKEY(ks), DES_ENCRYPT);
+                          &ks2, DES_ENCRYPT);
 
 
           tmplen = strlen("Workstation") + 1;
@@ -929,8 +929,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                     + 2 + 2 + 2 + 2 /* host */
                     + 2 + 2 + 2 + 2 /* session key */
                     + 4 /* flag */
-                    + strlen(domain) + strlen(con->user)
-                    + strlen(host) + strlen(lmresp)
+                    + strlen(domain_temp) + strlen(con->user)
+                    + strlen(host) + 0x18
                     /* we skip NM response */
                     ;    
 
@@ -1111,7 +1111,7 @@ static void extend_key_56_to_64(const unsigned char *key_56, char *key)
 }
 
 static void setup_des_key(const unsigned char *key_56,
-                          DES_key_schedule DESKEYARG(ks))
+                          DES_key_schedule *ks)
 {
   DES_cblock key;
 
