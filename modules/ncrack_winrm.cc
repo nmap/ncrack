@@ -168,6 +168,8 @@ static int winrm_loop_read(nsock_pool nsp, Connection *con);
 static void winrm_free(Connection *con);
 
 static void rand_str(char *dest, size_t length);
+static void extend_key_56_to_64(const unsigned char *key_56, char *key);
+static void setup_des_key(const unsigned char *key_56, DES_key_schedule DESKEYARG(ks));
 // static int size_t2int(size_t val);
 
 enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH,
@@ -736,6 +738,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
               //supports unicode
             }
            
+            if (ntlm_flags & ( 1 << 8)){
+              //supports LM authentication, do that
+            }
 
             /* Next 8 bytes are the NTLM flags
             */
@@ -773,125 +778,206 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * 52 (64) (72)  start of data block
             */   
 
-          // if (con->outbuf)
-          //   delete con->outbuf;
-          // con->outbuf = new Buf();
+          if (con->outbuf)
+            delete con->outbuf;
+          con->outbuf = new Buf();
 
-          // con->outbuf->append("POST ", 5);
-          // con->outbuf->append("/wsman", 6);
+          con->outbuf->append("POST ", 5);
+          con->outbuf->append("/wsman", 6);
 
-          // con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
-          //     serv->path);
-          // if (serv->target->targetname)
-          //   con->outbuf->append(serv->target->targetname, 
-          //       strlen(serv->target->targetname));
-          // else 
-          //   con->outbuf->append(serv->target->NameIP(),
-          //       strlen(serv->target->NameIP()));
+          con->outbuf->snprintf(strlen(serv->path) + 17, "%s HTTP/1.1\r\nHost: ",
+              serv->path);
+          if (serv->target->targetname)
+            con->outbuf->append(serv->target->targetname, 
+                strlen(serv->target->targetname));
+          else 
+            con->outbuf->append(serv->target->NameIP(),
+                strlen(serv->target->NameIP()));
 
-          // con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
+          con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
 
-          // con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+          con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
 
-          // con->outbuf->append("Content-Length: 8\r\n", 19);
-          // con->outbuf->append("Authorization: Negotiate ", 25);
+          con->outbuf->append("Content-Length: 8\r\n", 19);
+          con->outbuf->append("Authorization: Negotiate ", 25);
 
-          // tmplen2 = strlen(NTLMSSP_SIGNATURE) + 1 + 4;          
-          // tmp2 = (char *)safe_malloc(tmplen2 + 1);
+
 
           /* Let's create LM response
           */
+          unsigned char lmbuffer[0x18];
+          unsigned char lmresp[24]; /* fixed-size */
+          int lmrespoff;
+          size_t userlen; 
+          size_t hostoff = 0;
+          size_t useroff = 0;
+          size_t domoff = 0;
 
 
-          size_t len = strlen(con->pass);
-          unsigned char *pw = (unsigned char *)safe_malloc((len * 2) + 1);
+          static const unsigned char magic[] = {
+            0x4B, 0x47, 0x53, 0x21, 0x40, 0x23, 0x24, 0x25 /* KGS!@#$% */
+          };
+          unsigned char pw_upper[14];
+          size_t pw_len = 14;
+          tmplen = strlen(con->pass) + 1;
+          tmp = (char *)safe_zalloc(pw_len + 1);
 
-          /* Transform ascii to unicode le
+          sprintf(tmp, "%s", con->pass);
+          size_t pw_len = 14;
+          /* First convert password to uppercase and pad it 
+          * to 14 characters with zeros.
           */
-          for(i = 0; i < len; i++) {
-            pw[2 * i] = (unsigned char)con->pass[i];
-            pw[2 * i + 1] = '\0';
-          }
+          for (i=0; pw_len; i++){
+            pw_upper[i] = toupper((unsigned char) *tmp[i]);
+          } 
+          
+          userlen = strlen(con->user);
 
-          // I don't think that we need this part.
-          //  * The NT hashed password needs to be created using the password in the
-          //  * network encoding not the host encoding.
-           
-          // result = Curl_convert_to_network(data, (char *)pw, len * 2);
-          // if(result)
-          //   return result;
-          unsigned char hashbuf[20];
+          DES_key_schedule ks;
 
-            /* Create NT hashed password. */
+          /* The "fixed" password at 14 bytes length must be split
+          * in two equal length keys.
+          */
 
-            MD4_CTX MD4pw;
+          /* Two DES keys (one from each 7-byte half) are used to 
+          * DES-encrypt  the constant ASCII string "KGS!@#$%" 
+          * (resulting in two 8-byte ciphertext values).
+          *
+          * The two ciphertext valus are concatenated to form a 16
+          * byte value - The LM hash.
+          *
+          * The LM hash is then padded with zeros to 21 bytes.
+          */
 
-            MD4_Init(&MD4pw);
-            MD4_Update(&MD4pw, pw, 2 * len);
-            MD4_Final(hashbuf, &MD4pw);
+          DES_cblock key;
 
-            /* This should be added later.
-            */
-            //con->outbuf->append(ntbuffer, sizeof(25));
+          setup_des_key(pw_upper, DESKEY(ks));
+          DES_ecb_encrypt((DES_cblock *)magic, (DES_cblock *)lmbuffer,
+                          DESKEY(ks), DES_ENCRYPT);
 
-            printf("MD4 Hash: %s\n", hashbuf);
-          free(pw);
-          // DES_key_schedule ks;
+          setup_des_key(pw_upper + 7, DESKEY(ks));
+          DES_ecb_encrypt((DES_cblock *)magic, (DES_cblock *)(lmbuffer + 8),
+          DESKEY(ks), DES_ENCRYPT);
 
-          // setup_des_key(keys, DESKEY(ks));
-          // DES_ecb_encrypt((DES_cblock*) plaintext, (DES_cblock*) results,
-          //                 DESKEY(ks), DES_ENCRYPT);
-
-          // setup_des_key(keys + 7, DESKEY(ks));
-          // DES_ecb_encrypt((DES_cblock*) plaintext, (DES_cblock*) (results + 8),
-          //                 DESKEY(ks), DES_ENCRYPT);
-
-          // setup_des_key(keys + 14, DESKEY(ks));
-          // DES_ecb_encrypt((DES_cblock*) plaintext, (DES_cblock*) (results + 16),
-          // DESKEY(ks), DES_ENCRYPT);
+          memset(lmbuffer + 16, 0, 21 - 16);
 
 
+          DES_key_schedule ks;
 
-          size = snprintf((char *)tmp2, tmplen2,
+          setup_des_key(lmbuffer, DESKEY(ks));
+          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) lmresp,
+                          DESKEY(ks), DES_ENCRYPT);
+
+          setup_des_key(lmbuffer + 7, DESKEY(ks));
+          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 8),
+                          DESKEY(ks), DES_ENCRYPT);
+
+          setup_des_key(lmbuffer + 14, DESKEY(ks));
+          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 16),
+                          DESKEY(ks), DES_ENCRYPT);
+
+
+          tmplen = strlen("Workstation") + 1;
+          domain_temp = (char *)safe_malloc(tmplen + 1);
+          sprintf(domain_temp, "Workstation");
+          domainlen = floor (log10 (abs (strlen(domain_temp)))) + 1;
+
+          hostlen = 0;
+          lmrespoff = 64;
+          domoff = lmrespoff + 0x18;
+          useroff = domoff + domainlen;
+          hostoff = useroff + userlen;
+
+          /* The following part is NM response. Currently it seems
+          * that we are sending only the LM flag. Maybe we can get 
+          * away with this and only do the LM part.
+          */
+
+          // size_t len = strlen(con->pass);
+          // unsigned char *pw = (unsigned char *)safe_malloc((len * 2) + 1);
+
+          // /* Transform ascii to unicode le
+          // */
+          // for(i = 0; i < len; i++) {
+          //   pw[2 * i] = (unsigned char)con->pass[i];
+          //   pw[2 * i + 1] = '\0';
+          // }
+
+
+          // unsigned char hashbuf[20];
+
+          //    /*Create NT hashed password. */
+
+          //   MD4_CTX MD4pw;
+
+          //   MD4_Init(&MD4pw);
+          //   MD4_Update(&MD4pw, pw, 2 * len);
+          //   MD4_Final(hashbuf, &MD4pw);
+
+          //   /* This should be added later.
+          //   */
+          //   //con->outbuf->append(ntbuffer, sizeof(25));
+
+          //   printf("MD4 Hash: %s\n", hashbuf);
+          //   free(pw);
+
+          tmplen2 = strlen(NTLMSSP_SIGNATURE) + 1 + 4 
+                    + 2 + 2 + 2 + 2 /* LM */
+                    + 2 + 2 + 2 + 2 /* NT */
+                    + 2 + 2 + 2 + 2 /* domain */
+                    + 2 + 2 + 2 + 2 /* user */
+                    + 2 + 2 + 2 + 2 /* host */
+                    + 2 + 2 + 2 + 2 /* session key */
+                    + 4 /* flag */
+                    + strlen(domain) + strlen(con->user)
+                    + strlen(host) + strlen(lmresp)
+                    /* we skip NM response */
+                    ;    
+
+          tmp2 = (char *)safe_malloc(tmplen2 + 1);
+
+
+          snprintf((char *)tmp2, tmplen2,
                   NTLMSSP_SIGNATURE "%c"
                   "\x03%c%c%c"  /* 32-bit type = 3 */
 
                   "%c%c"  /* LanManager length */
                   "%c%c"  /* LanManager allocated space */
-//                   "%c%c"  /* LanManager offset */
+                  "%c%c"  /* LanManager offset */
+                  "%c%c",  /* 2 zeroes */
+
+                  "%c%c"  /* NT-response length */
+                  "%c%c"  /* NT-response allocated space */
+                  "%c%c"  /* NT-response offset */
                   "%c%c"  /* 2 zeroes */
 
-//                   "%c%c"  /* NT-response length */
-//                   "%c%c"  /* NT-response allocated space */
-//                   "%c%c"  /* NT-response offset */
-//                   "%c%c"  /* 2 zeroes */
+                  "%c%c"  /* domain length */
+                  "%c%c"  /* domain allocated space */
+                  "%c%c"  /* domain name offset */
+                  "%c%c"  /* 2 zeroes */
 
-//                   "%c%c"  /* domain length */
-//                   "%c%c"  /* domain allocated space */
-//                   "%c%c"  /* domain name offset */
-//                   "%c%c"  /* 2 zeroes */
+                  "%c%c"  /* user length */
+                  "%c%c"  /* user allocated space */
+                  "%c%c"  /* user offset */
+                  "%c%c"  /* 2 zeroes */
 
-//                   "%c%c"  /* user length */
-//                   "%c%c"  /* user allocated space */
-//                   "%c%c"  /* user offset */
-//                   "%c%c"  /* 2 zeroes */
+                  "%c%c"  /* host length */
+                  "%c%c"  /* host allocated space */
+                  "%c%c"  /* host offset */
+                  "%c%c"  /* 2 zeroes */
 
-//                   "%c%c"  /* host length */
-//                   "%c%c"  /* host allocated space */
-//                   "%c%c"  /* host offset */
-//                   "%c%c"  /* 2 zeroes */
+                  "%c%c"  /* session key length (unknown purpose) */
+                  "%c%c"  /* session key allocated space (unknown purpose) */
+                  "%c%c"  /* session key offset (unknown purpose) */
+                  "%c%c"  /* 2 zeroes */
 
-//                   "%c%c"  /* session key length (unknown purpose) */
-//                   "%c%c"  /* session key allocated space (unknown purpose) */
-//                   "%c%c"  /* session key offset (unknown purpose) */
-//                   "%c%c"  /* 2 zeroes */
+      /* This is hardcoded for now in type it was 37 instead of 25*/
 
-//                   "%c%c%c%c",  /* flags */
-
-//                   /* domain string */
-//                   /* user string */
-//                   /* host string */
-//                   /* LanManager response */
+                  "\x35\x82\x08\xe0" 
+                  "%s"  /* domain */
+                  "%s" /* username */
+                 // "%s"   /* host string */
+                  "%s", /* LanManager response */
 //                   /* NT response */
 
                   0,                /* zero termination */
@@ -899,42 +985,54 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
                   SHORTPAIR(0x18),  /* LanManager response length, twice */
                   SHORTPAIR(0x18),
-//                   SHORTPAIR(lmrespoff),
+                  SHORTPAIR(lmrespoff),
                   0x0, 0x0,
 
-// #ifdef USE_NTRESPONSES
-//                   SHORTPAIR(ntresplen),  /* NT-response length, twice */
-//                   SHORTPAIR(ntresplen),
-//                   SHORTPAIR(ntrespoff),
-//                   0x0, 0x0,
-// #else
-//                   0x0, 0x0,
-//                   0x0, 0x0,
-//                   0x0, 0x0,
-//                   0x0, 0x0,
-// #endif
-//                   SHORTPAIR(domlen),
-//                   SHORTPAIR(domlen),
-//                   SHORTPAIR(domoff),
-//                   0x0, 0x0,
+                  0x0, 0x0,
+                  0x0, 0x0,
+                  0x0, 0x0,
+                  0x0, 0x0,
+                  SHORTPAIR(domainlen),
+                  SHORTPAIR(domainlen),
+                  SHORTPAIR(domoff),
+                  0x0, 0x0,
 
-//                   SHORTPAIR(userlen),
-//                   SHORTPAIR(userlen),
-//                   SHORTPAIR(useroff),
-//                   0x0, 0x0,
+                  SHORTPAIR(userlen),
+                  SHORTPAIR(userlen),
+                  SHORTPAIR(useroff),
+                  0x0, 0x0,
 
-//                   SHORTPAIR(hostlen),
-//                   SHORTPAIR(hostlen),
-//                   SHORTPAIR(hostoff),
-//                   0x0, 0x0,
+                  SHORTPAIR(hostlen),
+                  SHORTPAIR(hostlen),
+                  SHORTPAIR(hostoff),
+                  0x0, 0x0,
 
-//                   0x0, 0x0,
-//                   0x0, 0x0,
-//                   0x0, 0x0,
-//                   0x0, 0x0,
-
-//                   LONGQUARTET(ntlm->flags)
+                  0x0, 0x0,
+                  0x0, 0x0,
+                  0x0, 0x0,
+                  0x0, 0x0,
+                  domain_temp,
+                  con->user,
+                //  host,
+                  lmresp
                   );
+
+
+          b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
+          base64_encode(tmp2, tmplen2, b64);
+
+          con->outbuf->append(b64, strlen(b64));
+
+
+          free(tmp2);
+          free(b64);
+          con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+
+          nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
+            (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+          
+          info->substate = NEGOTIATE_RESULTS;
+          break;
       }
 
       /* The in buffer has to be cleared out, because we are expecting
@@ -997,8 +1095,32 @@ rand_str(char *dest, size_t length)
     *dest = '\0';
 }
 
-// static int 
-// size_t2int(size_t val) 
-// {
-//     return (val <= INT_MAX) ? (int)((ssize_t)val) : -1;
-// }
+/*
+* Turns a 56-bit key into being 64-bit wide.
+*/
+static void extend_key_56_to_64(const unsigned char *key_56, char *key)
+{
+  key[0] = key_56[0];
+  key[1] = (unsigned char)(((key_56[0] << 7) & 0xFF) | (key_56[1] >> 1));
+  key[2] = (unsigned char)(((key_56[1] << 6) & 0xFF) | (key_56[2] >> 2));
+  key[3] = (unsigned char)(((key_56[2] << 5) & 0xFF) | (key_56[3] >> 3));
+  key[4] = (unsigned char)(((key_56[3] << 4) & 0xFF) | (key_56[4] >> 4));
+  key[5] = (unsigned char)(((key_56[4] << 3) & 0xFF) | (key_56[5] >> 5));
+  key[6] = (unsigned char)(((key_56[5] << 2) & 0xFF) | (key_56[6] >> 6));
+  key[7] = (unsigned char) ((key_56[6] << 1) & 0xFF);
+}
+
+static void setup_des_key(const unsigned char *key_56,
+                          DES_key_schedule DESKEYARG(ks))
+{
+  DES_cblock key;
+
+  /* Expand the 56-bit key to 64-bits */
+  extend_key_56_to_64(key_56, (char *) &key);
+
+  /* Set the key parity to odd */
+  DES_set_odd_parity(&key);
+
+  /* Set the key */
+  DES_set_key(&key, ks);
+}
