@@ -168,8 +168,8 @@ static void extend_key_56_to_64(const unsigned char *key_56, char *key);
 static void setup_des_key(const unsigned char *key_56, DES_key_schedule *ks);
 
 
-enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, 
-              WINRM_NEGOTIATE_AUTH, WINRM_FINI };
+enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH, 
+              WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
 
 /* Method identification substates */
 enum { METHODS_SEND, METHODS_RESULTS };
@@ -485,6 +485,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *start, *end;
   char *challenge;
   char *type2;
+  // char *pw_upper;
   size_t i;
   size_t domainlen;
   size_t hostlen;
@@ -822,8 +823,14 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           /* First convert password to uppercase and pad it 
           * to 14 characters with zeros.
           */
+          char *s = tmp;
+          while (*s) {
+            *s = toupper((unsigned char) *s);
+            s++;
+          }
+          
           for (i=0; pw_len; i++){
-            pw_upper[i] = toupper((unsigned char) tmp[i]);
+            pw_upper[i] = (unsigned char) tmp[i]);
           } 
           
           userlen = strlen(con->user);
