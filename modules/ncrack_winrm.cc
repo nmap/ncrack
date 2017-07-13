@@ -848,7 +848,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             pw_upper[i] = (unsigned char) tmp[i];
           } 
           
-          userlen = strlen(con->user);
+          
 
           DES_key_schedule ks;
 
@@ -891,14 +891,24 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 16),
                           &ks2, DES_ENCRYPT);
 
-          for (i=0; i < 0x18; i++){
-            lmresp[i] = (signed char *) lmresp[i];
-          }
+          // for (i=0; i < 0x18; i++){
+          //   lmresp[i] = (signed char *) lmresp[i];
+          // }
           tmplen = strlen("Workstation") + 1;
           domain_temp = (char *)safe_malloc(tmplen + 1);
           sprintf(domain_temp, "Workstation");
-          domainlen = strlen(domain_temp);
+          
+          char domain_unicode[2*tmplen];
+          domainlen = strlen(domain_unicode);          
+          /* Transform ascii to unicode
+          */
+          for(i = 0; i < tmplen; i++) {
+            domain_unicode[2 * i] = (unsigned char)domain_temp[i];
+            domain_unicode[2 * i + 1] = '\0';
+          }
 
+          char user_unicode[2*strlen(con->user)];
+          userlen = strlen(user_unicode);
           hostlen = 0;
           lmrespoff = 64;
           domoff = lmrespoff + 0x18;
@@ -946,7 +956,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                     + 2 + 2 + 2 + 2 /* host */
                     + 2 + 2 + 2 + 2 /* session key */
                     + 4 /* flag */
-                    + strlen(domain_temp) + strlen(con->user)
+                    + strlen(domain_unicode) + strlen(user_unicode)
                     //+ strlen(host) 
                     + 0x18
                     /* we skip NM response */
@@ -991,7 +1001,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
       /* This is hardcoded for now in type it was 37 instead of 25*/
 
-                  "\x35\x82\x08\xe0" 
+                  "\x35\x82\x08\xe0", 
                  //  "%s"  /* domain */
                  //  "%s" /* username */
                  // // "%s"   /* host string */
@@ -1028,7 +1038,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   0x0, 0x0,
                   0x0, 0x0,
                   0x0, 0x0,
-                  0x0, 0x0,
+                  0x0, 0x0
+                  //,
                   //lmresp,
                   // domain_temp,
                   // con->user
@@ -1036,10 +1047,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   // lmresp
                   );
 
-          memset(tmp2 + lmrespoff, lmresp, 0x18);
-          memset(tmp2 + domoff, domain_temp, domainlen);
-          memset(tmp2 + useroff, con->user, userlen);
-          memset(tmp2 + hostoff, host, hostlen);
+          memcpy(&tmp2[lmrespoff], lmresp, 0x18);
+          memcpy(&tmp2[domoff], domain_unicode, domainlen);
+          memcpy(&tmp2[useroff], user_unicode, userlen);
+          // memset(tmp2 + hostoff, host, hostlen);
 
           b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
           base64_encode(tmp2, tmplen2, b64);
