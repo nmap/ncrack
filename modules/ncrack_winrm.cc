@@ -150,7 +150,16 @@ using namespace std;
 
 #define NTLMSSP_SIGNATURE "\x4e\x54\x4c\x4d\x53\x53\x50"
 #define SHORTPAIR(x) ((x) & 0xff), (((x) >> 8) & 0xff)
+#define LONGQUARTET(x) ((x) & 0xff), (((x) >> 8) & 0xff), \
+  (((x) >> 16) & 0xff), (((x) >> 24) & 0xff)
 
+#define NEGOTIATE_UNICODE (1<<0)
+#define NEGOTIATE_OEM (1<<1)
+#define REQUEST_TARGET (1<<2)
+#define NEGOTIATE_SEAL (1<<5)
+#define NEGOTIATE_LM_KEY (1<<7)
+#define NEGOTIATE_128 (1<<29)
+#define NEGOTIATE_56 (1<<31)
 
 extern NcrackOps o;
 
@@ -557,7 +566,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       snprintf((char *)tmp2, tmplen2,
                NTLMSSP_SIGNATURE "%c"
                "\x01%c%c%c" /* 32-bit type = 1 */
-               "\x37\x82\x08\xe0"   /* 32-bit NTLM flag field */
+               "%c%c%c%c"//"\x37\x82\x08\xe0"   /* 32-bit NTLM flag field */
                "%c%c"       /* domain length */
                "%c%c"       /* domain allocated space */
                "\x20%c"   /* domain name offset offset 32*/
@@ -569,6 +578,13 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                "%s"         /* host name */
                "%s",        /* domain string */               
                0,0,0,0,
+               LONGQUARTET(NEGOTIATE_UNICODE | 
+                            NEGOTIATE_OEM |
+                            REQUEST_TARGET | 
+                            NEGOTIATE_SEAL |
+                            NEGOTIATE_LM_KEY |
+                            NEGOTIATE_128 |
+                            NEGOTIATE_56),
                SHORTPAIR(strlen(domain_temp)),
                SHORTPAIR(strlen(domain_temp)), 0,
                0x0,0x0,
@@ -928,8 +944,8 @@ tmp_challenge[7] = 0xef;
           hostlen = 0;
           lmrespoff = 64;
           ntrespoff = lmrespoff + 0x18;
-          domoff = ntrespoff + ntresplen;
-          // domoff = lmrespoff + 0x18;
+          //domoff = ntrespoff + ntresplen;
+          domoff = lmrespoff + 0x18;
           useroff = domoff + domainlen;
           hostoff = useroff + userlen;
 
@@ -941,43 +957,43 @@ tmp_challenge[7] = 0xef;
           /* Let's craft the NM response.
           */
 
-          size_t passlen = 0;
-          unsigned char ntbuffer[0x18];
-          unsigned char ntresp[24]; /* fixed-size */
+          // size_t passlen = 0;
+          // unsigned char ntbuffer[0x18];
+          // unsigned char ntresp[24]; /* fixed-size */
  
-          char pass_unicode[2*strlen(con->pass)];
-          passlen = 2*strlen(con->pass);          
-          /* Transform ascii to unicode
-          */
-          for(i = 0; i < strlen(con->pass); i++) {
-            pass_unicode[2 * i] = (unsigned char)con->pass[i];
-            pass_unicode[2 * i + 1] = '\0';
-          }
+          // char pass_unicode[2*strlen(con->pass)];
+          // passlen = 2*strlen(con->pass);          
+          // /* Transform ascii to unicode
+          // */
+          // for(i = 0; i < strlen(con->pass); i++) {
+          //   pass_unicode[2 * i] = (unsigned char)con->pass[i];
+          //   pass_unicode[2 * i + 1] = '\0';
+          // }
 
 
           /* Create NT hashed password. 
           */
 
-          MD4_CTX MD4pw;
+          // MD4_CTX MD4pw;
 
-          MD4_Init(&MD4pw);
-          MD4_Update(&MD4pw, pass_unicode, 2 * passlen);
-          MD4_Final(ntbuffer, &MD4pw);
-          memset(ntbuffer + 16, 0, 21 - 16);
+          // MD4_Init(&MD4pw);
+          // MD4_Update(&MD4pw, pass_unicode, 2 * passlen);
+          // MD4_Final(ntbuffer, &MD4pw);
+          // memset(ntbuffer + 16, 0, 21 - 16);
 
-          DES_key_schedule ks3;
+          // DES_key_schedule ks3;
 
-          setup_des_key(ntbuffer, &ks2);
-          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) ntresp,
-                          &ks2, DES_ENCRYPT);
+          // setup_des_key(ntbuffer, &ks2);
+          // DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) ntresp,
+          //                 &ks2, DES_ENCRYPT);
 
-          setup_des_key(ntbuffer + 7, &ks2);
-          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 8),
-                          &ks2, DES_ENCRYPT);
+          // setup_des_key(ntbuffer + 7, &ks2);
+          // DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 8),
+          //                 &ks2, DES_ENCRYPT);
 
-          setup_des_key(ntbuffer + 14, &ks2);
-          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 16),
-                          &ks2, DES_ENCRYPT);
+          // setup_des_key(ntbuffer + 14, &ks2);
+          // DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 16),
+          //                 &ks2, DES_ENCRYPT);
 
           tmplen2 = strlen(NTLMSSP_SIGNATURE) + 1 + 4 
                     + 2 + 2 + 2 + 2 /* LM */
@@ -990,7 +1006,7 @@ tmp_challenge[7] = 0xef;
                     + sizeof(domain_unicode) + sizeof(user_unicode)
                     //+ strlen(host) 
                     + 0x18
-                    + ntresplen
+                  //  + ntresplen
                     /* we skip NM response */
                     ;    
 
@@ -1033,12 +1049,7 @@ tmp_challenge[7] = 0xef;
 
       /* This is hardcoded for now in type it was 37 instead of 25*/
 
-                  "\x35\x82\x08\xe0", 
-                 //  "%s"  /* domain */
-                 //  "%s" /* username */
-                 // // "%s"   /* host string */
-                 //  "%s", /* LanManager response */
-//                   /* NT response */
+                  "%c%c%c%c",//"\x35\x82\x08\xe0", 
 
                   0,                /* zero termination */
                   0, 0, 0,          /* type-3 long, the 24 upper bits */
@@ -1070,7 +1081,14 @@ tmp_challenge[7] = 0xef;
                   0x0, 0x0,
                   0x0, 0x0,
                   0x0, 0x0,
-                  0x0, 0x0
+                  0x0, 0x0,
+                  LONGQUARTET(NEGOTIATE_UNICODE | 
+                            NEGOTIATE_OEM |
+                            REQUEST_TARGET | 
+                            NEGOTIATE_SEAL |
+                            NEGOTIATE_LM_KEY |
+                            NEGOTIATE_128 |
+                            NEGOTIATE_56)
                   //,
                   //lmresp,
                   // domain_temp,
@@ -1080,7 +1098,7 @@ tmp_challenge[7] = 0xef;
                   );
 
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
-          memcpy(&tmp2[ntrespoff], ntresp, ntresplen);
+         // memcpy(&tmp2[ntrespoff], ntresp, ntresplen);
           memcpy(&tmp2[domoff], domain_unicode, domainlen);
           memcpy(&tmp2[useroff], user_unicode, userlen);
           // memset(tmp2 + hostoff, host, hostlen);
