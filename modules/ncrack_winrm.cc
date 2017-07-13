@@ -894,12 +894,12 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           // for (i=0; i < 0x18; i++){
           //   lmresp[i] = (signed char *) lmresp[i];
           // }
-          tmplen = strlen("Workstation") + 1;
-          domain_temp = (char *)safe_malloc(tmplen + 1);
+          tmplen = strlen("Workstation");
+          domain_temp = (char *)safe_malloc(tmplen );
           sprintf(domain_temp, "Workstation");
           
           char domain_unicode[2*tmplen];
-          domainlen = strlen(domain_unicode);          
+          domainlen = 2*tmplen;          
           /* Transform ascii to unicode
           */
           for(i = 0; i < tmplen; i++) {
@@ -907,8 +907,16 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             domain_unicode[2 * i + 1] = '\0';
           }
 
-          char user_unicode[2*strlen(con->user)];
-          userlen = strlen(user_unicode);
+          char user_unicode[2*sizeof(con->user)];
+          userlen = 2*sizeof(con->user);
+
+          /* Transform ascii to unicode
+          */
+          for(i = 0; i < sizeof(con->user); i++) {
+            user_unicode[2 * i] = (unsigned char)con->user[i];
+            user_unicode[2 * i + 1] = '\0';
+          }
+
           hostlen = 0;
           lmrespoff = 64;
           domoff = lmrespoff + 0x18;
@@ -956,7 +964,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                     + 2 + 2 + 2 + 2 /* host */
                     + 2 + 2 + 2 + 2 /* session key */
                     + 4 /* flag */
-                    + strlen(domain_unicode) + strlen(user_unicode)
+                    + sizeof(domain_unicode) + sizeof(user_unicode)
                     //+ strlen(host) 
                     + 0x18
                     /* we skip NM response */
