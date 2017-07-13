@@ -593,7 +593,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       free(tmp);
       free(tmp2);
       free(b64);
-
+      free(domain_temp);
+      free(host);
       /* Content length should be last as the packet will not
       * be recognized by Wireshark as NTLM. 
       */
@@ -890,7 +891,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 16),
                           &ks2, DES_ENCRYPT);
 
-
+          for (i=0; i < 0x18; i++){
+            lmresp[i] = (signed char *) lmresp[i];
+          }
           tmplen = strlen("Workstation") + 1;
           domain_temp = (char *)safe_malloc(tmplen + 1);
           sprintf(domain_temp, "Workstation");
@@ -989,10 +992,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       /* This is hardcoded for now in type it was 37 instead of 25*/
 
                   "\x35\x82\x08\xe0" 
-                  "%s"  /* domain */
-                  "%s" /* username */
-                 // "%s"   /* host string */
-                  "%s", /* LanManager response */
+                 //  "%s"  /* domain */
+                 //  "%s" /* username */
+                 // // "%s"   /* host string */
+                 //  "%s", /* LanManager response */
 //                   /* NT response */
 
                   0,                /* zero termination */
@@ -1026,13 +1029,17 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   0x0, 0x0,
                   0x0, 0x0,
                   0x0, 0x0,
-                  lmresp,
-                  domain_temp,
-                  con->user
+                  //lmresp,
+                  // domain_temp,
+                  // con->user
                 //  host,
                   // lmresp
                   );
 
+          memset(tmp2 + lmrespoff, lmresp, 0x18);
+          memset(tmp2 + domoff, domain_temp, domainlen);
+          memset(tmp2 + useroff, con->user, userlen);
+          memset(tmp2 + hostoff, host, hostlen);
 
           b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
           base64_encode(tmp2, tmplen2, b64);
