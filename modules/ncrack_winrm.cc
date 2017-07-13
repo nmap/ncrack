@@ -972,7 +972,7 @@ tmp_challenge[7] = 0xef;
           MD4_CTX MD4pw;
 
           MD4_Init(&MD4pw);
-          MD4_Update(&MD4pw, pass_unicode, 2 * passlen);
+          MD4_Update(&MD4pw, pass_unicode, sizeof(pass_unicode));
           MD4_Final(ntbuffer, &MD4pw);
           memset(ntbuffer + 16, 0, 21 - 16);
 
@@ -1001,7 +1001,7 @@ tmp_challenge[7] = 0xef;
                     + sizeof(domain_unicode) + sizeof(user_unicode)
                     //+ strlen(host) 
                     + 0x18
-                  //  + ntresplen
+                    + ntresplen
                     /* we skip NM response */
                     ;    
 
