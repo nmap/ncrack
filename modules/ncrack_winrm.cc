@@ -854,6 +854,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           DES_key_schedule ks;
 
+//Testing
+tmp_challenge[0] = 0x01;
+tmp_challenge[1] = 0x23;
+tmp_challenge[2] = 0x45;
+tmp_challenge[3] = 0x67;
+tmp_challenge[4] = 0x89;
+tmp_challenge[5] = 0xab;
+tmp_challenge[6] = 0xcd;
+tmp_challenge[7] = 0xef;
           /* The "fixed" password at 14 bytes length must be split
           * in two equal length keys.
           */
