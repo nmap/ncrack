@@ -819,6 +819,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           unsigned char lmbuffer[0x18];
           unsigned char lmresp[24]; /* fixed-size */
           int lmrespoff;
+          int ntrespoff;
+          unsigned int ntresplen = 24;
           size_t userlen; 
           size_t hostoff = 0;
           size_t useroff = 0;
@@ -891,9 +893,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 16),
                           &ks2, DES_ENCRYPT);
 
-          // for (i=0; i < 0x18; i++){
-          //   lmresp[i] = (signed char *) lmresp[i];
-          // }
           tmplen = strlen("Workstation");
           domain_temp = (char *)safe_malloc(tmplen );
           sprintf(domain_temp, "Workstation");
@@ -907,19 +906,21 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             domain_unicode[2 * i + 1] = '\0';
           }
 
-          char user_unicode[2*sizeof(con->user)];
-          userlen = 2*sizeof(con->user);
+          char user_unicode[2*strlen(con->user)];
+          userlen = 2*strlen(con->user);
 
           /* Transform ascii to unicode
           */
-          for(i = 0; i < sizeof(con->user); i++) {
+          for(i = 0; i < strlen(con->user); i++) {
             user_unicode[2 * i] = (unsigned char)con->user[i];
             user_unicode[2 * i + 1] = '\0';
           }
 
           hostlen = 0;
           lmrespoff = 64;
-          domoff = lmrespoff + 0x18;
+          ntrespoff = lmrespoff + 0x18;
+          domoff = ntrespoff + ntresplen;
+          // domoff = lmrespoff + 0x18;
           useroff = domoff + domainlen;
           hostoff = useroff + userlen;
 
@@ -928,33 +929,46 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * away with this and only do the LM part.
           */
 
-          // size_t len = strlen(con->pass);
-          // unsigned char *pw = (unsigned char *)safe_malloc((len * 2) + 1);
+          /* Let's craft the NM response.
+          */
 
-          // /* Transform ascii to unicode le
-          // */
-          // for(i = 0; i < len; i++) {
-          //   pw[2 * i] = (unsigned char)con->pass[i];
-          //   pw[2 * i + 1] = '\0';
-          // }
+          size_t passlen = 0;
+          unsigned char ntbuffer[0x18];
+          unsigned char ntresp[24]; /* fixed-size */
+ 
+          char pass_unicode[2*strlen(con->pass)];
+          passlen = 2*strlen(con->pass);          
+          /* Transform ascii to unicode
+          */
+          for(i = 0; i < strlen(con->pass); i++) {
+            pass_unicode[2 * i] = (unsigned char)con->pass[i];
+            pass_unicode[2 * i + 1] = '\0';
+          }
 
 
-          // unsigned char hashbuf[20];
+          /* Create NT hashed password. 
+          */
 
-          //    /*Create NT hashed password. */
+          MD4_CTX MD4pw;
 
-          //   MD4_CTX MD4pw;
+          MD4_Init(&MD4pw);
+          MD4_Update(&MD4pw, pass_unicode, 2 * passlen);
+          MD4_Final(ntbuffer, &MD4pw);
+          memset(ntbuffer + 16, 0, 21 - 16);
 
-          //   MD4_Init(&MD4pw);
-          //   MD4_Update(&MD4pw, pw, 2 * len);
-          //   MD4_Final(hashbuf, &MD4pw);
+          DES_key_schedule ks3;
 
-          //   /* This should be added later.
-          //   */
-          //   //con->outbuf->append(ntbuffer, sizeof(25));
+          setup_des_key(ntbuffer, &ks2);
+          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) ntresp,
+                          &ks2, DES_ENCRYPT);
 
-          //   printf("MD4 Hash: %s\n", hashbuf);
-          //   free(pw);
+          setup_des_key(ntbuffer + 7, &ks2);
+          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 8),
+                          &ks2, DES_ENCRYPT);
+
+          setup_des_key(ntbuffer + 14, &ks2);
+          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 16),
+                          &ks2, DES_ENCRYPT);
 
           tmplen2 = strlen(NTLMSSP_SIGNATURE) + 1 + 4 
                     + 2 + 2 + 2 + 2 /* LM */
@@ -967,6 +981,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                     + sizeof(domain_unicode) + sizeof(user_unicode)
                     //+ strlen(host) 
                     + 0x18
+                    + ntresplen
                     /* we skip NM response */
                     ;    
 
@@ -1024,9 +1039,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   SHORTPAIR(lmrespoff),
                   0x0, 0x0,
 
-                  0x0, 0x0,
-                  0x0, 0x0,
-                  0x0, 0x0,
+                  SHORTPAIR(ntresplen),  /* LanManager response length, twice */
+                  SHORTPAIR(ntresplen),
+                  SHORTPAIR(ntrespoff),
                   0x0, 0x0,
                   SHORTPAIR(domainlen),
                   SHORTPAIR(domainlen),
@@ -1056,6 +1071,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   );
 
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
+          memcpy(&tmp2[ntrespoff], ntresp, ntresplen);
           memcpy(&tmp2[domoff], domain_unicode, domainlen);
           memcpy(&tmp2[useroff], user_unicode, userlen);
           // memset(tmp2 + hostoff, host, hostlen);
