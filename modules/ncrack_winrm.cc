@@ -130,6 +130,9 @@
 
 #include <openssl/des.h>
 #include <openssl/md4.h>
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
+
 #include <time.h>
 #include <stdlib.h>
 
@@ -161,6 +164,13 @@ using namespace std;
 #define NEGOTIATE_128 (1<<29)
 #define NEGOTIATE_56 (1<<31)
 #define NEGOTIATE_NTLM_KEY (1<<9)
+#define NEGOTIATE_NTLM2_KEY (1<<19)
+#define NEGOTIATE_TARGET_INFO (1<<23)
+
+#define USE_NTLM 0
+#define USE_LM 0
+#define USE_NTLMv2 0
+
 extern NcrackOps o;
 
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
@@ -488,25 +498,33 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 {
   char *tmp;
   char *tmp2;
+  char *tmp3;
   char *b64;
   char *host;
   char *domain_temp;
   char *start, *end;
   char *challenge;
   char *type2;
+  char *target_info;
+  char *target_name;
   // char *pw_upper;
   size_t i;
   size_t domainlen;
   size_t hostlen;
   size_t tmplen;
   size_t tmplen2;
+  size_t tmplen3;
   // size_t type2_len;
   size_t tmpsize;
   char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                            
-  char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
+  // char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
   int ntlm_flags;
   unsigned char tmp_challenge[8];
   unsigned char tmp_flags[4];
+  unsigned char target_offset[2];
+  unsigned char target_length[2];  
+  unsigned char targetinfo_offset[2];
+  unsigned char targetinfo_length[2];
   // size_t type2len;
   // int type2templen;
   Service *serv = con->service;
@@ -578,8 +596,18 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                "%s"         /* host name */
                "%s",        /* domain string */               
                0,0,0,0,
-               LONGQUARTET(NEGOTIATE_UNICODE | 
-                          NEGOTIATE_NTLM_KEY),
+/* We need to send flags for all the available 
+* authentication realms. This includes LM, NTLM 
+* and NTLMv2. Usually the server-client should
+* agree on the strongest common realm. We will 
+* use the lightest bandwith-wise. 
+* We will send LM_KEY, NTLM_KEY and NTLM2_KEY.
+* In most cases all three realms will be available.
+*/
+               LONGQUARTET(NEGOTIATE_UNICODE |
+                          NEGOTIATE_LM_KEY |
+                          NEGOTIATE_NTLM_KEY |
+                          NEGOTIATE_NTLM2_KEY),
                SHORTPAIR(strlen(domain_temp)),
                SHORTPAIR(strlen(domain_temp)), 0,
                0x0,0x0,
@@ -688,117 +716,159 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                                         (*) -> Optional
   */
 
-            dig[strlen(NTLMSSP_SIGNATURE)] = '\0';
+            // dig[strlen(NTLMSSP_SIGNATURE)] = '\0';
 
-            /* The first 7 bytes are the string NTLMSSP
-            * followed by a null byte.
+          /* The first 7 bytes are the string NTLMSSP
+          * followed by a null byte.
+          */
+          for (i = 0; i < strlen(NTLMSSP_SIGNATURE) + 1; i++) {
+            ntlm_sig[i] = *type2++;
+          }
+          // strncpy(psql_code_ret, ntlm_sig, strlen(NTLMSSP));
+
+          if (strncmp(ntlm_sig, NTLMSSP_SIGNATURE, strlen(NTLMSSP_SIGNATURE))) {
+            /* In this case the NTLMSSP flag is not present.
+            *  Exit gracefully.
             */
-            for (i = 0; i < strlen(NTLMSSP_SIGNATURE) + 1; i++) {
-              ntlm_sig[i] = *type2++;
-            }
-            // strncpy(psql_code_ret, ntlm_sig, strlen(NTLMSSP));
+            free(type2);
+            serv->end.orly = true;
+            tmpsize = sizeof("Invalid type2 message.\n");
+            serv->end.reason = (char *)safe_malloc(tmpsize);
+            snprintf(serv->end.reason, tmpsize,
+                "Invalid type2 message.\n");
 
-            if (strncmp(ntlm_sig, NTLMSSP_SIGNATURE, strlen(NTLMSSP_SIGNATURE))) {
-              /* In this case the NTLMSSP flag is not present.
-              *  Exit gracefully.
-              */
-              free(type2);
-              serv->end.orly = true;
-              tmpsize = sizeof("Invalid type2 message.\n");
-              serv->end.reason = (char *)safe_malloc(tmpsize);
-              snprintf(serv->end.reason, tmpsize,
-                  "Invalid type2 message.\n");
+            return ncrack_module_end(nsp, con);
+          }
 
-              return ncrack_module_end(nsp, con);
-            }
+          /* Checking for type 2 message flag
+          *  The next four bytes should contain the value
+          *  \x02\x00\x00\x00
+          */
+          char type2_marker_check[4];
+          for (i = 0; i < 4; i++) {
+            type2_marker_check[i] = *type2++;
+          }
 
-            /* Checking for type 2 message flag
-            *  The next four bytes should contain the value
-            *  \x02\x00\x00\x00
+          if (strncmp(type2_marker_check, type2_marker, strlen(type2_marker))) {
+            /* In this case the type2 message flag is not present.
+            *  Exit gracefully.
             */
-            char type2_marker_check[4];
-            for (i = 0; i < 4; i++) {
-              type2_marker_check[i] = *type2++;
-            }
+            free(type2);
+            serv->end.orly = true;
+            tmpsize = sizeof("Invalid type2 message.\n");
+            serv->end.reason = (char *)safe_malloc(tmpsize);
+            snprintf(serv->end.reason, tmpsize,
+                "Invalid type2 message.\n");
 
-            if (strncmp(type2_marker_check, type2_marker, strlen(type2_marker))) {
-              /* In this case the type2 message flag is not present.
-              *  Exit gracefully.
-              */
-              free(type2);
-              serv->end.orly = true;
-              tmpsize = sizeof("Invalid type2 message.\n");
-              serv->end.reason = (char *)safe_malloc(tmpsize);
-              snprintf(serv->end.reason, tmpsize,
-                  "Invalid type2 message.\n");
+            return ncrack_module_end(nsp, con);
+          }
 
-              return ncrack_module_end(nsp, con);
-            }
+          /* Next 8 bytes are the target name. In case of NTLMv2
+          * authentication we will need them.     
+          */
+          // size_t target_offset = 0;
+          for (i = 0; i < 8; i++) {
 
-            /* Next 8 bytes are the target name which we 
-            *  will skip for the moment.            
-            */
-            for (i = 0; i < 8; i++) {
+            if (i == 0 || i == 1)
+              target_length[i] = (unsigned char) *type2++;
+            else if (i == 4 || i == 5) 
+              target_offset[i - 4] = (unsigned char) *type2++;
+            else 
               *type2++;
-            }
+          }
 
-            /* Next 4 bytes are the NTLM flags we will
-            * skip them for the moment.
+          /* Next 4 bytes are the NTLM flags we will
+          * skip them for the moment.
+          */
+          for (i = 0; i < 4; i++) {
+            tmp_flags[i] =  (unsigned char) *type2++;
+          }
+          /* Convert to big endian
+          */
+          ntlm_flags = ((unsigned int)tmp_flags[0]) | ((unsigned int)tmp_flags[1] << 8) |
+          ((unsigned int)tmp_flags[2] << 16) | ((unsigned int)tmp_flags[3] << 24);
+         
+          if (ntlm_flags & ( 1 << 1)){
+            //supports OEM
+          }
+          if (ntlm_flags & ( 1 << 0)){
+            //supports unicode
+          }
+         
+
+          // if (ntlm_flags & NEGOTIATE_NTLM2_KEY ){
+          //   USE_NTLMv2 = 1;
+          // }
+          // else if (ntlm_flags & NEGOTIATE_NTLM_KEY ){
+          //   USE_NTLM = 1;
+          // }
+          // else if (ntlm_flags & NEGOTIATE_LM_KEY ){
+          //   USE_LM = 1;
+          // }
+
+
+          /* Next 8 bytes are the NTLM flags
+          */
+          for (i = 0; i < 8; i++) {
+            tmp_challenge[i] =  (unsigned char) *type2++;
+          }
+
+
+          /* Reminder: challenge is signed.
+          */
+          printf("NTLM CHALLENGE: ");
+          for (i=0; i <8;i++){
+            printf("%x", tmp_challenge[i]);
+          }printf("\n");
+
+          /* Next 8 bytes are the Target info buffer
+          */
+          for (i = 0; i < 8; i++) {
+
+            if (i == 0 || i == 1)
+              targetinfo_length[i] = (unsigned char) *type2++;
+            else if (i == 4 || i == 5) 
+              targetinfo_offset[i - 4] = (unsigned char) *type2++;
+            else 
+              *type2++;
+          }
+
+
+          target_info = (char *)safe_malloc(target_length + 1);
+
+          if (ntlm_flags & NEGOTIATE_TARGET_INFO) {
+            /* If the server sends target info we will need it
+            * if we use NTLMv2 authentication. For this purpose
+            * we read both Target Name and Target Information.
             */
-            for (i = 0; i < 4; i++) {
-              tmp_flags[i] =  (unsigned char) *type2++;
-            }
-            /* Convert to big endian
+
+            /* We read from type2 at offset - 40. 40 are the bytes
+            * we have already read from the buffer.
             */
-            ntlm_flags = ((unsigned int)tmp_flags[0]) | ((unsigned int)tmp_flags[1] << 8) |
-            ((unsigned int)tmp_flags[2] << 16) | ((unsigned int)tmp_flags[3] << 24);
-           
-            if (ntlm_flags & ( 1 << 1)){
-              //supports OEM
-            }
-            if (ntlm_flags & ( 1 << 0)){
-              //supports unicode
-            }
-           
-            if (ntlm_flags & ( 1 << 8)){
-              //supports LM authentication, do that
-            }
+            memcpy(&target_name, type2[target_offset - 40], target_length);
+            memcpy(&target_info, type2[targetinfo_offset - 40], targetinfo_length);
+            
+          }
 
-            /* Next 8 bytes are the NTLM flags
-            */
-            for (i = 0; i < 8; i++) {
-              tmp_challenge[i] =  (unsigned char) *type2++;
-              // *type2++;
-            }
+          /* The challenge is extracted, we can now safely
+          *  proceed in construction of type 3 message.
+          */
 
-
-            /* Reminder: challenge is signed.
-            */
-            printf("NTLM CHALLENGE: ");
-            for (i=0; i <8;i++){
-              printf("%x", tmp_challenge[i]);
-            }printf("\n");
-
-            //free(type2);
-            /* The challenge is extracted, we can now safely
-            *  proceed in construction of type 3 message.
-            */
-
-            /*
-            *
-            * Description               Content
-            * 0 NTLMSSP Signature       Null-terminated ASCII "NTLMSSP"
-            * 8 NTLM Message Type       long (0x03000000)
-            * 12  LM/LMv2 Response      security buffer
-            * 20  NTLM/NTLMv2 Response  security buffer
-            * 28  Target Name           security buffer
-            * 36  User Name             security buffer
-            * 44  Workstation Name      security buffer
-            * (52)  Session Key (optional)  security buffer
-            * (60)  Flags (optional)    long
-            * (64)  OS Version Structure (Optional) 8 bytes
-            * 52 (64) (72)  start of data block
-            */   
+          /*
+          *
+          * Description               Content
+          * 0 NTLMSSP Signature       Null-terminated ASCII "NTLMSSP"
+          * 8 NTLM Message Type       long (0x03000000)
+          * 12  LM/LMv2 Response      security buffer
+          * 20  NTLM/NTLMv2 Response  security buffer
+          * 28  Target Name           security buffer
+          * 36  User Name             security buffer
+          * 44  Workstation Name      security buffer
+          * (52)  Session Key (optional)  security buffer
+          * (60)  Flags (optional)    long
+          * (64)  OS Version Structure (Optional) 8 bytes
+          * 52 (64) (72)  start of data block
+          */   
 
           if (con->outbuf)
             delete con->outbuf;
@@ -866,14 +936,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           DES_key_schedule ks;
 
 //Testing
-tmp_challenge[0] = 0x01;
-tmp_challenge[1] = 0x23;
-tmp_challenge[2] = 0x45;
-tmp_challenge[3] = 0x67;
-tmp_challenge[4] = 0x89;
-tmp_challenge[5] = 0xab;
-tmp_challenge[6] = 0xcd;
-tmp_challenge[7] = 0xef;
+// tmp_challenge[0] = 0x01;
+// tmp_challenge[1] = 0x23;
+// tmp_challenge[2] = 0x45;
+// tmp_challenge[3] = 0x67;
+// tmp_challenge[4] = 0x89;
+// tmp_challenge[5] = 0xab;
+// tmp_challenge[6] = 0xcd;
+// tmp_challenge[7] = 0xef;
+
           /* The "fixed" password at 14 bytes length must be split
           * in two equal length keys.
           */
@@ -955,7 +1026,8 @@ tmp_challenge[7] = 0xef;
           size_t passlen = 0;
           unsigned char ntbuffer[0x18];
           unsigned char ntresp[24]; /* fixed-size */
- 
+          unsigned char *ptr_ntresp = &ntresp[0];
+
           char pass_unicode[2*strlen(con->pass)];
           passlen = 2*strlen(con->pass);          
           /* Transform ascii to unicode
@@ -989,6 +1061,136 @@ tmp_challenge[7] = 0xef;
           setup_des_key(ntbuffer + 14, &ks2);
           DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 16),
                           &ks2, DES_ENCRYPT);
+
+
+
+          ptr_ntresp = ntresp;
+
+          if (ntlm_flags & NEGOTIATE_NTLM2_KEY) {
+            /* Let's craft NTLMv2 response if it is supported
+            * by the server.
+            */
+
+            unsigned char ntbuffer[0x18];
+            unsigned char entropy[8];
+            unsigned char ntlmv2hash[0x18];
+            unsigned char tmphash[0x18];
+            /* Generate 8 random characters for NTLMv2 and LMv2
+            * hashes.
+            */
+            rand_str(entropy, 8);
+            /* Calculate NTLM hash as we did before for v1.
+            * After calculating the NTLM hash we concatenate
+            * the unicode form of username and Target name 
+            * (which is retrieved by type 2 message).
+            * At this point we have the username and password
+            * in unicode encoding from LM and NTLM v1 calculations.
+            * If we change the current state of the script we need
+            * to take care of that.
+            */
+
+            /* From the conducted tests if the server supports Unicode
+            * it will send the Target Name in Unicode encoding.
+            * I'll leave it as is for the moment but we might need
+            * to check if the value is Unicode and if not, convert it
+            * to Unicode.
+            */
+
+            /* Now we concatenate unicode uppercase username with 
+            * unicode domain. 
+            * Let's say we have username "user" and domain "TEST"
+            * the result will be USERTEST. 
+            */
+            char userdomain [sizeof(user_unicode) + sizeof(target_name)];
+            snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
+            strcat(userdomain, target_name);
+
+            /* This string will then be hashed by HMAC_MD5 with NTLM 
+            * hash as a key. We use the ntbuffer but not the zero-padded
+            * version of it. This is why we use 16 bytes and not 22.
+            * The result will also be 16 bytes. 
+            */
+
+            /* We might need to use 0x18
+            * I don't know yet. Should test it.
+            */
+
+            HMAC(EVP_md5(), ntbuffer, 16, userdomain, 
+                  sizeof(userdomain), ntlmv2hash, 16);
+
+            /* NTLMv2 response 
+            * We need to construct the NTLMv2 blob here.
+            */
+
+            /* Description Content
+              0 Blob Signature  0x01010000
+              4 Reserved  long (0x00000000)
+              8 Timestamp Little-endian, 64-bit signed
+              16  Client Nonce  8 bytes
+              24  Unknown 4 bytes
+              28  Target Information  Target Information block (from the Type 2 message).
+              (variable)  Unknown 4 bytes
+            */
+
+            /* We add to the above 8 bytes at the beggining for the generated nonce.
+            */
+
+            tmplen3= 28 + 4 + targetinfo_length + 8;
+            tmp3 = (char *)safe_malloc(tmplen3 + 1);
+
+            /* Fill it with zeros. That's for the Unknown and Reserved fields.
+            */
+            memset(tmp3, 0, tmplen3);
+
+            snprintf((char *)tmp3 + 8, 4,
+             "\x01\x01%c%c"   /* Blob Signature */
+             0, 0);
+
+
+            memcpy(tmp3, challenge, 8);
+            memcpy(tmp3 + 8 + 8, timestamp, 8);
+            memcpy(tmp3 + 16 + 8, entropy, 8);
+            memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
+
+            HMAC(EVP_md5(), ntlmv2hash, 16, tmp3, 
+                  sizeof(tmp3), tmphash, 16);
+
+            /* Now we want the same blob but without the concatenated
+            * nonce at the beggining. Instead the first 16 bytes will 
+            * be the ntlmv2hash which was calculated just now.
+            */
+
+            *ntresplen = 28 + 4 + targetinfo_length + 16;
+
+            tmp4 = (char *)safe_malloc(ntresplen + 1);
+            memcpy(tmp4, tmphash, 16);
+            memcpy(tmp4 + 16, tmp3 + 8, tmplen3 - 8);
+            ptr_ntresp = tmp4;
+            /* LMv2 response 
+            * 1. Calculate NTLM hash. 
+            * 2. Unicode uppercase username and target name
+            * HMAC-MD5 on the above string and NTLM hash as key (16 bytes)
+            * 3. Random 8 byte nonce
+            * 4. Concatenate challenge with nonce from #3
+            * HMAC-MD5 the above string and NTLMv2 hash as key (16 bytes)
+            * NTLMv2 hash is the output of step 2.
+            * 5. Concatenate output of step 4 with nonce (24 bytes)
+            *
+            * At this point we have performed step 1, 2 and 3
+            */
+
+            char chall_nonce [16];
+            snprintf(chall_nonce, sizeof(challenge), "%s", challenge);
+            strcat(chall_nonce, entropy);
+
+            HMAC(EVP_md5(), ntlmv2hash, 16, chall_nonce, 
+                  sizeof(chall_nonce), lmresp, 16);
+
+            memcpy(&lmresp[16], chall_nonce, sizeof(chall_nonce));
+
+          }
+
+
 
           tmplen2 = strlen(NTLMSSP_SIGNATURE) + 1 + 4 
                     + 2 + 2 + 2 + 2 /* LM */
@@ -1042,9 +1244,7 @@ tmp_challenge[7] = 0xef;
                   "%c%c"  /* session key offset (unknown purpose) */
                   "%c%c"  /* 2 zeroes */
 
-      /* This is hardcoded for now in type it was 37 instead of 25*/
-
-                  "%c%c%c%c",//"\x35\x82\x08\xe0", 
+                  "%c%c%c%c", 
 
                   0,                /* zero termination */
                   0, 0, 0,          /* type-3 long, the 24 upper bits */
@@ -1079,16 +1279,10 @@ tmp_challenge[7] = 0xef;
                   0x0, 0x0,
                   LONGQUARTET(NEGOTIATE_UNICODE | 
                             NEGOTIATE_NTLM_KEY)
-                  //,
-                  //lmresp,
-                  // domain_temp,
-                  // con->user
-                //  host,
-                  // lmresp
                   );
 
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
-          memcpy(&tmp2[ntrespoff], ntresp, ntresplen);
+          memcpy(&tmp2[ntrespoff], ptr_ntresp, ntresplen);
           memcpy(&tmp2[domoff], domain_unicode, domainlen);
           memcpy(&tmp2[useroff], user_unicode, userlen);
           // memset(tmp2 + hostoff, host, hostlen);
