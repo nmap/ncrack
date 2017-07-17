@@ -526,7 +526,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   unsigned char tmp_challenge[8];
   unsigned char tmp_flags[4];
   unsigned char *timestamp;
-  
+
   size_t target_offset;
   size_t target_length;  
 
@@ -856,12 +856,12 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             */
             memcpy(&target_name, &type2[target_offset - 40], target_length);
             memcpy(&target_info, &type2[targetinfo_offset - 40], targetinfo_length);
-            printf("Target Name: ")
+            printf("Target Name: ");
             for(i=0; i<target_length; i++){
               printf("%02x", target_name[i]);
             }printf("\n");
 
-            printf("Target Info: ")
+            printf("Target Info: ");
             for(i=0; i<targetinfo_length; i++){
               printf("%02x", target_info[i]);
             }printf("\n");
@@ -1036,7 +1036,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * that we are sending only the LM flag. Maybe we can get 
           * away with this and only do the LM part.
           */
-          if (ntlm_flags & NEGOTIATE_LM_KEY) {
+          // if (ntlm_flags & NEGOTIATE_LM_KEY) {
             /* Let's craft the NM response.
             */
 
@@ -1053,9 +1053,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
               pass_unicode[2 * i] = (unsigned char)con->pass[i];
               pass_unicode[2 * i + 1] = '\0';
             }
-          }
+          // }
 
-          if (ntlm_flags & NEGOTIATE_NTLM_KEY) {
+          // if (ntlm_flags & NEGOTIATE_NTLM_KEY) {
             /* Create NT hashed password. 
             */
 
@@ -1083,7 +1083,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
 
             ptr_ntresp = ntresp;
-          }
+          // }
 
           if (ntlm_flags & NEGOTIATE_NTLM2_KEY) {
             /* Let's craft NTLMv2 response if it is supported
