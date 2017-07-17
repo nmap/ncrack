@@ -525,6 +525,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   int ntlm_flags;
   unsigned char tmp_challenge[8];
   unsigned char tmp_flags[4];
+  unsigned char *timestamp;
+  
   size_t target_offset;
   size_t target_length;  
 
@@ -852,9 +854,17 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* We read from type2 at offset - 40. 40 are the bytes
             * we have already read from the buffer.
             */
-            memcpy(&target_name, type2[target_offset - 40], target_length);
-            memcpy(&target_info, type2[targetinfo_offset - 40], targetinfo_length);
-            
+            memcpy(&target_name, &type2[target_offset - 40], target_length);
+            memcpy(&target_info, &type2[targetinfo_offset - 40], targetinfo_length);
+            printf("Target Name: ")
+            for(i=0; i<target_length; i++){
+              printf("%02x", target_name[i]);
+            }printf("\n");
+
+            printf("Target Info: ")
+            for(i=0; i<targetinfo_length; i++){
+              printf("%02x", target_info[i]);
+            }printf("\n");
           }
 
           /* The challenge is extracted, we can now safely
@@ -1026,52 +1036,54 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * that we are sending only the LM flag. Maybe we can get 
           * away with this and only do the LM part.
           */
+          if (ntlm_flags & NEGOTIATE_LM_KEY) {
+            /* Let's craft the NM response.
+            */
 
-          /* Let's craft the NM response.
-          */
+            size_t passlen = 0;
+            unsigned char ntbuffer[0x18];
+            unsigned char ntresp[24]; /* fixed-size */
+            unsigned char *ptr_ntresp = &ntresp[0];
 
-          size_t passlen = 0;
-          unsigned char ntbuffer[0x18];
-          unsigned char ntresp[24]; /* fixed-size */
-          unsigned char *ptr_ntresp = &ntresp[0];
-
-          char pass_unicode[2*strlen(con->pass)];
-          passlen = 2*strlen(con->pass);          
-          /* Transform ascii to unicode
-          */
-          for(i = 0; i < strlen(con->pass); i++) {
-            pass_unicode[2 * i] = (unsigned char)con->pass[i];
-            pass_unicode[2 * i + 1] = '\0';
+            char pass_unicode[2*strlen(con->pass)];
+            passlen = 2*strlen(con->pass);          
+            /* Transform ascii to unicode
+            */
+            for(i = 0; i < strlen(con->pass); i++) {
+              pass_unicode[2 * i] = (unsigned char)con->pass[i];
+              pass_unicode[2 * i + 1] = '\0';
+            }
           }
 
+          if (ntlm_flags & NEGOTIATE_NTLM_KEY) {
+            /* Create NT hashed password. 
+            */
 
-          /* Create NT hashed password. 
-          */
+            MD4_CTX MD4pw;
 
-          MD4_CTX MD4pw;
+            MD4_Init(&MD4pw);
+            MD4_Update(&MD4pw, pass_unicode, sizeof(pass_unicode));
+            MD4_Final(ntbuffer, &MD4pw);
+            memset(ntbuffer + 16, 0, 21 - 16);
 
-          MD4_Init(&MD4pw);
-          MD4_Update(&MD4pw, pass_unicode, sizeof(pass_unicode));
-          MD4_Final(ntbuffer, &MD4pw);
-          memset(ntbuffer + 16, 0, 21 - 16);
+            DES_key_schedule ks3;
 
-          DES_key_schedule ks3;
+            setup_des_key(ntbuffer, &ks2);
+            DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) ntresp,
+                            &ks2, DES_ENCRYPT);
 
-          setup_des_key(ntbuffer, &ks2);
-          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) ntresp,
-                          &ks2, DES_ENCRYPT);
+            setup_des_key(ntbuffer + 7, &ks2);
+            DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 8),
+                            &ks2, DES_ENCRYPT);
 
-          setup_des_key(ntbuffer + 7, &ks2);
-          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 8),
-                          &ks2, DES_ENCRYPT);
-
-          setup_des_key(ntbuffer + 14, &ks2);
-          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 16),
-                          &ks2, DES_ENCRYPT);
+            setup_des_key(ntbuffer + 14, &ks2);
+            DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 16),
+                            &ks2, DES_ENCRYPT);
 
 
 
-          ptr_ntresp = ntresp;
+            ptr_ntresp = ntresp;
+          }
 
           if (ntlm_flags & NEGOTIATE_NTLM2_KEY) {
             /* Let's craft NTLMv2 response if it is supported
@@ -1145,6 +1157,22 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             tmplen3= 28 + 4 + targetinfo_length + 8;
             tmp3 = (char *)safe_malloc(tmplen3 + 1);
 
+            UINTEGER64 timestamp_ull;
+
+            timestamp_ull = openvpn_time(NULL);
+            timestamp_ull = (timestamp_ull + UINT64(11644473600)) * UINT64(10000000);
+
+            /* store little endian value */
+            timestamp[0]= timestamp_ull & UINT64(0xFF);
+            timestamp[1]= (timestamp_ull  >> 8)  & UINT64(0xFF);
+            timestamp[2]= (timestamp_ull  >> 16) & UINT64(0xFF);
+            timestamp[3]= (timestamp_ull  >> 24) & UINT64(0xFF);
+            timestamp[4]= (timestamp_ull  >> 32) & UINT64(0xFF);
+            timestamp[5]= (timestamp_ull  >> 40) & UINT64(0xFF);
+            timestamp[6]= (timestamp_ull  >> 48) & UINT64(0xFF);
+            timestamp[7]= (timestamp_ull  >> 56) & UINT64(0xFF);
+
+
             /* Fill it with zeros. That's for the Unknown and Reserved fields.
             */
             memset(tmp3, 0, tmplen3);
@@ -1167,12 +1195,12 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * be the ntlmv2hash which was calculated just now.
             */
 
-            *ntresplen = 28 + 4 + targetinfo_length + 16;
+            ntresplen = 28 + 4 + targetinfo_length + 16;
 
             tmp4 = (char *)safe_malloc(ntresplen + 1);
             memcpy(tmp4, tmphash, 16);
             memcpy(tmp4 + 16, tmp3 + 8, tmplen3 - 8);
-            ptr_ntresp = (unsgined char) tmp4;
+            ptr_ntresp = (unsigned char *) tmp4;
             /* LMv2 response 
             * 1. Calculate NTLM hash. 
             * 2. Unicode uppercase username and target name
@@ -1287,6 +1315,12 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   LONGQUARTET(NEGOTIATE_UNICODE | 
                             NEGOTIATE_NTLM_KEY)
                   );
+/*TODO should implement this later*/
+          // if (ntlm_flags & NEGOTIATE_NTLM_KEY) {
+          //   memset(&tmp2 + 20, SHORTPAIR(ntresplen), 4);
+          //   memset(&tmp2 + 24, SHORTPAIR(ntresplen), 4);
+          //   memset(&tmp2 + 28, SHORTPAIR(ntrespoff), 4);
+          // }
 
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
           memcpy(&tmp2[ntrespoff], ptr_ntresp, ntresplen);
