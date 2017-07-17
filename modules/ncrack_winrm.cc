@@ -506,7 +506,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *start, *end;
   char *challenge;
   char *type2;
-  unsigned char *type4 = NULL;
+  char *type4 = NULL;
   char *target_info;
   char *target_name;
   // char *pw_upper;
@@ -910,8 +910,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             tmplen4 = strlen(challenge);
             base64_decode(challenge, tmplen4, type4);
 
-            memcpy(&target_name, &type4[target_offset], target_length);
-            memcpy(&target_info, &type4[targetinfo_offset], targetinfo_length);
+            memcpy(target_name, &type4[target_offset], target_length);
+            memcpy(target_info, &type4[targetinfo_offset], targetinfo_length);
             printf("Target Name: ");
             for(i=0; i<target_length; i++){
               printf("%02x", target_name[i]);
@@ -1004,7 +1004,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             pw_upper[i] = (unsigned char) tmp[i];
           } 
           
-          
+          free(tmp);
 
           DES_key_schedule ks;
 
@@ -1176,10 +1176,47 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * Let's say we have username "user" and domain "TEST"
             * the result will be USERTEST. 
             */
-            char userdomain [sizeof(user_unicode) + sizeof(target_name)];
-            snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
-            for (i=sizeof(user_unicode); i <sizeof(target_name); i++){
-              userdomain[i] = target_name[i-sizeof(user_unicode)];
+
+            /* First we convert username to uppercase string.
+            */
+            unsigned char user_upper[strlen(con->user)];
+            tmplen = strlen(con->user) + 1;
+            tmp = (char *)safe_zalloc(strlen(con->user) + 1);
+
+            sprintf(tmp, "%s", con->user);
+
+            char *s = tmp;
+            while (*s) {
+              *s = toupper((unsigned char) *s);
+              s++;
+            }
+
+            for (i=0; i < strlen(con->user); i++){
+              user_upper[i] = (unsigned char) tmp[i];
+            } 
+
+            free(tmp);
+
+            /* And then transform it into unicode.
+            */
+            char user_upper_unicode[2*strlen(con->user)];
+            userlen = 2*strlen(con->user);
+
+            for(i = 0; i < sizeof(user_upper); i++) {
+              user_upper_unicode[2 * i] = (unsigned char)user_upper[i];
+              user_upper_unicode[2 * i + 1] = '\0';
+            }
+
+            /* Concatenate the two strings.
+            */
+            
+            char userdomain [sizeof(user_upper_unicode) + sizeof(target_name)];
+            // snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
+            for (i=0; i <sizeof(user_upper_unicode); i++){
+              userdomain[i] = user_upper_unicode[i];
+            }
+            for (i=sizeof(user_upper_unicode); i <sizeof(target_name)+sizeof(user_upper_unicode); i++){
+              userdomain[i] = target_name[i-sizeof(user_upper_unicode)];
             }
             // strcat(userdomain, target_name);
             printf("Userdomain: ");
