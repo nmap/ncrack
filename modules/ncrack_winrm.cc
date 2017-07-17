@@ -506,7 +506,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *start, *end;
   char *challenge;
   char *type2;
-  char *type4;
+  unsigned char *type4 = NULL;
   char *target_info;
   char *target_name;
   // char *pw_upper;
@@ -783,7 +783,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             
 
           // }
-          snprintf(tmp_buf2, 4, "%02x", *type2++);
+          snprintf(tmp_buf2, 4, "%d", *type2++);
 
           target_length = (int)strtol(tmp_buf2, NULL, 10);
           printf("Temp buf: %d", target_length);
@@ -797,7 +797,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * The values are literals. They are written as decimals
           * not as hex.
           */
-          snprintf(tmp_buf3, 4, "%02x", *type2++);
+          snprintf(tmp_buf3, 4, "%d", *type2++);
           for (i = 0; i < 3; i++) {
             // snprintf(tmp_buf3 + (i*2), 2, "%x", *type2++);
             // tmp_buf[i] =  (unsigned char) *type2++;
@@ -870,7 +870,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             *type2++;
           }
 
-          snprintf(tmp_buf3, 4, "%02x", *type2++);
+          snprintf(tmp_buf3, 4, "%d", *type2++);
           for (i = 0; i < 3; i++) {
             *type2++;
           }
@@ -878,7 +878,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           targetinfo_length = (int)strtol(tmp_buf3, NULL, 10);
           printf("target info length: %d\n", targetinfo_length);
 
-          snprintf(tmp_buf3, 4, "%02x", *type2++);
+          snprintf(tmp_buf3, 4, "%d", *type2++);
           for (i = 0; i < 3; i++) {
             *type2++;
           }
@@ -1178,7 +1178,14 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             */
             char userdomain [sizeof(user_unicode) + sizeof(target_name)];
             snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
-            strcat(userdomain, target_name);
+            for (i=sizeof(user_unicode); i <sizeof(target_name); i++){
+              userdomain[i] = target_name[i-sizeof(user_unicode)];
+            }
+            // strcat(userdomain, target_name);
+            printf("Userdomain: ");
+            for(i=0;i<sizeof(userdomain);i++){
+              printf("%02x\n",userdomain[i] );
+            }printf("\n");
 
             /* This string will then be hashed by HMAC_MD5 with NTLM 
             * hash as a key. We use the ntbuffer but not the zero-padded
