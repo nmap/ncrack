@@ -518,15 +518,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   // size_t type2_len;
   size_t tmpsize;
   size_t targetinfo_offset;
-  size_t char targetinfo_length;
+  size_t targetinfo_length;
 
   char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                            
   // char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
   int ntlm_flags;
   unsigned char tmp_challenge[8];
   unsigned char tmp_flags[4];
-  unsigned char target_offset[2];
-  unsigned char target_length[2];  
+  size_t target_offset;
+  size_t target_length;  
 
   // size_t type2len;
   // int type2templen;
@@ -773,9 +773,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           for (i = 0; i < 8; i++) {
 
             if (i == 0 || i == 1)
-              target_length[i] = (unsigned char) *type2++;
+              target_length += (int) *type2++;
             else if (i == 4 || i == 5) 
-              target_offset[i - 4] = (unsigned char) *type2++;
+              target_offset += (int) *type2++;
             else 
               *type2++;
           }
@@ -1172,7 +1172,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             tmp4 = (char *)safe_malloc(ntresplen + 1);
             memcpy(tmp4, tmphash, 16);
             memcpy(tmp4 + 16, tmp3 + 8, tmplen3 - 8);
-            ptr_ntresp = tmp4;
+            ptr_ntresp = (unsgined char) tmp4;
             /* LMv2 response 
             * 1. Calculate NTLM hash. 
             * 2. Unicode uppercase username and target name
