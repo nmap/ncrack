@@ -1209,14 +1209,28 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             /* Concatenate the two strings.
             */
-            
-            char userdomain [sizeof(user_upper_unicode) + sizeof(target_name)];
+            char test_target[12];
+            test_target[0] = "0x44";
+            test_target[1] = "0x00";
+            test_target[2] = "0x4f";
+            test_target[3] = "0x00";
+            test_target[4] = "0x4d";
+            test_target[5] = "0x00";
+            test_target[6] = "0x41";
+            test_target[7] = "0x00";
+            test_target[8] = "0x49";
+            test_target[9] = "0x00";
+            test_target[10] = "0x4e";
+            test_target[11] = "0x00";
+
+
+            char userdomain [sizeof(user_upper_unicode) + sizeof(test_target)];
             // snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
             for (i=0; i <sizeof(user_upper_unicode); i++){
               userdomain[i] = user_upper_unicode[i];
             }
-            for (i=sizeof(user_upper_unicode); i <sizeof(target_name)+sizeof(user_upper_unicode); i++){
-              userdomain[i] = target_name[i-sizeof(user_upper_unicode)];
+            for (i=sizeof(user_upper_unicode); i <sizeof(test_target)+sizeof(user_upper_unicode); i++){
+              userdomain[i] = test_target[i-sizeof(user_upper_unicode)];
             }
             // strcat(userdomain, target_name);
             printf("Userdomain: ");
