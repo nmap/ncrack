@@ -1300,8 +1300,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             uint64_t t;
             t = unix2nttime(time(NULL));
             printf("%" PRIu64 "\n", t);
-            // t & 0xffffffff;
-            // t >> 32;
+            t = t & 0xffffffff;
+            t = t >> 32;
 
             /* Fill it with zeros. That's for the Unknown and Reserved fields.
             */
@@ -1313,7 +1313,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
 
             memcpy(tmp3, challenge, 8);
-            memcpy(tmp3 + 8 + 8, timestamp, 8);
+            memcpy(tmp3 + 8 + 8, t, 8);
             memcpy(tmp3 + 16 + 8, entropy, 8);
             memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
 
