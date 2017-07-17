@@ -188,6 +188,7 @@ static void rand_str(char *dest, size_t length);
 static void extend_key_56_to_64(const unsigned char *key_56, char *key);
 static void setup_des_key(const unsigned char *key_56, DES_key_schedule *ks);
 static uint64_t unix2nttime(time_t unix_time);
+static uint64_t swap_uint64(uint64_t val);
 
 enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH, 
               WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
@@ -507,6 +508,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *domain_temp;
   char *start, *end;
   char *challenge;
+  char *timestamp;
   char *type2;
   char *type4 = NULL;
   char *target_info;
@@ -1300,8 +1302,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             uint64_t t;
             t = unix2nttime(time(NULL));
             printf("%" PRIu64 "\n", t);
-            t = t & 0xffffffff;
-            t = t >> 32;
+            swap_uint64(t);
+            printf("0x%" PRIx64 "\n", t);
 
             /* Fill it with zeros. That's for the Unknown and Reserved fields.
             */
@@ -1313,7 +1315,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
 
             memcpy(tmp3, challenge, 8);
-            memcpy(tmp3 + 8 + 8, t, 8);
+            //memcpy(tmp3 + 8 + 8, t, 8);
             memcpy(tmp3 + 16 + 8, entropy, 8);
             memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
 
@@ -1560,7 +1562,8 @@ static void extend_key_56_to_64(const unsigned char *key_56, char *key)
   key[7] = (unsigned char) ((key_56[6] << 1) & 0xFF);
 }
 
-static void setup_des_key(const unsigned char *key_56,
+static void 
+setup_des_key(const unsigned char *key_56,
                           DES_key_schedule *ks)
 {
   DES_cblock key;
@@ -1581,4 +1584,12 @@ unix2nttime(time_t unix_time)
     long long wt;
     wt = unix_time * (uint64_t)10000000 + (uint64_t)NTTIME_EPOCH;
     return wt;
+}
+
+static uint64_t 
+swap_uint64( uint64_t val )
+{
+    val = ((val << 8) & 0xFF00FF00FF00FF00ULL ) | ((val >> 8) & 0x00FF00FF00FF00FFULL );
+    val = ((val << 16) & 0xFFFF0000FFFF0000ULL ) | ((val >> 16) & 0x0000FFFF0000FFFFULL );
+    return (val << 32) | (val >> 32);
 }
