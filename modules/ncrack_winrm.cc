@@ -517,18 +517,18 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t tmplen3;
   // size_t type2_len;
   size_t tmpsize;
-  size_t targetinfo_offset;
-  size_t targetinfo_length;
+  size_t targetinfo_offset = 0;
+  size_t targetinfo_length = 0;
 
   char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                            
   // char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
   int ntlm_flags;
   unsigned char tmp_challenge[8];
-  unsigned char tmp_flags[4];
+  unsigned char tmp_buf[4];
   unsigned char *timestamp;
 
-  size_t target_offset;
-  size_t target_length;  
+  int target_offset;
+  int target_length;  
 
   // size_t type2len;
   // int type2templen;
@@ -769,29 +769,39 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           }
 
           /* Next 8 bytes are the target name. In case of NTLMv2
-          * authentication we will need them.     
+          * authentication we will need them.   
+          * 2 bytes target name length
+          * 2 bytes target name length (we skip that)
+          * 4 bytes target name offset  
           */
-          // size_t target_offset = 0;
-          for (i = 0; i < 8; i++) {
 
-            if (i == 0 || i == 1)
-              target_length += (int) *type2++;
-            else if (i == 4 || i == 5) 
-              target_offset += (int) *type2++;
-            else 
-              *type2++;
+          for (i = 0; i < 2; i++) {
+            tmp_buf[i] =  (unsigned char) *type2++;
+          }
+          target_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
+                          ((unsigned short)tmp_buf[1] << 8));
+
+          for (i = 0; i < 2; i++) {
+            *type2++;
           }
 
-          /* Next 4 bytes are the NTLM flags we will
-          * skip them for the moment.
+          for (i = 0; i < 4; i++) {
+            tmp_buf[i] =  (unsigned char) *type2++;
+          }
+          target_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
+          ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
+          
+
+          /* Next 4 bytes are the NTLM flags
           */
           for (i = 0; i < 4; i++) {
-            tmp_flags[i] =  (unsigned char) *type2++;
+            tmp_buf[i] =  (unsigned char) *type2++;
           }
+
           /* Convert to big endian
           */
-          ntlm_flags = ((unsigned int)tmp_flags[0]) | ((unsigned int)tmp_flags[1] << 8) |
-          ((unsigned int)tmp_flags[2] << 16) | ((unsigned int)tmp_flags[3] << 24);
+          ntlm_flags = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
+          ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
          
           if (ntlm_flags & ( 1 << 1)){
             //supports OEM
@@ -826,25 +836,33 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             printf("%x", tmp_challenge[i]);
           }printf("\n");
 
-          /* Next 8 bytes are the Target info buffer
+          /* Next 8 bytes are the Target info buffer  
+          * 2 bytes target info length
+          * 2 bytes target info length (we skip that)
+          * 4 bytes target info offset  
           */
-          for (i = 0; i < 8; i++) {
 
-            if (i == 0 || i == 1) {
-              // tmpbuffer[i] = (unsigned char) *type2++;
-              targetinfo_length += (int) *type2++;
-            }
-            else if (i == 4 || i == 5) {
-              // tmpbuffer[i - 4] = (unsigned char) *type2++;
-              targetinfo_offset += (int) *type2++;
-            }
-            else 
-              *type2++;
+          for (i = 0; i < 2; i++) {
+            tmp_buf[i] =  (unsigned char) *type2++;
+          }
+          targetinfo_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
+                          ((unsigned short)tmp_buf[1] << 8));
+
+          for (i = 0; i < 2; i++) {
+            *type2++;
           }
 
+          for (i = 0; i < 4; i++) {
+            tmp_buf[i] =  (unsigned char) *type2++;
+          }
+          targetinfo_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
+          ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
+          
 
-          target_info = (char *)safe_malloc(target_length + 1);
 
+          target_info = (char *)safe_malloc(targetinfo_length + 1);
+          target_name = (char *)safe_malloc(target_length + 1);
+          
           if (ntlm_flags & NEGOTIATE_TARGET_INFO) {
             /* If the server sends target info we will need it
             * if we use NTLMv2 authentication. For this purpose
@@ -1157,20 +1175,20 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             tmplen3= 28 + 4 + targetinfo_length + 8;
             tmp3 = (char *)safe_malloc(tmplen3 + 1);
 
-            UINTEGER64 timestamp_ull;
+            unsigned long long timestamp_ull;
 
-            timestamp_ull = openvpn_time(NULL);
-            timestamp_ull = (timestamp_ull + UINT64(11644473600)) * UINT64(10000000);
+            timestamp_ull = time(NULL);
+            timestamp_ull = (timestamp_ull + 11644473600) * 10000000;
 
             /* store little endian value */
-            timestamp[0]= timestamp_ull & UINT64(0xFF);
-            timestamp[1]= (timestamp_ull  >> 8)  & UINT64(0xFF);
-            timestamp[2]= (timestamp_ull  >> 16) & UINT64(0xFF);
-            timestamp[3]= (timestamp_ull  >> 24) & UINT64(0xFF);
-            timestamp[4]= (timestamp_ull  >> 32) & UINT64(0xFF);
-            timestamp[5]= (timestamp_ull  >> 40) & UINT64(0xFF);
-            timestamp[6]= (timestamp_ull  >> 48) & UINT64(0xFF);
-            timestamp[7]= (timestamp_ull  >> 56) & UINT64(0xFF);
+            timestamp[0]= timestamp_ull & 0xFF;
+            timestamp[1]= (timestamp_ull  >> 8)  & 0xFF;
+            timestamp[2]= (timestamp_ull  >> 16) & 0xFF;
+            timestamp[3]= (timestamp_ull  >> 24) & 0xFF;
+            timestamp[4]= (timestamp_ull  >> 32) & 0xFF;
+            timestamp[5]= (timestamp_ull  >> 40) & 0xFF;
+            timestamp[6]= (timestamp_ull  >> 48) & 0xFF;
+            timestamp[7]= (timestamp_ull  >> 56) & 0xFF;
 
 
             /* Fill it with zeros. That's for the Unknown and Reserved fields.
