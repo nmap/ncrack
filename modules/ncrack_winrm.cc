@@ -171,6 +171,8 @@ using namespace std;
 #define USE_LM 0
 #define USE_NTLMv2 0
 
+#define NTTIME_EPOCH 0x019DB1DED53E8000LL
+
 extern NcrackOps o;
 
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
@@ -185,7 +187,7 @@ static void winrm_free(Connection *con);
 static void rand_str(char *dest, size_t length);
 static void extend_key_56_to_64(const unsigned char *key_56, char *key);
 static void setup_des_key(const unsigned char *key_56, DES_key_schedule *ks);
-
+static uint64_t unix2nttime(time_t unix_time);
 
 enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH, 
               WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
@@ -1146,7 +1148,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * by the server.
             */
 
-            unsigned char ntbuffer[0x18];
+            //unsigned char ntbuffer[0x18];
             char entropy[8];
             unsigned char ntlmv2hash[0x18];
             unsigned char tmphash[0x18];
@@ -1209,19 +1211,20 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             /* Concatenate the two strings.
             */
-            char test_target[12];
-            test_target[0] = "0x44";
-            test_target[1] = "0x00";
-            test_target[2] = "0x4f";
-            test_target[3] = "0x00";
-            test_target[4] = "0x4d";
-            test_target[5] = "0x00";
-            test_target[6] = "0x41";
-            test_target[7] = "0x00";
-            test_target[8] = "0x49";
-            test_target[9] = "0x00";
-            test_target[10] = "0x4e";
-            test_target[11] = "0x00";
+
+            unsigned char test_target[12];
+            test_target[0] = 0x44;
+            test_target[1] = 0x00;
+            test_target[2] = 0x4f;
+            test_target[3] = 0x00;
+            test_target[4] = 0x4d;
+            test_target[5] = 0x00;
+            test_target[6] = 0x41;
+            test_target[7] = 0x00;
+            test_target[8] = 0x49;
+            test_target[9] = 0x00;
+            test_target[10] = 0x4e;
+            test_target[11] = 0x00;
 
 
             char userdomain [sizeof(user_upper_unicode) + sizeof(test_target)];
@@ -1235,7 +1238,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             // strcat(userdomain, target_name);
             printf("Userdomain: ");
             for(i=0;i<sizeof(userdomain);i++){
-              printf("%02x\n",userdomain[i] );
+              printf("%02x",userdomain[i] );
             }printf("\n");
 
             /* This string will then be hashed by HMAC_MD5 with NTLM 
@@ -1250,7 +1253,16 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             HMAC(EVP_md5(), ntbuffer, 16, (unsigned const char*) userdomain, 
                   sizeof(userdomain), ntlmv2hash, NULL);
+            printf("NTLM key : ");
+            for(i=0;i<sizeof(ntbuffer);i++){
+              printf("%02x",ntbuffer[i] );
+            }printf("\n");
 
+
+            printf("NTLMV2 hash: ");
+            for(i=0;i<sizeof(ntlmv2hash);i++){
+              printf("%02x",ntlmv2hash[i] );
+            }printf("\n");
             /* NTLMv2 response 
             * We need to construct the NTLMv2 blob here.
             */
@@ -1271,21 +1283,25 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             tmplen3= 28 + 4 + targetinfo_length + 8;
             tmp3 = (char *)safe_malloc(tmplen3 + 1);
 
-            unsigned long long timestamp_ull;
+            // unsigned long long timestamp_ull;
 
-            timestamp_ull = time(NULL);
-            timestamp_ull = (timestamp_ull + 11644473600) * 10000000;
+            // timestamp_ull = time(NULL);
+            // timestamp_ull = (timestamp_ull + 11644473600) * 10000000;
 
-            /* store little endian value */
-            timestamp[0]= timestamp_ull & 0xFF;
-            timestamp[1]= (timestamp_ull  >> 8)  & 0xFF;
-            timestamp[2]= (timestamp_ull  >> 16) & 0xFF;
-            timestamp[3]= (timestamp_ull  >> 24) & 0xFF;
-            timestamp[4]= (timestamp_ull  >> 32) & 0xFF;
-            timestamp[5]= (timestamp_ull  >> 40) & 0xFF;
-            timestamp[6]= (timestamp_ull  >> 48) & 0xFF;
-            timestamp[7]= (timestamp_ull  >> 56) & 0xFF;
-
+            // /* store little endian value */
+            // timestamp[0]= timestamp_ull & 0xFF;
+            // timestamp[1]= (timestamp_ull  >> 8)  & 0xFF;
+            // timestamp[2]= (timestamp_ull  >> 16) & 0xFF;
+            // timestamp[3]= (timestamp_ull  >> 24) & 0xFF;
+            // timestamp[4]= (timestamp_ull  >> 32) & 0xFF;
+            // timestamp[5]= (timestamp_ull  >> 40) & 0xFF;
+            // timestamp[6]= (timestamp_ull  >> 48) & 0xFF;
+            // timestamp[7]= (timestamp_ull  >> 56) & 0xFF;
+            uint64_t t;
+            t = unix2nttime(time(NULL));
+            printf("%" PRIu64 "\n", t);
+            // t & 0xffffffff;
+            // t >> 32;
 
             /* Fill it with zeros. That's for the Unknown and Reserved fields.
             */
@@ -1557,4 +1573,12 @@ static void setup_des_key(const unsigned char *key_56,
 
   /* Set the key */
   DES_set_key(&key, ks);
+}
+
+static uint64_t
+unix2nttime(time_t unix_time)
+{
+    long long wt;
+    wt = unix_time * (uint64_t)10000000 + (uint64_t)NTTIME_EPOCH;
+    return wt;
 }
