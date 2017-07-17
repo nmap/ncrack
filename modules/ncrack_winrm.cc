@@ -533,7 +533,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   unsigned char tmp_buf[4];
   char tmp_buf2[4];
   char tmp_buf3[8];
-  unsigned char *timestamp;
+  //unsigned char *timestamp;
 
   int target_offset;
   int target_length;  
@@ -1087,10 +1087,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           hostlen = 0;
           lmrespoff = 64;
           ntrespoff = lmrespoff + 0x18;
-          domoff = ntrespoff + ntresplen;
-          //domoff = lmrespoff + 0x18;
-          useroff = domoff + domainlen;
-          hostoff = useroff + userlen;
 
           /* The following part is NM response. Currently it seems
           * that we are sending only the LM flag. Maybe we can get 
@@ -1367,6 +1363,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memcpy(&lmresp[16], chall_nonce, sizeof(chall_nonce));
 
           }
+          domoff = ntrespoff + ntresplen;
+          //domoff = lmrespoff + 0x18;
+          useroff = domoff + domainlen;
+          hostoff = useroff + userlen;
 
 
 
