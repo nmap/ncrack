@@ -781,26 +781,28 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             
 
           // }
-          snprintf(tmp_buf2, 2, "%02x", *type2++);
+          snprintf(tmp_buf2, 4, "%02x", *type2++);
           printf("Temp buf: %02x", tmp_buf2);
-          target_length = (int)strtol(tmp_buf2, NULL, 16);
+          target_length = (int)strtol(tmp_buf2, NULL, 10);
           // target_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
           //                 ((unsigned short)tmp_buf[1] << 8));
 
           for (i = 0; i < 3; i++) {
             *type2++;
           }
-          snprintf(tmp_buf3, 2, "%02x", *type2++);
+          /* We want to read 4 bytes and translate them as decimal
+          * The values are literals. They are written as decimals
+          * not as hex.
+          */
+          snprintf(tmp_buf3, 4, "%02x", *type2++);
           for (i = 0; i < 3; i++) {
             // snprintf(tmp_buf3 + (i*2), 2, "%x", *type2++);
             // tmp_buf[i] =  (unsigned char) *type2++;
-            *type2++
+            *type2++;
           }
-          printf("offset!: ");
-          for (i = 0; i < 4; i++) {
-              printf("%02x", tmp_buf3[i]);
-          }printf("\n");
-           target_offset = (int)strtol(tmp_buf3, NULL, 16);
+
+          target_offset = (int)strtol(tmp_buf3, NULL, 10);
+          printf("offset!: %d", target_offset);
           // target_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
           // ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
           
@@ -855,21 +857,33 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * 4 bytes target info offset  
           */
 
-          for (i = 0; i < 2; i++) {
-            tmp_buf[i] =  (unsigned char) *type2++;
-          }
-          targetinfo_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
-                          ((unsigned short)tmp_buf[1] << 8));
+          // for (i = 0; i < 2; i++) {
+          //   tmp_buf[i] =  (unsigned char) *type2++;
+          // }
+          // targetinfo_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
+          //                 ((unsigned short)tmp_buf[1] << 8));
 
-          for (i = 0; i < 2; i++) {
+
+          snprintf(tmp_buf3, 4, "%02x", *type2++);
+          for (i = 0; i < 3; i++) {
             *type2++;
           }
 
-          for (i = 0; i < 4; i++) {
-            tmp_buf[i] =  (unsigned char) *type2++;
+          targetinfo_length = (int)strtol(tmp_buf3, NULL, 10);
+          printf(" target info length!: %d", targetinfo_length);
+
+          snprintf(tmp_buf3, 4, "%02x", *type2++);
+          for (i = 0; i < 3; i++) {
+            *type2++;
           }
-          targetinfo_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
-          ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
+
+          targetinfo_offset = (int)strtol(tmp_buf3, NULL, 10);
+          printf(" target info offset!: %d", targetinfo_offset);
+          // for (i = 0; i < 4; i++) {
+          //   tmp_buf[i] =  (unsigned char) *type2++;
+          // }
+          // targetinfo_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
+          // ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
           
 
 
