@@ -526,7 +526,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   unsigned char tmp_challenge[8];
   unsigned char tmp_buf[4];
   char tmp_buf2[4];
-  char tmp_buf2[8];
+  char tmp_buf3[8];
   unsigned char *timestamp;
 
   int target_offset;
@@ -723,7 +723,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                                         (*) -> Optional
   */
 
-            // dig[strlen(NTLMSSP_SIGNATURE)] = '\0';
 
           /* The first 7 bytes are the string NTLMSSP
           * followed by a null byte.
@@ -777,23 +776,30 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * 4 bytes target name offset  
           */
 
-          for (i = 0; i < 2; i++) {
-            // tmp_buf[i] =  (unsigned char) *type2++;
-            snprintf(tmp_buf2 + (i*2), 2, "%x", *type2++);
+          // for (i = 0; i < 2; i++) {
+          //   // tmp_buf[i] =  (unsigned char) *type2++;
+            
 
-          }
+          // }
+          snprintf(tmp_buf2, 2, "%02x", *type2++);
+          printf("Temp buf: %02x", tmp_buf2);
           target_length = (int)strtol(tmp_buf2, NULL, 16);
           // target_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
           //                 ((unsigned short)tmp_buf[1] << 8));
 
-          for (i = 0; i < 2; i++) {
+          for (i = 0; i < 3; i++) {
             *type2++;
           }
-
-          for (i = 0; i < 4; i++) {
-            snprintf(tmp_buf3 + (i*2), 2, "%x", *type2++);
+          snprintf(tmp_buf3, 2, "%02x", *type2++);
+          for (i = 0; i < 3; i++) {
+            // snprintf(tmp_buf3 + (i*2), 2, "%x", *type2++);
             // tmp_buf[i] =  (unsigned char) *type2++;
+            *type2++
           }
+          printf("offset!: ");
+          for (i = 0; i < 4; i++) {
+              printf("%02x", tmp_buf3[i]);
+          }printf("\n");
            target_offset = (int)strtol(tmp_buf3, NULL, 16);
           // target_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
           // ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
