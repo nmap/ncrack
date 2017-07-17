@@ -1302,8 +1302,19 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             uint64_t t;
             t = unix2nttime(time(NULL));
             printf("%" PRIu64 "\n", t);
-            swap_uint64(t);
+            //swap_uint64(t);
             printf("0x%" PRIx64 "\n", t);
+
+            tmp3[8] = (char)(t & 0x000000FF);
+            tmp3[9] = (char)((t & 0x0000FF00) >> 8);
+            tmp3[10] = (char)((t & 0x00FF0000) >> 16);
+            tmp3[11] = (char)((t & 0xFF000000) >> 24);
+            tmp3[12] = (char)((t >> 32) & 0x000000FF);
+            tmp3[13] = (char)(((t >> 32) & 0x0000FF00) >> 8);
+            tmp3[14] = (char)(((t >> 32) & 0x00FF0000) >> 16);
+            tmp3[15] = (char)(((t >> 32) & 0xFF000000) >> 24);
+
+
 
             /* Fill it with zeros. That's for the Unknown and Reserved fields.
             */
@@ -1586,10 +1597,15 @@ unix2nttime(time_t unix_time)
     return wt;
 }
 
-static uint64_t 
+static void 
 swap_uint64( uint64_t val )
 {
     val = ((val << 8) & 0xFF00FF00FF00FF00ULL ) | ((val >> 8) & 0x00FF00FF00FF00FFULL );
     val = ((val << 16) & 0xFFFF0000FFFF0000ULL ) | ((val >> 16) & 0x0000FFFF0000FFFFULL );
     return (val << 32) | (val >> 32);
+
+    val[0] = (char)(value & 0x000000FF);
+    val[1] = (char)((value & 0x0000FF00) >> 8);
+    val[2] = (char)((value & 0x00FF0000) >> 16);
+    val[3] = (char)((value & 0xFF000000) >> 24);
 }
