@@ -525,6 +525,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   int ntlm_flags;
   unsigned char tmp_challenge[8];
   unsigned char tmp_buf[4];
+  char tmp_buf2[4];
+  char tmp_buf2[8];
   unsigned char *timestamp;
 
   int target_offset;
@@ -776,20 +778,25 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           */
 
           for (i = 0; i < 2; i++) {
-            tmp_buf[i] =  (unsigned char) *type2++;
+            // tmp_buf[i] =  (unsigned char) *type2++;
+            snprintf(tmp_buf2 + (i*2), 2, "%x", *type2++);
+
           }
-          target_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
-                          ((unsigned short)tmp_buf[1] << 8));
+          target_length = (int)strtol(tmp_buf2, NULL, 16);
+          // target_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
+          //                 ((unsigned short)tmp_buf[1] << 8));
 
           for (i = 0; i < 2; i++) {
             *type2++;
           }
 
           for (i = 0; i < 4; i++) {
-            tmp_buf[i] =  (unsigned char) *type2++;
+            snprintf(tmp_buf3 + (i*2), 2, "%x", *type2++);
+            // tmp_buf[i] =  (unsigned char) *type2++;
           }
-          target_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
-          ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
+           target_offset = (int)strtol(tmp_buf3, NULL, 16);
+          // target_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
+          // ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
           
 
           /* Next 4 bytes are the NTLM flags
@@ -862,7 +869,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           target_info = (char *)safe_malloc(targetinfo_length + 1);
           target_name = (char *)safe_malloc(target_length + 1);
-          
+
           if (ntlm_flags & NEGOTIATE_TARGET_INFO) {
             /* If the server sends target info we will need it
             * if we use NTLMv2 authentication. For this purpose
