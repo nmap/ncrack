@@ -499,6 +499,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *tmp;
   char *tmp2;
   char *tmp3;
+  char *tmp4;
   char *b64;
   char *host;
   char *domain_temp;
@@ -516,6 +517,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t tmplen3;
   // size_t type2_len;
   size_t tmpsize;
+  size_t targetinfo_offset;
+  size_t char targetinfo_length;
+
   char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                            
   // char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
   int ntlm_flags;
@@ -523,8 +527,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   unsigned char tmp_flags[4];
   unsigned char target_offset[2];
   unsigned char target_length[2];  
-  unsigned char targetinfo_offset[2];
-  unsigned char targetinfo_length[2];
+
   // size_t type2len;
   // int type2templen;
   Service *serv = con->service;
@@ -825,10 +828,14 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           */
           for (i = 0; i < 8; i++) {
 
-            if (i == 0 || i == 1)
-              targetinfo_length[i] = (unsigned char) *type2++;
-            else if (i == 4 || i == 5) 
-              targetinfo_offset[i - 4] = (unsigned char) *type2++;
+            if (i == 0 || i == 1) {
+              // tmpbuffer[i] = (unsigned char) *type2++;
+              targetinfo_length += (int) *type2++;
+            }
+            else if (i == 4 || i == 5) {
+              // tmpbuffer[i - 4] = (unsigned char) *type2++;
+              targetinfo_offset += (int) *type2++;
+            }
             else 
               *type2++;
           }
@@ -1072,7 +1079,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             */
 
             unsigned char ntbuffer[0x18];
-            unsigned char entropy[8];
+            char entropy[8];
             unsigned char ntlmv2hash[0x18];
             unsigned char tmphash[0x18];
             /* Generate 8 random characters for NTLMv2 and LMv2
@@ -1115,8 +1122,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * I don't know yet. Should test it.
             */
 
-            HMAC(EVP_md5(), ntbuffer, 16, userdomain, 
-                  sizeof(userdomain), ntlmv2hash, 16);
+            HMAC(EVP_md5(), ntbuffer, 16, (unsigned const char*) userdomain, 
+                  sizeof(userdomain), ntlmv2hash, NULL);
 
             /* NTLMv2 response 
             * We need to construct the NTLMv2 blob here.
@@ -1143,7 +1150,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memset(tmp3, 0, tmplen3);
 
             snprintf((char *)tmp3 + 8, 4,
-             "\x01\x01%c%c"   /* Blob Signature */
+             "\x01\x01%c%c",   /* Blob Signature */
              0, 0);
 
 
@@ -1152,8 +1159,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memcpy(tmp3 + 16 + 8, entropy, 8);
             memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
 
-            HMAC(EVP_md5(), ntlmv2hash, 16, tmp3, 
-                  sizeof(tmp3), tmphash, 16);
+            HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) tmp3, 
+                  sizeof(tmp3), tmphash, NULL);
 
             /* Now we want the same blob but without the concatenated
             * nonce at the beggining. Instead the first 16 bytes will 
@@ -1183,8 +1190,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             snprintf(chall_nonce, sizeof(challenge), "%s", challenge);
             strcat(chall_nonce, entropy);
 
-            HMAC(EVP_md5(), ntlmv2hash, 16, chall_nonce, 
-                  sizeof(chall_nonce), lmresp, 16);
+            HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) chall_nonce, 
+                  sizeof(chall_nonce), lmresp, NULL);
 
             memcpy(&lmresp[16], chall_nonce, sizeof(chall_nonce));
 
