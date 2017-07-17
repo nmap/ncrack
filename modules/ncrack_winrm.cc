@@ -506,6 +506,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *start, *end;
   char *challenge;
   char *type2;
+  char *type4;
   char *target_info;
   char *target_name;
   // char *pw_upper;
@@ -515,10 +516,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t tmplen;
   size_t tmplen2;
   size_t tmplen3;
+  size_t tmplen4;
   // size_t type2_len;
   size_t tmpsize;
-  size_t targetinfo_offset = 0;
-  size_t targetinfo_length = 0;
+  int targetinfo_offset;
+  int targetinfo_length;
 
   char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                            
   // char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
@@ -782,8 +784,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           // }
           snprintf(tmp_buf2, 4, "%02x", *type2++);
-          printf("Temp buf: %02x", tmp_buf2);
+
           target_length = (int)strtol(tmp_buf2, NULL, 10);
+          printf("Temp buf: %d", target_length);
           // target_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
           //                 ((unsigned short)tmp_buf[1] << 8));
 
@@ -863,6 +866,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           // targetinfo_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
           //                 ((unsigned short)tmp_buf[1] << 8));
 
+          for (i = 0; i < 8; i++) {
+            *type2++;
+          }
 
           snprintf(tmp_buf3, 4, "%02x", *type2++);
           for (i = 0; i < 3; i++) {
@@ -870,7 +876,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           }
 
           targetinfo_length = (int)strtol(tmp_buf3, NULL, 10);
-          printf(" target info length!: %d", targetinfo_length);
+          printf("target info length: %d\n", targetinfo_length);
 
           snprintf(tmp_buf3, 4, "%02x", *type2++);
           for (i = 0; i < 3; i++) {
@@ -878,7 +884,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           }
 
           targetinfo_offset = (int)strtol(tmp_buf3, NULL, 10);
-          printf(" target info offset!: %d", targetinfo_offset);
+          printf(" target info offset: %d\n", targetinfo_offset);
           // for (i = 0; i < 4; i++) {
           //   tmp_buf[i] =  (unsigned char) *type2++;
           // }
@@ -899,8 +905,13 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* We read from type2 at offset - 40. 40 are the bytes
             * we have already read from the buffer.
             */
-            memcpy(&target_name, &type2[target_offset - 40], target_length);
-            memcpy(&target_info, &type2[targetinfo_offset - 40], targetinfo_length);
+            type4 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
+
+            tmplen4 = strlen(challenge);
+            base64_decode(challenge, tmplen4, type4);
+
+            memcpy(&target_name, &type4[target_offset], target_length);
+            memcpy(&target_info, &type4[targetinfo_offset], targetinfo_length);
             printf("Target Name: ");
             for(i=0; i<target_length; i++){
               printf("%02x", target_name[i]);
