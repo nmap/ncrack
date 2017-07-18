@@ -1235,13 +1235,13 @@ entropy[7] = 0x44;
 
 
 
-            char userdomain[sizeof(user_upper_unicode) + sizeof(target_name)];
+            char userdomain[sizeof(user_upper_unicode) + sizeof(target_name2)];
             // snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
             for (i=0; i <sizeof(user_upper_unicode); i++){
               userdomain[i] = user_upper_unicode[i];
             }
-            for (i=sizeof(user_upper_unicode); i <sizeof(target_name)+sizeof(user_upper_unicode); i++){
-              userdomain[i] = target_name[i-sizeof(user_upper_unicode)];
+            for (i=sizeof(user_upper_unicode); i <sizeof(target_name2)+sizeof(user_upper_unicode); i++){
+              userdomain[i] = target_name2[i-sizeof(user_upper_unicode)];
             }
             // strcat(userdomain, target_name);
             printf("Userdomain: ");
@@ -1312,8 +1312,16 @@ entropy[7] = 0x44;
             tmp3[15+8] = (char)(((t >> 32) & 0xFF000000) >> 24);
 
 
-
-
+//Testing
+//0x0090d336b734c301
+tmp3[8+8] = 0x00;
+tmp3[9+8] = 0x90;
+tmp3[10+8] = 0xd3;
+tmp3[11+8] = 0x36;
+tmp3[12+8] = 0xb7;
+tmp3[13+8] = 0x34;
+tmp3[14+8] = 0xc3;
+tmp3[15+8] = 0x01;
             snprintf((char *)tmp3 + 8, 4,
              "\x01\x01%c%c",   /* Blob Signature */
              0, 0);
@@ -1323,6 +1331,11 @@ entropy[7] = 0x44;
             //memcpy(tmp3 + 8 + 8, t, 8);
             memcpy(tmp3 + 16 + 8, entropy, 8);
             memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
+
+            printf("Blob: ");
+            for(i=0;i<sizeof(tmp3);i++){
+              printf("%02x",tmp3[i] );
+            }printf("\n");
 
             HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) tmp3, 
                   sizeof(tmp3), tmphash, NULL);
@@ -1352,12 +1365,9 @@ entropy[7] = 0x44;
             * At this point we have performed step 1, 2 and 3
             */
 
-
+// LMv2 WORKS
             char chall_nonce [16];
-            // snprintf(chall_nonce, sizeof(tmp_challenge), "%s", tmp_challenge);
 
-            // strcat(chall_nonce, entropy);
-            
             for (i=0; i <sizeof(tmp_challenge); i++){
               chall_nonce[i] = tmp_challenge[i];
             }
@@ -1365,26 +1375,26 @@ entropy[7] = 0x44;
               chall_nonce[i] = entropy[i-sizeof(tmp_challenge)];
             }
 
-            printf("Chall_nonce: ");
-            for(i=0;i<sizeof(chall_nonce);i++){
-              printf("%02x",chall_nonce[i] );
-            }printf("\n");
+            // printf("Chall_nonce: ");
+            // for(i=0;i<sizeof(chall_nonce);i++){
+            //   printf("%02x",chall_nonce[i] );
+            // }printf("\n");
 
 
             HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) chall_nonce, 
                   sizeof(chall_nonce), lmresp, NULL);
 
-            printf("LM resp: ");
-            for(i=0;i<sizeof(lmresp);i++){
-              printf("%02x",lmresp[i] );
-            }printf("\n");
+            // printf("LM resp: ");
+            // for(i=0;i<sizeof(lmresp);i++){
+            //   printf("%02x",lmresp[i] );
+            // }printf("\n");
 
-            memcpy(&lmresp[16], chall_nonce, sizeof(chall_nonce));
+            memcpy(&lmresp[16], entropy, sizeof(entropy));
 
-            printf("LM resp2: ");
-            for(i=0;i<sizeof(lmresp);i++){
-              printf("%02x",lmresp[i] );
-            }printf("\n");
+            // printf("LM resp2: ");
+            // for(i=0;i<sizeof(lmresp);i++){
+            //   printf("%02x",lmresp[i] );
+            // }printf("\n");
 
           }
           domoff = ntrespoff + ntresplen;
