@@ -1210,28 +1210,31 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* Concatenate the two strings.
             */
 
-            unsigned char test_target[12];
-            test_target[0] = 0x44;
-            test_target[1] = 0x00;
-            test_target[2] = 0x4f;
-            test_target[3] = 0x00;
-            test_target[4] = 0x4d;
-            test_target[5] = 0x00;
-            test_target[6] = 0x41;
-            test_target[7] = 0x00;
-            test_target[8] = 0x49;
-            test_target[9] = 0x00;
-            test_target[10] = 0x4e;
-            test_target[11] = 0x00;
+            unsigned char target_name2[12];
+            target_name2[0] = 0x44;
+            target_name2[1] = 0x00;
+            target_name2[2] = 0x4f;
+            target_name2[3] = 0x00;
+            target_name2[4] = 0x4d;
+            target_name2[5] = 0x00;
+            target_name2[6] = 0x41;
+            target_name2[7] = 0x00;
+            target_name2[8] = 0x49;
+            target_name2[9] = 0x00;
+            target_name2[10] = 0x4e;
+            target_name2[11] = 0x00;
 
 
-            char userdomain [sizeof(user_upper_unicode) + sizeof(test_target)];
+            0xffffff0011223344
+
+
+            char userdomain [sizeof(user_upper_unicode) + sizeof(target_name)];
             // snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
             for (i=0; i <sizeof(user_upper_unicode); i++){
               userdomain[i] = user_upper_unicode[i];
             }
-            for (i=sizeof(user_upper_unicode); i <sizeof(test_target)+sizeof(user_upper_unicode); i++){
-              userdomain[i] = test_target[i-sizeof(user_upper_unicode)];
+            for (i=sizeof(user_upper_unicode); i <sizeof(target_name)+sizeof(user_upper_unicode); i++){
+              userdomain[i] = target_name[i-sizeof(user_upper_unicode)];
             }
             // strcat(userdomain, target_name);
             printf("Userdomain: ");
@@ -1295,33 +1298,35 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             // timestamp[5]= (timestamp_ull  >> 40) & 0xFF;
             // timestamp[6]= (timestamp_ull  >> 48) & 0xFF;
             // timestamp[7]= (timestamp_ull  >> 56) & 0xFF;
+
+            /* Fill it with zeros. That's for the Unknown and Reserved fields.
+            */
+            memset(tmp3, 0, tmplen3);
+
             uint64_t t;
             t = unix2nttime(time(NULL));
             printf("%" PRIu64 "\n", t);
             //swap_uint64(t);
             printf("0x%" PRIx64 "\n", t);
 
-            tmp3[8] = (char)(t & 0x000000FF);
-            tmp3[9] = (char)((t & 0x0000FF00) >> 8);
-            tmp3[10] = (char)((t & 0x00FF0000) >> 16);
-            tmp3[11] = (char)((t & 0xFF000000) >> 24);
-            tmp3[12] = (char)((t >> 32) & 0x000000FF);
-            tmp3[13] = (char)(((t >> 32) & 0x0000FF00) >> 8);
-            tmp3[14] = (char)(((t >> 32) & 0x00FF0000) >> 16);
-            tmp3[15] = (char)(((t >> 32) & 0xFF000000) >> 24);
+            tmp3[8+8] = (char)(t & 0x000000FF);
+            tmp3[9+8] = (char)((t & 0x0000FF00) >> 8);
+            tmp3[10+8] = (char)((t & 0x00FF0000) >> 16);
+            tmp3[11+8] = (char)((t & 0xFF000000) >> 24);
+            tmp3[12+8] = (char)((t >> 32) & 0x000000FF);
+            tmp3[13+8] = (char)(((t >> 32) & 0x0000FF00) >> 8);
+            tmp3[14+8] = (char)(((t >> 32) & 0x00FF0000) >> 16);
+            tmp3[15+8] = (char)(((t >> 32) & 0xFF000000) >> 24);
 
 
 
-            /* Fill it with zeros. That's for the Unknown and Reserved fields.
-            */
-            memset(tmp3, 0, tmplen3);
 
             snprintf((char *)tmp3 + 8, 4,
              "\x01\x01%c%c",   /* Blob Signature */
              0, 0);
 
 
-            memcpy(tmp3, challenge, 8);
+            memcpy(tmp3, tmp_challenge, 8);
             //memcpy(tmp3 + 8 + 8, t, 8);
             memcpy(tmp3 + 16 + 8, entropy, 8);
             memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
@@ -1340,6 +1345,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memcpy(tmp4, tmphash, 16);
             memcpy(tmp4 + 16, tmp3 + 8, tmplen3 - 8);
             ptr_ntresp = (unsigned char *) tmp4;
+
             /* LMv2 response 
             * 1. Calculate NTLM hash. 
             * 2. Unicode uppercase username and target name
@@ -1353,8 +1359,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * At this point we have performed step 1, 2 and 3
             */
 
+
             char chall_nonce [16];
-            snprintf(chall_nonce, sizeof(challenge), "%s", challenge);
+            snprintf(chall_nonce, sizeof(tmp_challenge), "%s", tmp_challenge);
             strcat(chall_nonce, entropy);
 
             HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) chall_nonce, 
@@ -1597,15 +1604,11 @@ unix2nttime(time_t unix_time)
     return wt;
 }
 
-static void 
+/* we dont use that */
+static uint64_t 
 swap_uint64( uint64_t val )
 {
     val = ((val << 8) & 0xFF00FF00FF00FF00ULL ) | ((val >> 8) & 0x00FF00FF00FF00FFULL );
     val = ((val << 16) & 0xFFFF0000FFFF0000ULL ) | ((val >> 16) & 0x0000FFFF0000FFFFULL );
     return (val << 32) | (val >> 32);
-
-    val[0] = (char)(value & 0x000000FF);
-    val[1] = (char)((value & 0x0000FF00) >> 8);
-    val[2] = (char)((value & 0x00FF0000) >> 16);
-    val[3] = (char)((value & 0xFF000000) >> 24);
 }
