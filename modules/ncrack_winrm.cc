@@ -1493,6 +1493,7 @@ tmp3[15+8] = 0x01;
                             NEGOTIATE_NTLM_KEY)
                   );
 /*TODO should implement this later*/
+
           // if (ntlm_flags & NEGOTIATE_NTLM_KEY) {
           //   memset(&tmp2 + 20, SHORTPAIR(ntresplen), 4);
           //   memset(&tmp2 + 24, SHORTPAIR(ntresplen), 4);
