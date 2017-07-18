@@ -1013,14 +1013,14 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           DES_key_schedule ks;
 
 //Testing
-// tmp_challenge[0] = 0x01;
-// tmp_challenge[1] = 0x23;
-// tmp_challenge[2] = 0x45;
-// tmp_challenge[3] = 0x67;
-// tmp_challenge[4] = 0x89;
-// tmp_challenge[5] = 0xab;
-// tmp_challenge[6] = 0xcd;
-// tmp_challenge[7] = 0xef;
+tmp_challenge[0] = 0x01;
+tmp_challenge[1] = 0x23;
+tmp_challenge[2] = 0x45;
+tmp_challenge[3] = 0x67;
+tmp_challenge[4] = 0x89;
+tmp_challenge[5] = 0xab;
+tmp_challenge[6] = 0xcd;
+tmp_challenge[7] = 0xef;
 
           /* The "fixed" password at 14 bytes length must be split
           * in two equal length keys.
@@ -1154,6 +1154,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * hashes.
             */
             rand_str(entropy, 8);
+//Testing 0xffffff0011223344
+entropy[0] = 0xff;
+entropy[1] = 0xff;
+entropy[2] = 0xff;
+entropy[3] = 0x00;
+entropy[4] = 0x11;
+entropy[5] = 0x22;
+entropy[6] = 0x33;
+entropy[7] = 0x44;
             /* Calculate NTLM hash as we did before for v1.
             * After calculating the NTLM hash we concatenate
             * the unicode form of username and Target name 
@@ -1225,10 +1234,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             target_name2[11] = 0x00;
 
 
-            0xffffff0011223344
 
-
-            char userdomain [sizeof(user_upper_unicode) + sizeof(target_name)];
+            char userdomain[sizeof(user_upper_unicode) + sizeof(target_name)];
             // snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
             for (i=0; i <sizeof(user_upper_unicode); i++){
               userdomain[i] = user_upper_unicode[i];
@@ -1284,20 +1291,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             tmplen3= 28 + 4 + targetinfo_length + 8;
             tmp3 = (char *)safe_malloc(tmplen3 + 1);
 
-            // unsigned long long timestamp_ull;
-
-            // timestamp_ull = time(NULL);
-            // timestamp_ull = (timestamp_ull + 11644473600) * 10000000;
-
-            // /* store little endian value */
-            // timestamp[0]= timestamp_ull & 0xFF;
-            // timestamp[1]= (timestamp_ull  >> 8)  & 0xFF;
-            // timestamp[2]= (timestamp_ull  >> 16) & 0xFF;
-            // timestamp[3]= (timestamp_ull  >> 24) & 0xFF;
-            // timestamp[4]= (timestamp_ull  >> 32) & 0xFF;
-            // timestamp[5]= (timestamp_ull  >> 40) & 0xFF;
-            // timestamp[6]= (timestamp_ull  >> 48) & 0xFF;
-            // timestamp[7]= (timestamp_ull  >> 56) & 0xFF;
 
             /* Fill it with zeros. That's for the Unknown and Reserved fields.
             */
@@ -1364,10 +1357,26 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             snprintf(chall_nonce, sizeof(tmp_challenge), "%s", tmp_challenge);
             strcat(chall_nonce, entropy);
 
+            printf("Chall_nonce: ");
+            for(i=0;i<sizeof(chall_nonce);i++){
+              printf("%02x",chall_nonce[i] );
+            }printf("\n");
+
+
             HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) chall_nonce, 
                   sizeof(chall_nonce), lmresp, NULL);
 
+            printf("LM resp: ");
+            for(i=0;i<sizeof(lmresp);i++){
+              printf("%02x",lmresp[i] );
+            }printf("\n");
+
             memcpy(&lmresp[16], chall_nonce, sizeof(chall_nonce));
+
+            printf("LM resp2: ");
+            for(i=0;i<sizeof(lmresp);i++){
+              printf("%02x",lmresp[i] );
+            }printf("\n");
 
           }
           domoff = ntrespoff + ntresplen;
