@@ -927,8 +927,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             }printf("\n");
           }
 
-          target_info = "\x02\x00\x0c\x00\x44\x00\x4f\x00\x4d\x00\x41\x00\x49\x00\x4e\x00\x01\x00\x0c\x00\x53\x00\x45\x00\x52\x00\x56\x00\x45\x00\x52\x00\x04\x00\x14\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x03\x00\x22\x00\x73\x00\x65\x00\x72\x00\x76\x00\x65\x00\x72\x00\x2e\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x00\x00\x00\x00";
-          target_length = sizeof(target_info);
+          // target_info = "\x02\x00\x0c\x00\x44\x00\x4f\x00\x4d\x00\x41\x00\x49\x00\x4e\x00\x01\x00\x0c\x00\x53\x00\x45\x00\x52\x00\x56\x00\x45\x00\x52\x00\x04\x00\x14\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x03\x00\x22\x00\x73\x00\x65\x00\x72\x00\x76\x00\x65\x00\x72\x00\x2e\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x00\x00\x00\x00";
+          // targetinfo_length = 98;
           /* The challenge is extracted, we can now safely
           *  proceed in construction of type 3 message.
           */
@@ -1015,14 +1015,14 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           DES_key_schedule ks;
 
 //Testing
-tmp_challenge[0] = 0x01;
-tmp_challenge[1] = 0x23;
-tmp_challenge[2] = 0x45;
-tmp_challenge[3] = 0x67;
-tmp_challenge[4] = 0x89;
-tmp_challenge[5] = 0xab;
-tmp_challenge[6] = 0xcd;
-tmp_challenge[7] = 0xef;
+// tmp_challenge[0] = 0x01;
+// tmp_challenge[1] = 0x23;
+// tmp_challenge[2] = 0x45;
+// tmp_challenge[3] = 0x67;
+// tmp_challenge[4] = 0x89;
+// tmp_challenge[5] = 0xab;
+// tmp_challenge[6] = 0xcd;
+// tmp_challenge[7] = 0xef;
 
           /* The "fixed" password at 14 bytes length must be split
           * in two equal length keys.
@@ -1157,14 +1157,14 @@ tmp_challenge[7] = 0xef;
             */
             rand_str(entropy, 8);
 //Testing 0xffffff0011223344
-entropy[0] = 0xff;
-entropy[1] = 0xff;
-entropy[2] = 0xff;
-entropy[3] = 0x00;
-entropy[4] = 0x11;
-entropy[5] = 0x22;
-entropy[6] = 0x33;
-entropy[7] = 0x44;
+// entropy[0] = 0xff;
+// entropy[1] = 0xff;
+// entropy[2] = 0xff;
+// entropy[3] = 0x00;
+// entropy[4] = 0x11;
+// entropy[5] = 0x22;
+// entropy[6] = 0x33;
+// entropy[7] = 0x44;
             /* Calculate NTLM hash as we did before for v1.
             * After calculating the NTLM hash we concatenate
             * the unicode form of username and Target name 
@@ -1237,13 +1237,13 @@ entropy[7] = 0x44;
 
 
 
-            char userdomain[sizeof(user_upper_unicode) + sizeof(target_name2)];
+            char userdomain[sizeof(user_upper_unicode) + sizeof(target_name)];
             // snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
             for (i=0; i <sizeof(user_upper_unicode); i++){
               userdomain[i] = user_upper_unicode[i];
             }
-            for (i=sizeof(user_upper_unicode); i <sizeof(target_name2)+sizeof(user_upper_unicode); i++){
-              userdomain[i] = target_name2[i-sizeof(user_upper_unicode)];
+            for (i=sizeof(user_upper_unicode); i <sizeof(target_name)+sizeof(user_upper_unicode); i++){
+              userdomain[i] = target_name[i-sizeof(user_upper_unicode)];
             }
             // strcat(userdomain, target_name);
             printf("Userdomain: ");
@@ -1316,14 +1316,14 @@ entropy[7] = 0x44;
 
 //Testing
 //0x0090d336b734c301
-tmp3[8+8] = 0x00;
-tmp3[9+8] = 0x90;
-tmp3[10+8] = 0xd3;
-tmp3[11+8] = 0x36;
-tmp3[12+8] = 0xb7;
-tmp3[13+8] = 0x34;
-tmp3[14+8] = 0xc3;
-tmp3[15+8] = 0x01;
+// tmp3[8+8] = 0x00;
+// tmp3[9+8] = 0x90;
+// tmp3[10+8] = 0xd3;
+// tmp3[11+8] = 0x36;
+// tmp3[12+8] = 0xb7;
+// tmp3[13+8] = 0x34;
+// tmp3[14+8] = 0xc3;
+// tmp3[15+8] = 0x01;
             snprintf((char *)tmp3 + 8, 4,
              "\x01\x01%c%c",   /* Blob Signature */
              0, 0);
