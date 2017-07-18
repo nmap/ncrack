@@ -1340,7 +1340,7 @@ tmp3[15+8] = 0x01;
             }printf("\n");
 
             HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) tmp3, 
-                  sizeof(tmp3), tmphash, NULL);
+                  tmplen3, tmphash, NULL);
 
             /* Now we want the same blob but without the concatenated
             * nonce at the beggining. Instead the first 16 bytes will 
