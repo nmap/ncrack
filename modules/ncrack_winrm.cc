@@ -1354,8 +1354,16 @@ entropy[7] = 0x44;
 
 
             char chall_nonce [16];
-            snprintf(chall_nonce, sizeof(tmp_challenge), "%s", tmp_challenge);
-            strcat(chall_nonce, entropy);
+            // snprintf(chall_nonce, sizeof(tmp_challenge), "%s", tmp_challenge);
+
+            // strcat(chall_nonce, entropy);
+            
+            for (i=0; i <sizeof(tmp_challenge); i++){
+              chall_nonce[i] = tmp_challenge[i];
+            }
+            for (i=sizeof(tmp_challenge); i <sizeof(tmp_challenge)+sizeof(entropy); i++){
+              chall_nonce[i] = entropy[i-sizeof(tmp_challenge)];
+            }
 
             printf("Chall_nonce: ");
             for(i=0;i<sizeof(chall_nonce);i++){
