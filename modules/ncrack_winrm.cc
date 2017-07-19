@@ -246,7 +246,8 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
     con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
     info = (winrm_info *)con->misc_info;
     if (!strcmp(hstate->auth_scheme, "Basic") 
-      || !strcmp(hstate->auth_scheme, "Negotiate")) {
+      // || !strcmp(hstate->auth_scheme, "Negotiate")
+      ) {
       printf("setting connection state\n");
       con->state = hstate->state;
     }
@@ -343,16 +344,20 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
               "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
           {
 
-          //con->state = WINRM_BASIC_AUTH;
+          
           info->auth_scheme = Strndup("Negotiate", strlen("Negotiate"));
+
+          con->state = WINRM_NEGOTIATE_AUTH;
           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
           hstate = (winrm_state *)serv->module_data;
           hstate->auth_scheme = Strndup(info->auth_scheme, 
               strlen(info->auth_scheme));
-          hstate->state = WINRM_NEGOTIATE_AUTH;
-          hstate->reconnaissance = true;
+          // hstate->state = WINRM_NEGOTIATE_AUTH;
+          // hstate->reconnaissance = true;
           serv->more_rounds = true;
-          return ncrack_module_end(nsp, con);
+          con->peer_alive = true;
+          winrm_negotiate(nsp, con);
+          // return ncrack_module_end(nsp, con);
         }   
       } 
      
@@ -1513,13 +1518,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   SHORTPAIR(lmrespoff),
                   0x0, 0x0,
 
+                  0x0, 0x0, /* NTLM response length, twice */
+                  0x0, 0x0, /* For now we set zeros and if supported */
+                  0x0, 0x0, /* we will popoulated later. */
                   0x0, 0x0,
-                  0x0, 0x0,
-                  0x0, 0x0,
-                  // SHORTPAIR(ntresplen),  /* LanManager response length, twice */
-                  // SHORTPAIR(ntresplen),
-                  // SHORTPAIR(ntrespoff),
-                  0x0, 0x0,
+
                   SHORTPAIR(domainlen),
                   SHORTPAIR(domainlen),
                   SHORTPAIR(domoff),
@@ -1544,12 +1547,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                           NEGOTIATE_NTLM_KEY |
                           NEGOTIATE_NTLM2_KEY)
                   );
-/*TODO should implement this later*/
 
           if (ntlm_flags & NEGOTIATE_NTLM_KEY) {
-            memset(&tmp2 + 20, SHORTPAIR(ntresplen), 4);
-            memset(&tmp2 + 24, SHORTPAIR(ntresplen), 4);
-            memset(&tmp2 + 28, SHORTPAIR(ntrespoff), 4);
+            snprintf(&tmp2[20], 2, "%c%c", SHORTPAIR(ntresplen));
+            snprintf(&tmp2[22], 2, "%c%c", SHORTPAIR(ntresplen));
+            snprintf(&tmp2[24], 2, "%c%c", SHORTPAIR(ntrespoff));
           }
 
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
@@ -1574,6 +1576,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
             (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
           
+
           info->substate = NEGOTIATE_RESULTS;
           break;
       }
@@ -1590,13 +1593,17 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
     case NEGOTIATE_RESULTS:
       if (winrm_loop_read(nsp, con) < 0)
         break;
-      serv->end.orly = true;
-      tmpsize = sizeof("Test termination.\n");
-      serv->end.reason = (char *)safe_malloc(tmpsize);
-      snprintf(serv->end.reason, tmpsize,
-          "Test termination.\n");
 
-      return ncrack_module_end(nsp, con);
+      info->substate = NEGOTIATE_CHALLENGE;
+
+      ((winrm_state *) serv->module_data)->state = WINRM_NEGOTIATE_AUTH;
+      // serv->end.orly = true;
+      // tmpsize = sizeof("Test termination.\n");
+      // serv->end.reason = (char *)safe_malloc(tmpsize);
+      // snprintf(serv->end.reason, tmpsize,
+      //     "Test termination.\n");
+
+      // return ncrack_module_end(nsp, con);
       /* Successful login attempt results in empty 200 response.
       * Else a 401 response will appear containing the authentication
       * methods.
