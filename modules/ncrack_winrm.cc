@@ -1264,13 +1264,13 @@ entropy[7] = 0x79;
 
 
 
-            char userdomain[sizeof(user_upper_unicode) + sizeof(target_name)];
+            char userdomain[sizeof(user_upper_unicode) + sizeof(domain_temp)];
             // snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
             for (i=0; i <sizeof(user_upper_unicode); i++){
               userdomain[i] = user_upper_unicode[i];
             }
-            for (i=sizeof(user_upper_unicode); i <sizeof(target_name)+sizeof(user_upper_unicode); i++){
-              userdomain[i] = target_name[i-sizeof(user_upper_unicode)];
+            for (i=sizeof(user_upper_unicode); i <sizeof(domain_temp)+sizeof(user_upper_unicode); i++){
+              userdomain[i] = domain_temp[i-sizeof(user_upper_unicode)];
             }
             // strcat(userdomain, target_name);
             printf("Userdomain: ");
@@ -1371,7 +1371,7 @@ tmp3[15+8] = 0x01;
             memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
 
             printf("Blob: ");
-            for(i=0;i<sizeof(tmp3);i++){
+            for(i=0;i<tmplen3;i++){
               printf("%02x",tmp3[i] );
             }printf("\n");
 
