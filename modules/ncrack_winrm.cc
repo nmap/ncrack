@@ -1513,9 +1513,12 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   SHORTPAIR(lmrespoff),
                   0x0, 0x0,
 
-                  SHORTPAIR(ntresplen),  /* LanManager response length, twice */
-                  SHORTPAIR(ntresplen),
-                  SHORTPAIR(ntrespoff),
+                  0x0, 0x0,
+                  0x0, 0x0,
+                  0x0, 0x0,
+                  // SHORTPAIR(ntresplen),  /* LanManager response length, twice */
+                  // SHORTPAIR(ntresplen),
+                  // SHORTPAIR(ntrespoff),
                   0x0, 0x0,
                   SHORTPAIR(domainlen),
                   SHORTPAIR(domainlen),
@@ -1543,11 +1546,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   );
 /*TODO should implement this later*/
 
-          // if (ntlm_flags & NEGOTIATE_NTLM_KEY) {
-          //   memset(&tmp2 + 20, SHORTPAIR(ntresplen), 4);
-          //   memset(&tmp2 + 24, SHORTPAIR(ntresplen), 4);
-          //   memset(&tmp2 + 28, SHORTPAIR(ntrespoff), 4);
-          // }
+          if (ntlm_flags & NEGOTIATE_NTLM_KEY) {
+            memset(&tmp2 + 20, SHORTPAIR(ntresplen), 4);
+            memset(&tmp2 + 24, SHORTPAIR(ntresplen), 4);
+            memset(&tmp2 + 28, SHORTPAIR(ntrespoff), 4);
+          }
 
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
           memcpy(&tmp2[ntrespoff], ptr_ntresp, ntresplen);
