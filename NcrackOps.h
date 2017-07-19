@@ -187,7 +187,6 @@ class NcrackOps {
     int verbose;
     int numhosts_scanned;
     long connection_limit;/* global maximum total connections */
-    unsigned long host_timeout;
     FILE *logfd[LOG_NUM_FILES];
     FILE *ncrack_stdout; /* Ncrack standard output */
     char *datadir;

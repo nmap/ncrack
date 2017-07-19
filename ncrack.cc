@@ -815,7 +815,6 @@ ncrack_main(int argc, char **argv)
   FILE *inputfd = NULL;
   char *normalfilename = NULL;
   char *xmlfilename = NULL;
-  unsigned long l;
   unsigned int i; /* iteration var */
   int argiter;    /* iteration for argv */
   char services_file[256]; /* path name for "ncrack-services" file */
@@ -883,8 +882,6 @@ ncrack_main(int argc, char **argv)
     {"oA", required_argument, 0, 0},  
     {"oN", required_argument, 0, 0},
     {"oX", required_argument, 0, 0},  
-    {"host_timeout", required_argument, 0, 0},
-    {"host-timeout", required_argument, 0, 0},
     {"append_output", no_argument, 0, 0},
     {"append-output", no_argument, 0, 0},
     {"log_errors", no_argument, 0, 0},
@@ -939,17 +936,6 @@ ncrack_main(int argc, char **argv)
                 "exclusive.");
           exclude_spec = strdup(optarg);
 
-        } else if (!optcmp(long_options[option_index].name, "host-timeout")) {
-          l = tval2msecs(optarg);
-          if (l <= 1500)
-            fatal("--host-timeout is specified in milliseconds unless you "
-                "qualify it by appending 's', 'm', or 'h'. The value must "
-                "be greater than 1500 milliseconds");
-          o.host_timeout = l;
-          if (l < 30000) 
-            error("host-timeout is given in milliseconds, so you specified "
-                "less than 30 seconds (%lims). This is allowed but not "
-                "recommended.", l);
         } else if (!strcmp(long_options[option_index].name, "services")) {
           parse_services(optarg, services_cmd);
         } else if (!strcmp(long_options[option_index].name, "list")) {
