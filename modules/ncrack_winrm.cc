@@ -929,6 +929,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           // target_info = "\x02\x00\x0c\x00\x44\x00\x4f\x00\x4d\x00\x41\x00\x49\x00\x4e\x00\x01\x00\x0c\x00\x53\x00\x45\x00\x52\x00\x56\x00\x45\x00\x52\x00\x04\x00\x14\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x03\x00\x22\x00\x73\x00\x65\x00\x72\x00\x76\x00\x65\x00\x72\x00\x2e\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x00\x00\x00\x00";
           // targetinfo_length = 98;
+
+
+// 0000   02 00 08 00 54 00 45 00 53 00 54 00 01 00 08 00
+// 0010   54 00 45 00 53 00 54 00 04 00 08 00 54 00 45 00
+// 0020   53 00 54 00 03 00 08 00 54 00 45 00 53 00 54 00
+// 0030   07 00 08 00 fd 11 60 12 65 00 d3 01 00 00 00 00
+
+target_info = "\x02\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x01\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x04\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x03\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x07\x00\x08\x00\xfd\x11\x60\x12\x65\x00\xd3\x01\x00\x00\x00\x00";
+targetinfo_length = 64;
           /* The challenge is extracted, we can now safely
           *  proceed in construction of type 3 message.
           */
@@ -1023,6 +1032,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 // tmp_challenge[5] = 0xab;
 // tmp_challenge[6] = 0xcd;
 // tmp_challenge[7] = 0xef;
+ //         0000   db 30 c8 ef e1 ef ba 21
+tmp_challenge[0] = 0xdb;
+tmp_challenge[1] = 0x30;
+tmp_challenge[2] = 0xc8;
+tmp_challenge[3] = 0xef;
+tmp_challenge[4] = 0xe1;
+tmp_challenge[5] = 0xef;
+tmp_challenge[6] = 0xba;
+tmp_challenge[7] = 0x21;
 
           /* The "fixed" password at 14 bytes length must be split
           * in two equal length keys.
@@ -1165,6 +1183,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 // entropy[5] = 0x22;
 // entropy[6] = 0x33;
 // entropy[7] = 0x44;
+// 0000   fb 10 3f d3 5c fa 6b 79
+entropy[0] = 0xfb;
+entropy[1] = 0x10;
+entropy[2] = 0x3f;
+entropy[3] = 0xd3;
+entropy[4] = 0x5c;
+entropy[5] = 0xfa;
+entropy[6] = 0x6b;
+entropy[7] = 0x79;
             /* Calculate NTLM hash as we did before for v1.
             * After calculating the NTLM hash we concatenate
             * the unicode form of username and Target name 
@@ -1324,6 +1351,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 // tmp3[13+8] = 0x34;
 // tmp3[14+8] = 0xc3;
 // tmp3[15+8] = 0x01;
+// 0000   00 2f 25 12 65 00 d3 01
+tmp3[8+8] = 0x00;
+tmp3[9+8] = 0x2f;
+tmp3[10+8] = 0x25;
+tmp3[11+8] = 0x12;
+tmp3[12+8] = 0x65;
+tmp3[13+8] = 0x00;
+tmp3[14+8] = 0xd3;
+tmp3[15+8] = 0x01;
             snprintf((char *)tmp3 + 8, 4,
              "\x01\x01%c%c",   /* Blob Signature */
              0, 0);
@@ -1491,8 +1527,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   0x0, 0x0,
                   0x0, 0x0,
                   0x0, 0x0,
-                  LONGQUARTET(NEGOTIATE_UNICODE | 
-                            NEGOTIATE_NTLM_KEY)
+                  LONGQUARTET(NEGOTIATE_UNICODE |
+                          NEGOTIATE_LM_KEY |
+                          NEGOTIATE_NTLM_KEY |
+                          NEGOTIATE_NTLM2_KEY)
                   );
 /*TODO should implement this later*/
 
