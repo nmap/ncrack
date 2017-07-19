@@ -754,7 +754,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* In this case the NTLMSSP flag is not present.
             *  Exit gracefully.
             */
-            //free(type2);
+            //v
             serv->end.orly = true;
             tmpsize = sizeof("Invalid type2 message.\n");
             serv->end.reason = (char *)safe_malloc(tmpsize);
@@ -1575,6 +1575,12 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           free(tmp2);
           free(b64);
+          free(tmp4);
+          free(tmp3);
+          free(domain_temp);
+          free(target_name);
+          free(target_info);
+          free(type2);
           con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
           nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
@@ -1602,7 +1608,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
       info->substate = NEGOTIATE_CHALLENGE;
 
-      ((winrm_state *) serv->module_data)->state = WINRM_NEGOTIATE_AUTH;
+      //((winrm_state *) serv->module_data)->state = WINRM_NEGOTIATE_AUTH;
       // serv->end.orly = true;
       // tmpsize = sizeof("Test termination.\n");
       // serv->end.reason = (char *)safe_malloc(tmpsize);
