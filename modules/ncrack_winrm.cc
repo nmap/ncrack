@@ -1245,6 +1245,16 @@ entropy[7] = 0x79;
               user_upper_unicode[2 * i + 1] = '\0';
             }
 
+
+            /* And then transform it into unicode.
+            */
+            char domain_temp_unicode[2*strlen(domain_temp)];
+            userlen = 2*strlen(con->user);
+
+            for(i = 0; i < sizeof(domain_temp); i++) {
+              domain_temp_unicode[2 * i] = (unsigned char)domain_temp[i];
+              domain_temp_unicode[2 * i + 1] = '\0';
+            }
             /* Concatenate the two strings.
             */
 
@@ -1264,13 +1274,13 @@ entropy[7] = 0x79;
 
 
 
-            char userdomain[sizeof(user_upper_unicode) + sizeof(domain_temp)];
+            char userdomain[sizeof(user_upper_unicode) + sizeof(domain_temp_unicode)];
             // snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
             for (i=0; i <sizeof(user_upper_unicode); i++){
               userdomain[i] = user_upper_unicode[i];
             }
-            for (i=sizeof(user_upper_unicode); i <sizeof(domain_temp)+sizeof(user_upper_unicode); i++){
-              userdomain[i] = domain_temp[i-sizeof(user_upper_unicode)];
+            for (i=sizeof(user_upper_unicode); i <sizeof(domain_temp_unicode)+sizeof(user_upper_unicode); i++){
+              userdomain[i] = domain_temp_unicode[i-sizeof(user_upper_unicode)];
             }
             // strcat(userdomain, target_name);
             printf("Userdomain: ");
