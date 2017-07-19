@@ -245,7 +245,7 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
     con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
     info = (winrm_info *)con->misc_info;
     if (!strcmp(hstate->auth_scheme, "Basic") 
-      // || !strcmp(hstate->auth_scheme, "Negotiate")
+       || !strcmp(hstate->auth_scheme, "Negotiate")
       ) {
       printf("setting connection state\n");
       con->state = hstate->state;
@@ -1012,8 +1012,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           unsigned char pw_upper[14];
           size_t pw_len = 14;
           tmplen = strlen(con->pass) + 1;
-          tmp = (char *)safe_zalloc(pw_len + 1);
-
+          // tmp = (char *)safe_zalloc(pw_len + 1);
+          tmp = (char *)safe_malloc(pw_len + 1);
+          memset(tmp, 0, pw_len);
           sprintf(tmp, "%s", con->pass);
 
           /* First convert password to uppercase and pad it 
@@ -1407,7 +1408,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memcpy(tmp4, tmphash, 16);
             memcpy(tmp4 + 16, tmp3 + 8, tmplen3 - 8);
             ptr_ntresp = (unsigned char *) tmp4;
-
+            free(tmp4);
             /* LMv2 response 
             * 1. Calculate NTLM hash. 
             * 2. Unicode uppercase username and target name
@@ -1575,12 +1576,12 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           free(tmp2);
           free(b64);
-          free(tmp4);
+
           free(tmp3);
           free(domain_temp);
           free(target_name);
           free(target_info);
-          free(type2);
+          //free(type2);
           con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
           nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
