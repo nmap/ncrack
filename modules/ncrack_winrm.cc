@@ -936,8 +936,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 // 0020   53 00 54 00 03 00 08 00 54 00 45 00 53 00 54 00
 // 0030   07 00 08 00 fd 11 60 12 65 00 d3 01 00 00 00 00
 
-target_info = "\x02\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x01\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x04\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x03\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x07\x00\x08\x00\xfd\x11\x60\x12\x65\x00\xd3\x01\x00\x00\x00\x00";
-targetinfo_length = 64;
+// target_info = "\x02\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x01\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x04\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x03\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x07\x00\x08\x00\xfd\x11\x60\x12\x65\x00\xd3\x01\x00\x00\x00\x00";
+// targetinfo_length = 64;
           /* The challenge is extracted, we can now safely
           *  proceed in construction of type 3 message.
           */
@@ -1033,14 +1033,14 @@ targetinfo_length = 64;
 // tmp_challenge[6] = 0xcd;
 // tmp_challenge[7] = 0xef;
  //         0000   db 30 c8 ef e1 ef ba 21
-tmp_challenge[0] = 0xdb;
-tmp_challenge[1] = 0x30;
-tmp_challenge[2] = 0xc8;
-tmp_challenge[3] = 0xef;
-tmp_challenge[4] = 0xe1;
-tmp_challenge[5] = 0xef;
-tmp_challenge[6] = 0xba;
-tmp_challenge[7] = 0x21;
+// tmp_challenge[0] = 0xdb;
+// tmp_challenge[1] = 0x30;
+// tmp_challenge[2] = 0xc8;
+// tmp_challenge[3] = 0xef;
+// tmp_challenge[4] = 0xe1;
+// tmp_challenge[5] = 0xef;
+// tmp_challenge[6] = 0xba;
+// tmp_challenge[7] = 0x21;
 
           /* The "fixed" password at 14 bytes length must be split
           * in two equal length keys.
@@ -1184,14 +1184,14 @@ tmp_challenge[7] = 0x21;
 // entropy[6] = 0x33;
 // entropy[7] = 0x44;
 // 0000   fb 10 3f d3 5c fa 6b 79
-entropy[0] = 0xfb;
-entropy[1] = 0x10;
-entropy[2] = 0x3f;
-entropy[3] = 0xd3;
-entropy[4] = 0x5c;
-entropy[5] = 0xfa;
-entropy[6] = 0x6b;
-entropy[7] = 0x79;
+// entropy[0] = 0xfb;
+// entropy[1] = 0x10;
+// entropy[2] = 0x3f;
+// entropy[3] = 0xd3;
+// entropy[4] = 0x5c;
+// entropy[5] = 0xfa;
+// entropy[6] = 0x6b;
+// entropy[7] = 0x79;
             /* Calculate NTLM hash as we did before for v1.
             * After calculating the NTLM hash we concatenate
             * the unicode form of username and Target name 
@@ -1249,9 +1249,8 @@ entropy[7] = 0x79;
             /* And then transform it into unicode.
             */
             char domain_temp_unicode[2*strlen(domain_temp)];
-            userlen = 2*strlen(con->user);
 
-            for(i = 0; i < sizeof(domain_temp); i++) {
+            for(i = 0; i < strlen(domain_temp); i++) {
               domain_temp_unicode[2 * i] = (unsigned char)domain_temp[i];
               domain_temp_unicode[2 * i + 1] = '\0';
             }
@@ -1362,14 +1361,14 @@ entropy[7] = 0x79;
 // tmp3[14+8] = 0xc3;
 // tmp3[15+8] = 0x01;
 // 0000   00 2f 25 12 65 00 d3 01
-tmp3[8+8] = 0x00;
-tmp3[9+8] = 0x2f;
-tmp3[10+8] = 0x25;
-tmp3[11+8] = 0x12;
-tmp3[12+8] = 0x65;
-tmp3[13+8] = 0x00;
-tmp3[14+8] = 0xd3;
-tmp3[15+8] = 0x01;
+// tmp3[8+8] = 0x00;
+// tmp3[9+8] = 0x2f;
+// tmp3[10+8] = 0x25;
+// tmp3[11+8] = 0x12;
+// tmp3[12+8] = 0x65;
+// tmp3[13+8] = 0x00;
+// tmp3[14+8] = 0xd3;
+// tmp3[15+8] = 0x01;
             snprintf((char *)tmp3 + 8, 4,
              "\x01\x01%c%c",   /* Blob Signature */
              0, 0);
