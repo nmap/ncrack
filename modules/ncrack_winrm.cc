@@ -188,7 +188,6 @@ static void rand_str(char *dest, size_t length);
 static void extend_key_56_to_64(const unsigned char *key_56, char *key);
 static void setup_des_key(const unsigned char *key_56, DES_key_schedule *ks);
 static uint64_t unix2nttime(time_t unix_time);
-static uint64_t swap_uint64(uint64_t val);
 
 enum states { WINRM_INIT, WINRM_GET_AUTH, WINRM_BASIC_AUTH, WINRM_NEGOTIATE_AUTH, 
               WINRM_KERBEROS_AUTH, WINRM_CREDSSP_AUTH, WINRM_FINI };
@@ -347,17 +346,17 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
           
           info->auth_scheme = Strndup("Negotiate", strlen("Negotiate"));
 
-          con->state = WINRM_NEGOTIATE_AUTH;
+          // con->state = WINRM_NEGOTIATE_AUTH;
           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
           hstate = (winrm_state *)serv->module_data;
           hstate->auth_scheme = Strndup(info->auth_scheme, 
               strlen(info->auth_scheme));
-          // hstate->state = WINRM_NEGOTIATE_AUTH;
-          // hstate->reconnaissance = true;
-          serv->more_rounds = true;
-          con->peer_alive = true;
-          winrm_negotiate(nsp, con);
-          // return ncrack_module_end(nsp, con);
+          hstate->state = WINRM_NEGOTIATE_AUTH;
+          hstate->reconnaissance = true;
+          // serv->more_rounds = true;
+          // con->peer_alive = true;
+          // winrm_negotiate(nsp, con);
+          return ncrack_module_end(nsp, con);
         }   
       } 
      
@@ -633,8 +632,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                SHORTPAIR(strlen(host)), 
                SHORTPAIR(32 + strlen(domain_temp)),
                0x0,0x0,
-               host,  /* hostname is empty, we don't need it */
-               domain_temp /* this is domain/workstation name */);
+               domain_temp,  /*this is domain/workstation name */
+               host /* hostname is empty, we don't need it */);
 
       /* Setting the domain or the host seems to be useless.
       * A Windows Server 2012 negotiate request does not contain 
@@ -658,6 +657,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       con->outbuf->append("\r\nContent-Length: 0", 19);
       con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
+      delete con->inbuf;
+      con->inbuf = NULL;
+
       nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       
@@ -665,6 +667,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       break;
 
     case NEGOTIATE_SEND:
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
       if (winrm_loop_read(nsp, con) < 0)
         break;
 
@@ -747,7 +754,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* In this case the NTLMSSP flag is not present.
             *  Exit gracefully.
             */
-            free(type2);
+            //free(type2);
             serv->end.orly = true;
             tmpsize = sizeof("Invalid type2 message.\n");
             serv->end.reason = (char *)safe_malloc(tmpsize);
@@ -963,9 +970,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * 52 (64) (72)  start of data block
           */   
 
-          if (con->outbuf)
-            delete con->outbuf;
-          con->outbuf = new Buf();
+
 
           con->outbuf->append("POST ", 5);
           con->outbuf->append("/wsman", 6);
@@ -1342,7 +1347,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             uint64_t t;
             t = unix2nttime(time(NULL));
             printf("%" PRIu64 "\n", t);
-            //swap_uint64(t);
             printf("0x%" PRIx64 "\n", t);
 
             tmp3[8+8] = (char)(t & 0x000000FF);
@@ -1576,6 +1580,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
             (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
           
+          delete con->inbuf;
+          con->inbuf = NULL;
 
           info->substate = NEGOTIATE_RESULTS;
           break;
@@ -1689,13 +1695,4 @@ unix2nttime(time_t unix_time)
     long long wt;
     wt = unix_time * (uint64_t)10000000 + (uint64_t)NTTIME_EPOCH;
     return wt;
-}
-
-/* we dont use that */
-static uint64_t 
-swap_uint64( uint64_t val )
-{
-    val = ((val << 8) & 0xFF00FF00FF00FF00ULL ) | ((val >> 8) & 0x00FF00FF00FF00FFULL );
-    val = ((val << 16) & 0xFFFF0000FFFF0000ULL ) | ((val >> 16) & 0x0000FFFF0000FFFFULL );
-    return (val << 32) | (val >> 32);
 }
