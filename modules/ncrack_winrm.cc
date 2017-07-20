@@ -990,22 +990,35 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           con->outbuf->append("Authorization: Negotiate ", 25);
 
+          /* LM variables */
+          unsigned char lmbuffer[0x18];
+          unsigned char lmresp[24]; /* fixed-size */
+          int lmrespoff;
+          int ntrespoff;
+          unsigned int ntresplen = 24;
+          size_t userlen; 
+          size_t hostoff = 0;
+          size_t useroff = 0;
+          size_t domoff = 0;
+          DES_key_schedule ks2;
+          char user_unicode[2*strlen(con->user)];
+          tmplen = strlen("Workstation");
+          domain_temp = (char *)safe_malloc(tmplen );
+          sprintf(domain_temp, "Workstation");          
+          char domain_unicode[2*tmplen];
+
+          /* NM variables */
+          size_t passlen = 0;
+          unsigned char ntbuffer[0x18];
+          unsigned char ntresp[24]; /* fixed-size */
+          unsigned char *ptr_ntresp = &ntresp[0];
+          char pass_unicode[2*strlen(con->pass)];
 
           if (ntlm_flags & NEGOTIATE_LM_KEY ){
 
           
             /* Let's create LM response
             */
-            unsigned char lmbuffer[0x18];
-            unsigned char lmresp[24]; /* fixed-size */
-            int lmrespoff;
-            int ntrespoff;
-            unsigned int ntresplen = 24;
-            size_t userlen; 
-            size_t hostoff = 0;
-            size_t useroff = 0;
-            size_t domoff = 0;
-
 
             static const unsigned char magic[] = {
               0x4B, 0x47, 0x53, 0x21, 0x40, 0x23, 0x24, 0x25 /* KGS!@#$% */
@@ -1079,7 +1092,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memset(lmbuffer + 16, 0, 21 - 16);
 
 
-            DES_key_schedule ks2;
+            
 
             setup_des_key(lmbuffer, &ks2);
             DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) lmresp,
@@ -1093,11 +1106,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 16),
                             &ks2, DES_ENCRYPT);
 
-            tmplen = strlen("Workstation");
-            domain_temp = (char *)safe_malloc(tmplen );
-            sprintf(domain_temp, "Workstation");
             
-            char domain_unicode[2*tmplen];
             domainlen = 2*tmplen;          
             /* Transform ascii to unicode
             */
@@ -1106,7 +1115,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
               domain_unicode[2 * i + 1] = '\0';
             }
 
-            char user_unicode[2*strlen(con->user)];
+
             userlen = 2*strlen(con->user);
 
             /* Transform ascii to unicode
@@ -1128,12 +1137,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* Let's craft the NM response.
             */
 
-            size_t passlen = 0;
-            unsigned char ntbuffer[0x18];
-            unsigned char ntresp[24]; /* fixed-size */
-            unsigned char *ptr_ntresp = &ntresp[0];
-
-            char pass_unicode[2*strlen(con->pass)];
             passlen = 2*strlen(con->pass);          
             /* Transform ascii to unicode
             */
@@ -1154,7 +1157,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             MD4_Final(ntbuffer, &MD4pw);
             memset(ntbuffer + 16, 0, 21 - 16);
 
-            DES_key_schedule ks3;
+            // DES_key_schedule ks3;
 
             setup_des_key(ntbuffer, &ks2);
             DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) ntresp,
@@ -1167,8 +1170,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             setup_des_key(ntbuffer + 14, &ks2);
             DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 16),
                             &ks2, DES_ENCRYPT);
-
-
 
             ptr_ntresp = ntresp;
           }
@@ -1426,7 +1427,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * At this point we have performed step 1, 2 and 3
             */
 
-// LMv2 WORKS
             char chall_nonce [16];
 
             for (i=0; i <sizeof(tmp_challenge); i++){
