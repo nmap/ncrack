@@ -516,7 +516,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *type2;
   char *type4 = NULL;
   char *target_info;
-  char *target_name;
+  // char *target_name;
   // char *pw_upper;
   size_t i;
   size_t domainlen;
@@ -851,9 +851,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           // else if (ntlm_flags & NEGOTIATE_NTLM_KEY ){
           //   USE_NTLM = 1;
           // }
-          // else if (ntlm_flags & NEGOTIATE_LM_KEY ){
-          //   USE_LM = 1;
-          // }
+          // else 
+
 
 
           /* Next 8 bytes are the NTLM flags
@@ -898,7 +897,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           for (i = 0; i < 3; i++) {
             *type2++;
           }
-
+          free(type2);
           targetinfo_offset = (int)strtol(tmp_buf3, NULL, 10);
           printf(" target info offset: %d\n", targetinfo_offset);
           // for (i = 0; i < 4; i++) {
@@ -910,7 +909,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
 
           target_info = (char *)safe_malloc(targetinfo_length + 1);
-          target_name = (char *)safe_malloc(target_length + 1);
+         // target_name = (char *)safe_malloc(target_length + 1);
 
           if (ntlm_flags & NEGOTIATE_TARGET_INFO) {
             /* If the server sends target info we will need it
@@ -926,13 +925,13 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             tmplen4 = strlen(challenge);
             base64_decode(challenge, tmplen4, type4);
 
-            memcpy(target_name, &type4[target_offset], target_length);
+           // memcpy(target_name, &type4[target_offset], target_length);
             memcpy(target_info, &type4[targetinfo_offset], targetinfo_length);
             printf("Target Name: ");
-            for(i=0; i<target_length; i++){
-              printf("%02x", target_name[i]);
-            }printf("\n");
-
+            // for(i=0; i<target_length; i++){
+            //   printf("%02x", target_name[i]);
+            // }printf("\n");
+            // free(target_name);
             printf("Target Info: ");
             for(i=0; i<targetinfo_length; i++){
               printf("%02x", target_info[i]);
@@ -992,138 +991,140 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           con->outbuf->append("Authorization: Negotiate ", 25);
 
 
+          if (ntlm_flags & NEGOTIATE_LM_KEY ){
 
-          /* Let's create LM response
-          */
-          unsigned char lmbuffer[0x18];
-          unsigned char lmresp[24]; /* fixed-size */
-          int lmrespoff;
-          int ntrespoff;
-          unsigned int ntresplen = 24;
-          size_t userlen; 
-          size_t hostoff = 0;
-          size_t useroff = 0;
-          size_t domoff = 0;
-
-
-          static const unsigned char magic[] = {
-            0x4B, 0x47, 0x53, 0x21, 0x40, 0x23, 0x24, 0x25 /* KGS!@#$% */
-          };
-          unsigned char pw_upper[14];
-          size_t pw_len = 14;
-          tmplen = strlen(con->pass) + 1;
-          // tmp = (char *)safe_zalloc(pw_len + 1);
-          tmp = (char *)safe_malloc(pw_len + 1);
-          memset(tmp, 0, pw_len);
-          sprintf(tmp, "%s", con->pass);
-
-          /* First convert password to uppercase and pad it 
-          * to 14 characters with zeros.
-          */
-          char *s = tmp;
-          while (*s) {
-            *s = toupper((unsigned char) *s);
-            s++;
-          }
-
-          for (i=0; i < pw_len; i++){
-            pw_upper[i] = (unsigned char) tmp[i];
-          } 
           
-          free(tmp);
-
-          DES_key_schedule ks;
-
-//Testing
-// tmp_challenge[0] = 0x01;
-// tmp_challenge[1] = 0x23;
-// tmp_challenge[2] = 0x45;
-// tmp_challenge[3] = 0x67;
-// tmp_challenge[4] = 0x89;
-// tmp_challenge[5] = 0xab;
-// tmp_challenge[6] = 0xcd;
-// tmp_challenge[7] = 0xef;
- //         0000   db 30 c8 ef e1 ef ba 21
-// tmp_challenge[0] = 0xdb;
-// tmp_challenge[1] = 0x30;
-// tmp_challenge[2] = 0xc8;
-// tmp_challenge[3] = 0xef;
-// tmp_challenge[4] = 0xe1;
-// tmp_challenge[5] = 0xef;
-// tmp_challenge[6] = 0xba;
-// tmp_challenge[7] = 0x21;
-
-          /* The "fixed" password at 14 bytes length must be split
-          * in two equal length keys.
-          */
-
-          /* Two DES keys (one from each 7-byte half) are used to 
-          * DES-encrypt  the constant ASCII string "KGS!@#$%" 
-          * (resulting in two 8-byte ciphertext values).
-          *
-          * The two ciphertext valus are concatenated to form a 16
-          * byte value - The LM hash.
-          *
-          * The LM hash is then padded with zeros to 21 bytes.
-          */
-
-          setup_des_key(pw_upper, &ks);
-          DES_ecb_encrypt((DES_cblock *)magic, (DES_cblock *)lmbuffer,
-                          &ks, DES_ENCRYPT);
-
-          setup_des_key(pw_upper + 7, &ks);
-          DES_ecb_encrypt((DES_cblock *)magic, (DES_cblock *)(lmbuffer + 8),
-          &ks, DES_ENCRYPT);
-
-          memset(lmbuffer + 16, 0, 21 - 16);
+            /* Let's create LM response
+            */
+            unsigned char lmbuffer[0x18];
+            unsigned char lmresp[24]; /* fixed-size */
+            int lmrespoff;
+            int ntrespoff;
+            unsigned int ntresplen = 24;
+            size_t userlen; 
+            size_t hostoff = 0;
+            size_t useroff = 0;
+            size_t domoff = 0;
 
 
-          DES_key_schedule ks2;
+            static const unsigned char magic[] = {
+              0x4B, 0x47, 0x53, 0x21, 0x40, 0x23, 0x24, 0x25 /* KGS!@#$% */
+            };
+            unsigned char pw_upper[14];
+            size_t pw_len = 14;
+            tmplen = strlen(con->pass) + 1;
+            // tmp = (char *)safe_zalloc(pw_len + 1);
+            tmp = (char *)safe_malloc(pw_len + 1);
+            memset(tmp, 0, pw_len);
+            sprintf(tmp, "%s", con->pass);
 
-          setup_des_key(lmbuffer, &ks2);
-          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) lmresp,
-                          &ks2, DES_ENCRYPT);
+            /* First convert password to uppercase and pad it 
+            * to 14 characters with zeros.
+            */
+            char *s = tmp;
+            while (*s) {
+              *s = toupper((unsigned char) *s);
+              s++;
+            }
 
-          setup_des_key(lmbuffer + 7, &ks2);
-          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 8),
-                          &ks2, DES_ENCRYPT);
+            for (i=0; i < pw_len; i++){
+              pw_upper[i] = (unsigned char) tmp[i];
+            } 
+            
+            free(tmp);
 
-          setup_des_key(lmbuffer + 14, &ks2);
-          DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 16),
-                          &ks2, DES_ENCRYPT);
+            DES_key_schedule ks;
 
-          tmplen = strlen("Workstation");
-          domain_temp = (char *)safe_malloc(tmplen );
-          sprintf(domain_temp, "Workstation");
-          
-          char domain_unicode[2*tmplen];
-          domainlen = 2*tmplen;          
-          /* Transform ascii to unicode
-          */
-          for(i = 0; i < tmplen; i++) {
-            domain_unicode[2 * i] = (unsigned char)domain_temp[i];
-            domain_unicode[2 * i + 1] = '\0';
+  //Testing
+  // tmp_challenge[0] = 0x01;
+  // tmp_challenge[1] = 0x23;
+  // tmp_challenge[2] = 0x45;
+  // tmp_challenge[3] = 0x67;
+  // tmp_challenge[4] = 0x89;
+  // tmp_challenge[5] = 0xab;
+  // tmp_challenge[6] = 0xcd;
+  // tmp_challenge[7] = 0xef;
+   //         0000   db 30 c8 ef e1 ef ba 21
+  // tmp_challenge[0] = 0xdb;
+  // tmp_challenge[1] = 0x30;
+  // tmp_challenge[2] = 0xc8;
+  // tmp_challenge[3] = 0xef;
+  // tmp_challenge[4] = 0xe1;
+  // tmp_challenge[5] = 0xef;
+  // tmp_challenge[6] = 0xba;
+  // tmp_challenge[7] = 0x21;
+
+            /* The "fixed" password at 14 bytes length must be split
+            * in two equal length keys.
+            */
+
+            /* Two DES keys (one from each 7-byte half) are used to 
+            * DES-encrypt  the constant ASCII string "KGS!@#$%" 
+            * (resulting in two 8-byte ciphertext values).
+            *
+            * The two ciphertext valus are concatenated to form a 16
+            * byte value - The LM hash.
+            *
+            * The LM hash is then padded with zeros to 21 bytes.
+            */
+
+            setup_des_key(pw_upper, &ks);
+            DES_ecb_encrypt((DES_cblock *)magic, (DES_cblock *)lmbuffer,
+                            &ks, DES_ENCRYPT);
+
+            setup_des_key(pw_upper + 7, &ks);
+            DES_ecb_encrypt((DES_cblock *)magic, (DES_cblock *)(lmbuffer + 8),
+            &ks, DES_ENCRYPT);
+
+            memset(lmbuffer + 16, 0, 21 - 16);
+
+
+            DES_key_schedule ks2;
+
+            setup_des_key(lmbuffer, &ks2);
+            DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) lmresp,
+                            &ks2, DES_ENCRYPT);
+
+            setup_des_key(lmbuffer + 7, &ks2);
+            DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 8),
+                            &ks2, DES_ENCRYPT);
+
+            setup_des_key(lmbuffer + 14, &ks2);
+            DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 16),
+                            &ks2, DES_ENCRYPT);
+
+            tmplen = strlen("Workstation");
+            domain_temp = (char *)safe_malloc(tmplen );
+            sprintf(domain_temp, "Workstation");
+            
+            char domain_unicode[2*tmplen];
+            domainlen = 2*tmplen;          
+            /* Transform ascii to unicode
+            */
+            for(i = 0; i < tmplen; i++) {
+              domain_unicode[2 * i] = (unsigned char)domain_temp[i];
+              domain_unicode[2 * i + 1] = '\0';
+            }
+
+            char user_unicode[2*strlen(con->user)];
+            userlen = 2*strlen(con->user);
+
+            /* Transform ascii to unicode
+            */
+            for(i = 0; i < strlen(con->user); i++) {
+              user_unicode[2 * i] = (unsigned char)con->user[i];
+              user_unicode[2 * i + 1] = '\0';
+            }
+
+            hostlen = 0;
+            lmrespoff = 64;
+            ntrespoff = lmrespoff + 0x18;
           }
-
-          char user_unicode[2*strlen(con->user)];
-          userlen = 2*strlen(con->user);
-
-          /* Transform ascii to unicode
-          */
-          for(i = 0; i < strlen(con->user); i++) {
-            user_unicode[2 * i] = (unsigned char)con->user[i];
-            user_unicode[2 * i + 1] = '\0';
-          }
-
-          hostlen = 0;
-          lmrespoff = 64;
-          ntrespoff = lmrespoff + 0x18;
-
           /* The following part is NM response. Currently it seems
           * that we are sending only the LM flag. Maybe we can get 
           * away with this and only do the LM part.
           */
-          // if (ntlm_flags & NEGOTIATE_LM_KEY) {
+          if (ntlm_flags & NEGOTIATE_LM_KEY) {
             /* Let's craft the NM response.
             */
 
@@ -1170,7 +1171,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
 
             ptr_ntresp = ntresp;
-          // }
+          }
 
           if (ntlm_flags & NEGOTIATE_NTLM2_KEY) {
             /* Let's craft NTLMv2 response if it is supported
@@ -1265,22 +1266,23 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
               domain_temp_unicode[2 * i] = (unsigned char)domain_temp[i];
               domain_temp_unicode[2 * i + 1] = '\0';
             }
+            free(domain_temp);
             /* Concatenate the two strings.
             */
 
-            unsigned char target_name2[12];
-            target_name2[0] = 0x44;
-            target_name2[1] = 0x00;
-            target_name2[2] = 0x4f;
-            target_name2[3] = 0x00;
-            target_name2[4] = 0x4d;
-            target_name2[5] = 0x00;
-            target_name2[6] = 0x41;
-            target_name2[7] = 0x00;
-            target_name2[8] = 0x49;
-            target_name2[9] = 0x00;
-            target_name2[10] = 0x4e;
-            target_name2[11] = 0x00;
+            // unsigned char target_name2[12];
+            // target_name2[0] = 0x44;
+            // target_name2[1] = 0x00;
+            // target_name2[2] = 0x4f;
+            // target_name2[3] = 0x00;
+            // target_name2[4] = 0x4d;
+            // target_name2[5] = 0x00;
+            // target_name2[6] = 0x41;
+            // target_name2[7] = 0x00;
+            // target_name2[8] = 0x49;
+            // target_name2[9] = 0x00;
+            // target_name2[10] = 0x4e;
+            // target_name2[11] = 0x00;
 
 
 
@@ -1388,6 +1390,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             //memcpy(tmp3 + 8 + 8, t, 8);
             memcpy(tmp3 + 16 + 8, entropy, 8);
             memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
+            free(target_info);
 
             printf("Blob: ");
             for(i=0;i<tmplen3;i++){
@@ -1409,6 +1412,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memcpy(tmp4 + 16, tmp3 + 8, tmplen3 - 8);
             ptr_ntresp = (unsigned char *) tmp4;
             free(tmp4);
+            free(tmp3);
             /* LMv2 response 
             * 1. Calculate NTLM hash. 
             * 2. Unicode uppercase username and target name
@@ -1557,10 +1561,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             snprintf(&tmp2[20], 2, "%c%c", SHORTPAIR(ntresplen));
             snprintf(&tmp2[22], 2, "%c%c", SHORTPAIR(ntresplen));
             snprintf(&tmp2[24], 2, "%c%c", SHORTPAIR(ntrespoff));
+
+            memcpy(&tmp2[ntrespoff], ptr_ntresp, ntresplen);
           }
 
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
-          memcpy(&tmp2[ntrespoff], ptr_ntresp, ntresplen);
           memcpy(&tmp2[domoff], domain_unicode, domainlen);
           memcpy(&tmp2[useroff], user_unicode, userlen);
           // memset(tmp2 + hostoff, host, hostlen);
@@ -1577,11 +1582,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           free(tmp2);
           free(b64);
 
-          free(tmp3);
-          free(domain_temp);
-          free(target_name);
-          free(target_info);
-          //free(type2);
           con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
           nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
