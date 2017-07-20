@@ -336,20 +336,26 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
               strlen(info->auth_scheme));
           hstate->state = WINRM_BASIC_AUTH;
           hstate->reconnaissance = true;
+          //serv->more_rounds = true;
           return ncrack_module_end(nsp, con);
 
-          } else if (memsearch((const char *)con->inbuf->get_dataptr(),
+        } else if (memsearch((const char *)con->inbuf->get_dataptr(),
               "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
           {
 
           
           info->auth_scheme = Strndup("Negotiate", strlen("Negotiate"));
+
+          // con->state = WINRM_NEGOTIATE_AUTH;
           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
           hstate = (winrm_state *)serv->module_data;
           hstate->auth_scheme = Strndup(info->auth_scheme, 
               strlen(info->auth_scheme));
           hstate->state = WINRM_NEGOTIATE_AUTH;
           hstate->reconnaissance = true;
+          // serv->more_rounds = true;
+          // con->peer_alive = true;
+          // winrm_negotiate(nsp, con);
           return ncrack_module_end(nsp, con);
         }   
       } 
@@ -428,9 +434,17 @@ winrm_basic(nsock_pool nsp, Connection *con)
 
       con->outbuf->snprintf(94, "\r\nUser-Agent: %s", USER_AGENT);
 
+#if 0
+      con->outbuf->append(HTTP_ACCEPT, sizeof(HTTP_ACCEPT) - 1);
+      con->outbuf->append(HTTP_LANG, sizeof(HTTP_LANG) - 1);
+      con->outbuf->append(HTTP_ENCODING, sizeof(HTTP_ENCODING) - 1);
+      con->outbuf->append(HTTP_CHARSET, sizeof(HTTP_CHARSET) - 1);
+#endif
+
       /* Try sending keep-alive values and see how much authentication attempts
        * we can do in that time-period.
        */
+      //con->outbuf->append(HTTP_CACHE, sizeof(HTTP_CACHE) - 1);
 
       con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
 
@@ -448,7 +462,7 @@ winrm_basic(nsock_pool nsp, Connection *con)
       free(b64);
       free(tmp);
       con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
-
+printf("ok\n");
       nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       
@@ -460,6 +474,8 @@ winrm_basic(nsock_pool nsp, Connection *con)
         break;
 
       info->substate = BASIC_SEND;
+      //memprint((const char *)con->iobuf->get_dataptr(),
+      //  con->iobuf->get_len());
 
       /* If we get a "200 OK" HTTP response OR a "301 Moved Permanently" 
        * OR 411 (which is the server's way of telling us we didn't issue
@@ -472,7 +488,7 @@ winrm_basic(nsock_pool nsp, Connection *con)
             "411", con->inbuf->get_len())) {
         con->auth_success = true;
       }
-
+printf("ok2\n");
       /* The in buffer has to be cleared out, because we are expecting
        * possibly new answers in the same connection.
        */
@@ -489,7 +505,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 {
   char *tmp;
   char *tmp2;
-  // char *tmp3;
+  char *tmp3;
+  char *tmp4;
   char *b64;
   char *host;
   char *domain_temp;
@@ -508,16 +525,19 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t tmplen2;
   size_t tmplen3;
   size_t tmplen4;
+  // size_t type2_len;
   size_t tmpsize;
   int targetinfo_offset;
   int targetinfo_length;
 
-  char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                         
+  char ntlm_sig[strlen(NTLMSSP_SIGNATURE)];                            
+  // char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
   int ntlm_flags;
   unsigned char tmp_challenge[8];
   unsigned char tmp_buf[4];
   char tmp_buf2[4];
   char tmp_buf3[8];
+  //unsigned char *timestamp;
 
   int target_offset;
   int target_length;  
@@ -648,12 +668,13 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
     case NEGOTIATE_SEND:
 
+      if (winrm_loop_read(nsp, con) < 0)
+        break;
+
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      if (winrm_loop_read(nsp, con) < 0)
-        break;
 
       /* If the response has the code 401 and the header
       * WWW-Authenticate probably we have received the challenge 
@@ -889,15 +910,14 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           
 
 
-          
+          target_info = (char *)safe_malloc(targetinfo_length + 1);
+          target_name = (char *)safe_malloc(target_length + 1);
 
           if (ntlm_flags & NEGOTIATE_TARGET_INFO) {
             /* If the server sends target info we will need it
             * if we use NTLMv2 authentication. For this purpose
             * we read both Target Name and Target Information.
             */
-            target_info = (char *)safe_malloc(targetinfo_length + 1);
-            target_name = (char *)safe_malloc(target_length + 1);
 
             /* We read from type2 at offset - 40. 40 are the bytes
             * we have already read from the buffer.
@@ -909,7 +929,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             memcpy(target_name, &type4[target_offset], target_length);
             memcpy(target_info, &type4[targetinfo_offset], targetinfo_length);
-
             printf("Target Name: ");
             for(i=0; i<target_length; i++){
               printf("%02x", target_name[i]);
@@ -924,6 +943,14 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           // target_info = "\x02\x00\x0c\x00\x44\x00\x4f\x00\x4d\x00\x41\x00\x49\x00\x4e\x00\x01\x00\x0c\x00\x53\x00\x45\x00\x52\x00\x56\x00\x45\x00\x52\x00\x04\x00\x14\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x03\x00\x22\x00\x73\x00\x65\x00\x72\x00\x76\x00\x65\x00\x72\x00\x2e\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x00\x00\x00\x00";
           // targetinfo_length = 98;
 
+
+// 0000   02 00 08 00 54 00 45 00 53 00 54 00 01 00 08 00
+// 0010   54 00 45 00 53 00 54 00 04 00 08 00 54 00 45 00
+// 0020   53 00 54 00 03 00 08 00 54 00 45 00 53 00 54 00
+// 0030   07 00 08 00 fd 11 60 12 65 00 d3 01 00 00 00 00
+
+// target_info = "\x02\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x01\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x04\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x03\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x07\x00\x08\x00\xfd\x11\x60\x12\x65\x00\xd3\x01\x00\x00\x00\x00";
+// targetinfo_length = 64;
           /* The challenge is extracted, we can now safely
           *  proceed in construction of type 3 message.
           */
@@ -1310,27 +1337,27 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* We add to the above 8 bytes at the beggining for the generated nonce.
             */
 
-            tmplen= 28 + 4 + targetinfo_length + 8;
-            tmp = (char *)safe_malloc(tmplen + 1);
+            tmplen3= 28 + 4 + targetinfo_length + 8;
+            tmp3 = (char *)safe_malloc(tmplen3 + 1);
 
 
             /* Fill it with zeros. That's for the Unknown and Reserved fields.
             */
-            memset(tmp, 0, tmplen);
+            memset(tmp3, 0, tmplen3);
 
             uint64_t t;
             t = unix2nttime(time(NULL));
             printf("%" PRIu64 "\n", t);
             printf("0x%" PRIx64 "\n", t);
 
-            tmp[8+8] = (char)(t & 0x000000FF);
-            tmp[9+8] = (char)((t & 0x0000FF00) >> 8);
-            tmp[10+8] = (char)((t & 0x00FF0000) >> 16);
-            tmp[11+8] = (char)((t & 0xFF000000) >> 24);
-            tmp[12+8] = (char)((t >> 32) & 0x000000FF);
-            tmp[13+8] = (char)(((t >> 32) & 0x0000FF00) >> 8);
-            tmp[14+8] = (char)(((t >> 32) & 0x00FF0000) >> 16);
-            tmp[15+8] = (char)(((t >> 32) & 0xFF000000) >> 24);
+            tmp3[8+8] = (char)(t & 0x000000FF);
+            tmp3[9+8] = (char)((t & 0x0000FF00) >> 8);
+            tmp3[10+8] = (char)((t & 0x00FF0000) >> 16);
+            tmp3[11+8] = (char)((t & 0xFF000000) >> 24);
+            tmp3[12+8] = (char)((t >> 32) & 0x000000FF);
+            tmp3[13+8] = (char)(((t >> 32) & 0x0000FF00) >> 8);
+            tmp3[14+8] = (char)(((t >> 32) & 0x00FF0000) >> 16);
+            tmp3[15+8] = (char)(((t >> 32) & 0xFF000000) >> 24);
 
 
 //Testing
@@ -1352,24 +1379,22 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 // tmp3[13+8] = 0x00;
 // tmp3[14+8] = 0xd3;
 // tmp3[15+8] = 0x01;
-            snprintf((char *)tmp + 8, 4,
+            snprintf((char *)tmp3 + 8, 4,
              "\x01\x01%c%c",   /* Blob Signature */
              0, 0);
 
 
-            memcpy(tmp, tmp_challenge, 8);
+            memcpy(tmp3, tmp_challenge, 8);
             //memcpy(tmp3 + 8 + 8, t, 8);
-            memcpy(tmp + 16 + 8, entropy, 8);
-            memcpy(tmp + 28 + 8, target_info, targetinfo_length);
+            memcpy(tmp3 + 16 + 8, entropy, 8);
+            memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
 
-            free(target_info);
-            
             printf("Blob: ");
-            for(i=0;i<tmplen;i++){
-              printf("%02x",tmp[i] );
+            for(i=0;i<tmplen3;i++){
+              printf("%02x",tmp3[i] );
             }printf("\n");
 
-            HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) tmp, 
+            HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) tmp3, 
                   tmplen3, tmphash, NULL);
 
             /* Now we want the same blob but without the concatenated
@@ -1379,12 +1404,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             ntresplen = 28 + 4 + targetinfo_length + 16;
 
-            tmp2 = (char *)safe_malloc(ntresplen + 1);
-            memcpy(tmp2, tmphash, 16);
-            memcpy(tmp2 + 16, tmp + 8, tmplen - 8);
-            ptr_ntresp = (unsigned char *) tmp2;
+            tmp4 = (char *)safe_malloc(ntresplen + 1);
+            memcpy(tmp4, tmphash, 16);
+            memcpy(tmp4 + 16, tmp3 + 8, tmplen3 - 8);
+            ptr_ntresp = (unsigned char *) tmp4;
 
-            free(tmp);
             /* LMv2 response 
             * 1. Calculate NTLM hash. 
             * 2. Unicode uppercase username and target name
@@ -1579,7 +1603,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
       info->substate = NEGOTIATE_CHALLENGE;
 
-      ((winrm_state *) serv->module_data)->state = WINRM_NEGOTIATE_AUTH;
+      //((winrm_state *) serv->module_data)->state = WINRM_NEGOTIATE_AUTH;
       // serv->end.orly = true;
       // tmpsize = sizeof("Test termination.\n");
       // serv->end.reason = (char *)safe_malloc(tmpsize);
