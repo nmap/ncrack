@@ -336,8 +336,9 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
               strlen(info->auth_scheme));
           hstate->state = WINRM_BASIC_AUTH;
           hstate->reconnaissance = true;
-          //serv->more_rounds = true;
-          return ncrack_module_end(nsp, con);
+          // serv->more_rounds = true;
+          winrm_basic(nsp, con);
+          // return ncrack_module_end(nsp, con);
 
         } else if (memsearch((const char *)con->inbuf->get_dataptr(),
               "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
@@ -355,8 +356,8 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
           hstate->reconnaissance = true;
           // serv->more_rounds = true;
           // con->peer_alive = true;
-          // winrm_negotiate(nsp, con);
-          return ncrack_module_end(nsp, con);
+          winrm_negotiate(nsp, con);
+          // return ncrack_module_end(nsp, con);
         }   
       } 
      
@@ -488,7 +489,6 @@ printf("ok\n");
             "411", con->inbuf->get_len())) {
         con->auth_success = true;
       }
-printf("ok2\n");
       /* The in buffer has to be cleared out, because we are expecting
        * possibly new answers in the same connection.
        */
@@ -555,7 +555,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
-
       con->outbuf->append("POST ", 5);
       con->outbuf->append("/wsman", 6);
 
@@ -623,8 +622,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 */
                LONGQUARTET(NEGOTIATE_UNICODE |
                           NEGOTIATE_LM_KEY |
-                          NEGOTIATE_NTLM_KEY |
-                          NEGOTIATE_NTLM2_KEY),
+                          NEGOTIATE_NTLM_KEY 
+                          // |
+                          // NEGOTIATE_NTLM2_KEY
+                          ),
                SHORTPAIR(strlen(domain_temp)),
                SHORTPAIR(strlen(domain_temp)), 0,
                0x0,0x0,
@@ -933,7 +934,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             for(i=0; i<target_length; i++){
               printf("%02x", target_name[i]);
             }printf("\n");
-
+            free(target_name);
             printf("Target Info: ");
             for(i=0; i<targetinfo_length; i++){
               printf("%02x", target_info[i]);
@@ -1033,25 +1034,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           free(tmp);
 
           DES_key_schedule ks;
-
-//Testing
-// tmp_challenge[0] = 0x01;
-// tmp_challenge[1] = 0x23;
-// tmp_challenge[2] = 0x45;
-// tmp_challenge[3] = 0x67;
-// tmp_challenge[4] = 0x89;
-// tmp_challenge[5] = 0xab;
-// tmp_challenge[6] = 0xcd;
-// tmp_challenge[7] = 0xef;
- //         0000   db 30 c8 ef e1 ef ba 21
-// tmp_challenge[0] = 0xdb;
-// tmp_challenge[1] = 0x30;
-// tmp_challenge[2] = 0xc8;
-// tmp_challenge[3] = 0xef;
-// tmp_challenge[4] = 0xe1;
-// tmp_challenge[5] = 0xef;
-// tmp_challenge[6] = 0xba;
-// tmp_challenge[7] = 0x21;
 
           /* The "fixed" password at 14 bytes length must be split
           * in two equal length keys.
@@ -1265,6 +1247,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
               domain_temp_unicode[2 * i] = (unsigned char)domain_temp[i];
               domain_temp_unicode[2 * i + 1] = '\0';
             }
+            free(domain_temp);
             /* Concatenate the two strings.
             */
 
@@ -1360,35 +1343,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             tmp3[15+8] = (char)(((t >> 32) & 0xFF000000) >> 24);
 
 
-//Testing
-//0x0090d336b734c301
-// tmp3[8+8] = 0x00;
-// tmp3[9+8] = 0x90;
-// tmp3[10+8] = 0xd3;
-// tmp3[11+8] = 0x36;
-// tmp3[12+8] = 0xb7;
-// tmp3[13+8] = 0x34;
-// tmp3[14+8] = 0xc3;
-// tmp3[15+8] = 0x01;
-// 0000   00 2f 25 12 65 00 d3 01
-// tmp3[8+8] = 0x00;
-// tmp3[9+8] = 0x2f;
-// tmp3[10+8] = 0x25;
-// tmp3[11+8] = 0x12;
-// tmp3[12+8] = 0x65;
-// tmp3[13+8] = 0x00;
-// tmp3[14+8] = 0xd3;
-// tmp3[15+8] = 0x01;
             snprintf((char *)tmp3 + 8, 4,
              "\x01\x01%c%c",   /* Blob Signature */
              0, 0);
 
 
             memcpy(tmp3, tmp_challenge, 8);
-            //memcpy(tmp3 + 8 + 8, t, 8);
             memcpy(tmp3 + 16 + 8, entropy, 8);
             memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
-
+            free(target_info);            
             printf("Blob: ");
             for(i=0;i<tmplen3;i++){
               printf("%02x",tmp3[i] );
@@ -1404,11 +1367,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             ntresplen = 28 + 4 + targetinfo_length + 16;
 
-            tmp4 = (char *)safe_malloc(ntresplen + 1);
-            memcpy(tmp4, tmphash, 16);
-            memcpy(tmp4 + 16, tmp3 + 8, tmplen3 - 8);
-            ptr_ntresp = (unsigned char *) tmp4;
-
+            tmp = (char *)safe_malloc(ntresplen + 1);
+            memcpy(tmp, tmphash, 16);
+            memcpy(tmp + 16, tmp3 + 8, tmplen3 - 8);
+            ptr_ntresp = (unsigned char *) tmp;
+            free(tmp3);
             /* LMv2 response 
             * 1. Calculate NTLM hash. 
             * 2. Unicode uppercase username and target name
@@ -1549,8 +1512,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   0x0, 0x0,
                   LONGQUARTET(NEGOTIATE_UNICODE |
                           NEGOTIATE_LM_KEY |
-                          NEGOTIATE_NTLM_KEY |
-                          NEGOTIATE_NTLM2_KEY)
+                          NEGOTIATE_NTLM_KEY 
+                          //|
+                          //NEGOTIATE_NTLM2_KEY
+                          )
                   );
 
           if (ntlm_flags & NEGOTIATE_NTLM_KEY) {
@@ -1563,6 +1528,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           memcpy(&tmp2[ntrespoff], ptr_ntresp, ntresplen);
           memcpy(&tmp2[domoff], domain_unicode, domainlen);
           memcpy(&tmp2[useroff], user_unicode, userlen);
+          // free(ptr_ntresp);
           // memset(tmp2 + hostoff, host, hostlen);
 
           b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
@@ -1602,6 +1568,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
         break;
 
       info->substate = NEGOTIATE_CHALLENGE;
+      printf("CHANGED STATE TO  %d\n", info->substate );
 
       //((winrm_state *) serv->module_data)->state = WINRM_NEGOTIATE_AUTH;
       // serv->end.orly = true;
@@ -1623,8 +1590,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       /* The in buffer has to be cleared out, because we are expecting
        * possibly new answers in the same connection.
        */
-      delete con->inbuf;
-      con->inbuf = NULL;
+      // delete con->inbuf;
+      // con->inbuf = NULL;
 
       ncrack_module_end(nsp, con);
       break;
