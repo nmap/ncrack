@@ -1492,6 +1492,7 @@ ncrack_main(int argc, char **argv)
 
 
     SG->last_accessed = SG->services_active.end();
+    SG->prev_modified = SG->services_active.end();
     /* Ncrack 'em all! */
     ncrack(SG);
   }
@@ -2281,10 +2282,12 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     }
   }
 
-  if (SG->last_accessed == SG->services_active.end()) 
+  if (SG->last_accessed == SG->services_active.end()) {
     li = SG->services_active.begin();
-  else 
+  } else {
     li = SG->last_accessed++;
+  }
+
 
 
   while (SG->active_connections < SG->connection_limit
@@ -2325,7 +2328,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
 
 
     /*
-     * To mark a service as completely finished, first make sure:
+     * To mark a service as completely  finished, first make sure:
      * a) that the username list has finished being iterated through once
      * b) that the mirror pair pool, which holds temporary login pairs which
      *    are currently being used, is empty
@@ -2425,9 +2428,21 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
 
 next:
 
+    /* 
+     * this will take care of the case where the state of the services_active list
+     * has been modified in the meantime by any pushToList or popFromList without
+     * saving the state to the current li iterator thus showing to a non-valid
+     * service 
+     */
+    if (SG->prev_modified != li) {
+      li = SG->services_active.end();
+    }
+
     SG->last_accessed = li;
-    if (li == SG->services_active.end() || ++li == SG->services_active.end())
+    if (li == SG->services_active.end() || ++li == SG->services_active.end()) {
       li = SG->services_active.begin();
+    }
+
 
     i++;
     if (o.stealthy_linear && i == SG->services_all.size())

@@ -261,7 +261,7 @@ Service::
 const char *Service::
 HostInfo(void)
 {
-  if (!hostinfo)
+  if (!hostinfo) 
     hostinfo = (char *) safe_malloc(MAX_HOSTINFO_LEN);
 
   if (!target)
@@ -269,7 +269,6 @@ HostInfo(void)
 
   Snprintf(hostinfo, MAX_HOSTINFO_LEN, "%s://%s:%hu", name,
       target->NameIP(), portno);
-
   return hostinfo;
 }
 

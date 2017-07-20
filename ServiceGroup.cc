@@ -238,6 +238,7 @@ pushServiceToList(Service *serv, list <Service *> *dst)
   // is finished.
 
   free((char *)dstname);
+  prev_modified = li;
   return li;
 }
 
@@ -295,6 +296,7 @@ popServiceFromList(Service *serv, list <Service *> *src)
 
 
   free((char *)srcname);
+  prev_modified = li;
   return li;
 }
 
