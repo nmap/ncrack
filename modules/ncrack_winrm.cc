@@ -622,9 +622,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 */
                LONGQUARTET(NEGOTIATE_UNICODE |
                           NEGOTIATE_LM_KEY |
-                          NEGOTIATE_NTLM_KEY 
-                          // |
-                          // NEGOTIATE_NTLM2_KEY
+                          NEGOTIATE_NTLM_KEY  |
+                          NEGOTIATE_NTLM2_KEY
                           ),
                SHORTPAIR(strlen(domain_temp)),
                SHORTPAIR(strlen(domain_temp)), 0,
@@ -652,6 +651,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       free(b64);
       free(domain_temp);
       free(host);
+
       /* Content length should be last as the packet will not
       * be recognized by Wireshark as NTLM. 
       */
@@ -681,6 +681,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       * WWW-Authenticate probably we have received the challenge 
       * reponse.
       */
+
       if (memsearch((const char *)con->inbuf->get_dataptr(),
             "401", con->inbuf->get_len()) 
           && (start = memsearch((const char *)con->inbuf->get_dataptr(),
@@ -710,7 +711,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           // type2 = NULL;
           // type2_len = 0;
           tmplen2 = strlen(challenge);
-          base64_decode(challenge, tmplen2, type2);
+          base64_decode(challenge, 128, type2);
 
           if (!type2) {
             /* Type2 message decoding failed.
@@ -926,7 +927,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             type4 = (char *)safe_malloc(BASE64_LENGTH(strlen(challenge) + 1));
 
             tmplen4 = strlen(challenge);
-            base64_decode(challenge, tmplen4, type4);
+            base64_decode(challenge, 128, type4);
 
             memcpy(target_name, &type4[target_offset], target_length);
             memcpy(target_info, &type4[targetinfo_offset], targetinfo_length);
