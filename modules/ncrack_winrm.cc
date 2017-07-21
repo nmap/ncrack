@@ -802,9 +802,13 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             
 
           // }
-          snprintf(tmp_buf2, 4, "%d", *type2++);
+          tmp_buf[0] =  (int) (unsigned char) *type2++;
 
-          target_length = (int)strtol(tmp_buf2, NULL, 10);
+          target_length = (int) tmp_buf[0];
+
+          // snprintf(tmp_buf2, 4, "%d", *type2++);
+
+          // target_length = (int)strtol(tmp_buf2, NULL, 10);
           printf("Temp buf: %d", target_length);
           // target_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
           //                 ((unsigned short)tmp_buf[1] << 8));
@@ -816,6 +820,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * The values are literals. They are written as decimals
           * not as hex.
           */
+
+          tmp_buf[0] =  (int) (unsigned char) *type2++;
+
+
           snprintf(tmp_buf3, 4, "%d", *type2++);
           for (i = 0; i < 3; i++) {
             // snprintf(tmp_buf3 + (i*2), 2, "%x", *type2++);
@@ -823,7 +831,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             *type2++;
           }
 
-          target_offset = (int)strtol(tmp_buf3, NULL, 10);
+          // target_offset = (int)strtol(tmp_buf3, NULL, 10);
+          target_offset = (int) tmp_buf[0];
           printf("offset!: %d", target_offset);
           // target_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
           // ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
@@ -848,17 +857,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           }
          
 
-          // if (ntlm_flags & NEGOTIATE_NTLM2_KEY ){
-          //   USE_NTLMv2 = 1;
-          // }
-          // else if (ntlm_flags & NEGOTIATE_NTLM_KEY ){
-          //   USE_NTLM = 1;
-          // }
-          // else if (ntlm_flags & NEGOTIATE_LM_KEY ){
-          //   USE_LM = 1;
-          // }
-
-
           /* Next 8 bytes are the NTLM flags
           */
           for (i = 0; i < 8; i++) {
@@ -873,43 +871,42 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             printf("%x", tmp_challenge[i]);
           }printf("\n");
 
+
+
+
+          for (i = 0; i < 8; i++) {
+            *type2++;
+          }
+          /* The snprintf solution is not optimal. If hex if signed the value
+          *  will be negative.
+          */
+          // snprintf(tmp_buf3, 4, "%d", *type2++);
+
           /* Next 8 bytes are the Target info buffer  
           * 2 bytes target info length
           * 2 bytes target info length (we skip that)
           * 4 bytes target info offset  
           */
 
-          // for (i = 0; i < 2; i++) {
-          //   tmp_buf[i] =  (unsigned char) *type2++;
-          // }
-          // targetinfo_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
-          //                 ((unsigned short)tmp_buf[1] << 8));
+          tmp_buf[0] =  (int) (unsigned char) *type2++;
 
-          for (i = 0; i < 8; i++) {
-            *type2++;
-          }
-
-          snprintf(tmp_buf3, 4, "%d", *type2++);
           for (i = 0; i < 3; i++) {
             *type2++;
           }
 
-          targetinfo_length = (int)strtol(tmp_buf3, NULL, 10);
+          // targetinfo_length = (int)strtol(tmp_buf3, NULL, 10);
+          targetinfo_length = (int) tmp_buf[0];
           printf("target info length: %d\n", targetinfo_length);
 
-          snprintf(tmp_buf3, 4, "%d", *type2++);
+          // snprintf(tmp_buf3, 4, "%d", *type2++);
+          tmp_buf[0] =  (int) (unsigned char) *type2++;
           for (i = 0; i < 3; i++) {
             *type2++;
           }
 
-          targetinfo_offset = (int)strtol(tmp_buf3, NULL, 10);
+          // targetinfo_offset = (int)strtol(tmp_buf3, NULL, 10);
+          targetinfo_offset = (int) tmp_buf[0];
           printf(" target info offset: %d\n", targetinfo_offset);
-          // for (i = 0; i < 4; i++) {
-          //   tmp_buf[i] =  (unsigned char) *type2++;
-          // }
-          // targetinfo_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
-          // ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
-          
 
 
           target_info = (char *)safe_malloc(targetinfo_length + 1);
