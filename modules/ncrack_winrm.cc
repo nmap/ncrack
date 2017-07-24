@@ -235,7 +235,7 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
 
   if (con->misc_info) {
     info = (winrm_info *) con->misc_info;
-    printf("info substate: %d \n", info->substate);
+    // printf("info substate: %d \n", info->substate);
   }
 
   if (serv->module_data && con->misc_info == NULL) {
@@ -247,18 +247,18 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
     if (!strcmp(hstate->auth_scheme, "Basic") 
        || !strcmp(hstate->auth_scheme, "Negotiate")
       ) {
-      printf("setting connection state\n");
+      // printf("setting connection state\n");
       con->state = hstate->state;
     }
     info->auth_scheme = Strndup(hstate->auth_scheme, 
             strlen(hstate->auth_scheme));
 
-    printf("got here scheme: %s\n", info->auth_scheme);
+    // printf("got here scheme: %s\n", info->auth_scheme);
 
     // serv->more_rounds = false;
   } 
 
-  printf("con->state: %d\n", con->state);
+  // printf("con->state: %d\n", con->state);
 
   switch (con->state)
   {
@@ -463,7 +463,7 @@ winrm_basic(nsock_pool nsp, Connection *con)
       free(b64);
       free(tmp);
       con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
-printf("ok\n");
+// printf("ok\n");
       nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       
@@ -623,7 +623,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 */
                LONGQUARTET(NEGOTIATE_UNICODE |
                           NEGOTIATE_LM_KEY |
-                          NEGOTIATE_NTLM_KEY |
+                          NEGOTIATE_NTLM_KEY 
+                          |
                           NEGOTIATE_NTLM2_KEY
                           ),
                SHORTPAIR((int) strlen(serv->domain)),
@@ -720,6 +721,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           // type2_len = 0;
           tmplen2 = strlen(challenge);
           tmplen2 = 204+32+32+4;
+          // tmplen2 = 285;
           // printf("LENGTH: %d\n",strlen(challenge));
                     // printf("%s\n", challenge);
           // for (i=0; i <tmplen2;i++){
@@ -739,10 +741,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             return ncrack_module_end(nsp, con);
           }
-          printf("%s\n", type2);
-          for (i=0; i <tmplen2;i++){
-            printf("%02x", type2[i]);
-          }printf("\n");
+          // printf("%s\n", type2);
+          // for (i=0; i <tmplen2;i++){
+          //   printf("%02x", type2[i]);
+          // }printf("\n");
   /* NTLM type-2 message structure:
           Index  Description            Content
             0    NTLMSSP Signature      Null-terminated ASCII "NTLMSSP"
@@ -1014,7 +1016,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           unsigned char lmresp[24]; /* fixed-size */
           int lmrespoff;
           int ntrespoff;
-          unsigned int ntresplen = 24;
+          unsigned int ntresplen = 0;
           size_t userlen; 
           size_t hostoff = 0;
           size_t useroff = 0;
@@ -1148,8 +1150,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
 
           if (ntlm_flags & NEGOTIATE_NTLM_KEY &&
-            !(ntlm_flags & NEGOTIATE_NTLM2_KEY)) {
+            !(ntlm_flags & NEGOTIATE_NTLM2_KEY) && 0) {
 
+            ntresplen = 24;
             MD4_Init(&MD4pw);
             MD4_Update(&MD4pw, pass_unicode, sizeof(pass_unicode));
             MD4_Final(ntbuffer, &MD4pw);
@@ -1178,6 +1181,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* Let's craft NTLMv2 response if it is supported
             * by the server.
             */
+            ntresplen = 24;
             MD4_Init(&MD4pw);
             MD4_Update(&MD4pw, pass_unicode, sizeof(pass_unicode));
             MD4_Final(ntbuffer, &MD4pw);
@@ -1598,7 +1602,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
         break;
 
       info->substate = NEGOTIATE_CHALLENGE;
-      printf("CHANGED STATE TO  %d\n", info->substate );
+      // printf("CHANGED STATE TO  %d\n", info->substate );
 
       //((winrm_state *) serv->module_data)->state = WINRM_NEGOTIATE_AUTH;
       // serv->end.orly = true;
