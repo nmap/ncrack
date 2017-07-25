@@ -506,44 +506,26 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   char *tmp;
   char *tmp2;
   char *tmp3;
-  // char *tmp4;
   char *b64;
-  // char *host;
-  // char *domain_temp;
   char *start, *end;
   char *challenge;
-  // char *timestamp;
   char *type2;
-  char *type4 = NULL;
   char *target_info;
-  // char *target_name;
-  // char *pw_upper;
   size_t i;
   size_t domainlen;
   size_t hostlen;
   size_t tmplen;
   size_t tmplen2;
   size_t tmplen3;
-  // size_t tmplen4;
-  // size_t type2_len;
   size_t tmpsize;
   int targetinfo_offset;
   int targetinfo_length;
 
-  char ntlm_sig[strlen(NTLMSSP_SIGNATURE)+ 1];                            
-  // char dig[strlen(NTLMSSP_SIGNATURE) + 1]; /* temporary string */
+  char ntlm_sig[strlen(NTLMSSP_SIGNATURE)+ 1];
   int ntlm_flags;
   unsigned char tmp_challenge[8];
   unsigned char tmp_buf[4];
-  // char tmp_buf2[4];
-  // char tmp_buf3[8];
-  //unsigned char *timestamp;
 
-  // int target_offset;
-  // int target_length;  
-
-  // size_t type2len;
-  // int type2templen;
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   winrm_info *info = (winrm_info *)con->misc_info;
@@ -572,22 +554,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
       con->outbuf->append("Authorization: Negotiate ", 25);
 
-      // printf("DOMAIN BRUH: %s", serv->domain);
-      // tmplen = strlen("Workstation") + 1;
-      // domain_temp = (char *)safe_malloc(tmplen + 1);
-      // sprintf(domain_temp, "Workstation");
-
-      // tmplen = rand() % 8;
-      // tmp = (char *)safe_malloc(tmplen + 1);
-      // rand_str(tmp, tmplen + 5);  /* random string for host variable */
-
-      // host = (char *)safe_malloc(strlen(tmp) + 1);
-      // sprintf(host, "%s", tmp);
-
-      // hostlen = floor (log10 (abs (strlen(host)))) + 1;
-
-      // domainlen = floor (log10 (abs (strlen(serv->domain)))) + 1;
-
       tmplen = strlen(NTLMSSP_SIGNATURE) + 5 
                 + 4 /* NTLM flags */ 
                 + 2 + 2 + 2 + 2 /* domain */ 
@@ -597,7 +563,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
       tmp = (char *)safe_malloc(tmplen + 1);
 
-      // printf("SERV PATH: %s\n", serv->path);
       snprintf((char *)tmp, tmplen,
                NTLMSSP_SIGNATURE "%c"
                "\x01%c%c%c" /* 32-bit type = 1 */
@@ -648,11 +613,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
       con->outbuf->append(b64, strlen(b64));
 
-      // free(tmp);
       free(tmp);
       free(b64);
-      // free(domain_temp);
-      // free(host);
 
       /* Content length should be last as the packet will not
       * be recognized by Wireshark as NTLM. 
@@ -710,24 +672,15 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           /* We calculate 4*(n/3) bytes as the length of the decoded
           * string.
           */
+          tmp = strtok (challenge,"\r\n");
 
-          type2 = (char *)safe_malloc((strlen(challenge) + 1));
+          type2 = (char *)safe_malloc((strlen(tmp) + 1));
           /*  Base64 decode the type2 message (challenge)
           */
-          // type2len = BASE64_LENGTH(strlen(challenge) + 1);
-          
-          // type2templen = size_t2int(type2len);
-          // type2 = NULL;
-          // type2_len = 0;
-          tmplen2 = strlen(challenge);
-          tmplen2 = 204+32+32+4;
-          // tmplen2 = 285;
-          // printf("LENGTH: %d\n",strlen(challenge));
-                    // printf("%s\n", challenge);
-          // for (i=0; i <tmplen2;i++){
-          //   printf("%02x", type2[i]);
-          // }printf("\n");
-          base64_decode(challenge, tmplen2, type2);
+
+          tmplen = strlen(tmp) - 4;
+
+          base64_decode(challenge, tmplen, type2);
 
           if (!type2) {
             /* Type2 message decoding failed.
@@ -741,10 +694,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             return ncrack_module_end(nsp, con);
           }
-          // printf("%s\n", type2);
-          // for (i=0; i <tmplen2;i++){
-          //   printf("%02x", type2[i]);
-          // }printf("\n");
+
   /* NTLM type-2 message structure:
           Index  Description            Content
             0    NTLMSSP Signature      Null-terminated ASCII "NTLMSSP"
@@ -767,13 +717,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           for (i = 0; i < strlen(NTLMSSP_SIGNATURE) + 1; i++) {
             ntlm_sig[i] = *type2++;
           }
-          // strncpy(psql_code_ret, ntlm_sig, strlen(NTLMSSP));
 
           if (strncmp(ntlm_sig, NTLMSSP_SIGNATURE, strlen(NTLMSSP_SIGNATURE))) {
             /* In this case the NTLMSSP flag is not present.
             *  Exit gracefully.
             */
-            //free(type2);
             serv->end.orly = true;
             tmpsize = sizeof("Invalid type2 message.\n");
             serv->end.reason = (char *)safe_malloc(tmpsize);
@@ -813,46 +761,16 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * 4 bytes target name offset  
           */
 
-          // for (i = 0; i < 2; i++) {
-          //   // tmp_buf[i] =  (unsigned char) *type2++;
-            
-
-          // }
-          tmp_buf[0] =  (int) (unsigned char) *type2++;
-
-          // target_length = (int) tmp_buf[0];
-
-          // snprintf(tmp_buf2, 4, "%d", *type2++);
-
-          // target_length = (int)strtol(tmp_buf2, NULL, 10);
-          // printf("Temp buf: %d", target_length);
-          // target_length = (unsigned short)(((unsigned short)tmp_buf[0]) |
-          //                 ((unsigned short)tmp_buf[1] << 8));
-
-          for (i = 0; i < 3; i++) {
+          for (i = 0; i < 4; i++) {
             type2++;
           }
           /* We want to read 4 bytes and translate them as decimal
           * The values are literals. They are written as decimals
           * not as hex.
           */
-
-          tmp_buf[0] =  (int) (unsigned char) *type2++;
-
-
-          // snprintf(tmp_buf3, 4, "%d", *type2++);
-          for (i = 0; i < 3; i++) {
-            // snprintf(tmp_buf3 + (i*2), 2, "%x", *type2++);
-            // tmp_buf[i] =  (unsigned char) *type2++;
+          for (i = 0; i < 4; i++) {
             type2++;
           }
-
-          // target_offset = (int)strtol(tmp_buf3, NULL, 10);
-          // target_offset = (int) tmp_buf[0];
-          // printf("offset!: %d", target_offset);
-          // target_offset = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
-          // ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
-          
 
           /* Next 4 bytes are the NTLM flags
           */
@@ -937,19 +855,19 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* We read from type2 at offset - 40. 40 are the bytes
             * we have already read from the buffer.
             */
-            type4 = (char *)safe_malloc((strlen(challenge) + 1));
+            tmp = (char *)safe_malloc((strlen(challenge) + 1));
 
             // tmplen4 = strlen(challenge);
-            base64_decode(challenge, tmplen2, type4);
+            base64_decode(challenge, tmplen, tmp);
 
             // memcpy(target_name, &type4[target_offset], target_length);
-            memcpy(target_info, &type4[targetinfo_offset], targetinfo_length);
+            memcpy(target_info, &tmp[targetinfo_offset], targetinfo_length);
             // printf("Target Name: ");
             // for(i=0; i<target_length; i++){
             //   printf("%02x", target_name[i]);
             // }printf("\n");
             // free(target_name);
-            free(type4);
+            free(tmp);
             // printf("Target Info: ");
             // for(i=0; i<targetinfo_length; i++){
             //   printf("%02x", target_info[i]);
