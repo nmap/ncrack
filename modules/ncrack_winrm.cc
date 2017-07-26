@@ -217,11 +217,6 @@ typedef struct winrm_state {
 void
 ncrack_winrm(nsock_pool nsp, Connection *con)
 {
-  // char *start, *end;  /* auxiliary pointers */
-  // size_t i;
-  // char *winrm_reply = NULL;   /* server's message reply */
-  // size_t tmpsize;
-  // char *methods; 
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   winrm_info *info = NULL;
@@ -239,7 +234,6 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
   }
 
   if (serv->module_data && con->misc_info == NULL) {
-  //if (con->misc_info == NULL) {
 
     hstate = (winrm_state *)serv->module_data;
     con->misc_info = (winrm_info *)safe_zalloc(sizeof(winrm_info));
@@ -252,13 +246,8 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
     }
     info->auth_scheme = Strndup(hstate->auth_scheme, 
             strlen(hstate->auth_scheme));
-
-    // printf("got here scheme: %s\n", info->auth_scheme);
-
-    // serv->more_rounds = false;
   } 
 
-  // printf("con->state: %d\n", con->state);
 
   switch (con->state)
   {
@@ -289,10 +278,13 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
       con->outbuf->append("Content-Length: 8\r\n", 19);
       con->outbuf->append("\r\n", 2);
 
-      //send 8 random chars
-      tmplen = 8 + 1;
+      /* Send 5 random characters. The amount of characters
+      * sent in this message is irrelevant.
+      */
+
+      tmplen = 5 + 1;
       tmp = (char *)safe_malloc(tmplen + 1);
-      rand_str(tmp, 8);
+      rand_str(tmp, 5);
     
       con->outbuf->append(tmp, strlen(tmp));
       free(tmp);
@@ -304,11 +296,7 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
     case WINRM_GET_AUTH:
       if (winrm_loop_read(nsp, con) < 0)
         break;
-
-      //TODO we are missing something with the state.
-      // serv->more_rounds = true is causing this behavior.
-
-      
+     
       /* We expect a 401 response which will contain all
        * the accepted authentication methods in the
        * WWW-Authenticate header. */
@@ -316,6 +304,7 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
             "401", con->inbuf->get_len()) 
           && memsearch((const char *)con->inbuf->get_dataptr(),
             "WWW-Authenticate", con->inbuf->get_len())) {
+
         /* The response may contain more than one WWW-Authenticate
         *  header.
         */
@@ -336,28 +325,20 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
               strlen(info->auth_scheme));
           hstate->state = WINRM_BASIC_AUTH;
           hstate->reconnaissance = true;
-          // serv->more_rounds = true;
           winrm_basic(nsp, con);
-          // return ncrack_module_end(nsp, con);
 
         } else if (memsearch((const char *)con->inbuf->get_dataptr(),
               "WWW-Authenticate: Negotiate", con->inbuf->get_len()))
           {
-
           
           info->auth_scheme = Strndup("Negotiate", strlen("Negotiate"));
-
-          // con->state = WINRM_NEGOTIATE_AUTH;
           serv->module_data = (winrm_state *)safe_zalloc(sizeof(winrm_state));
           hstate = (winrm_state *)serv->module_data;
           hstate->auth_scheme = Strndup(info->auth_scheme, 
               strlen(info->auth_scheme));
           hstate->state = WINRM_NEGOTIATE_AUTH;
           hstate->reconnaissance = true;
-          // serv->more_rounds = true;
-          // con->peer_alive = true;
           winrm_negotiate(nsp, con);
-          // return ncrack_module_end(nsp, con);
         }   
       } 
      
@@ -463,7 +444,7 @@ winrm_basic(nsock_pool nsp, Connection *con)
       free(b64);
       free(tmp);
       con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
-// printf("ok\n");
+
       nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       
@@ -475,8 +456,6 @@ winrm_basic(nsock_pool nsp, Connection *con)
         break;
 
       info->substate = BASIC_SEND;
-      //memprint((const char *)con->iobuf->get_dataptr(),
-      //  con->iobuf->get_len());
 
       /* If we get a "200 OK" HTTP response OR a "301 Moved Permanently" 
        * OR 411 (which is the server's way of telling us we didn't issue
@@ -657,7 +636,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
       if ((start = memsearch((const char *)con->inbuf->get_dataptr(),
             "WWW-Authenticate: Negotiate", con->inbuf->get_len()))) {
 
-        //Extract the challenge, craft next request and send
+        /* Extract the challenge, craft next request and send
+        */
 
           start += sizeof("WWW-Authenticate: Negotiate ") - 1;
           end = start;
@@ -783,13 +763,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           ntlm_flags = ((unsigned int)tmp_buf[0]) | ((unsigned int)tmp_buf[1] << 8) |
           ((unsigned int)tmp_buf[2] << 16) | ((unsigned int)tmp_buf[3] << 24);
 
-          if (ntlm_flags & ( 1 << 1)){
-            //supports OEM
-          }
-          if (ntlm_flags & ( 1 << 0)){
-            //supports unicode
-          }
-         
 
           /* Next 8 bytes are the NTLM flags
           */
@@ -797,24 +770,12 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             tmp_challenge[i] =  (unsigned char) *type2++;
           }
 
-
-          /* Reminder: challenge is signed.
-          */
-          // printf("NTLM CHALLENGE: ");
-          // for (i=0; i <8;i++){
-          //   printf("%x", tmp_challenge[i]);
-          // }printf("\n");
-
-
-
-
           for (i = 0; i < 8; i++) {
             type2++;
           }
           /* The snprintf solution is not optimal. If hex if signed the value
           *  will be negative.
           */
-          // snprintf(tmp_buf3, 4, "%d", *type2++);
 
           /* Next 8 bytes are the Target info buffer  
           * 2 bytes target info length
@@ -828,23 +789,17 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             type2++;
           }
 
-          // targetinfo_length = (int)strtol(tmp_buf3, NULL, 10);
           targetinfo_length = (int) tmp_buf[0];
-          // printf("target info length: %d\n", targetinfo_length);
 
-          // snprintf(tmp_buf3, 4, "%d", *type2++);
           tmp_buf[0] =  (int) (unsigned char) *type2++;
           for (i = 0; i < 3; i++) {
             type2++;
           }
 
-          // targetinfo_offset = (int)strtol(tmp_buf3, NULL, 10);
           targetinfo_offset = (int) tmp_buf[0];
-          // printf(" target info offset: %d\n", targetinfo_offset);
 
 
           target_info = (char *)safe_malloc(targetinfo_length + 1);
-          // target_name = (char *)safe_malloc(target_length + 1);
 
           if (ntlm_flags & NEGOTIATE_TARGET_INFO) {
             /* If the server sends target info we will need it
@@ -868,17 +823,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           }
 
-          // target_info = "\x02\x00\x0c\x00\x44\x00\x4f\x00\x4d\x00\x41\x00\x49\x00\x4e\x00\x01\x00\x0c\x00\x53\x00\x45\x00\x52\x00\x56\x00\x45\x00\x52\x00\x04\x00\x14\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x03\x00\x22\x00\x73\x00\x65\x00\x72\x00\x76\x00\x65\x00\x72\x00\x2e\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x00\x00\x00\x00";
-          // targetinfo_length = 98;
-
-
-// 0000   02 00 08 00 54 00 45 00 53 00 54 00 01 00 08 00
-// 0010   54 00 45 00 53 00 54 00 04 00 08 00 54 00 45 00
-// 0020   53 00 54 00 03 00 08 00 54 00 45 00 53 00 54 00
-// 0030   07 00 08 00 fd 11 60 12 65 00 d3 01 00 00 00 00
-
-// target_info = "\x02\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x01\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x04\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x03\x00\x08\x00\x54\x00\x45\x00\x53\x00\x54\x00\x07\x00\x08\x00\xfd\x11\x60\x12\x65\x00\xd3\x01\x00\x00\x00\x00";
-// targetinfo_length = 64;
           /* The challenge is extracted, we can now safely
           *  proceed in construction of type 3 message.
           */
@@ -1003,9 +947,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (lmresp + 16),
                           &ks2, DES_ENCRYPT);
         }
-          // tmplen = strlen("Workstation");
-          // domain_temp = (char *)safe_malloc(tmplen );
-          // sprintf(domain_temp, "Workstation");
 
           char domain_unicode[2*strlen(serv->domain)];
           domainlen = 2*strlen(serv->domain);          
@@ -1034,32 +975,23 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           * that we are sending only the LM flag. Maybe we can get 
           * away with this and only do the LM part.
           */
-          // if (ntlm_flags & NEGOTIATE_LM_KEY) {
-            /* Let's craft the NM response.
-            */
 
-          // size_t passlen = 0;
           unsigned char ntbuffer[0x18];
           unsigned char ntresp[24]; /* fixed-size */
           unsigned char *ptr_ntresp = &ntresp[0];
 
           char pass_unicode[2*strlen(con->pass)];
-          // passlen = 2*strlen(con->pass);          
+
           /* Transform ascii to unicode
           */
           for(i = 0; i < strlen(con->pass); i++) {
             pass_unicode[2 * i] = (unsigned char)con->pass[i];
             pass_unicode[2 * i + 1] = '\0';
           }
-          // }
 
-
-            /* Create NT hashed password. 
-            */
-
+          /* Create NT hashed password. 
+          */
           MD4_CTX MD4pw;
-
-
 
           if (ntlm_flags & NEGOTIATE_NTLM_KEY &&
             !(ntlm_flags & NEGOTIATE_NTLM2_KEY) && 0) {
@@ -1069,8 +1001,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             MD4_Update(&MD4pw, pass_unicode, sizeof(pass_unicode));
             MD4_Final(ntbuffer, &MD4pw);
             memset(ntbuffer + 16, 0, 21 - 16);
-
-            // DES_key_schedule ks3;
 
             setup_des_key(ntbuffer, &ks2);
             DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) ntresp,
@@ -1084,22 +1014,21 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             DES_ecb_encrypt((DES_cblock*) tmp_challenge, (DES_cblock*) (ntresp + 16),
                             &ks2, DES_ENCRYPT);
 
-
-
             ptr_ntresp = ntresp;
           }
 
           if (ntlm_flags & NEGOTIATE_NTLM2_KEY) {
+
             /* Let's craft NTLMv2 response if it is supported
             * by the server.
             */
+
             ntresplen = 24;
             MD4_Init(&MD4pw);
             MD4_Update(&MD4pw, pass_unicode, sizeof(pass_unicode));
             MD4_Final(ntbuffer, &MD4pw);
             memset(ntbuffer + 16, 0, 21 - 16);
 
-            //unsigned char ntbuffer[0x18];
             char entropy[8];
             unsigned char ntlmv2hash[0x18];
             unsigned char tmphash[0x18];
@@ -1107,24 +1036,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * hashes.
             */
             rand_str(entropy, 8);
-//Testing 0xffffff0011223344
-// entropy[0] = 0xff;
-// entropy[1] = 0xff;
-// entropy[2] = 0xff;
-// entropy[3] = 0x00;
-// entropy[4] = 0x11;
-// entropy[5] = 0x22;
-// entropy[6] = 0x33;
-// entropy[7] = 0x44;
-// 0000   fb 10 3f d3 5c fa 6b 79
-// entropy[0] = 0xfb;
-// entropy[1] = 0x10;
-// entropy[2] = 0x3f;
-// entropy[3] = 0xd3;
-// entropy[4] = 0x5c;
-// entropy[5] = 0xfa;
-// entropy[6] = 0x6b;
-// entropy[7] = 0x79;
+
             /* Calculate NTLM hash as we did before for v1.
             * After calculating the NTLM hash we concatenate
             * the unicode form of username and Target name 
@@ -1187,39 +1099,19 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
               domain_temp_unicode[2 * i] = (unsigned char)serv->domain[i];
               domain_temp_unicode[2 * i + 1] = '\0';
             }
-            // free(domain_temp);
+
             /* Concatenate the two strings.
             */
 
-            // unsigned char target_name2[12];
-            // target_name2[0] = 0x44;
-            // target_name2[1] = 0x00;
-            // target_name2[2] = 0x4f;
-            // target_name2[3] = 0x00;
-            // target_name2[4] = 0x4d;
-            // target_name2[5] = 0x00;
-            // target_name2[6] = 0x41;
-            // target_name2[7] = 0x00;
-            // target_name2[8] = 0x49;
-            // target_name2[9] = 0x00;
-            // target_name2[10] = 0x4e;
-            // target_name2[11] = 0x00;
-
-
-
             char userdomain[sizeof(user_upper_unicode) + sizeof(domain_temp_unicode)];
-            // snprintf(userdomain, sizeof(user_unicode), "%s", user_unicode);
+
             for (i=0; i <sizeof(user_upper_unicode); i++){
               userdomain[i] = user_upper_unicode[i];
             }
             for (i=sizeof(user_upper_unicode); i <sizeof(domain_temp_unicode)+sizeof(user_upper_unicode); i++){
               userdomain[i] = domain_temp_unicode[i-sizeof(user_upper_unicode)];
             }
-            // strcat(userdomain, target_name);
-            // printf("Userdomain: ");
-            // for(i=0;i<sizeof(userdomain);i++){
-            //   printf("%02x",userdomain[i] );
-            // }printf("\n");
+
 
             /* This string will then be hashed by HMAC_MD5 with NTLM 
             * hash as a key. We use the ntbuffer but not the zero-padded
@@ -1233,16 +1125,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             HMAC(EVP_md5(), ntbuffer, 16, (unsigned const char*) userdomain, 
                   sizeof(userdomain), ntlmv2hash, NULL);
-            // printf("NTLM key : ");
-            // for(i=0;i<sizeof(ntbuffer);i++){
-            //   printf("%02x",ntbuffer[i] );
-            // }printf("\n");
 
-
-            // printf("NTLMV2 hash: ");
-            // for(i=0;i<sizeof(ntlmv2hash);i++){
-            //   printf("%02x",ntlmv2hash[i] );
-            // }printf("\n");
             /* NTLMv2 response 
             * We need to construct the NTLMv2 blob here.
             */
@@ -1270,8 +1153,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             uint64_t t;
             t = unix2nttime(time(NULL));
-            // printf("%" PRIu64 "\n", t);
-            // printf("0x%" PRIx64 "\n", t);
 
             tmp3[8+8] = (char)(t & 0x000000FF);
             tmp3[9+8] = (char)((t & 0x0000FF00) >> 8);
@@ -1292,11 +1173,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memcpy(tmp3 + 16 + 8, entropy, 8);
             memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
 
-            free(target_info);            
-            // printf("Blob: ");
-            // for(i=0;i<tmplen3;i++){
-            //   printf("%02x",tmp3[i] );
-            // }printf("\n");
+            free(target_info);
 
             HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) tmp3, 
                   tmplen3, tmphash, NULL);
@@ -1313,10 +1190,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memcpy(tmp + 16, tmp3 + 8, tmplen3 - 8);
             ptr_ntresp = (unsigned char *) tmp;
             free(tmp3);
-                      printf("=====");
-                      for(i=ntresplen-8; i< ntresplen; i++){
-            printf( "%02x", ptr_ntresp[i]);
-          }printf("\n");
+
             /* LMv2 response 
             * 1. Calculate NTLM hash. 
             * 2. Unicode uppercase username and target name
@@ -1330,7 +1204,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             * At this point we have performed step 1, 2 and 3
             */
 
-// LMv2 WORKS
             char chall_nonce [16];
 
             for (i=0; i <sizeof(tmp_challenge); i++){
@@ -1340,34 +1213,13 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
               chall_nonce[i] = entropy[i-sizeof(tmp_challenge)];
             }
 
-            // printf("Chall_nonce: ");
-            // for(i=0;i<sizeof(chall_nonce);i++){
-            //   printf("%02x",chall_nonce[i] );
-            // }printf("\n");
-
-
             HMAC(EVP_md5(), ntlmv2hash, 16, (unsigned const char*) chall_nonce, 
                   sizeof(chall_nonce), lmresp, NULL);
-
-            // printf("LM resp: ");
-            // for(i=0;i<sizeof(lmresp);i++){
-            //   printf("%02x",lmresp[i] );
-            // }printf("\n");
-
             memcpy(&lmresp[16], entropy, sizeof(entropy));
-
-            // printf("LM resp2: ");
-            // for(i=0;i<sizeof(lmresp);i++){
-            //   printf("%02x",lmresp[i] );
-            // }printf("\n");
-
           }
           domoff = ntrespoff + ntresplen;
-          //domoff = lmrespoff + 0x18;
           useroff = domoff + domainlen;
           hostoff = useroff + userlen;
-
-
 
           tmplen2 = strlen(NTLMSSP_SIGNATURE) + 1 + 4 
                     + 2 + 2 + 2 + 2 /* LM */
@@ -1384,7 +1236,6 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                     ;    
 
           tmp2 = (char *)safe_malloc(tmplen2 + 1);
-
 
           snprintf((char *)tmp2, tmplen2,
                   NTLMSSP_SIGNATURE "%c"
@@ -1482,16 +1333,14 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
           memcpy(&tmp2[domoff], domain_unicode, domainlen);
           memcpy(&tmp2[useroff], user_unicode, userlen);
-          // free(ptr_ntresp);
-          // memset(tmp2 + hostoff, host, hostlen);
 
           b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
           base64_encode(tmp2, tmplen2, b64);
 
           con->outbuf->append(b64, strlen(b64));
-        /* Content length should be last as the packet will not
-        * be recognized by Wireshark as NTLM. 
-        */
+          /* Content length should be last as the packet will not
+          * be recognized by Wireshark as NTLM. 
+          */
           con->outbuf->append("\r\nContent-Length: 0", 19);
 
           free(tmp2);
@@ -1522,16 +1371,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
         break;
 
       info->substate = NEGOTIATE_CHALLENGE;
-      // printf("CHANGED STATE TO  %d\n", info->substate );
-
-      //((winrm_state *) serv->module_data)->state = WINRM_NEGOTIATE_AUTH;
-      // serv->end.orly = true;
-      // tmpsize = sizeof("Test termination.\n");
-      // serv->end.reason = (char *)safe_malloc(tmpsize);
-      // snprintf(serv->end.reason, tmpsize,
-      //     "Test termination.\n");
-
-      // return ncrack_module_end(nsp, con);
+    
       /* Successful login attempt results in empty 200 response.
       * Else a 401 response will appear containing the authentication
       * methods.
