@@ -439,12 +439,12 @@ base64_decode (const char *base64, int length, char *to)
   if (pad)
     {
         int n = base64_char_to_value[p[L]] << 18 | base64_char_to_value[p[L + 1]] << 12;
-        q[strlen(q) - 1] = n >> 16;
+        *q++ = n >> 16;
 
         if (length > L + 2 && p[L + 2] != '=')
         {
             n |= base64_char_to_value[p[L + 2]] << 6;
-            q[strlen(q) - 1] = n >> 8 & 0xFF;
+            *q++ = n >> 8 & 0xFF;
         }
     }
   return q - to;

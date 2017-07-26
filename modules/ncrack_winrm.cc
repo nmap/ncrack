@@ -678,9 +678,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           /*  Base64 decode the type2 message (challenge)
           */
 
-          tmplen = strlen(tmp) - 4;
+          tmplen = strlen(tmp);// - 4;
 
-          base64_decode(challenge, tmplen, type2);
+          base64_decode(tmp, tmplen, type2);
 
           if (!type2) {
             /* Type2 message decoding failed.
@@ -855,23 +855,17 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* We read from type2 at offset - 40. 40 are the bytes
             * we have already read from the buffer.
             */
-            tmp = (char *)safe_malloc((strlen(challenge) + 1));
+            tmp3 = (char *)safe_malloc((strlen(tmp) + 1));
+            printf("%s\n",tmp);
 
-            // tmplen4 = strlen(challenge);
-            base64_decode(challenge, tmplen, tmp);
+            base64_decode(tmp, tmplen, tmp3);
 
-            // memcpy(target_name, &type4[target_offset], target_length);
-            memcpy(target_info, &tmp[targetinfo_offset], targetinfo_length);
-            // printf("Target Name: ");
-            // for(i=0; i<target_length; i++){
-            //   printf("%02x", target_name[i]);
-            // }printf("\n");
-            // free(target_name);
+
+            memcpy(target_info, &tmp3[targetinfo_offset], targetinfo_length);
+
             free(tmp);
-            // printf("Target Info: ");
-            // for(i=0; i<targetinfo_length; i++){
-            //   printf("%02x", target_info[i]);
-            // }printf("\n");
+            free(tmp3);
+
           }
 
           // target_info = "\x02\x00\x0c\x00\x44\x00\x4f\x00\x4d\x00\x41\x00\x49\x00\x4e\x00\x01\x00\x0c\x00\x53\x00\x45\x00\x52\x00\x56\x00\x45\x00\x52\x00\x04\x00\x14\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x03\x00\x22\x00\x73\x00\x65\x00\x72\x00\x76\x00\x65\x00\x72\x00\x2e\x00\x64\x00\x6f\x00\x6d\x00\x61\x00\x69\x00\x6e\x00\x2e\x00\x63\x00\x6f\x00\x6d\x00\x00\x00\x00\x00";
@@ -1297,6 +1291,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memcpy(tmp3, tmp_challenge, 8);
             memcpy(tmp3 + 16 + 8, entropy, 8);
             memcpy(tmp3 + 28 + 8, target_info, targetinfo_length);
+
             free(target_info);            
             // printf("Blob: ");
             // for(i=0;i<tmplen3;i++){
@@ -1318,6 +1313,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             memcpy(tmp + 16, tmp3 + 8, tmplen3 - 8);
             ptr_ntresp = (unsigned char *) tmp;
             free(tmp3);
+                      printf("=====");
+                      for(i=ntresplen-8; i< ntresplen; i++){
+            printf( "%02x", ptr_ntresp[i]);
+          }printf("\n");
             /* LMv2 response 
             * 1. Calculate NTLM hash. 
             * 2. Unicode uppercase username and target name
@@ -1476,7 +1475,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             memcpy(&tmp2[ntrespoff], ptr_ntresp, ntresplen);
           }
-
+          printf("=====");
+          for(i=ntresplen-8; i< ntresplen; i++){
+            printf( "%02x", ptr_ntresp[i]);
+          }printf("\n");
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
           memcpy(&tmp2[domoff], domain_unicode, domainlen);
           memcpy(&tmp2[useroff], user_unicode, userlen);
