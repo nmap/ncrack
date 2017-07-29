@@ -497,10 +497,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   size_t tmplen2;
   size_t tmplen3;
   size_t tmpsize;
+  size_t domain_tmplen;
   int targetinfo_offset;
   int targetinfo_length;
 
-  char ntlm_sig[strlen(NTLMSSP_SIGNATURE)+ 1];
+  char *ntlm_sig;
   int ntlm_flags;
   unsigned char tmp_challenge[8];
   unsigned char tmp_buf[4];
@@ -509,6 +510,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
   winrm_info *info = (winrm_info *)con->misc_info;
   static const char type2_marker[] = { 0x02, 0x00, 0x00, 0x00 };
+
+
+  ntlm_sig = (char *)safe_malloc(strlen(NTLMSSP_SIGNATURE) + 1);
 
   switch (info->substate) {
     case NEGOTIATE_CHALLENGE:
@@ -702,6 +706,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* In this case the NTLMSSP flag is not present.
             *  Exit gracefully.
             */
+            free(ntlm_sig);
             serv->end.orly = true;
             tmpsize = sizeof("Invalid type2 message.\n");
             serv->end.reason = (char *)safe_malloc(tmpsize);
@@ -710,7 +715,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             return ncrack_module_end(nsp, con);
           }
-
+          free(ntlm_sig);
           /* Checking for type 2 message flag
           *  The next four bytes should contain the value
           *  \x02\x00\x00\x00
@@ -948,7 +953,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                           &ks2, DES_ENCRYPT);
         }
 
-          char domain_unicode[2*strlen(serv->domain)];
+          char *domain_unicode;
+          domain_unicode = (char *)safe_malloc(2*strlen(serv->domain) + 1);
+
+
           domainlen = 2*strlen(serv->domain);          
           /* Transform ascii to unicode
           */
@@ -957,7 +965,10 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             domain_unicode[2 * i + 1] = '\0';
           }
 
-          char user_unicode[2*strlen(con->user)];
+
+          char *user_unicode;
+          user_unicode = (char *)safe_malloc(2*strlen(con->user) + 1);
+
           userlen = 2*strlen(con->user);
 
           /* Transform ascii to unicode
@@ -980,7 +991,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           unsigned char ntresp[24]; /* fixed-size */
           unsigned char *ptr_ntresp = &ntresp[0];
 
-          char pass_unicode[2*strlen(con->pass)];
+          char *pass_unicode;
+
+          pass_unicode = (char *)safe_malloc(2*strlen(con->pass) + 1);
 
           /* Transform ascii to unicode
           */
@@ -998,7 +1011,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             ntresplen = 24;
             MD4_Init(&MD4pw);
-            MD4_Update(&MD4pw, pass_unicode, sizeof(pass_unicode));
+            MD4_Update(&MD4pw, pass_unicode, 2*strlen(con->pass));
             MD4_Final(ntbuffer, &MD4pw);
             memset(ntbuffer + 16, 0, 21 - 16);
 
@@ -1025,7 +1038,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             ntresplen = 24;
             MD4_Init(&MD4pw);
-            MD4_Update(&MD4pw, pass_unicode, sizeof(pass_unicode));
+            MD4_Update(&MD4pw, pass_unicode, 2*strlen(con->pass));
             MD4_Final(ntbuffer, &MD4pw);
             memset(ntbuffer + 16, 0, 21 - 16);
 
@@ -1062,7 +1075,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             /* First we convert username to uppercase string.
             */
-            unsigned char user_upper[strlen(con->user)];
+            unsigned char *user_upper;
+            user_upper = (unsigned char *)safe_malloc(strlen(con->user) + 1);
             tmplen = strlen(con->user) + 1;
             tmp = (char *)safe_zalloc(strlen(con->user) + 1);
 
@@ -1082,19 +1096,23 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             /* And then transform it into unicode.
             */
-            char user_upper_unicode[2*strlen(con->user)];
+            char *user_upper_unicode;
+            user_upper_unicode = (char *)safe_malloc(2*strlen(con->user) + 1);
             userlen = 2*strlen(con->user);
 
-            for(i = 0; i < sizeof(user_upper); i++) {
+            for(i = 0; i < tmplen; i++) {
               user_upper_unicode[2 * i] = (unsigned char)user_upper[i];
               user_upper_unicode[2 * i + 1] = '\0';
             }
 
-
+            free(user_upper);
             /* And then transform it into unicode.
             */
-            char domain_temp_unicode[2*strlen(serv->domain)];
 
+            char *domain_temp_unicode;
+            domain_temp_unicode = (char *)safe_malloc(2*strlen(serv->domain) + 1);
+            domain_tmplen = 2*strlen(serv->domain);
+   
             for(i = 0; i < strlen(serv->domain); i++) {
               domain_temp_unicode[2 * i] = (unsigned char)serv->domain[i];
               domain_temp_unicode[2 * i + 1] = '\0';
@@ -1103,15 +1121,17 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             /* Concatenate the two strings.
             */
 
-            char userdomain[sizeof(user_upper_unicode) + sizeof(domain_temp_unicode)];
+            char *userdomain;
+            userdomain = (char *)safe_malloc(userlen + domain_tmplen + 1);
 
-            for (i=0; i <sizeof(user_upper_unicode); i++){
+            for (i=0; i <userlen; i++){
               userdomain[i] = user_upper_unicode[i];
             }
-            for (i=sizeof(user_upper_unicode); i <sizeof(domain_temp_unicode)+sizeof(user_upper_unicode); i++){
-              userdomain[i] = domain_temp_unicode[i-sizeof(user_upper_unicode)];
+            for (i=userlen; i <domain_tmplen + userlen; i++){
+              userdomain[i] = domain_temp_unicode[i-userlen];
             }
-
+            free(user_upper_unicode);
+            free(domain_temp_unicode);
 
             /* This string will then be hashed by HMAC_MD5 with NTLM 
             * hash as a key. We use the ntbuffer but not the zero-padded
@@ -1124,8 +1144,9 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             */
 
             HMAC(EVP_md5(), ntbuffer, 16, (unsigned const char*) userdomain, 
-                  sizeof(userdomain), ntlmv2hash, NULL);
+                  userlen + domain_tmplen, ntlmv2hash, NULL);
 
+            free(userdomain);
             /* NTLMv2 response 
             * We need to construct the NTLMv2 blob here.
             */
@@ -1229,7 +1250,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                     + 2 + 2 + 2 + 2 /* host */
                     + 2 + 2 + 2 + 2 /* session key */
                     + 4 /* flag */
-                    + sizeof(domain_unicode) + sizeof(user_unicode)
+                    + domainlen + userlen
                     //+ strlen(host) 
                     + 0x18
                     + ntresplen
@@ -1326,12 +1347,11 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
             memcpy(&tmp2[ntrespoff], ptr_ntresp, ntresplen);
           }
-          printf("=====");
-          for(i=ntresplen-8; i< ntresplen; i++){
-            printf( "%02x", ptr_ntresp[i]);
-          }printf("\n");
+
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
+
           memcpy(&tmp2[domoff], domain_unicode, domainlen);
+
           memcpy(&tmp2[useroff], user_unicode, userlen);
 
           b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen2) + 1);
@@ -1345,6 +1365,8 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
 
           free(tmp2);
           free(b64);
+          free(domain_unicode);
+          printf("lol\n");
           con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
           nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
