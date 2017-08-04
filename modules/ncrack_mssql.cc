@@ -330,7 +330,7 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
 
       /* 30 null bytes */
       unsigned char host_process[] =
-        "\x30\x30\x30\x30\x30\x30\x61\x30\x00\x00"
+        "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 
@@ -387,7 +387,7 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
        "\x00\x00";
 
       unsigned char library_name[] =
-       "\x4d\x53\x44\x42\x4c\x49\x42\x00\x00\x00";
+       "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 
       unsigned char program_major_v[] =
        "\x06\x00";
@@ -482,7 +482,7 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       memcpy(tmp + pklen + 30 + 1 + 30 + 1 + 30, &len_pass, 1);
       /* This adds up to  8 + 1 + 30 + 1 + 30 + 1 + 30  = 101 */
       memcpy(tmp + 101, host_process, 30);
-      memcpy(tmp + 101 + 30, "\x08", 1);
+      memcpy(tmp + 101 + 30, "\x00", 1);
       memcpy(tmp + 101 + 30 + 1, magic1, 6);
       memcpy(tmp + 101 + 30 + 1 + 6, "\x01", 1);
       memcpy(tmp + 101 + 30 + 1 + 6 + 1, magic2, 9);
@@ -500,7 +500,7 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       memcpy(tmp + 466, tds_major_v, 2);
       memcpy(tmp + 466 + 2, tds_minor_v, 2);
       memcpy(tmp + 466 + 2 + 2, library_name, 10);
-      memcpy(tmp + 466 + 2 + 2 + 10,"\x07", 1);
+      memcpy(tmp + 466 + 2 + 2 + 10,"\x00", 1);
       memcpy(tmp + 466 + 2 + 2 + 10 + 1, program_major_v, 2);
       memcpy(tmp + 466 + 2 + 2 + 10 + 1 + 2, program_minor_v, 2);
       memcpy(tmp + 466 + 2 + 2 + 10 + 1 + 2 + 2, magic5, 3);
