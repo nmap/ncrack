@@ -127,10 +127,7 @@
 #include "Service.h"
 #include "modules.h"
 
-#define MSLEN 30
 #define MSSQL_TIMEOUT 10000
-
-#define SHORTPAIR(x) ((x) & 0xff), (((x) >> 8) & 0xff)
 
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
@@ -139,18 +136,6 @@ static int mssql_loop_read(nsock_pool nsp, Connection *con);
 
 enum states { MSSQL_ATTEMPT, MSSQL_INIT, MSSQL_GET_PORT, MSSQL_FINI };
 
-typedef struct mssql_info {
-  char *auth_scheme;
-  int substate;
-} mssql_info;
-
-typedef struct mssql_state {
-  bool reconnaissance;
-  char *auth_scheme;
-  int state;
-  int keep_alive;
-} mssql_state;
-
 static int
 mssql_loop_read(nsock_pool nsp, Connection *con)
 {
@@ -158,13 +143,6 @@ mssql_loop_read(nsock_pool nsp, Connection *con)
     nsock_read(nsp, con->niod, ncrack_read_handler, MSSQL_TIMEOUT, con);
     return -1;
   }
-
-  if (!memsearch((const char *)con->inbuf->get_dataptr(), "\r\n\r\n",
-        con->inbuf->get_len())) {
-    nsock_read(nsp, con->niod, ncrack_read_handler, MSSQL_TIMEOUT, con);
-    return -1;
-  }
-
   return 0;
 }
 
@@ -172,12 +150,13 @@ void
 ncrack_mssql(nsock_pool nsp, Connection *con)
 {
   nsock_iod nsi = con->niod;
-  Service *serv = con->service;
-  mssql_info *info = NULL;
-  mssql_state *hstate = NULL;
-   /* We will skip the SQL monitor part for now.
-  */
-  // con->state = MSSQL_ATTEMPT;
+  unsigned char len_login, len_pass;
+  int tmplen;
+  char * tmp;
+  int pklen;
+  char *start, *end;
+  size_t i;
+
   switch (con->state)
   {
     case MSSQL_INIT:
@@ -208,11 +187,6 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       /*
       * Could we instead use CLNT_UCAST_EX (0x03) ? Should test it.
       */
-
-      // con->outbuf->snprintf(0, "%c", 0x02);
-      
-      // nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
-      //   (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
     case MSSQL_GET_PORT:
@@ -261,12 +235,24 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      /* A simple solution is to use a Pre-TDS 7 Login request.
-      * Packet structure can be found in:
+      /* A simple solution that we will employ for the moment is 
+      * to send a Pre-TDS 7 Login request.
+      * 
+      * Packet structure was found in:
       * http://www.freetds.org/tds.html#login
-      */
-   
+      */   
 
+      /* A TDS packet that is longer than 512 bytes (without the 8 byte header) has 
+      * to be split in more packets. 
+      * 
+      * That limit was increased to 4096 (default value) in TSD version 7.
+      * 
+      * TDS version 7 was introduced for Microsoft SQL server 7.0 (1998).
+      * As such we can squeeze the whole (Pre-TDS 7 Login) packet in just one request
+      * without having to worry about incompatibilty with older servers 
+      * (Unless of course, you encounter an SQL server running software older than 1998). 
+      */
+      
       /* 
       *         TDS PRELOGIN Packet Header
       *   Index     Description             Content
@@ -285,34 +271,34 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       *         TDS PRELOGIN Data Content
       *   Index         Description             Content
       *   8             host name               30 chars
-      *   38            host name length        integer
+      *   38            host name length        integer 8
       *   39            user name               30 chars
-      *   69            user name length        integer
+      *   69            user name length        integer 8
       *   70            password                30 chars
-      *   100           password length         integer
+      *   100           password length         integer 8
       *   101           host process            30 chars
-      *   131           host process length     integer
+      *   131           host process length     integer 8
       *   132           magic number            6 bytes \x03\x01\x06\x0a\x09\x01 
       *   138           bulk copy               integer 0x01 
       *   139           magic number            9 bytes \x00\x00\x00\x00\x00\x00\x00\x00\x00
       *   148           app name                30 chars
-      *   178           app name length         integer
+      *   178           app name length         integer 8
       *   179           server name             30 chars
-      *   209           server name length      integer
+      *   209           server name length      integer 8
       *   210           magic number            1 byte \x00 
-      *   211           password2 length        integer
+      *   211           password2 length        integer 8
       *   212           password2               30 chars
       *   242           magic number            223 null bytes
-      *   465           password2 length + 2    integer
+      *   465           password2 length + 2    integer 8
       *   466           TDS major version       integer 16
       *   468           TDS minor version       integer 16
       *   470           library name            10 chars  
-      *   480           library name  length    integer
+      *   480           library name  length    integer 8
       *   481           program major version   integer 16
       *   483           program minor version   integer 16
       *   485           magic number            3 bytes \x00\x0d\x11
       *   488           language                30 chars e.g. "us-english" 
-      *   518           language length         integer
+      *   518           language length         integer 8
       *   519           magic number            1 byte \x01 
       *   520           old_secure              integer 16 (we will use \x00\x00) 
       *   522           encrypter               integer (we will use 0 for no encryption) 
@@ -320,23 +306,29 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       *   524           sec_spare               9 bytes (fill with zeros) 
       *   533           character set           30 chars e.g. iso_1 (fill with zeros) 
       *   563           character set length    integer (0x00)
+      *   564           magic number            1 bytes 0x01
+      *   565           block size              6 chars
+      *   571           block size length       integer 8
       */
 
+      /* 30 null bytes */
       unsigned char hostname[] =
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+
       char *username;
       username = (char *)safe_malloc(30 + 1);
       sprintf(username, "%s", con->user);
       char *password;
       password = (char *)safe_malloc(30 + 1);
       sprintf(password, "%s", con->pass);
+
       /* Fill it up to 30 chars with zeros. */
       memset(username + strlen(con->user), 0, 30 - strlen(con->user));
       memset(password + strlen(con->pass), 0, 30 - strlen(con->pass));
 
-
+      /* 30 null bytes */
       unsigned char host_process[] =
         "\x30\x30\x30\x30\x30\x30\x61\x30\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -345,22 +337,23 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       unsigned char magic1[] =
         "\x03\x01\x06\x0a\x09\x01";  
 
+      /* 9 null bytes */
       unsigned char magic2[] =
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 
+      /* 30 null bytes */
       unsigned char app_name[] =
-      "\x73\x71\x75\x65\x6c\x64\x61\x20\x31\x2e\x30"
-        // "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-        // "\x00"
-        "\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 
+      /* 30 null bytes */
       unsigned char server_name[] =
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 
-        /* 233 null bytes */
+      /* 233 null bytes */
       unsigned char magic4[] =
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -405,14 +398,34 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       unsigned char magic5[] =
        "\x00\x0d\x11";
 
+      /* 30 null bytes */
       unsigned char language[] =
+        "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        ;
+
+      unsigned char old_secure[] =
+        "\x00\x00";
+
+      unsigned char sec_spare[] =
+        "\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+
+      /* 30 null bytes */
+      unsigned char character_set[] =
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 
-      int pklen = 8; /* Packet header length */
-      int tmplen;
-      char * tmp;
+      /* SQL server 2016 does not check these values. 
+      * Leaving them as zeros for the moment.
+      */
+      unsigned char block_size[] =
+        "\x00\x00\x00\x00\x00\x00";
+
+      pklen = 8; /* Packet header length */
+
       tmplen = 30 + 1 /* hostname + length */
         + 30 + 1 /* username + length */
         + 30 + 1 /* password + length */
@@ -427,9 +440,16 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
         + 2 + 2 /* TDS version min/maj*/
         + 10 + 1 /* lib name + length */
         + 2 + 2 /* program version min/maj */
-        + 3 /* magic number 3 */
+        + 3 /* magic number 5 */
         + 30 + 1 /* language + length */
-        + 1 /* magic number 6*/
+        + 1 /* magic number 6 */
+        + 2 /* old secure */
+        + 1 /* encryptor  */
+        + 1 /* magic number 7 */
+        + 9 /* sec_spare */
+        + 30 + 1 /* character set + length */
+        + 1 /* magic number 8 */
+        + 6 + 1 /* block size + length */
         ;
 
       tmp = (char *)safe_malloc(tmplen + pklen + 1);
@@ -442,77 +462,13 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
                "%c"       /* uint8 packet ID */
                "%c",   /* window byte 0x00 */            
                0x02,
-               0x00,
-               0x02, 0x0a, /* fixed length for now 522 bytes*/
+               0x01,
+               0x02, 0x3e, /* fixed length for now 574 bytes*/
                0x00, 0x00, /* 0x00, 0x00 works for SSID */
-               0x02, /* This is the first packet. */
+               0x01, /* This is the first packet. */
                0x00
-               );  
-      printf("%d\n", tmplen + pklen);
-      printf("%c%c\n", SHORTPAIR(tmplen + pklen));
-      // snprintf((char *)tmp + pklen, tmplen,
-      //          "%s" /* Hostname */
-      //          "%c" /* Hostname length */
-      //          "%s" /* Username fill up with zeros till 30 chars */
-      //          "%c" /* Username length  */
-      //          "%s" /* Password fill up with zeros till 30 chars */
-      //          "%c" /* Password length */   
-      //          "%s" /* Host process */ 
-      //          "%c" /* Host process length */
-      //          "%s" /* Magic number #1 */
-      //          "%c" /* bulk copy 0x01 */
-      //          "%s" /* Magic number #2 */
-      //          "%s" /* app name */
-      //          "%c" /* app name length */
-      //          "%s" /* server name */
-      //          "%c" /* server name length */
-      //          "%c" /* magic number 3 0x00 */
-      //          "%c" /* password 2 length*/
-      //          "%s" /* password 2 fill up to 30 chars */
-      //          "%s" /* magic number #4  223 null bytes */ 
-      //          "%c" /* password length + 2*/
-      //          "%s" /* TDS Major version 16 */
-      //          "%s" /* TDS Minor version 16 */
-      //          "%s" /* library name up to 10 chars */
-      //          "%c" /* library name length */
-      //          "%s"  program major version 16 
-      //          "%s" /* program minor version 16 */
-      //          "%s" /* magic number #5 \x00\x0d\x11 */
-      //          "%s" /* language fill up to 30 chars */
-      //          "%c" /* language length */
-      //          "%c", /* magic number #6 \x01 */
-      //          hostname,
-      //          0x00,
-      //          username,
-      //          strlen(con->user),
-      //          password,
-      //          strlen(con->pass),
-      //          host_process,
-      //          0x08,
-      //          magic1,
-      //          0x01,
-      //          magic2,
-      //          app_name,
-      //          0x00,
-      //          server_name,
-      //          0x00,
-      //          0x00, /* magic number 3 */
-      //          strlen(con->pass),
-      //          password,
-      //          magic4,
-      //          strlen(con->pass) + 2,
-      //          tds_major_v,
-      //          tds_minor_v,
-      //          library_name,
-      //          0x07, /* library name fixed for now. */
-      //          program_major_v,
-      //          program_minor_v,
-      //          magic5,
-      //          language,
-      //          0x00, /* language length */
-      //          0x01 /* magic number #6 \x01*/ 
-      //          );  
-      unsigned char len_login, len_pass;
+               );       
+
       len_login = (unsigned char)strlen(con->user);
       len_pass = (unsigned char)strlen(con->pass);
       memcpy(tmp + pklen, hostname, 30);
@@ -531,7 +487,7 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       memcpy(tmp + 101 + 30 + 1 + 6, "\x01", 1);
       memcpy(tmp + 101 + 30 + 1 + 6 + 1, magic2, 9);
       memcpy(tmp + 101 + 30 + 1 + 6 + 1 + 9, app_name, 30);
-      memcpy(tmp + 101 + 30 + 1 + 6 + 1 + 9 + 30, "\x0b", 1);
+      memcpy(tmp + 101 + 30 + 1 + 6 + 1 + 9 + 30, "\x00", 1);
       /* + 101 + 30 + 1 + 6 + 1 + 9 + 30 + 1= 179 */
       memcpy(tmp + 179, server_name, 30);
       memcpy(tmp + 179 + 30,"\x00", 1);
@@ -540,7 +496,7 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       memcpy(tmp + 179 + 30 + 1 + 1 + 1, password, 30);
       memcpy(tmp + 179 + 30 + 1 + 1 + 1 + 30, magic4, 223);
       memcpy(tmp + 179 + 30 + 1 + 1 + 1 + 30 + 223, &len_pass + 2, 1);
-      /* + 179 + 30 + 1 + 1 + 1 + 30 + 223 + 1 = 466*/
+      /* + 179 + 30 + 1 + 1 + 1 + 30 + 223 + 1 = 466 */
       memcpy(tmp + 466, tds_major_v, 2);
       memcpy(tmp + 466 + 2, tds_minor_v, 2);
       memcpy(tmp + 466 + 2 + 2, library_name, 10);
@@ -551,25 +507,56 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       memcpy(tmp + 466 + 2 + 2 + 10 + 1 + 2 + 2 + 3, language, 30);
       memcpy(tmp + 466 + 2 + 2 + 10 + 1 + 2 + 2 + 3 + 30,"\x00", 1);
       memcpy(tmp + 466 + 2 + 2 + 10 + 1 + 2 + 2 + 3 + 30 + 1,"\x01", 1);
+      /* 466 + 2 + 2 + 10 + 1 + 2 + 2 + 3 + 30 + 1 + 1 = 520  */
+      memcpy(tmp + 520, old_secure, 2);
+      memcpy(tmp + 520 + 2, "\x00", 1);
+      memcpy(tmp + 520 + 2 + 1, "\x00", 1);
+      memcpy(tmp + 520 + 2 + 1 + 1, sec_spare, 9);
+      memcpy(tmp + 520 + 2 + 1 + 1 + 9, character_set, 30);
+      memcpy(tmp + 520 + 2 + 1 + 1 + 9 + 30, "\x00", 1);
+      memcpy(tmp + 520 + 2 + 1 + 1 + 9 + 30 + 1, "\x01", 1);
+      memcpy(tmp + 520 + 2 + 1 + 1 + 9 + 30 + 1 + 1, block_size, 6);
+      memcpy(tmp + 520 + 2 + 1 + 1 + 9 + 30 + 1 + 1 + 6, "\x00", 1);
+
       con->outbuf->append(tmp, tmplen);
 
       nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
 
       con->state = MSSQL_FINI;
-      // return ncrack_module_end(nsp, con);
       break;
     }
-    case MSSQL_FINI:
 
+    case MSSQL_FINI:
+    {
       if (mssql_loop_read(nsp, con) < 0)
         break;
-
       con->state = MSSQL_ATTEMPT;
 
-      delete con->inbuf;
-      con->inbuf = NULL;
+      start = (char *)con->inbuf->get_dataptr();
+      end = start;
+      i = 0;
+      while (i != con->inbuf->get_len()) {
+        end++;
+        i++;
+      }
 
-      return ncrack_module_end(nsp, con);
+      /* Parse the header and then verify that we have at least a 9 byte resopnse
+      * 8 bytes for the correct header and 1 byte for the code.
+      * (It will never be just 9 bytes unless it is a different protocol)
+      * Then check the first byte of the response, it should be 0x04.
+      * This value denotes a TDS server response packet.
+      * Then check the 1 packet of the data segment of the packet.
+      * If the byte is 0xe3 then the authentication attempt was correct.
+      */
+      if (con->inbuf->get_len() > 9 
+        && (unsigned char) start[0] == 0x04
+        && (unsigned char) start[8] == 0xe3){
+        con->auth_success = true;
+      }
+
+      ncrack_module_end(nsp, con);
+      break;
+    }
   }
 }
