@@ -157,6 +157,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 {
   nsock_iod nsi = con->niod;
   unsigned char len_login, len_pass;
+  Service *serv = con->service;
   int tmplen;
   char * tmp;
   char * payload;
@@ -213,7 +214,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
          "\xd4\x07%c%c" /* OpCode: We use query 2004 */              
          "%c%c%c%c" /* Query Flags */
          "%s" /* Full Collection Name */
-        /* might need a null byte here */
+         "%c" /* null byte */
          "%c%c%c%c" /* Number to Skip (0) */
          "\xff\xff\xff\xff" /* Number to return (-1) */
          "%c%c%c%c" /* query length, fixed length (28) */
@@ -224,14 +225,14 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
          "\x01%c%c%c" /* element value (1) */
          
          "%c", /* end of packet null byte */
-
+         LONGQUARTET(tmplen),
          0x00,0x00,0x30,0x3a,
          0x00,0x00,
          0x00,0x00,0x00,0x00,
-         full_collection_name,
+         full_collection_name, 0x00,
          0x00,0x00,0x00,0x00, /* Num to skip */
 
-         LONGQUARTET(1 + strlen("isMaster") + 1 + 4 + 1),
+         LONGQUARTET( 4 + 1 + strlen("isMaster") + 1 + 4 + 1),
          "isMaster", 0x00,
          0x00,0x00,0x00,
 
