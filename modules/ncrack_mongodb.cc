@@ -138,13 +138,15 @@ static int mongodb_loop_read(nsock_pool nsp, Connection *con);
 
 static void rand_str(char *dest, size_t length);
 
-enum states { MONGODB_INIT, MONGODB_RECEIVE, MONGODB_FINI };
+enum states {MONGODB_REQUEST_VERSION, MONGODB_RECEIVE_VER, MONGODB_INIT, 
+              MONGODB_RECEIVE, MONGODB_FINI, MONGODB_CR_START, MONGODB_CR_NONCE,
+              MONGODB_CR_FINI };
 
 static int
 mongodb_loop_read(nsock_pool nsp, Connection *con)
 {
   if (con->inbuf == NULL) {
-    nsock_read(nsp, con->niod, ncrack_read_handler, MSSQL_TIMEOUT, con);
+    nsock_read(nsp, con->niod, ncrack_read_handler, MONGODB_TIMEOUT, con);
     return -1;
   }
   return 0;
@@ -189,7 +191,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
       tmplen = 4 + 4  /* mesage length + request ID*/
          + 4 + 4 + 4  /* response to + opcode + queryflags */
-         + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+         + strlen(serv->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
          + 4 + 4 /* number to skip, number to return */
          + 4 /* query length */
          + 1 + strlen("isMaster") + 1 + 4 /* element list database length */
@@ -200,9 +202,9 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       
       char *full_collection_name;
 
-      full_collection_name = (char *)safe_malloc(strlen(con->database) + strlen(".$cmd") + 1);
+      full_collection_name = (char *)safe_malloc(strlen(serv->database) + strlen(".$cmd") + 1);
 
-      sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
+      sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
 
       snprintf((char *)tmp, tmplen,
          "%c%c%c%c" /* message length */ 
@@ -240,13 +242,13 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       free(tmp);
       free(full_collection_name);
 
-      nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
+      nsock_write(nsp, nsi, ncrack_write_handler, MONGODB_TIMEOUT, con,
         (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
 
-      con->state = MONGODB_RECEIVE;
+      con->state = MONGODB_RECEIVE_VER;
       break;
 
-    case MONGODB_RECEIVE:
+    case MONGODB_RECEIVE_VER:
       break;
       
     case MONGODB_INIT:
@@ -260,7 +262,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
       // tmplen = 4 + 4  /* mesage length + request ID*/
       //    + 4 + 4 + 4  /* response to + opcode + queryflags */
-      //    + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+      //    + strlen(serv->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
       //    + 4 + 4 /* number to skip, number to return */
       //    + 4 /* query length */
       //    + 1 + strlen("listDatabases") + 1 + 4 + 4 /* element list database length */
@@ -270,9 +272,9 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       
       // char *full_collection_name;
 
-      // full_collection_name = (char *)safe_malloc(strlen(con->database) + strlen(".$cmd") + 1);
+      // full_collection_name = (char *)safe_malloc(strlen(serv->database) + strlen(".$cmd") + 1);
 
-      // sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
+      // sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
 
       // snprintf((char *)tmp, tmplen,
       //    "%c%c%c%c" /* message length */ 
@@ -307,7 +309,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       // free(tmp);
       // free(full_collection_name);
 
-      // nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
+      // nsock_write(nsp, nsi, ncrack_write_handler, MONGODB_TIMEOUT, con,
       //   (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
 
       // con->state = MONGODB_RECEIVE;
@@ -344,7 +346,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
     //   tmplen = 4 + 4  /* mesage length + request ID*/
     //      + 4 + 4 + 4  /* response to + opcode + queryflags */
-    //      + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+    //      + strlen(serv->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
     //      + 4 + 4 /* number to skip, number to return */
     //      + 4 /* query length */
 
@@ -359,9 +361,9 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
     //   char *full_collection_name;
 
-    //   full_collection_name = (char *)safe_malloc(strlen(con->database) + 6 + 1);
+    //   full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
 
-    //   sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
+    //   sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
 
     //   /* Allocate 12 bytes for the client nonce, the length of the username
     //   * and 8 bytes for the following sequence "n,,n=,r="
@@ -435,13 +437,13 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
     //   free(b64_cn);
     //   free(tmp);
 
-    //   nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
+    //   nsock_write(nsp, nsi, ncrack_write_handler, MONGODB_TIMEOUT, con,
     //     (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
     case MONGODB_FINI:
 
-      if (mssql_loop_read(nsp, con) < 0)
+      if (mongodb_loop_read(nsp, con) < 0)
         break;
       /* We search for the string 'payload' in the server's response.
       * We extract that value and proceed with step 3.
@@ -469,7 +471,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
       // tmplen = 4 + 4  /* mesage length + request ID*/
       //    + 4 + 4 + 4  /* response to + opcode + queryflags */
-      //    + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+      //    + strlen(serv->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
       //    + 4 + 4 /* number to skip, number to return */
       //    + 4 /* query length */
 
@@ -481,9 +483,9 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
       // char *full_collection_name;
 
-      // full_collection_name = (char *)safe_malloc(strlen(con->database) + 6 + 1);
+      // full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
 
-      // sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
+      // sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
 
 
       // snprintf((char *)tmp, tmplen,
@@ -524,7 +526,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       // free(full_collection_name);
       // free(tmp);
 
-      // nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
+      // nsock_write(nsp, nsi, ncrack_write_handler, MONGODB_TIMEOUT, con,
       //   (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
@@ -570,7 +572,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       // */
       // tmplen = 4 + 4  /* mesage length + request ID*/
       //  + 4 + 4 + 4  /* response to + opcode + queryflags */
-      //  + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+      //  + strlen(serv->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
       //  + 4 + 4 /* number to skip, number to return */
       //  + 4 /* query length */
 
@@ -582,8 +584,8 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       // tmp = (char *)safe_malloc(tmplen + 1);
 
       // char *full_collection_name;
-      // full_collection_name = (char *)safe_malloc(strlen(con->database) + 6 + 1);
-      // sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
+      // full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
+      // sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
 
       // snprintf((char *)tmp, tmplen,
       //    "%c%c%c%c" /* message length */ 
@@ -659,7 +661,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       // free(full_collection_name);
       // free(tmp);
 
-      // nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
+      // nsock_write(nsp, nsi, ncrack_write_handler, MONGODB_TIMEOUT, con,
       //   (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;  
 

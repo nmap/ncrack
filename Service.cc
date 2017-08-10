@@ -167,6 +167,7 @@ Service()
   connection_retries = -1;
   timeout = -1;
   path = Strndup("/", 2); /* path is '/' by default */
+  database = Strndup("admin", 5); /* databse is 'admin' by default */
   ssl = false;
 
   module_data = NULL;
@@ -203,6 +204,7 @@ Service(const Service& ref)
   //if (path)
   //  free(path);
   path = Strndup(ref.path, strlen(ref.path));
+  database = Strndup(ref.database, strlen(ref.database));
 
   ideal_parallelism = 1;  /* we start with 1 connection exactly */
 
