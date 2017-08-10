@@ -165,9 +165,24 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
   switch (con->state)
   {
-    case MONGODB_INIT:
-      /* List DB step */
-
+    case MONGODB_REQUEST_VERSION:
+      /* This step will try to find the server's version. According to the MongoDB
+      * specification if the server is above version 3.0 it will not authenticate
+      * via the MongoDB-CR method. It will accept those requests but the attempt 
+      * will always fail. As such we need to extract the version and decide which 
+      * method to use. Unless of course the user forces an authentication method.
+      *
+      * The server's version is identified by extracting the isMaster object and 
+      * checking the value of the maxWireVersion variable. This variable was introduced
+      * in Mongo v 2.6. I haven't found yet a clear table listing the values of this 
+      * variable. From various documentation articles I could extract the following
+      * information:
+      * maxWireVersion=3 -> MongoDB 2.6
+      * maxWireVersion=4 -> MongoDB 3.2 (?)
+      * maxWireVersion=5 -> MongoDB 3.4
+      * If we receive a maxWireVersion above 4 we should use SCRAM-SHA1 while
+      * if we receive 3 or below, we should use MongoDB-CR.
+      */
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();    
@@ -177,10 +192,11 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
          + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
          + 4 + 4 /* number to skip, number to return */
          + 4 /* query length */
-         + 1 + strlen("listDatabases") + 1 + 4 + 4 /* element list database length */
+         + 1 + strlen("isMaster") + 1 + 4 /* element list database length */
          + 1 /* null byte */
          ;
-      tmp = (char *)safe_malloc(tmplen + 1); 
+
+            tmp = (char *)safe_malloc(tmplen + 1); 
       
       char *full_collection_name;
 
@@ -198,22 +214,25 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
         /* might need a null byte here */
          "%c%c%c%c" /* Number to Skip (0) */
          "\xff\xff\xff\xff" /* Number to return (-1) */
-         "\x1c%c%c%c" /* query length, fixed length (28) */
-         "\x01" /* query type (Double 0x01) */
+         "%c%c%c%c" /* query length, fixed length (28) */
+
+         "\x10" /* query type (Int32 0x10) */
          "%s" /* element (listDatabases) */              
-        /* might need a null byte here */
-         "%c%c%c%c" /* element value (1) */
-         "%c%c\xf0\x3f" /* element value (1) cnt. */
+         "%c" /* null byte */
+         "\x01%c%c%c" /* element value (1) */
+         
          "%c", /* end of packet null byte */
+
          0x00,0x00,0x30,0x3a,
          0x00,0x00,
          0x00,0x00,0x00,0x00,
          full_collection_name,
          0x00,0x00,0x00,0x00, /* Num to skip */
-         0x00,0x00,0x00, /* query length */
-         "listDatabases",
-         0x00,0x00,0x00,0x00,
-         0x00,0x00,
+
+         LONGQUARTET(1 + strlen("isMaster") + 1 + 4 + 1),
+         "isMaster", 0x00,
+         0x00,0x00,0x00,
+
          0x00
          );     
 
@@ -228,129 +247,196 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       break;
 
     case MONGODB_RECEIVE:
-      if (memsearch((const char *)con->inbuf->get_dataptr(),
-            "errmsg", con->inbuf->get_len()) 
-          || memsearch((const char *)con->inbuf->get_dataptr(),
-            "not authorized", con->inbuf->get_len())) {
-        con->state = MONGO_STEP1;
-      } else {
-        /* In this case the mongo database does not have authorization.
-        * The module terminates with success. 
-        */
-        con->auth_success = true;
-        return ncrack_module_end(nsp, con);
-      }
+      break;
+      
+    case MONGODB_INIT:
+      /* This step attempts to perform the list db command. 
+      * This will only work if the database (defaults to 'admin')
+      * does not have any authentication. */
+
+      // if (con->outbuf)
+      //   delete con->outbuf;
+      // con->outbuf = new Buf();    
+
+      // tmplen = 4 + 4  /* mesage length + request ID*/
+      //    + 4 + 4 + 4  /* response to + opcode + queryflags */
+      //    + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+      //    + 4 + 4 /* number to skip, number to return */
+      //    + 4 /* query length */
+      //    + 1 + strlen("listDatabases") + 1 + 4 + 4 /* element list database length */
+      //    + 1 /* null byte */
+      //    ;
+      // tmp = (char *)safe_malloc(tmplen + 1); 
+      
+      // char *full_collection_name;
+
+      // full_collection_name = (char *)safe_malloc(strlen(con->database) + strlen(".$cmd") + 1);
+
+      // sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
+
+      // snprintf((char *)tmp, tmplen,
+      //    "%c%c%c%c" /* message length */ 
+      //    "%c%c%c%c" /* request ID, might have to be dynamic */
+      //    "\xff\xff\xff\xff" /* response to */
+      //    "\xd4\x07%c%c" /* OpCode: We use query 2004 */              
+      //    "%c%c%c%c" /* Query Flags */
+      //    "%s"  Full Collection Name 
+      //   /* might need a null byte here */
+      //    "%c%c%c%c" /* Number to Skip (0) */
+      //    "\xff\xff\xff\xff" /* Number to return (-1) */
+      //    "\x1c%c%c%c" /* query length, fixed length (28) */
+      //    "\x01" /* query type (Double 0x01) */
+      //    "%s" /* element (listDatabases) */              
+      //   /* might need a null byte here */
+      //    "%c%c%c%c" /* element value (1) */
+      //    "%c%c\xf0\x3f" /* element value (1) cnt. */
+      //    "%c", /* end of packet null byte */
+      //    0x00,0x00,0x30,0x3a,
+      //    0x00,0x00,
+      //    0x00,0x00,0x00,0x00,
+      //    full_collection_name,
+      //    0x00,0x00,0x00,0x00, /* Num to skip */
+      //    0x00,0x00,0x00, /* query length */
+      //    "listDatabases",
+      //    0x00,0x00,0x00,0x00,
+      //    0x00,0x00,
+      //    0x00
+      //    );     
+
+      // con->outbuf->append(tmp, tmplen);
+      // free(tmp);
+      // free(full_collection_name);
+
+      // nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
+      //   (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+
+      // con->state = MONGODB_RECEIVE;
       break;
 
-    case MONGO_STEP1:
-      if (con->outbuf)
-        delete con->outbuf;
-      con->outbuf = new Buf();    
+    case MONGODB_RECEIVE:
+    //   if (memsearch((const char *)con->inbuf->get_dataptr(),
+    //         "errmsg", con->inbuf->get_len()) 
+    //       || memsearch((const char *)con->inbuf->get_dataptr(),
+    //         "not authorized", con->inbuf->get_len())) {
+    //     con->state = MONGO_STEP1;
+    //   } else {
+    //     /* In this case the mongo database does not have authorization.
+    //     * The module terminates with success. 
+    //     */
+    //     con->auth_success = true;
+    //     return ncrack_module_end(nsp, con);
+    //   }
+    //   break;
 
-      /* Generate client nonce. The nonce is usually 10-13 random bytes.
-      * These bytes are base64 encoded.
-      */
-      tmp = (char *)safe_malloc(12 + 1);
-      rand_str(tmp, 12);
-      b64_cn = (char *)safe_malloc(BASE64_LENGTH(12) + 1);
-      base64_encode(tmp, 12, b64_cn);
-      free(tmp);
+    // case MONGO_STEP1:
+    //   if (con->outbuf)
+    //     delete con->outbuf;
+    //   con->outbuf = new Buf();    
 
-      tmplen = 4 + 4  /* mesage length + request ID*/
-         + 4 + 4 + 4  /* response to + opcode + queryflags */
-         + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
-         + 4 + 4 /* number to skip, number to return */
-         + 4 /* query length */
+    //   /* Generate client nonce. The nonce is usually 10-13 random bytes.
+    //   * These bytes are base64 encoded.
+    //   */
+    //   tmp = (char *)safe_malloc(12 + 1);
+    //   rand_str(tmp, 12);
+    //   b64_cn = (char *)safe_malloc(BASE64_LENGTH(12) + 1);
+    //   base64_encode(tmp, 12, b64_cn);
+    //   free(tmp);
 
-         + 1 + strlen("saslStart") + 1 + 4  /* element saslStart length */
-         + 1 + strlen("mechanism") + 1 + 4 + strlen("SCRAM-SHA-1") + 1 /* element SCRAM-SHA-1 length */
-         + 1 + strlen("payload") + 1 + 4 + strlen(payload) /* element payload length */
-         + 1 + strlen("autoAuthorize") + 1 + 4  /* element autoAuthorize length */
+    //   tmplen = 4 + 4  /* mesage length + request ID*/
+    //      + 4 + 4 + 4  /* response to + opcode + queryflags */
+    //      + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+    //      + 4 + 4 /* number to skip, number to return */
+    //      + 4 /* query length */
 
-         + 1 /* null byte */
-         ;
-      tmp = (char *)safe_malloc(tmplen + 1);
+    //      + 1 + strlen("saslStart") + 1 + 4  /* element saslStart length */
+    //      + 1 + strlen("mechanism") + 1 + 4 + strlen("SCRAM-SHA-1") + 1 /* element SCRAM-SHA-1 length */
+    //      + 1 + strlen("payload") + 1 + 4 + strlen(payload) /* element payload length */
+    //      + 1 + strlen("autoAuthorize") + 1 + 4  /* element autoAuthorize length */
 
-      char *full_collection_name;
+    //      + 1 /* null byte */
+    //      ;
+    //   tmp = (char *)safe_malloc(tmplen + 1);
 
-      full_collection_name = (char *)safe_malloc(strlen(con->database) + 6 + 1);
+    //   char *full_collection_name;
 
-      sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
+    //   full_collection_name = (char *)safe_malloc(strlen(con->database) + 6 + 1);
 
-      /* Allocate 12 bytes for the client nonce, the length of the username
-      * and 8 bytes for the following sequence "n,,n=,r="
-      */
-      payload = (char *)safe_malloc(12 + strlen(con->user) + 8);
-      snprintf(payload, "n,,n=%s,r=%s", con->user, b64_cn);
+    //   sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
 
-      snprintf((char *)tmp, tmplen,
-         "%c%c%c%c" /* message length */ 
-         "%c%c%c%c" /* request ID, might have to be dynamic */
-         "\xff\xff\xff\xff" /* response to */
-         "\xd4\x07%c%c" /* OpCode: We use query 2004 */              
-         "%c%c%c%c" /* Query Flags */
-         "%s" /* Full Collection Name */
-        /* might need a null byte here */
-         "%c%c%c%c" /* Number to Skip (0) */
-         "\xff\xff\xff\xff" /* Number to return (-1) */
-         "%c%c%c%c" /* query length, dynamic */
+    //   /* Allocate 12 bytes for the client nonce, the length of the username
+    //   * and 8 bytes for the following sequence "n,,n=,r="
+    //   */
+    //   payload = (char *)safe_malloc(12 + strlen(con->user) + 8);
+    //   snprintf(payload, "n,,n=%s,r=%s", con->user, b64_cn);
 
-         "\x10" /* query type (Int32 0x10) */
-         "%s" /* element (saslStart) */              
-         "%c" /* element null byte */
-         "\x01%c%c%c" /* element value (1) */
+    //   snprintf((char *)tmp, tmplen,
+    //      "%c%c%c%c" /* message length */ 
+    //      "%c%c%c%c" /* request ID, might have to be dynamic */
+    //      "\xff\xff\xff\xff" /* response to */
+    //      "\xd4\x07%c%c" /* OpCode: We use query 2004 */              
+    //      "%c%c%c%c" /* Query Flags */
+    //      "%s" /* Full Collection Name */
+    //     /* might need a null byte here */
+    //      "%c%c%c%c" /* Number to Skip (0) */
+    //      "\xff\xff\xff\xff" /* Number to return (-1) */
+    //      "%c%c%c%c" /* query length, dynamic */
 
-         "\x02" /* query type (String 0x02) */
-         "%s" /* element (mechanism) */              
-         "%c" /* element null byte */
-         "\x0c%c%c%c" /* element value length (12) */
-         "%s" /* element value (SCRAM-SHA-1) */
-         "%c" /* element value null byte */
+    //      "\x10" /* query type (Int32 0x10) */
+    //      "%s" /* element (saslStart) */              
+    //      "%c" /* element null byte */
+    //      "\x01%c%c%c" /* element value (1) */
 
-         "\x05" /* query type (Binary 0x05) */
-         "%s" /* element (payload) */              
-         "%c" /* element null byte */
-         "%c%c%c%c" /* element value length (dynamic) */
-         "%s" /* element value */
+    //      "\x02" /* query type (String 0x02) */
+    //      "%s" /* element (mechanism) */              
+    //      "%c" /* element null byte */
+    //      "\x0c%c%c%c" /* element value length (12) */
+    //      "%s" /* element value (SCRAM-SHA-1) */
+    //      "%c" /* element value null byte */
 
-         "\x10" /* query type (Int32 0x10) */
-         "%s" /* element (autoAuthorize) */              
-         "%c" /* element null byte */
-         "\x01%c%c%c" /* element value (1) */
+    //      "\x05" /* query type (Binary 0x05) */
+    //      "%s" /* element (payload) */              
+    //      "%c" /* element null byte */
+    //      "%c%c%c%c" /* element value length (dynamic) */
+    //      "%s" /* element value */
 
-         "%c", /* end of packet null byte */
+    //      "\x10" /* query type (Int32 0x10) */
+    //      "%s" /* element (autoAuthorize) */              
+    //      "%c" /* element null byte */
+    //      "\x01%c%c%c" /* element value (1) */
 
-         LONGQUARTET(tmplen),
-         0x00,0x00,0x30,0x3a,
-         0x00,0x00,
-         0x00,0x00,0x00,0x00,
-         full_collection_name,
-         0x00,0x00,0x00,0x00, /* Num to skip */
-         0x00,0x00,0x00,0x00, /* query length fix me   */
-         "saslStart", 0x00,
-         0x00,0x00,0x00,
-         "mechanism", 0x00,
-         0x00,0x00,0x00,
-         "SCRAM-SHA-1", 0x00,
+    //      "%c", /* end of packet null byte */
 
-         "binary",0x00,
-         LONGQUARTET(strlen(payload)),
-         payload,
+    //      LONGQUARTET(tmplen),
+    //      0x00,0x00,0x30,0x3a,
+    //      0x00,0x00,
+    //      0x00,0x00,0x00,0x00,
+    //      full_collection_name,
+    //      0x00,0x00,0x00,0x00, /* Num to skip */
+    //      0x00,0x00,0x00,0x00, /* query length fix me   */
+    //      "saslStart", 0x00,
+    //      0x00,0x00,0x00,
+    //      "mechanism", 0x00,
+    //      0x00,0x00,0x00,
+    //      "SCRAM-SHA-1", 0x00,
 
-         "autoAuthorize", 0x00,
-         0x00,0x00,0x00,
+    //      "binary",0x00,
+    //      LONGQUARTET(strlen(payload)),
+    //      payload,
 
-         0x00
-         );     
+    //      "autoAuthorize", 0x00,
+    //      0x00,0x00,0x00,
 
-      con->outbuf->append(tmp, tmplen);
-      free(full_collection_name);
-      free(payload);
-      free(b64_cn);
-      free(tmp);
+    //      0x00
+    //      );     
 
-      nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
-        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+    //   con->outbuf->append(tmp, tmplen);
+    //   free(full_collection_name);
+    //   free(payload);
+    //   free(b64_cn);
+    //   free(tmp);
+
+    //   nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
+    //     (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
     case MONGODB_FINI:
@@ -377,84 +463,212 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       return ncrack_module_end(nsp, con);
 
     case MONGODB_CR_START:
-      if (con->outbuf)
-        delete con->outbuf;
-      con->outbuf = new Buf();    
+      // if (con->outbuf)
+      //   delete con->outbuf;
+      // con->outbuf = new Buf();    
 
-      tmplen = 4 + 4  /* mesage length + request ID*/
-         + 4 + 4 + 4  /* response to + opcode + queryflags */
-         + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
-         + 4 + 4 /* number to skip, number to return */
-         + 4 /* query length */
+      // tmplen = 4 + 4  /* mesage length + request ID*/
+      //    + 4 + 4 + 4  /* response to + opcode + queryflags */
+      //    + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+      //    + 4 + 4 /* number to skip, number to return */
+      //    + 4 /* query length */
 
-         + 1 + strlen("getnonce") + 1 + 4 + 4 /* element getnonce length */
+      //    + 1 + strlen("getnonce") + 1 + 4 + 4 /* element getnonce length */
 
-         + 1 /* null byte */
-         ;
-      tmp = (char *)safe_malloc(tmplen + 1);
+      //    + 1 /* null byte */
+      //    ;
+      // tmp = (char *)safe_malloc(tmplen + 1);
 
-      char *full_collection_name;
+      // char *full_collection_name;
 
-      full_collection_name = (char *)safe_malloc(strlen(con->database) + 6 + 1);
+      // full_collection_name = (char *)safe_malloc(strlen(con->database) + 6 + 1);
 
-      sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
+      // sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
 
 
-      snprintf((char *)tmp, tmplen,
-         "%c%c%c%c" /* message length */ 
-         "%c%c%c%c" /* request ID, might have to be dynamic */
-         "\xff\xff\xff\xff" /* response to */
-         "\xd4\x07%c%c" /* OpCode: We use query 2004 */              
-         "%c%c%c%c" /* Query Flags */
-         "%s" /* Full Collection Name */
-        /* might need a null byte here */
-         "%c%c%c%c" /* Number to Skip (0) */
-         "\xff\xff\xff\xff" /* Number to return (-1) */
-         "\x17%c%c%c" /* query length, fixed 23 */
+      // snprintf((char *)tmp, tmplen,
+      //    "%c%c%c%c" /* message length */ 
+      //    "%c%c%c%c" /* request ID, might have to be dynamic */
+      //    "\xff\xff\xff\xff" /* response to */
+      //    "\xd4\x07%c%c" /* OpCode: We use query 2004 */              
+      //    "%c%c%c%c" /* Query Flags */
+      //    "%s"  Full Collection Name 
+      //   /* might need a null byte here */
+      //    "%c%c%c%c" /* Number to Skip (0) */
+      //    "\xff\xff\xff\xff" /* Number to return (-1) */
+      //    "\x17%c%c%c" /* query length, fixed 23 */
 
-         "\x01" /* query type (Double 0x01) */
-         "%s" /* element (getnonce) */              
-         "%c" /* element null byte */
-         "%c%c%c%c" /* element value (1) */
-         "%c%c\xf0\x3f" /* element value (1) cnt. */
+      //    "\x01" /* query type (Double 0x01) */
+      //    "%s" /* element (getnonce) */              
+      //    "%c" /* element null byte */
+      //    "%c%c%c%c" /* element value (1) */
+      //    "%c%c\xf0\x3f" /* element value (1) cnt. */
 
-         "%c", /* end of packet null byte */
+      //    "%c", /* end of packet null byte */
 
-         LONGQUARTET(tmplen),
-         0x00,0x00,0x30,0x3a,
-         0x00,0x00,
-         0x00,0x00,0x00,0x00,
-         full_collection_name,
-         0x00,0x00,0x00,0x00, /* Num to skip */
-         0x00,0x00,0x00, 
-         "getnonce", 0x00,
-         0x00,0x00,0x00,0x00,
-         0x00,0x00,        
+      //    LONGQUARTET(tmplen),
+      //    0x00,0x00,0x30,0x3a,
+      //    0x00,0x00,
+      //    0x00,0x00,0x00,0x00,
+      //    full_collection_name,
+      //    0x00,0x00,0x00,0x00, /* Num to skip */
+      //    0x00,0x00,0x00, 
+      //    "getnonce", 0x00,
+      //    0x00,0x00,0x00,0x00,
+      //    0x00,0x00,        
 
-         0x00
-         );     
+      //    0x00
+      //    );     
 
-      con->outbuf->append(tmp, tmplen);
-      free(full_collection_name);
-      free(tmp);
+      // con->outbuf->append(tmp, tmplen);
+      // free(full_collection_name);
+      // free(tmp);
 
-      nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
-        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      // nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
+      //   (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
     case MONGODB_CR_NONCE:
-      if (!memsearch((const char *)con->inbuf->get_dataptr(),
-            "nonce", con->inbuf->get_len())) {
-        /* Abort.
-        */
-      }
-    /* There is a nonce element. In CR mode the nonce has a length attribute.
-    * Read the length and then read the nonce. The length is 4 bytes after
-    * the 'nonce\0' string.
-    */
-      return ncrack_module_end(nsp, con);    
+      // if (!memsearch((const char *)con->inbuf->get_dataptr(),
+      //       "nonce", con->inbuf->get_len())) {
+      //   /* Abort.
+      //   */
+      // }
+
+      // if (con->outbuf)
+      //   delete con->outbuf;
+      // con->outbuf = new Buf();  
+      // /* There is a nonce element. In CR mode the nonce has a length attribute.
+      // * Read the length and then read the nonce. The length is 4 bytes after
+      // * the 'nonce\0' string.
+      // */
+
+      // unsigned char hashbuf[MD5_DIGEST_LENGTH];
+      // unsigned char hashbuf2[MD5_DIGEST_LENGTH];
+
+      // MD5_CTX md5;
+
+      // /* Calculate MD5(Username:mongo:Password) */
+      // MD5_Init(&md5);
+      // MD5_Update(&md5, con->user, strlen(con->user));
+      // MD5_Update(&md5, ":mongo:", strlen(":mongo:"));
+      // MD5_Update(&md5, con->pass, strlen(con->pass));
+      // MD5_Final(hashbuf, &md5);
+      // /* We might need enhex here 
+      // */
+      // /* Calculate MD5(nonce + username + digest). */
+      // MD5_Init(&md5);
+      // MD5_Update(&md5, nonce, strlen(nonce));
+      // MD5_Update(&md5, con->user, strlen(con->user));
+      // MD5_Update(&md5, hashbuf, strlen(hashbuf));
+      // MD5_Final(hashbuf2, &md5);
+      // /* We might need enhex here
+      // */
+
+      // /* Now craft the response with the 4 elements:
+      // * authenticate, user, nonce and key
+      // */
+      // tmplen = 4 + 4  /* mesage length + request ID*/
+      //  + 4 + 4 + 4  /* response to + opcode + queryflags */
+      //  + strlen(con->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+      //  + 4 + 4 /* number to skip, number to return */
+      //  + 4 /* query length */
+
+      //  + 1 + strlen("getnonce") + 1 + 4 + 4 /* element getnonce length */
+
+      //  + 1 /* null byte */
+      //  ;
+
+      // tmp = (char *)safe_malloc(tmplen + 1);
+
+      // char *full_collection_name;
+      // full_collection_name = (char *)safe_malloc(strlen(con->database) + 6 + 1);
+      // sprintf(full_collection_name, "%s%s", con->database, ".$cmd");
+
+      // snprintf((char *)tmp, tmplen,
+      //    "%c%c%c%c" /* message length */ 
+      //    "%c%c%c%c" /* request ID, might have to be dynamic */
+      //    "\xff\xff\xff\xff" /* response to */
+      //    "\xd4\x07%c%c" /* OpCode: We use query 2004 */              
+      //    "%c%c%c%c" /* Query Flags */
+      //    "%s"  Full Collection Name 
+      //   /* might need a null byte here */
+      //    "%c%c%c%c" /* Number to Skip (0) */
+      //    "\xff\xff\xff\xff" /* Number to return (-1) */
+      //    "%c%c%c%c" /* query length, dynamic */
+
+      //    "\x01" /* query type (Double 0x01) */
+      //    "%s" /* element (authenticate) */              
+      //    "%c" /* element null byte */
+      //    "%c%c%c%c" /* element value (1) */
+      //    "%c%c\xf0\x3f" /* element value (1) cnt. */
+
+
+      //    "\x02" /* query type (String 0x02) */
+      //    "%s" /* element (nonce) */              
+      //    "%c" /* element null byte */
+      //    "%c%c%c%c" /* element value length (dynamic) */
+      //    "%s" /* element value (nonce value) */
+      //    "%c" /* element value null byte */
+
+      //    "\x02" /* query type (String 0x02) */
+      //    "%s" /* element (key) */              
+      //    "%c" /* element null byte */
+      //    "%c%c%c%c" /* element value length (md5hash length) */
+      //    "%s" /* element value (nonce value) */
+      //    "%c" /* element value null byte */
+
+      //    "\x02" /* query type (String 0x02) */
+      //    "%s" /* element (user) */              
+      //    "%c" /* element null byte */
+      //    "%c%c%c%c" /* element value length (username length) */
+      //    "%s" /* element value (nonce value) */
+      //    "%c" /* element value null byte */
+
+      //    "%c", /* end of packet null byte */
+
+      //    LONGQUARTET(tmplen),
+      //    0x00,0x00,0x30,0x3a,
+      //    0x00,0x00,
+      //    0x00,0x00,0x00,0x00,
+      //    full_collection_name,
+      //    0x00,0x00,0x00,0x00, /* Num to skip */
+      //    LONGQUARTET(strlen(query)) /* work it out */
+
+      //    "authenticate", 0x00,
+      //    0x00,0x00,0x00,0x00,
+      //    0x00,0x00,   
+
+      //    "nonce", 0x00,
+      //    LONGQUARTET(strlen(nonce)),
+      //    nonce, 0x00,
+
+      //    "key", 0x00,
+      //    LONGQUARTET(strlen(md5hash)),
+      //    md5hash, 0x00,
+
+      //    "user", 0x00,
+      //    LONGQUARTET(strlen(con->user)),
+      //    con->user, 0x00,
+
+      //    0x00
+      //    );     
+
+      
+      // con->outbuf->append(tmp, tmplen);
+      // free(full_collection_name);
+      // free(tmp);
+
+      // nsock_write(nsp, nsi, ncrack_write_handler, MSSQL_TIMEOUT, con,
+      //   (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;  
 
     case MONGODB_CR_FINI:
+      // if (!memsearch((const char *)con->inbuf->get_dataptr(),
+      //       "errmsg", con->inbuf->get_len())) {
+      //   /* Abort.
+      //   */
+      // }
       return ncrack_module_end(nsp, con);
   }
 }
