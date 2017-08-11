@@ -135,12 +135,15 @@ extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 static int mongodb_loop_read(nsock_pool nsp, Connection *con);
+static void mongodb_cr(nsock_pool nsp, Connection *con);
 
 static void rand_str(char *dest, size_t length);
 
-enum states {MONGODB_REQUEST_VERSION, MONGODB_RECEIVE_VER, MONGODB_INIT, 
-              MONGODB_RECEIVE, MONGODB_FINI, MONGODB_CR_START, MONGODB_CR_NONCE,
+enum states {MONGODB_REQUEST_VERSION, MONGODB_RECEIVE_VER, MONGODB_SCRAM_START, MONGODB_CR_START, MONGODB_CR_NONCE,
               MONGODB_CR_FINI };
+
+/* MongoDB CR substates */
+enum { CR_INIT, CR_NONCE, CR_FINI }; 
 
 static int
 mongodb_loop_read(nsock_pool nsp, Connection *con)
@@ -152,12 +155,27 @@ mongodb_loop_read(nsock_pool nsp, Connection *con)
   return 0;
 }
 
+typedef struct mongodb_info {
+  char *auth_scheme;
+  int substate;
+} mongodb_info;
+
+/* probably we don't need this struct */
+typedef struct mongodb_state {
+  bool reconnaissance;
+  char *auth_scheme;
+  int state;
+  int keep_alive;
+} mongodb_state;
+
 void
 ncrack_mongodb(nsock_pool nsp, Connection *con)
 {
   nsock_iod nsi = con->niod;
   unsigned char len_login, len_pass;
   Service *serv = con->service;
+  mongodb_info *info = NULL;
+  mongodb_state *hstate = NULL;
   int tmplen;
   char * tmp;
   char * payload;
@@ -165,6 +183,29 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
   int pklen;
   char *start, *end;
   size_t i;
+  char *challenge;
+  printf("STATE: %d\n",con->state);
+  char *full_collection_name;
+
+  if (con->misc_info) {
+    info = (mongodb_info *) con->misc_info;
+    // printf("info substate: %d \n", info->substate);
+  }
+
+  if (serv->module_data && con->misc_info == NULL) {
+
+    hstate = (mongodb_state *)serv->module_data;
+    con->misc_info = (mongodb_info *)safe_zalloc(sizeof(mongodb_info));
+    info = (mongodb_info *)con->misc_info;
+    if (!strcmp(hstate->auth_scheme, "MONGODB_CR") 
+       || !strcmp(hstate->auth_scheme, "SCRAM-SHA1")
+      ) {
+      // printf("setting connection state\n");
+      con->state = hstate->state;
+    }
+    info->auth_scheme = Strndup(hstate->auth_scheme, 
+            strlen(hstate->auth_scheme));
+  } 
 
   switch (con->state)
   {
@@ -201,7 +242,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
             tmp = (char *)safe_malloc(tmplen + 1); 
       
-      char *full_collection_name;
+
 
       full_collection_name = (char *)safe_malloc(strlen(serv->database) + strlen(".$cmd") + 1);
 
@@ -229,7 +270,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
          0x00,0x00,0x30,0x3a,
          0x00,0x00,
          0x00,0x00,0x00,0x00,
-         full_collection_name, 0x00,
+         full_collection_name,0x00,
          0x00,0x00,0x00,0x00, /* Num to skip */
 
          LONGQUARTET( 4 + 1 + strlen("isMaster") + 1 + 4 + 1),
@@ -250,9 +291,52 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       break;
 
     case MONGODB_RECEIVE_VER:
+
+      if (mongodb_loop_read(nsp, con) < 0)
+          break;
+
+      if ((start = memsearch((const char *)con->inbuf->get_dataptr(),
+            "maxWireVersion", con->inbuf->get_len()))) {
+
+          start += sizeof("maxWireVersion ") - 1;
+
+          challenge = Strndup(start, 1);
+
+          if (info == NULL) {
+            con->misc_info = (mongodb_info *)safe_zalloc(sizeof(mongodb_info));
+            info = (mongodb_info *)con->misc_info;
+          }
+
+          if ( (unsigned char) challenge[0] == 0x05 ||
+              (unsigned char) challenge[0] == 0x04 ){
+
+      /* For testing we set it to CR_START, should be SCRAM_START. */
+
+            info->auth_scheme = Strndup("MONGODB_CR", strlen("MONGODB_CR"));
+            serv->module_data = (mongodb_state *)safe_zalloc(sizeof(mongodb_state));
+            hstate = (mongodb_state *)serv->module_data;
+            hstate->auth_scheme = Strndup(info->auth_scheme, 
+                strlen(info->auth_scheme));
+            hstate->state = MONGODB_CR_START;
+            hstate->reconnaissance = true;
+            mongodb_cr(nsp, con);
+          }
+          else if ((unsigned char) challenge[0] == 0x03)
+          {
+            info->auth_scheme = Strndup("MONGODB_CR", strlen("MONGODB_CR"));
+            serv->module_data = (mongodb_state *)safe_zalloc(sizeof(mongodb_state));
+            hstate = (mongodb_state *)serv->module_data;
+            hstate->auth_scheme = Strndup(info->auth_scheme, 
+                strlen(info->auth_scheme));
+            hstate->state = MONGODB_CR_START;
+            hstate->reconnaissance = true;
+            mongodb_cr(nsp, con);
+          }
+        }
+
       break;
       
-    case MONGODB_INIT:
+    // case MONGODB_INIT:
       /* This step attempts to perform the list db command. 
       * This will only work if the database (defaults to 'admin')
       * does not have any authentication. */
@@ -314,9 +398,9 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       //   (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
 
       // con->state = MONGODB_RECEIVE;
-      break;
+      // break;
 
-    case MONGODB_RECEIVE:
+    // case MONGODB_RECEIVE:
     //   if (memsearch((const char *)con->inbuf->get_dataptr(),
     //         "errmsg", con->inbuf->get_len()) 
     //       || memsearch((const char *)con->inbuf->get_dataptr(),
@@ -331,7 +415,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
     //   }
     //   break;
 
-    // case MONGO_STEP1:
+    // case MONGODB_SCRAM_START:
     //   if (con->outbuf)
     //     delete con->outbuf;
     //   con->outbuf = new Buf();    
@@ -440,95 +524,33 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
     //   nsock_write(nsp, nsi, ncrack_write_handler, MONGODB_TIMEOUT, con,
     //     (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
-      break;
+      // break;
 
-    case MONGODB_FINI:
+    // case MONGODB_FINI:
 
-      if (mongodb_loop_read(nsp, con) < 0)
-        break;
-      /* We search for the string 'payload' in the server's response.
-      * We extract that value and proceed with step 3.
-      * Probably we should check if the bytes 12-16 are 01000000 (Reply opcode).
-      */
-      if (!memsearch((const char *)con->inbuf->get_dataptr(),
-            "payload", con->inbuf->get_len())) {
-        /* Abort.
-        */
-      }
+    //   if (mongodb_loop_read(nsp, con) < 0)
+    //     break;
+    //   /* We search for the string 'payload' in the server's response.
+    //   * We extract that value and proceed with step 3.
+    //   * Probably we should check if the bytes 12-16 are 01000000 (Reply opcode).
+    //   */
+    //   if (!memsearch((const char *)con->inbuf->get_dataptr(),
+    //         "payload", con->inbuf->get_len())) {
+    //     /* Abort.
+    //     */
+    //   }
 
-      /* Search for value i (i=) for iterations, s (s=) for salt, 
-      * and r (r=) for server nonce. The delimiter is comma (,).
-      */
-      /* The 'r' variable should begin with the nonce we sent above.
-      * ClientNone + ServerNonce. If not we should abort.
-      */
-      con->state = MONGODB_INIT;
-      return ncrack_module_end(nsp, con);
+    //   /* Search for value i (i=) for iterations, s (s=) for salt, 
+    //   * and r (r=) for server nonce. The delimiter is comma (,).
+    //   */
+    //   /* The 'r' variable should begin with the nonce we sent above.
+    //   * ClientNone + ServerNonce. If not we should abort.
+    //   */
+    //   con->state = MONGODB_INIT;
+    //   return ncrack_module_end(nsp, con);
 
     case MONGODB_CR_START:
-      // if (con->outbuf)
-      //   delete con->outbuf;
-      // con->outbuf = new Buf();    
-
-      // tmplen = 4 + 4  /* mesage length + request ID*/
-      //    + 4 + 4 + 4  /* response to + opcode + queryflags */
-      //    + strlen(serv->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
-      //    + 4 + 4 /* number to skip, number to return */
-      //    + 4 /* query length */
-
-      //    + 1 + strlen("getnonce") + 1 + 4 + 4 /* element getnonce length */
-
-      //    + 1 /* null byte */
-      //    ;
-      // tmp = (char *)safe_malloc(tmplen + 1);
-
-      // char *full_collection_name;
-
-      // full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
-
-      // sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
-
-
-      // snprintf((char *)tmp, tmplen,
-      //    "%c%c%c%c" /* message length */ 
-      //    "%c%c%c%c" /* request ID, might have to be dynamic */
-      //    "\xff\xff\xff\xff" /* response to */
-      //    "\xd4\x07%c%c" /* OpCode: We use query 2004 */              
-      //    "%c%c%c%c" /* Query Flags */
-      //    "%s"  Full Collection Name 
-      //   /* might need a null byte here */
-      //    "%c%c%c%c" /* Number to Skip (0) */
-      //    "\xff\xff\xff\xff" /* Number to return (-1) */
-      //    "\x17%c%c%c" /* query length, fixed 23 */
-
-      //    "\x01" /* query type (Double 0x01) */
-      //    "%s" /* element (getnonce) */              
-      //    "%c" /* element null byte */
-      //    "%c%c%c%c" /* element value (1) */
-      //    "%c%c\xf0\x3f" /* element value (1) cnt. */
-
-      //    "%c", /* end of packet null byte */
-
-      //    LONGQUARTET(tmplen),
-      //    0x00,0x00,0x30,0x3a,
-      //    0x00,0x00,
-      //    0x00,0x00,0x00,0x00,
-      //    full_collection_name,
-      //    0x00,0x00,0x00,0x00, /* Num to skip */
-      //    0x00,0x00,0x00, 
-      //    "getnonce", 0x00,
-      //    0x00,0x00,0x00,0x00,
-      //    0x00,0x00,        
-
-      //    0x00
-      //    );     
-
-      // con->outbuf->append(tmp, tmplen);
-      // free(full_collection_name);
-      // free(tmp);
-
-      // nsock_write(nsp, nsi, ncrack_write_handler, MONGODB_TIMEOUT, con,
-      //   (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      mongodb_cr(nsp, con);
       break;
 
     case MONGODB_CR_NONCE:
@@ -676,6 +698,101 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
   }
 }
 
+
+static void
+mongodb_cr(nsock_pool nsp, Connection *con)
+{
+  char *tmp;
+  char *b64;
+  size_t tmplen;  
+  char * payload;
+  char * b64_cn; /* client nonce */
+  int pklen;
+  char *start, *end;
+  size_t i;
+  char *challenge;
+  printf("STATE: %d\n",con->state);
+  char *full_collection_name;
+  
+  Service *serv = con->service;
+  nsock_iod nsi = con->niod;
+  mongodb_info *info = (mongodb_info *)con->misc_info;
+  switch (info->substate) {
+    case CR_INIT:
+      printf("drolololol\n");
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();    
+
+      tmplen = 4 + 4  /* mesage length + request ID*/
+         + 4 + 4 + 4  /* response to + opcode + queryflags */
+         + strlen(serv->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+         + 4 + 4 /* number to skip, number to return */
+         + 4 /* query length */
+
+         + 1 + strlen("getnonce") + 1 + 4 + 4 /* element getnonce length */
+
+         + 1 /* null byte */
+         ;
+      tmp = (char *)safe_malloc(tmplen + 1);
+
+      // char *full_collection_name;
+
+      full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
+
+      sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
+
+
+      snprintf((char *)tmp, tmplen,
+         "%c%c%c%c" /* message length */ 
+         "%c%c%c%c" /* request ID, might have to be dynamic */
+         "\xff\xff\xff\xff" /* response to */
+         "\xd4\x07%c%c" /* OpCode: We use query 2004 */              
+         "%c%c%c%c" /* Query Flags */
+         "%s"  /* Full Collection Name */
+         "%c" /* nnull byte*/
+         "%c%c%c%c" /* Number to Skip (0) */
+         "\xff\xff\xff\xff" /* Number to return (-1) */
+         "\x17%c%c%c" /* query length, fixed 23 */
+
+         "\x01" /* query type (Double 0x01) */
+         "%s" /* element (getnonce) */              
+         "%c" /* element null byte */
+         "%c%c%c%c" /* element value (1) */
+         "%c%c\xf0\x3f" /* element value (1) cnt. */
+
+         "%c", /* end of packet null byte */
+
+         LONGQUARTET(tmplen),
+         0x00,0x00,0x30,0x3a,
+         0x00,0x00,
+         0x00,0x00,0x00,0x00,
+         full_collection_name, 0x00,
+         0x00,0x00,0x00,0x00, /* Num to skip */
+         0x00,0x00,0x00, 
+         "getnonce", 0x00,
+         0x00,0x00,0x00,0x00,
+         0x00,0x00,        
+
+         0x00
+         );     
+
+      con->outbuf->append(tmp, tmplen);
+      free(full_collection_name);
+      free(tmp);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, MONGODB_TIMEOUT, con,
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      info->substate = CR_NONCE;
+
+      break;
+    case CR_NONCE:
+      printf("ASAAAAAAA\n");
+      return ncrack_module_end(nsp, con);
+    case CR_FINI:
+      break;
+  }
+}
 static void 
 rand_str(char *dest, size_t length) 
 {
