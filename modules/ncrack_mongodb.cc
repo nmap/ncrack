@@ -169,6 +169,7 @@ mongodb_loop_read(nsock_pool nsp, Connection *con)
 
 typedef struct mongodb_info {
   char *auth_scheme;
+  char *client_nonce;
   int substate;
 } mongodb_info;
 
@@ -197,13 +198,13 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
    // *end;
   // size_t i;
   char *challenge;
-  printf("STATE: %d\n",con->state);
+  // printf("STATE: %d\n",con->state);
   char *full_collection_name;
 
   
   if (con->misc_info) {
     info = (mongodb_info *) con->misc_info;
-    printf("info substate: %d \n", info->substate);
+    // printf("info substate: %d \n", info->substate);
   }
 
   if (serv->module_data) {
@@ -211,11 +212,11 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
     hstate = (mongodb_state *)serv->module_data;
     // con->misc_info = (mongodb_info *)safe_zalloc(sizeof(mongodb_info));
     // info = (mongodb_info *)con->misc_info;
-    printf("%s\n", hstate->auth_scheme);
+    // printf("%s\n", hstate->auth_scheme);
     if (!strcmp(hstate->auth_scheme, "MONGODB_CR") 
        || !strcmp(hstate->auth_scheme, "MONGODB_SCRAM_SHA1")
       ) {
-      printf("setting connection state\n");
+      // printf("setting connection state\n");
       con->state = hstate->state;
     }
     // info->auth_scheme = Strndup(hstate->auth_scheme, 
@@ -466,11 +467,11 @@ mongodb_cr(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
 
   mongodb_info *info = (mongodb_info *)con->misc_info;
-    printf("SUB STATE: %d\n",info->substate);
+    // printf("SUB STATE: %d\n",info->substate);
 
   switch (info->substate) {
     case CR_INIT:
-      printf("drolololol\n");
+      // printf("drolololol\n");
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf(); 
@@ -540,7 +541,7 @@ mongodb_cr(nsock_pool nsp, Connection *con)
 
       info->substate = CR_NONCE;
 
-          printf("Changed state! %d\n",info->substate);
+          // printf("Changed state! %d\n",info->substate);
       break;
 
     case CR_NONCE:
@@ -756,7 +757,7 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
 
   mongodb_info *info = (mongodb_info *)con->misc_info;
-    printf("SUB STATE: %d\n",info->substate);
+    // printf("SUB STATE: %d\n",info->substate);
 
   switch (info->substate) {
     case SCRAM_INIT:
@@ -769,8 +770,10 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
       */
       tmp = (char *)safe_malloc(12 + 1);
       rand_str(tmp, 12);
-      b64_cn = (char *)safe_malloc(BASE64_LENGTH(12) + 1);
-      base64_encode(tmp, 12, b64_cn);
+      info->client_nonce = (char *)safe_malloc(BASE64_LENGTH(12) + 1);
+      base64_encode(tmp, 12, info->client_nonce);
+      info->client_nonce = "AAAAAAAAAAAA";
+      printf("LALAL %d\n",strlen(info->client_nonce));
       free(tmp);
       full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
       sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
@@ -779,11 +782,11 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
       /* Allocate 12 bytes for the client nonce, the length of the username
       * and 8 bytes for the following sequence "n,,n=,r="
       */
-
+      printf("Client nonce: %s\n",info->client_nonce);
       /*CHANGED B64_CN to NONCE FOR TESTING*/
-      payload = (char *)safe_malloc(12 + strlen(con->user) + 8);
-      snprintf(payload, 12 + strlen(con->user) + 8, 
-        "n,,n=%s,r=%s", con->user, nonce);
+      payload = (char *)safe_malloc(strlen(info->client_nonce) + strlen(con->user) + 8);
+      snprintf(payload, strlen(info->client_nonce) + 1 + strlen(con->user) + 8, 
+        "n,,n=%s,r=%s", con->user, info->client_nonce);
 
       querylen = 4 /* query length */
          + 1 + strlen("saslStart") + 1 + 4  /* element saslStart length */
@@ -929,18 +932,20 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         * Read the length and then read the payload. The length is 4 bytes after
         * the 'payload\0' string. After the length of the payload there is a null byte. 
         */
+        char * tmp_buffer;
         challenge = Strndup(start, i);
         tmp_buf[0] =  (int) (unsigned char) challenge[0];
         /* skip one null byte after the payload length. */
         end++;
         tmp = (char *)safe_malloc((int) tmp_buf[0]);
+        tmp_buffer = (char *)safe_malloc((int) tmp_buf[0]);
 
 
         for(i=0; i<tmp_buf[0];i++){
           tmp[i] = *end++;
         }
         tmp[tmp_buf[0]] = '\0';
-
+        snprintf(tmp_buffer, tmp_buf[0], "%s", tmp);
         /* The payload element contains the i, s and r values. */
         /* Search for value i (i=) for iterations, s (s=) for salt, 
         * and r (r=) for server nonce. The delimiter is comma (,).
@@ -989,21 +994,23 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         salt += 2; 
         iterations += 2;
         rnonce += 2;
+        // rnonce = "BBBBBBBBBBBB";
+        // rnonce = "BBBBBBBBBBB";
+        // printf("%s\n", salt);
+        // printf("%s\n", iterations);
+        // printf("%s\n", rnonce);
 
-        printf("%s\n", salt);
-        printf("%s\n", iterations);
-        printf("%s\n", rnonce);
-
-/* Should fix it */
-        // if(strncmp(nonce, rnonce, strlen(nonce))){
-        //     /* Abort */
-        //     serv->end.orly = true;
-        //     tmpsize = sizeof("Server nonce does not contain client nonce.\n");
-        //     serv->end.reason = (char *)safe_malloc(tmpsize);
-        //     snprintf(serv->end.reason, tmpsize,
-        //         "Server nonce does not contain client nonce.\n");
-        //     return ncrack_module_end(nsp, con);
-        // }
+        if(strncmp(info->client_nonce, rnonce, strlen(nonce))){
+            /* Abort */
+            /* TODO: FIX THIS, it works but no message 
+            */
+            serv->end.orly = true;
+            tmpsize = sizeof("Server nonce does not contain client nonce.\n");
+            serv->end.reason = (char *)safe_malloc(tmpsize);
+            snprintf(serv->end.reason, tmpsize,
+                "Server nonce does not contain client nonce.\n");
+            return ncrack_module_end(nsp, con);
+        }
 
         /* Calculate MD5(Username:mongo:Password) */
         MD5_Init(&md5);
@@ -1022,11 +1029,16 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         out = (unsigned char *)safe_malloc(20 + 1);
         decoded_salt = (char *)safe_malloc((strlen(salt) + 1));
         base64_decode(salt, strlen(salt), decoded_salt);
-
+        // printf("SALT: %s\n",salt);
         PKCS5_PBKDF2_HMAC_SHA1(HA1_hex, strlen(HA1_hex),
           (unsigned char*) decoded_salt, strlen(decoded_salt), atoi(iterations),
           20, out);
 
+        // printf("SALTED PASS BRO: ");
+        // for(i=0;i<20;i++){
+        //   printf("%02x",out[i]);
+        // }printf("\n");
+        
         /* Next step is to perform an HMAC to the salted password (out).
         * Using HMAC-SHA1 with 'Client Key' as a key.
         */
@@ -1034,9 +1046,10 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         char tmp_key[] = "Client Key";
         HMAC(EVP_sha1(), out, 20, (unsigned const char*) tmp_key, 
             10, client_key, NULL);
-        // for(i=0;i<20;i++){
-        //   printf("%02x", client_key[i]);
-        // }printf("\n");
+        printf("Client key:\n");
+        for(i=0;i<20;i++){
+          printf("%02x", client_key[i]);
+        }printf("\n");
 
         /* SHA1 on the client_key variable.
         */
@@ -1044,36 +1057,96 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         SHA1_Init(&sha1);
         SHA1_Update(&sha1, client_key, 20);
         SHA1_Final(hashbuf2, &sha1);
-        enhex(HA2_hex, hashbuf2, sizeof(hashbuf2));
-        printf("SHA1 hash: %s\n", HA2_hex);
+        // enhex(HA2_hex, hashbuf2, sizeof(hashbuf2));
+        
 
 
+        printf("NONCE BEFORE: %s\n",rnonce);
+        printf("Client key:\n");
+        for(i=0;i<strlen(rnonce);i++){
+          printf("%02x", rnonce[i]);
+        }printf("\n");
+        printf("length before: %d\n",strlen(rnonce));
+        // rnonce = "AAAAAAAAAAAAN9vdfK8ZHSdxaW6AXcBOVrI8gSVuBg50";
+                printf("NONCE AFTER: %s\n",rnonce);
+                        for(i=0;i<strlen(rnonce);i++){
+          printf("%02x", rnonce[i]);
+        }printf("\n");
 
+        printf("length after: %d\n",strlen(rnonce));
         char * without_proof;
-        without_proof = (char *)safe_malloc(9 + strlen(rnonce));
-        snprintf(without_proof, 9 + strlen(rnonce), 
-          "c=biws,r=%s", rnonce);
+        without_proof = (char *)safe_malloc(strlen("c=biws,r=") + strlen(rnonce) + 1);
+        snprintf(without_proof, strlen("c=biws,r=") + strlen(rnonce) + 1, 
+          "c=biws,r=%s", rnonce);     
+
+
+        // printf("LEN DMAN SON %d\n",strlen("c=biws,r=AAAAAAAAAAAA"));
 
         char * auth_msg;
         size_t auth_msg_len;
+        printf("TMP BUFFER BEFORE: %s\n",tmp_buffer);
+                                for(i=0;i<strlen(tmp_buffer);i++){
+          printf("%02x", tmp_buffer[i]);
+        }printf("\n");
+
+        printf("length before: %d\n",strlen(tmp_buffer));
+        // tmp_buffer = "r=AAAAAAAAAAAAN9vdfK8ZHSdxaW6AXcBOVrI8gSVuBg50,s=8fZ/P1mbHUCj4aUaWV9Vvg==,i=10000";
+        printf("TMP BUFFER AFTER: %s\n",tmp_buffer);
+                                        for(i=0;i<strlen(tmp_buffer);i++){
+          printf("%02x", tmp_buffer[i]);
+        }printf("\n");
+
+        printf("length after: %d\n",strlen(tmp_buffer));
         /* Auth_msg length is: 
-        * 2 for the 2 commas
         * 12 for the nonce 
-        * 5 for
-        * 9 for 'c=biws,r=' of without_proof
+        * 7 for the characters 'n=,r=,,'
         */
-        auth_msg_len = 9 + strlen(rnonce) + strlen(tmp) + 5 + 12 + 2;
-        auth_msg = (char *)safe_malloc(auth_msg_len);
+        // printf("Client nonce step 2: %s\n",info->client_nonce);
+        // printf("rnonce: %d\n", strlen(rnonce));
+        // printf("without_ropf: %d\n", strlen(without_proof));
+        
+
+        // printf("without_proof: %s\n",without_proof);
+        // printf("TMP: %s\n",tmp);
+        // printf("TMP_new: %s\n",tmp_buffer);
+        // auth_msg_len = strlen(con->user) + 12 + tmp_buf[0] + strlen(without_proof) + 7;
+        auth_msg_len = strlen(con->user) + 12 + strlen(tmp_buffer) + strlen(without_proof) + 7 + 1;
+
+        auth_msg = (char *)safe_malloc(auth_msg_len + 1);
         snprintf(auth_msg, auth_msg_len, 
-          "n=%s,r=%s,%s,%s", con->user, nonce, tmp, without_proof);
+          "n=%s,r=%s,%s,%s", con->user, info->client_nonce, tmp_buffer, without_proof);
+
+        // memcpy(auth_msg, "n=", strlen("n="));
+        // memcpy(auth_msg, con->user, strlen(con->user));
+        // memcpy(auth_msg, ",r=", strlen(",r="));
+        // memcpy(auth_msg, info->client_nonce, strlen(info->client_nonce));
+        // memcpy(auth_msg, ",", strlen(","));
+        // memcpy(auth_msg, tmp_buffer, strlen(tmp_buffer));
+        // memcpy(auth_msg, ",", strlen(","));
+        // memcpy(auth_msg, without_proof, strlen(without_proof));
         free(tmp);
-
+        printf("auth msg BRO: ");
+        for(i=0;i<auth_msg_len;i++){
+          printf("%02x", auth_msg[i]);
+        }printf("\n");
+        // printf("tmpbuflen: %d\n",tmp_buf[0]);
+        printf("AUTH_MSG: %s\n",auth_msg);
+        printf("Stored key: %s\n", HA2_hex);
+        printf("Stored key: %d\n", strlen(HA2_hex));
+        // printf("AUTH_MSG_len: %d\n",auth_msg_len);
         unsigned char client_sig[20];
-        HMAC(EVP_sha1(), HA2_hex, strlen(HA2_hex), (unsigned const char*) auth_msg, 
-            auth_msg_len, client_sig, NULL);
+        // auth_msg = "Client Key";
+        // HMAC(EVP_sha1(), HA2_hex, strlen(HA2_hex), (unsigned const char*) auth_msg, 
+        //     auth_msg_len, client_sig, NULL);     
+        /* We use auth_msg_len to avoid including the trailing null byte. 
+        */   
+        HMAC(EVP_sha1(), hashbuf2, sizeof(hashbuf2), (unsigned const char*) auth_msg, 
+            auth_msg_len - 1, client_sig, NULL);
 
-        // printf("%s\n", client_sig);
-
+        printf("client sig BRO: ");
+        for(i=0;i<20;i++){
+          printf("%02x", client_sig[i]);
+        }printf("\n");
         /* Create the cilent proof by b64 encoding the XORed client_key and client_sig.
         */
         char client_proof[SHA_DIGEST_LENGTH];
@@ -1089,10 +1162,10 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         client_final = (char *)safe_malloc(3 + strlen(tmp_b64) + strlen(without_proof));
         snprintf(client_final, 3 + strlen(tmp_b64) + 1 + strlen(without_proof), 
           "%s,p=%s", without_proof, tmp_b64);
-
-        printf(": %d\n",strlen(tmp_b64));
-        printf("Client fInal: %s\n",tmp_b64);
-        printf("Client fInal: %s\n",client_final);
+        printf("Client final: %s\n",client_final);
+        // printf(": %d\n",strlen(tmp_b64));
+        // printf("Client fInal: %s\n",tmp_b64);
+        // printf("Client fInal: %s\n",client_final);
         /* At this step we create the server signature so we can 
         * verify whether the server responded correctly.
         * The server's response should contain the server signature
@@ -1107,8 +1180,9 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         */
         HMAC(EVP_sha1(), out, SHA_DIGEST_LENGTH, (unsigned const char*) tmp_key2, 
             10, server_key, NULL);
+        printf("Server Key: %s\n",server_key);
         HMAC(EVP_sha1(), server_key, SHA_DIGEST_LENGTH, (unsigned const char*) auth_msg, 
-            auth_msg_len, server_sig, NULL);
+            auth_msg_len - 1, server_sig, NULL);
 
         /* Generate the base64 encoded form of the server_signature. 
         * Pass this variable to the next step.
@@ -1116,7 +1190,7 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         char * b64_server_sig;        
         b64_server_sig = (char *)safe_malloc(BASE64_LENGTH(SHA_DIGEST_LENGTH) + 1);
         base64_encode((const char *) server_sig, SHA_DIGEST_LENGTH, b64_server_sig);
-
+printf("Server sig: %s\n", b64_server_sig);
         info->substate = SCRAM_FINI;
         if (con->outbuf)
           delete con->outbuf;
@@ -1129,7 +1203,7 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         querylen = 4 /* query length */
          + 1 + strlen("saslContinue") + 1 + 4  /* element saslContinue length */
          + 1 + strlen("conversationId") + 1 + 4 /* element conversationId length */
-         + 1 + strlen("payload") + 1 + 4 + 1 + strlen(client_final) + 1 /* element payload length */
+         + 1 + strlen("payload") + 1 + 4 + 1 + strlen(client_final) //+ 1 /* element payload length */
          + 1 /* null byte */
          ;
       
@@ -1171,12 +1245,13 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
            "%c%c%c%c" /* element value length (dynamic) */
            "%c" /* null byte */
            "%s" /* element value */
-           "%c" /* null byte */
+           // "%c" /* null byte */
 
            "%c", /* end of packet null byte */
 
            LONGQUARTET((int) tmplen),
            0x00,0x00,0x30,0x3a,
+           // 0x00,0x00,0x00,0x00, /*testing 00 instead of ff*/
            0x00,0x00,
            0x00,0x00,0x00,0x00,
            full_collection_name, 0x00,
@@ -1189,8 +1264,8 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
            LONGQUARTET((int) conversationId[0]),
 
            "payload",0x00,
-           LONGQUARTET(((int)strlen(client_final) + 1)), 0x00,
-           client_final, 0x00,
+           LONGQUARTET(((int)strlen(client_final) )), 0x00,
+           client_final, // 0x00,
 
            0x00
            );     
