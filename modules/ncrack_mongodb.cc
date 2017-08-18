@@ -139,6 +139,8 @@
 #define LONGQUARTET(x) ((x) & 0xff), (((x) >> 8) & 0xff), \
   (((x) >> 16) & 0xff), (((x) >> 24) & 0xff)
 
+extern NcrackOps o;
+
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
@@ -204,24 +206,23 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
   if (con->misc_info) {
     info = (mongodb_info *) con->misc_info;
-    printf("info substate: %d \n", info->substate);
+    // printf("info substate: %d \n", info->substate);
   }
 
-  if ((serv->module_data)) {
+  if (serv->module_data && con->misc_info == NULL) {
+
     hstate = (mongodb_state *)serv->module_data;
-    // con->misc_info = (mongodb_info *)safe_zalloc(sizeof(mongodb_info));
-    // info = (mongodb_info *)con->misc_info;
-    // printf("%s\n", hstate->auth_scheme);
+    con->misc_info = (mongodb_info *)safe_zalloc(sizeof(mongodb_info));
+    info = (mongodb_info *)con->misc_info;
     if (!strcmp(hstate->auth_scheme, "MONGODB_CR") 
        || !strcmp(hstate->auth_scheme, "MONGODB_SCRAM_SHA1")
       ) {
-      printf("setting connection state\n");
+      // printf("setting connection state\n");
       con->state = hstate->state;
     }
     info->auth_scheme = Strndup(hstate->auth_scheme, 
             strlen(hstate->auth_scheme));
   } 
-  printf("STATE : ====%d\n",con->state);
   switch (con->state) {
     case MONGODB_REQUEST_VERSION:
       /* This step will try to find the server's version. According to the MongoDB
@@ -314,7 +315,6 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
           challenge = Strndup(start, 1);
 
           if (info == NULL) {
-            printf("pooo22222\n");
             con->misc_info = (mongodb_info *)safe_zalloc(sizeof(mongodb_info));
             info = (mongodb_info *)con->misc_info;
           }
@@ -322,29 +322,14 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
           if ( (unsigned char) challenge[0] == 0x05 ||
               (unsigned char) challenge[0] == 0x04 ){
 
-      /* For testing we set it to CR_START, should be SCRAM_START. */
-
             info->auth_scheme = Strndup("MONGODB_SCRAM_SHA1", strlen("MONGODB_SCRAM_SHA1"));
             serv->module_data = (mongodb_state *)safe_zalloc(sizeof(mongodb_state));
             hstate = (mongodb_state *)serv->module_data;
             hstate->auth_scheme = Strndup(info->auth_scheme, 
-                strlen(info->auth_scheme));
+                strlen(info->auth_scheme));            
             hstate->state = MONGODB_SCRAM_SHA1;
-            // mongodb_cr(nsp, con);
-            // hstate->reconnaissance = true;
-
-            // con->state = MONGODB_SCRAM_SHA1;
             mongodb_scram_sha1(nsp, con);
 
-            // info->auth_scheme = Strndup("MONGODB_CR", strlen("MONGODB_CR"));
-            // serv->module_data = (mongodb_state *)safe_zalloc(sizeof(mongodb_state));
-            // hstate = (mongodb_state *)serv->module_data;
-            // hstate->auth_scheme = Strndup(info->auth_scheme, 
-            //     strlen(info->auth_scheme));
-            // hstate->state = MONGODB_CR;
-            // // hstate->reconnaissance = true;
-            // con->state = MONGODB_CR;
-            // mongodb_cr(nsp, con);
           }
           else if ((unsigned char) challenge[0] == 0x03)
           {
@@ -354,7 +339,6 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
             hstate->auth_scheme = Strndup(info->auth_scheme, 
                 strlen(info->auth_scheme));
             hstate->state = MONGODB_CR;
-            // hstate->reconnaissance = true;
             mongodb_cr(nsp, con);
           }
         }
@@ -367,7 +351,6 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       break;
 
     case MONGODB_SCRAM_SHA1:
-      printf("starting scram_sha1\n");
       mongodb_scram_sha1(nsp, con);
       break;
 
@@ -395,14 +378,13 @@ mongodb_cr(nsock_pool nsp, Connection *con)
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   mongodb_info *info = (mongodb_info *)con->misc_info;
-    printf("SUB STATE: %d\n",info->substate);
 
   switch (info->substate) {
     case CR_INIT:
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf(); 
-
+      con->state = MONGODB_CR;
 
       full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
       sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
@@ -416,8 +398,7 @@ mongodb_cr(nsock_pool nsp, Connection *con)
          + strlen(full_collection_name) + 1 /* full collection name + null byte */
          + 4 + 4 /* number to skip, number to return */
          + querylen
-         ;
-         
+         ;         
 
       tmp = (char *)safe_malloc(tmplen + 1);
 
@@ -621,7 +602,6 @@ mongodb_cr(nsock_pool nsp, Connection *con)
         con->outbuf->append(tmp, tmplen);
         free(full_collection_name);
         free(tmp);
-        // free(nonce);
 
         delete con->inbuf;
         con->inbuf = NULL;
@@ -678,30 +658,27 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
 
   mongodb_info *info = (mongodb_info *)con->misc_info;
-
-    printf("SUB STATE!\n");
-    printf("SUB STATE: %d\n",info->substate);
-
   switch (info->substate) {
     case SCRAM_INIT:
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf(); 
+      con->state = MONGODB_SCRAM_SHA1;
 
       /* Generate client nonce. The nonce is usually 10-13 random bytes.
       * These bytes are base64 encoded.
       */
 
+      /* currently the nonce is always the same, FIX ME*/
       info->client_nonce = (char *)safe_malloc(12 + 1);
       rand_str(info->client_nonce, 12);
       full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
       sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
 
-
       /* Allocate 12 bytes for the client nonce, the length of the username
       * and 8 bytes for the following sequence "n,,n=,r="
       */
-      payload = (char *)safe_malloc(strlen(info->client_nonce) + strlen(con->user) + 8);
+      payload = (char *)safe_malloc(strlen(info->client_nonce) + strlen(con->user) + 8 + 1);
       snprintf(payload, strlen(info->client_nonce) + 1 + strlen(con->user) + 8, 
         "n,,n=%s,r=%s", con->user, info->client_nonce);
 
@@ -721,7 +698,6 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
          ;
 
       tmp = (char *)safe_malloc(tmplen + 1);
-
       snprintf((char *)tmp, tmplen,
          "%c%c%c%c" /* message length */ 
          "%c%c%c%c" /* request ID, might have to be dynamic */
@@ -787,8 +763,6 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
 
       con->outbuf->append(tmp, tmplen);
       free(full_collection_name);
-;
-      // free(payload);
       free(tmp);
 
       delete con->inbuf;
@@ -852,7 +826,6 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         char * tmp_buffer;
         challenge = Strndup(start, i);
         tmp_buf[0] =  (int) (unsigned char) challenge[0];
-        // printf("TMP_BUF LENGTH: %d\n",tmp_buf[0]);
         /* skip one null byte after the payload length. */
         end++;
         tmp = (char *)safe_malloc((int) tmp_buf[0]);
@@ -864,8 +837,7 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         }
         tmp[tmp_buf[0]] = '\0';
         snprintf(tmp_buffer, tmp_buf[0] + 1, "%s", tmp);
-        // printf("buffer 1: %s\n",tmp);
-        // printf("buffer 2: %s\n",tmp_buffer);
+
         /* The payload element contains the i, s and r values. */
         /* Search for value i (i=) for iterations, s (s=) for salt, 
         * and r (r=) for server nonce. The delimiter is comma (,).
@@ -873,8 +845,6 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         /* The 'r' variable should begin with the nonce we sent above.
         * ClientNone + ServerNonce. If not we should abort.
         */
-
-
         char * pch;
         char * rnonce;
         char * salt;
@@ -927,7 +897,8 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
             return ncrack_module_end(nsp, con);
         }
 
-        /* Calculate MD5(Username:mongo:Password) */
+        /* Calculate MD5(Username:mongo:Password) 
+        */
         MD5_Init(&md5);
         MD5_Update(&md5, con->user, strlen(con->user));
         MD5_Update(&md5, ":mongo:", strlen(":mongo:"));
@@ -959,7 +930,6 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
 
         /* SHA1 on the client_key variable.
         */
-
         SHA1_Init(&sha1);
         SHA1_Update(&sha1, client_key, 20);
         SHA1_Final(hashbuf2, &sha1);
@@ -975,8 +945,7 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         /* Auth_msg length is: 
         * 12 for the nonce 
         * 7 for the characters 'n=,r=,,'
-        */
-      
+        */      
         auth_msg_len = strlen(con->user) + 12 + strlen(tmp_buffer) + strlen(without_proof) + 7 + 1;
 
         auth_msg = (char *)safe_malloc(auth_msg_len + 1);
@@ -989,47 +958,24 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         HMAC(EVP_sha1(), hashbuf2, sizeof(hashbuf2), (unsigned const char*) auth_msg, 
             auth_msg_len - 1, client_sig, NULL);
         /* Create the cilent proof by b64 encoding the XORed client_key and client_sig.
+        * The length of the client_proof is set to SHA_DIGEST_LENGTH.
         */
         char client_proof[SHA_DIGEST_LENGTH];
         xor_hashes(client_proof, client_key, client_sig, SHA_DIGEST_LENGTH);
         char * tmp_b64;
         char * client_final;
-        tmp_b64 = (char *)safe_malloc(BASE64_LENGTH(strlen(client_proof)) + 1);
-        base64_encode(client_proof, strlen(client_proof), tmp_b64);
+        tmp_b64 = (char *)safe_malloc(BASE64_LENGTH(SHA_DIGEST_LENGTH) + 1);
+        base64_encode(client_proof, SHA_DIGEST_LENGTH, tmp_b64);
 
-        /* client_final length breakdown: 3 for string ',p=', and then the length of tmp_b64
-        * and without_proof.
+        /* client_final length breakdown: 
+        * 3 for string ',p=', 
+        * length of tmp_b64
+        * length of without_proof.
         */
         client_final = (char *)safe_malloc(3 + strlen(tmp_b64) + strlen(without_proof));
         snprintf(client_final, 3 + strlen(tmp_b64) + 1 + strlen(without_proof), 
           "%s,p=%s", without_proof, tmp_b64);
-        free(without_proof);
-        free(tmp_b64);
-        /* At this step we create the server signature so we can 
-        * verify whether the server responded correctly.
-        * The server's response should contain the server signature
-        * that we will generate now. 
-        * PS. We do not send this variable to the server.
-        */
-        unsigned char server_key[SHA_DIGEST_LENGTH];        
-        unsigned char server_sig[SHA_DIGEST_LENGTH];
-        char tmp_key2[] = "Server Key";
-        /* HMAC_SHA1 hash of the "Server Key" value with key the
-        * salted password (out).
-        */
-        HMAC(EVP_sha1(), out, SHA_DIGEST_LENGTH, (unsigned const char*) tmp_key2, 
-            10, server_key, NULL);
-        HMAC(EVP_sha1(), server_key, SHA_DIGEST_LENGTH, (unsigned const char*) auth_msg, 
-            auth_msg_len - 1, server_sig, NULL);
-        // free(auth_msg);
-        /* Generate the base64 encoded form of the server_signature. 
-        * Pass this variable to the next step.
-        */
-        char * b64_server_sig;        
-        b64_server_sig = (char *)safe_malloc(BASE64_LENGTH(SHA_DIGEST_LENGTH) + 1);
-        base64_encode((const char *) server_sig, SHA_DIGEST_LENGTH, b64_server_sig);
-        free(b64_server_sig);
-        
+      
         if (con->outbuf)
           delete con->outbuf;
         con->outbuf = new Buf(); 
@@ -1041,7 +987,7 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         querylen = 4 /* query length */
          + 1 + strlen("saslContinue") + 1 + 4  /* element saslContinue length */
          + 1 + strlen("conversationId") + 1 + 4 /* element conversationId length */
-         + 1 + strlen("payload") + 1 + 4 + 1 + strlen(client_final) //+ 1 /* element payload length */
+         + 1 + strlen("payload") + 1 + 4 + 1 + strlen(client_final) /* element payload length */
          + 1 /* null byte */
          ;
       
@@ -1054,12 +1000,10 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         free(tmp);
         tmp = (char *)safe_malloc(tmplen + 1);
 
-        // tmp = "AAAAAAAAAAAAAAAAAAAAAAAAAAAA";
         snprintf((char *)tmp, tmplen,
            "%c%c%c%c" /* message length */ 
            "%c%c%c%c" /* request ID, might have to be dynamic */
-           // "\xff\xff\xff\xff" /* response to */
-           "%c%c%c%c"
+           "%c%c%c%c" /* response to */
            "\xd4\x07%c%c" /* OpCode: We use query 2004 */              
            "%c%c%c%c" /* Query Flags */
            "%s" /* Full Collection Name */
@@ -1084,7 +1028,6 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
            "%c%c%c%c" /* element value length (dynamic) */
            "%c" /* null byte */
            "%s" /* element value */
-           // "%c" /* null byte */
 
            "%c", /* end of packet null byte */
 
@@ -1104,18 +1047,16 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
 
            "payload",0x00,
            LONGQUARTET(((int)strlen(client_final) )), 0x00,
-           client_final, // 0x00,
+           client_final,
 
            0x00
            );     
 
         con->outbuf->append(tmp, tmplen);
-
         delete con->inbuf;
         con->inbuf = NULL;
 
         free(tmp);
-        free(client_final);
         free(full_collection_name);
 
         nsock_write(nsp, nsi, ncrack_write_handler, MONGODB_TIMEOUT, con,
@@ -1137,6 +1078,7 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
 
       delete con->inbuf;
       con->inbuf = NULL;
+
       ncrack_module_end(nsp, con);
       break;
 
