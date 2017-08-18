@@ -316,6 +316,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
       * in Mongo v 2.6. I haven't found yet a clear table listing the values of this 
       * variable. From various documentation articles, I could extract the following
       * information:
+      * maxWireVersion=2 -> MongoDB 2.6.4
       * maxWireVersion=3 -> MongoDB 2.6
       * maxWireVersion=4 -> MongoDB 3.2 (?)
       * maxWireVersion=5 -> MongoDB 3.4
@@ -412,8 +413,10 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
             hstate->state = MONGODB_SCRAM_SHA1;
             mongodb_scram_sha1(nsp, con);
 
-          }
-          else if ((unsigned char) challenge[0] == 0x03)
+          } 
+          else if ((unsigned char) challenge[0] == 0x03 ||
+              (unsigned char) challenge[0] == 0x02 ||
+              (unsigned char) challenge[0] == 0x01 )
           {
             info->auth_scheme = Strndup("MONGODB_CR", strlen("MONGODB_CR"));
             serv->module_data = (mongodb_state *)safe_zalloc(sizeof(mongodb_state));
