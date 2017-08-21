@@ -168,7 +168,7 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
 
       /* In case the server uses named instances the port assigned
       * to them is going to be dynamic. We won't be able to know which
-      * port to target. In order to bypass this small problem we will
+      * port to target. In order to bypass this small problem, we will
       * have to ping the SQL Monitor server. The monitor is running
       * on port 1434 and is listening to UDP connections.
       *
@@ -193,7 +193,7 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
 
       if (mssql_loop_read(nsp, con) < 0)
         break;
-      /* In this step we are interested only in extracting the
+      /* In this step, we are interested only in extracting the
       * port number of the SQL server. Once extracted, we set
       * as a service attribute and proceed to the actual bruteforcing.
       */
@@ -242,14 +242,14 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
       * http://www.freetds.org/tds.html#login
       */   
 
-      /* A TDS packet that is longer than 512 bytes (without the 8 byte header) has 
+      /* A TDS packet that is longer than 512 bytes (without the 8-byte header) has 
       * to be split in more packets. 
       * 
       * That limit was increased to 4096 (default value) in TSD version 7.
       * 
       * TDS version 7 was introduced for Microsoft SQL server 7.0 (1998).
       * As such we can squeeze the whole (Pre-TDS 7 Login) packet in just one request
-      * without having to worry about incompatibilty with older servers 
+      * without having to worry about incompatibility with older servers 
       * (Unless of course, you encounter an SQL server running software older than 1998). 
       */
       
@@ -541,7 +541,7 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
         i++;
       }
 
-      /* Parse the header and then verify that we have at least a 9 byte resopnse
+      /* Parse the header and then verify that we have at least a 9-byte response
       * 8 bytes for the correct header and 1 byte for the code.
       * (It will never be just 9 bytes unless it is a different protocol)
       * Then check the first byte of the response, it should be 0x04.
