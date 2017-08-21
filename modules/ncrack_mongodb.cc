@@ -297,12 +297,11 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
         * The module terminates with success. 
         */
         serv->end.orly = true;
-        tmpsize = sizeof("Access does not require authorization.\n");
+        tmpsize = sizeof("Access to the database does not require authorization.\n");
         serv->end.reason = (char *)safe_malloc(tmpsize);
         snprintf(serv->end.reason, tmpsize,
-            "Access does not require authorization.\n");
+            "Access to the database does not require authorization.\n");
         return ncrack_module_end(nsp, con);
-
       } 
 
       /* This step will try to find the server's version. According to the MongoDB
@@ -437,10 +436,8 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
     case MONGODB_SCRAM_SHA1:
       mongodb_scram_sha1(nsp, con);
       break;
-
   }
 }
-
 
 static void
 mongodb_cr(nsock_pool nsp, Connection *con)
@@ -868,18 +865,17 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         conversationId[0] =  (int) (unsigned char) challenge[0];
       } else {
         /* Abort */
-        serv->end.orly = true;
-        tmpsize = sizeof("Response does not contain conversationId.\n");
-        serv->end.reason = (char *)safe_malloc(tmpsize);
-        snprintf(serv->end.reason, tmpsize,
-            "Response does not contain conversationId.\n");
+        // serv->end.orly = true;
+        // tmpsize = sizeof("Response does not contain conversationId.\n");
+        // serv->end.reason = (char *)safe_malloc(tmpsize);
+        // snprintf(serv->end.reason, tmpsize,
+        //     "Response does not contain conversationId.\n");
         return ncrack_module_end(nsp, con);
       }
 
       /* We search for the string 'payload' in the server's response.
       * We extract that value and proceed with step 3.
       */
-
       if ((start = memsearch((const char *)con->inbuf->get_dataptr(),
           "payload", con->inbuf->get_len()))) {
 
@@ -891,6 +887,7 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
           i++;
         }
         info->substate = SCRAM_FINI;
+
         /* There is a payload element. In SCRAM_SHA1 mode the payload has a length attribute.
         * Read the length and then read the payload. The length is 4 bytes after
         * the 'payload\0' string. After the length of the payload, there is a null byte. 
@@ -1152,24 +1149,18 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
       con->inbuf = NULL;
 
       ncrack_module_end(nsp, con);
-      break;
-
-     
+      break;     
   }
 }
-
 
 static void
 mongodb_free(Connection *con)
 {
-
   mongodb_info *p = NULL;
   if (con->misc_info == NULL)
     return;
-
   p = (mongodb_info *)con->misc_info;
   free(p->auth_scheme);
-
 }
 
 static void
@@ -1197,9 +1188,7 @@ rand_str(char *dest, size_t length)
 static char *enhex(char *dest, const unsigned char *src, size_t n)
 {
     unsigned int i;
-
     for (i = 0; i < n; i++)
         Snprintf(dest + i * 2, 3, "%02x", src[i]);
-
     return dest;
 }
