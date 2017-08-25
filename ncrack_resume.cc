@@ -520,7 +520,7 @@ ncrack_resume(char *fname, int *myargc, char ***myargv)
 
       j = 0;
       buf[j++] = *q;
-      while (q != '\0' && j < sizeof(buf)) {
+      while (*q != '\0' && j < sizeof(buf)) {
         q++;
         if (q - filestr >= filelen)
           fatal("Corrupted file! Error 5\n");
