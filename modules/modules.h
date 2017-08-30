@@ -143,5 +143,6 @@ void ncrack_mysql(nsock_pool nsp, Connection *con);
 void ncrack_winrm(nsock_pool nsp, Connection *con);
 void ncrack_owa(nsock_pool nsp, Connection *con);
 void ncrack_cassandra(nsock_pool nsp, Connection *con);
+void ncrack_mongodb(nsock_pool nsp, Connection *con);
 
 #endif
