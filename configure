@@ -4233,12 +4233,14 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
    if test "x$have_function" = "xyes"; then
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-      $as_echo "#define __func__ __FUNCTION__" >>confdefs.h
+
+$as_echo "#define __func__ __FUNCTION__" >>confdefs.h
 
    else
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-      $as_echo "#define __func__ __FILE__" >>confdefs.h
+
+$as_echo "#define __func__ __FILE__" >>confdefs.h
 
    fi
 fi
@@ -4798,7 +4800,8 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_sockaddr_has_sa_len" >&5
 $as_echo "$ac_cv_sockaddr_has_sa_len" >&6; }
 if test $ac_cv_sockaddr_has_sa_len = yes ; then
-        $as_echo "#define HAVE_SOCKADDR_SA_LEN 1" >>confdefs.h
+
+$as_echo "#define HAVE_SOCKADDR_SA_LEN 1" >>confdefs.h
 
 fi
 
@@ -5064,7 +5067,8 @@ struct in_addr i; i.S_un.S_addr;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
   \
-                             $as_echo "#define IN_ADDR_DEEPSTRUCT 1" >>confdefs.h
+
+$as_echo "#define IN_ADDR_DEEPSTRUCT 1" >>confdefs.h
  \
                              { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -5308,7 +5312,8 @@ fi
 OPENSSL_LIBS=
 if test "$use_openssl" = "yes"; then
 
-  $as_echo "#define HAVE_OPENSSL 1" >>confdefs.h
+
+$as_echo "#define HAVE_OPENSSL 1" >>confdefs.h
 
   OPENSSL_LIBS="-lssl -lcrypto"
 fi
@@ -5425,10 +5430,15 @@ fi
 
 MODULES_SRCS="$MODULES_SRCS ncrack_ftp.cc ncrack_telnet.cc ncrack_http.cc \
 ncrack_pop3.cc ncrack_vnc.cc ncrack_redis.cc ncrack_winrm.cc ncrack_owa.cc \
-ncrack_imap.cc ncrack_cassandra.cc ncrack_mongodb.cc ncrack_mssql.cc"
+ncrack_imap.cc ncrack_cassandra.cc ncrack_mssql.cc ncrack_mongodb.cc"
 MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o ncrack_http.o \
 ncrack_pop3.o ncrack_vnc.o ncrack_redis.o ncrack_winrm.o ncrack_owa.o \
-ncrack_imap.o ncrack_cassandra.o ncrack_mongodb.o ncrack_mssql.o"
+ncrack_imap.o ncrack_cassandra.o ncrack_mssql.o ncrack_mongodb.o"
+
+
+
+
+
 
 
 
