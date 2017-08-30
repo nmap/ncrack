@@ -101,10 +101,10 @@ else
 have_function=yes, have_function=no)
    if test "x$have_function" = "xyes"; then
       AC_MSG_RESULT(yes)
-      AC_DEFINE(__func__, __FUNCTION__)
+      AC_DEFINE(__func__, __FUNCTION__, [__FUNCTION__ is available])
    else
       AC_MSG_RESULT(no)
-      AC_DEFINE(__func__, __FILE__)
+      AC_DEFINE(__func__, __FILE__, [Use __FILE__ since __FUNCTION__ is not available])
    fi
 fi
 
@@ -130,7 +130,7 @@ AC_CACHE_CHECK(if sockaddr{} has sa_len member, ac_cv_sockaddr_has_sa_len,
         ac_cv_sockaddr_has_sa_len=yes,
         ac_cv_sockaddr_has_sa_len=no))
 if test $ac_cv_sockaddr_has_sa_len = yes ; then
-        AC_DEFINE(HAVE_SOCKADDR_SA_LEN)
+        AC_DEFINE([HAVE_SOCKADDR_SA_LEN], [1], [struct sockaddr has sa_len member])
 fi
 
 #dnl check endedness
@@ -139,11 +139,11 @@ AC_C_BIGENDIAN
 AC_MSG_CHECKING([if struct in_addr is a wacky huge structure (some Sun boxes)])
 
 AC_TRY_COMPILE([#include <netinet/in.h>], struct in_addr i; i._S_un._S_addr;, \
-             AC_DEFINE(IN_ADDR_DEEPSTRUCT) \
+             AC_DEFINE([IN_ADDR_DEEPSTRUCT], [1], [struct in_addr is a whacky huge structure]]) \
              AC_MSG_RESULT(yes) , \
              AC_TRY_COMPILE([#include <sys/types.h>
 #include <netinet/in.h>], struct in_addr i; i.S_un.S_addr;, \
-                             AC_DEFINE(IN_ADDR_DEEPSTRUCT) \
+                             AC_DEFINE([IN_ADDR_DEEPSTRUCT], [1], [struct in_addr is a whacky huge structure]) \
                              AC_MSG_RESULT(yes) , \
                              AC_MSG_RESULT(no);))
 
@@ -241,7 +241,7 @@ fi
 OPENSSL_LIBS=
 if test "$use_openssl" = "yes"; then
 
-  AC_DEFINE(HAVE_OPENSSL)
+  AC_DEFINE([HAVE_OPENSSL], [1], [OpenSSL is available])
   OPENSSL_LIBS="-lssl -lcrypto"
 fi
 
