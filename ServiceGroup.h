@@ -230,6 +230,7 @@ class ServiceGroup {
 
     int num_hosts_timedout;  /* # of hosts timed out during (or before) scan */
     list <Service *>::iterator last_accessed; /* last element accessed */
+    list <Service *>::iterator prev_modified; /* prev element modified */
 
     RateMeter auth_rate_meter;
     ScanProgressMeter *SPM;

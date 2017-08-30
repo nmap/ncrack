@@ -60,7 +60,7 @@ AC_C_INLINE
 case "$host" in
   *-sgi-irix5* | *-sgi-irix6*)
     if test -z "$GCC"; then
-      AC_DEFINE(inline, )
+      AC_DEFINE([inline], [], [Disable inline keyword])
     fi
     ;;
 esac
@@ -129,7 +129,7 @@ AC_CACHE_CHECK(if sockaddr{} has sa_len member, ac_cv_sockaddr_has_sa_len,
         ac_cv_sockaddr_has_sa_len=yes,
         ac_cv_sockaddr_has_sa_len=no))
 if test $ac_cv_sockaddr_has_sa_len = yes ; then
-        AC_DEFINE(HAVE_SOCKADDR_SA_LEN)
+        AC_DEFINE([HAVE_SOCKADDR_SA_LEN], [1], [struct sockaddr has sa_len member])
 fi
 
 dnl check endedness
@@ -225,7 +225,7 @@ AC_LIBOBJ([getnameinfo])
 fi
 
 if test "$have_ipv6" = "1"; then
-  AC_DEFINE(HAVE_IPV6)
+  AC_DEFINE([HAVE_IPV6], [1], [Everything needed for IPv6 support is available])
 fi
 
 # First we test whether they specified openssl desires explicitly
@@ -286,7 +286,7 @@ talled you can try the --with-openssl=DIR argument]) ])
 fi
 
 if test "$use_openssl" = "yes"; then
-  AC_DEFINE(HAVE_OPENSSL)
+  AC_DEFINE([HAVE_OPENSSL], [1], [OpenSSL is available])
 fi
 
 CHECK_PROC_SELF_EXE
