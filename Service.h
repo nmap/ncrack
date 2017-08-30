@@ -288,7 +288,10 @@ class Service
 		/* misc options */
 		bool ssl;   /* true -> SSL enabled over this service */
     char *path; /* used for HTTP or other modules that need a path-name */
+
     char *database; /* used for MongoDB or other modules that need a database name */
+
+    char *domain; /* used for HTTP or other modules that need a path-name */
 
 		void *module_data; /* service/module-specific data */
 

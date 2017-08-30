@@ -817,7 +817,6 @@ ncrack_main(int argc, char **argv)
   FILE *inputfd = NULL;
   char *normalfilename = NULL;
   char *xmlfilename = NULL;
-  unsigned long l;
   unsigned int i; /* iteration var */
   int argiter;    /* iteration for argv */
   char services_file[256]; /* path name for "ncrack-services" file */
@@ -885,8 +884,6 @@ ncrack_main(int argc, char **argv)
     {"oA", required_argument, 0, 0},  
     {"oN", required_argument, 0, 0},
     {"oX", required_argument, 0, 0},  
-    {"host_timeout", required_argument, 0, 0},
-    {"host-timeout", required_argument, 0, 0},
     {"append_output", no_argument, 0, 0},
     {"append-output", no_argument, 0, 0},
     {"log_errors", no_argument, 0, 0},
@@ -941,17 +938,6 @@ ncrack_main(int argc, char **argv)
                 "exclusive.");
           exclude_spec = strdup(optarg);
 
-        } else if (!optcmp(long_options[option_index].name, "host-timeout")) {
-          l = tval2msecs(optarg);
-          if (l <= 1500)
-            fatal("--host-timeout is specified in milliseconds unless you "
-                "qualify it by appending 's', 'm', or 'h'. The value must "
-                "be greater than 1500 milliseconds");
-          o.host_timeout = l;
-          if (l < 30000) 
-            error("host-timeout is given in milliseconds, so you specified "
-                "less than 30 seconds (%lims). This is allowed but not "
-                "recommended.", l);
         } else if (!strcmp(long_options[option_index].name, "services")) {
           parse_services(optarg, services_cmd);
         } else if (!strcmp(long_options[option_index].name, "list")) {
@@ -1047,7 +1033,7 @@ ncrack_main(int argc, char **argv)
           o.verbose += 2;  
         } else if (strcmp(long_options[option_index].name, "save") == 0) {
           o.save_file = logfilename(optarg, tm);
-        }
+        } 
         break;
       case '6':
 #if !HAVE_IPV6
@@ -1508,6 +1494,7 @@ ncrack_main(int argc, char **argv)
 
 
     SG->last_accessed = SG->services_active.end();
+    SG->prev_modified = SG->services_active.end();
     /* Ncrack 'em all! */
     ncrack(SG);
   }
@@ -2155,6 +2142,8 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
   } else if (status == NSE_STATUS_SUCCESS) {
 
+    serv->failed_connections = 0;
+
 #if HAVE_OPENSSL
     // Snag our SSL_SESSION from the nsi for use in subsequent connections.
     if (nsock_iod_check_ssl(nsi)) {
@@ -2185,6 +2174,11 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     serv->failed_connections++;
     serv->appendToPool(con->user, con->pass);
 
+    if (serv->failed_connections > serv->connection_retries) {
+      SG->pushServiceToList(serv, &SG->services_finished);
+      if (o.verbose)
+        log_write(LOG_STDOUT, "%s finished. Too many failed attemps. \n", hostinfo);
+    }
     /* Failure of connecting on first attempt means we should probably drop
      * the service for good. */
     if (serv->just_started) {
@@ -2297,10 +2291,12 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
     }
   }
 
-  if (SG->last_accessed == SG->services_active.end()) 
+  if (SG->last_accessed == SG->services_active.end()) {
     li = SG->services_active.begin();
-  else 
+  } else {
     li = SG->last_accessed++;
+  }
+
 
 
   while (SG->active_connections < SG->connection_limit
@@ -2341,7 +2337,7 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
 
 
     /*
-     * To mark a service as completely finished, first make sure:
+     * To mark a service as completely  finished, first make sure:
      * a) that the username list has finished being iterated through once
      * b) that the mirror pair pool, which holds temporary login pairs which
      *    are currently being used, is empty
@@ -2441,9 +2437,21 @@ ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
 
 next:
 
+    /* 
+     * this will take care of the case where the state of the services_active list
+     * has been modified in the meantime by any pushToList or popFromList without
+     * saving the state to the current li iterator thus showing to a non-valid
+     * service 
+     */
+    if (SG->prev_modified != li) {
+      li = SG->services_active.end();
+    }
+
     SG->last_accessed = li;
-    if (li == SG->services_active.end() || ++li == SG->services_active.end())
+    if (li == SG->services_active.end() || ++li == SG->services_active.end()) {
       li = SG->services_active.begin();
+    }
+
 
     i++;
     if (o.stealthy_linear && i == SG->services_all.size())

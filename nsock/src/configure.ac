@@ -26,66 +26,66 @@ AC_CANONICAL_HOST
 
 case "$host" in
   *alpha-dec-osf*)
-    AC_DEFINE(DEC)
+    AC_DEFINE([DEC], [1], [host is alpha-dec-osf*])
     ;;
   *-netbsd* | *-knetbsd*-gnu)
-    AC_DEFINE(NETBSD)
+    AC_DEFINE([NETBSD], [1], [host is NetBSD])
     ;;
   *-openbsd*)
-    AC_DEFINE(OPENBSD)
+    AC_DEFINE([OPENBSD], [1], [host is OpenBSD])
     ;;
   *-sgi-irix5*)
-    AC_DEFINE(IRIX)
+    AC_DEFINE([IRIX], [1], [host is Irix])
     ;;
   *-sgi-irix6*)
-    AC_DEFINE(IRIX)
+    AC_DEFINE([IRIX], [1], [host is Irix])
     ;;
   *-hpux*)
-    AC_DEFINE(HPUX)
+    AC_DEFINE([HPUX], [1], [Host is HP Unix])
     ;;
   *-solaris2.1[[1-9]]*)
-    AC_DEFINE(SOLARIS)
+    AC_DEFINE([SOLARIS], [1], [Host is Solaris])
     # Solaris 11 and later use BPF packet capture rather than DLPI.
-    AC_DEFINE(SOLARIS_BPF_PCAP_CAPTURE)
+    AC_DEFINE([SOLARIS_BPF_PCAP_CAPTURE], [], [Use BPF packet capture in Solaris >= 11])
     ;;
   *-solaris2.0*)  
-    AC_DEFINE(SOLARIS)
+    AC_DEFINE([SOLARIS], [1], [Host is Solaris])
     ;;
   *-solaris2.[[1-9]][[0-9]]*)
-    AC_DEFINE(SOLARIS)
+    AC_DEFINE([SOLARIS], [1], [Host is Solaris])
     ;;
   *-solaris2.1*)
-    AC_DEFINE(SOLARIS)
+    AC_DEFINE([SOLARIS], [1], [Host is Solaris])
     ;;
   *-solaris2.2*)
-    AC_DEFINE(SOLARIS)
+    AC_DEFINE([SOLARIS], [1], [Host is Solaris])
     ;;
   *-solaris2.3*)
-    AC_DEFINE(SOLARIS)
+    AC_DEFINE([SOLARIS], [1], [Host is Solaris])
     ;;
   *-solaris2.4*)
-    AC_DEFINE(SOLARIS)
+    AC_DEFINE([SOLARIS], [1], [Host is Solaris])
     ;;
   *-solaris2.5.1)
-    AC_DEFINE(SOLARIS)
+    AC_DEFINE([SOLARIS], [1], [Host is Solaris])
     ;;
   *-solaris*)
-    AC_DEFINE(SOLARIS)
+    AC_DEFINE([SOLARIS], [1], [Host is Solaris])
     ;;
   *-sunos4*)
-    AC_DEFINE(SUNOS)
+    AC_DEFINE([SUNOS], [1], [Host is SunOS])
     ;;
   *-linux*)
-    AC_DEFINE(LINUX)
+    AC_DEFINE([LINUX], [1], [Host is Linux])
     ;;
   *-freebsd* | *-kfreebsd*-gnu | *-dragonfly*)
-    AC_DEFINE(FREEBSD)
+    AC_DEFINE([FREEBSD], [1], [Host is FreeBSD])
     ;;
   *-bsdi*)
-    AC_DEFINE(BSDI)
+    AC_DEFINE([BSDI], [1], [Host is BSDi])
     ;;
   *-apple-darwin*)
-    AC_DEFINE(MACOSX)
+    AC_DEFINE([MACOSX], [1], [Host is MacOS X])
     ;;
 esac
 
@@ -160,7 +160,7 @@ if test "$with_libpcap" != "no" -a "$have_libpcap" = "no"; then
   have_libpcap=yes
 fi
 if test "$have_libpcap" != "no"; then
-  AC_DEFINE(HAVE_PCAP)
+  AC_DEFINE([HAVE_PCAP], [1], [libpcap is available])
   if test "${LIBPCAP_INC+set}" = "set"; then
     CPPFLAGS="-I$LIBPCAP_INC $CPPFLAGS"
     LDFLAGS="-L$LIBPCAP_LIB $LDFLAGS"
@@ -170,9 +170,9 @@ AC_SUBST(LIBPCAP_LIBS)
 
 PCAP_DEFINE_NETMASK_UNKNOWN
 
-AX_HAVE_EPOLL([AC_DEFINE(HAVE_EPOLL)], )
-AX_HAVE_POLL([AC_DEFINE(HAVE_POLL)], )
-AC_CHECK_FUNCS(kqueue kevent, [AC_DEFINE(HAVE_KQUEUE)], )
+AX_HAVE_EPOLL([AC_DEFINE([HAVE_EPOLL], [1], [epoll is available])], )
+AX_HAVE_POLL([AC_DEFINE([HAVE_POLL], [1], [poll is available])], )
+AC_CHECK_FUNCS(kqueue kevent, [AC_DEFINE([HAVE_KQUEUE], [1], [kqueue is available])], )
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -255,7 +255,7 @@ AC_SEARCH_LIBS(dlopen, dl)
 
 OPENSSL_LIBS=
 if test "$use_openssl" = "yes"; then
-  AC_DEFINE(HAVE_OPENSSL)
+  AC_DEFINE([HAVE_OPENSSL], [1], [OpenSSL is available])
   OPENSSL_LIBS="-lssl -lcrypto"
   LIBS="$LIBS $OPENSSL_LIBS"
 fi
@@ -264,7 +264,7 @@ AC_SUBST(OPENSSL_LIBS)
 
 AC_MSG_CHECKING([for SSL_set_tlsext_host_name])
 AC_TRY_LINK([#include <openssl/ssl.h>], [SSL_set_tlsext_host_name(NULL, NULL)],
-  [AC_MSG_RESULT([yes]); AC_DEFINE(HAVE_SSL_SET_TLSEXT_HOST_NAME)],
+  [AC_MSG_RESULT([yes]); AC_DEFINE([HAVE_SSL_SET_TLSEXT_HOST_NAME], [1], [SSL_set_tlsext_host_name is available])],
   [AC_MSG_RESULT([no])])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
