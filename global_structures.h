@@ -155,6 +155,7 @@ typedef struct timing_options {
 typedef struct misc_options {
   bool ssl;   /* use ssl */
   char *path; /* path used in http */
+  char *domain; /* domain used in domain account bruteforcing */
 } misc_options;
 
 

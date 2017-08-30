@@ -404,6 +404,51 @@ int base64_encode(const char *str, int length, char *b64store)
   return p - b64store;
 }
 
+int
+base64_decode (const char *base64, int length, char *to)
+{
+  /* Table of base64 values for first 128 characters.  Note that this
+     assumes ASCII (but so does Wget in other places).  */
+  static short base64_char_to_value[256] =
+    {
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 62, 63, 62, 62, 63, 52, 53, 54, 55,
+      56, 57, 58, 59, 60, 61,  0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  4,  5,  6,
+      7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,  0,
+      0,  0,  0, 63,  0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+      41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51 
+    };
+  int i;
+  unsigned char* p = (unsigned char*) base64;
+  char *q = to;
+  int pad = length > 0 && (length % 4 || p[length - 1] == '=');
+  const size_t L = ((length + 3) / 4 - pad) * 4;
+
+  for (i = 0; i < length; i += 4)
+    {
+    unsigned char c;
+    unsigned long value;
+
+    int n = base64_char_to_value[p[i]] << 18 | base64_char_to_value[p[i + 1]] << 12 | base64_char_to_value[p[i + 2]] << 6 | base64_char_to_value[p[i + 3]];
+    *q++ = n >> 16;
+    *q++ = n >> 8 & 0xFF;
+    *q++ = n & 0xFF;
+    
+  }
+  if (pad)
+    {
+        int n = base64_char_to_value[p[L]] << 18 | base64_char_to_value[p[L + 1]] << 12;
+        *q++ = n >> 16;
+
+        if (length > L + 2 && p[L + 2] != '=')
+        {
+            n |= base64_char_to_value[p[L + 2]] << 6;
+            *q++ = n >> 8 & 0xFF;
+        }
+    }
+  return q - to;
+}
 
 /* mmap() an entire file into the address space.  Returns a pointer
    to the beginning of the file.  The mmap'ed length is returned

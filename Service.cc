@@ -167,6 +167,7 @@ Service()
   connection_retries = -1;
   timeout = -1;
   path = Strndup("/", 2); /* path is '/' by default */
+  domain = Strndup("Workstation", 11); /* domain is 'Workstation' by default */
   ssl = false;
 
   module_data = NULL;
@@ -203,6 +204,7 @@ Service(const Service& ref)
   //if (path)
   //  free(path);
   path = Strndup(ref.path, strlen(ref.path));
+  domain = Strndup(ref.domain, strlen(ref.domain));
 
   ideal_parallelism = 1;  /* we start with 1 connection exactly */
 
