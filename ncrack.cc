@@ -770,7 +770,9 @@ call_module(nsock_pool nsp, Connection *con)
   else if (!strcmp(name, "mysql"))
     ncrack_mysql(nsp, con);
   else if (!strcmp(name, "psql"))
-    ncrack_psql(nsp, con);
+    ncrack_psql(nsp, con);  
+  else if (!strcmp(name, "mssql"))
+    ncrack_mssql(nsp, con);
   else if (!strcmp(name, "ssh"))
     ncrack_ssh(nsp, con);
   else if (!strcmp(name, "owa"))
