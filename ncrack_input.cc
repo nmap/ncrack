@@ -141,7 +141,7 @@ xml_input(FILE *inputfd, char *host_spec)
 {
   static bool begin = true;
   int ch;
-  char buf[2048];
+  char buf[4096];
   static char ip[16];
   char portnum[7];
   char service_name[64];
