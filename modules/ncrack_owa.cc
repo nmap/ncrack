@@ -184,9 +184,9 @@ typedef struct owa_state {
 void
 ncrack_owa(nsock_pool nsp, Connection *con)
 {
-  owa_info *info = NULL;
   con->ops_free = &owa_free;
-
+#if 0
+  owa_info *info = NULL;
   if (con->misc_info) {
     info = (owa_info *) con->misc_info;
     //printf("info substate: %d \n", info->substate);
@@ -196,6 +196,7 @@ ncrack_owa(nsock_pool nsp, Connection *con)
     con->misc_info = (owa_info *)safe_zalloc(sizeof(owa_info));
     info = (owa_info *)con->misc_info;
   } 
+#endif
 
   switch (con->state)
   {
