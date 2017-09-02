@@ -300,7 +300,7 @@ print_usage(void)
       "  -V: Print version number\n"
       "  -h: Print this help summary page.\n"
       "MODULES:\n"
-      "  FTP, SSH, Telnet, HTTP(S), POP3(S), IMAP, SMB, RDP, VNC, SIP, Redis, PostgreSQL, MySQL, MSSQL, MongoDB, WinRM, OWA\n"
+      "  SSH, RDP, FTP, Telnet, HTTP(S), POP3(S), IMAP, SMB, VNC, SIP, Redis, PostgreSQL, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA\n"
       "EXAMPLES:\n"
       "  ncrack -v --user root localhost:22\n"
       "  ncrack -v -T5 https://192.168.0.1\n"
@@ -1155,8 +1155,8 @@ ncrack_main(int argc, char **argv)
       case 'V': 
         log_write(LOG_STDOUT, "\n%s version %s ( %s )\n",
             NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
-        log_write(LOG_STDOUT, "Modules: FTP, SSH, Telnet, HTTP(S), POP3(S), IMAP, "
-            "SMB, RDP, VNC, SIP, Redis, PostgreSQL, MySQL, MSSQL, MongoDB, WinRM, OWA\n");
+        log_write(LOG_STDOUT, "Modules: SSH, RDP, FTP, Telnet, HTTP(S), POP3(S), IMAP, "
+            "SMB, VNC, SIP, Redis, PostgreSQL, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA\n");
         exit(EXIT_SUCCESS);
         break;
       case 'v':
