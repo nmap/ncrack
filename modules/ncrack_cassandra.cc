@@ -150,7 +150,7 @@ static void cass_encode_data(Connection *con);
 
 enum states { CASS_INIT, CASS_USER };
 
-typedef struct cass_CALL {
+struct cass_CALL {
 
   uint8_t len[4];
   uint16_t version[1];
@@ -160,7 +160,7 @@ typedef struct cass_CALL {
   uint16_t sequence_id[2];
 };
 
-typedef struct cass_data {
+struct cass_data {
 
   uint8_t t_struct;
   u_char field_id[2];
@@ -214,10 +214,10 @@ cass_encode_CALL(Connection *con) {
   call.length[3] = 5;
   con->outbuf->append(&call.length, sizeof(call.length));
   con->outbuf->snprintf(5, "login");  
-  call.sequence_id[0]=0;
-  call.sequence_id[1]=0;
-  call.sequence_id[2]=0;
-  call.sequence_id[3]=0;
+  call.sequence_id[0] = 0;
+  call.sequence_id[1] = 0;
+  //call.sequence_id[2] = 0;
+  //call.sequence_id[3] = 0;
   con->outbuf->append(&call.sequence_id, sizeof(call.sequence_id));
 }
 
