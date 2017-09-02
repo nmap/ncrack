@@ -80,7 +80,7 @@
 
 $ ncrack 10.0.0.130:21 192.168.1.2:22
 
-Starting Ncrack 0.5 ( http://ncrack.org ) at 2016-01-03 22:10 EEST
+Starting Ncrack 0.6 ( http://ncrack.org ) at 2016-01-03 22:10 EEST
 
 Discovered credentials for ftp on 10.0.0.130 21/tcp:
 10.0.0.130 21/tcp ftp: admin hello1
@@ -965,7 +965,7 @@ Ncrack finished.
        </para>
 
        <para>
-           NOT IMPLEMENTED YET.
+
        </para>
 
          

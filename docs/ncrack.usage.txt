@@ -1,4 +1,4 @@
-Ncrack 0.5 ( http://ncrack.org )
+Ncrack 0.6 ( http://ncrack.org )
 Usage: ncrack [Options] {target and service specification}
 TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc.
@@ -32,6 +32,8 @@ TIMING AND PERFORMANCE:
     to (time-out): maximum cracking <time> for service, regardless of success so far
   -T<0-5>: Set timing template (higher is faster)
   --connection-limit <number>: threshold for total concurrent connections
+  --stealthy-linear: try credentials using only one connection against each specified host 
+    until you hit the same host again. Overrides all other timing options.
 AUTHENTICATION:
   -U <filename>: username file
   -P <filename>: password file
@@ -58,7 +60,7 @@ MISC:
   -V: Print version number
   -h: Print this help summary page.
 MODULES:
-  FTP, SSH, Telnet, HTTP(S), POP3(S), SMB, RDP, VNC, SIP, Redis, PostgreSQL, MySQL
+  FTP, SSH, Telnet, HTTP(S), POP3(S), IMAP, SMB, RDP, VNC, SIP, Redis, PostgreSQL, MySQL, MSSQL, MongoDB, WinRM, OWA
 EXAMPLES:
   ncrack -v --user root localhost:22
   ncrack -v -T5 https://192.168.0.1
