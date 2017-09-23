@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 04/06/2016
+.\"      Date: 09/22/2017
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "04/06/2016" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "09/22/2017" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -60,7 +60,7 @@ Example\ \&1\&. The only Ncrack arguments used in this example are the two targe
 
 $ ncrack 10\&.0\&.0\&.130:21 192\&.168\&.1\&.2:22
 
-Starting Ncrack 0\&.5 ( http://ncrack\&.org ) at 2016\-01\-03 22:10 EEST
+Starting Ncrack 0\&.6 ( http://ncrack\&.org ) at 2016\-01\-03 22:10 EEST
 
 Discovered credentials for ftp on 10\&.0\&.0\&.130 21/tcp:
 10\&.0\&.0\&.130 21/tcp ftp: admin hello1
@@ -90,7 +90,7 @@ This options summary is printed when Ncrack is run with no arguments\&. It helps
 .RS 4
 .\}
 .nf
-Ncrack 0\&.5 ( http://ncrack\&.org )
+Ncrack 0\&.6 ( http://ncrack\&.org )
 Usage: ncrack [Options] {target and service specification}
 TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc\&.
@@ -124,6 +124,8 @@ TIMING AND PERFORMANCE:
     to (time\-out): maximum cracking <time> for service, regardless of success so far
   \-T<0\-5>: Set timing template (higher is faster)
   \-\-connection\-limit <number>: threshold for total concurrent connections
+  \-\-stealthy\-linear: try credentials using only one connection against each specified host 
+    until you hit the same host again\&. Overrides all other timing options\&.
 AUTHENTICATION:
   \-U <filename>: username file
   \-P <filename>: password file
@@ -150,7 +152,7 @@ MISC:
   \-V: Print version number
   \-h: Print this help summary page\&.
 MODULES:
-  FTP, SSH, Telnet, HTTP(S), POP3(S), SMB, RDP, VNC, SIP, Redis, PostgreSQL, MySQL
+  SSH, RDP, FTP, Telnet, HTTP(S), POP3(S), IMAP, SMB, VNC, SIP, Redis, PostgreSQL, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA
 EXAMPLES:
   ncrack \-v \-\-user root localhost:22
   ncrack \-v \-T5 https://192\&.168\&.0\&.1
@@ -552,12 +554,12 @@ Ncrack by default tries to initiate new connections as fast as possible given th
 which can dynamically increase or decrease\&. Although this approach achieves blazing speed as long as the host remains responsive, it can lead to a number of disasters such as a firewall being triggered, the targets\' or your bandwidth to be diminished and even the tested service to suffer a Denial of Service attack\&. By carefully adjusting this option, you can potentially avoid these annoying situations\&.
 .RE
 .PP
-\fBcr \fR\fB\fImax\-conattempts\fR\fR (Adjust the max number of connection attempts)
+\fBcr \fR\fB\fImax\-conattempts\fR\fR (Adjust the max number of connection retries)
 .RS 4
 
 \fBConnection Retries\fR
 .sp
-NOT IMPLEMENTED YET\&.
+This option allows the user to specify the maximum amount of consecutive failed attempts against that particular service\&. If at any time, during the cracking session, Ncrack fails to connect against that particular service, then it will stop cracking it entirely\&.
 .RE
 .PP
 \fBto \fR\fB\fItime\fR\fR (Adjust the maximum overall cracking time)
@@ -912,7 +914,7 @@ Rate: 6\&.26; Found: 1; About 13\&.27% done; ETC: 21:06 (0:02:17 remaining)
 .RE
 .SH "MODULES"
 .PP
-Ncrack\'s architecture is modular with each module corresponding to one particular service or protocol\&. Currently, Ncrack supports the protocols FTP, Telnet, SSH, RDP, VNC, HTTP(S), POP3(S), SIP, Redis and PostgreSQL\&. If you want to write and contribute your own Ncrack modules, be sure to read the Ncrack Developer\'s Guide at
+Ncrack\'s architecture is modular with each module corresponding to one particular service or protocol\&. Currently, Ncrack supports the protocols SSH, RDP, FTP, Telnet, HTTP(S), POP3(S), IMAP, SMB, VNC, SIP Redis, PostgreSQL, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA\&. If you want to write and contribute your own Ncrack modules, be sure to read the Ncrack Developer\'s Guide at
 \m[blue]\fB\%http://nmap.org/ncrack/devguide.html\fR\m[]
 Below we describe some key points for each of them\&.
 .PP
@@ -982,6 +984,12 @@ option when cracking VNC systems to exploit the fact that the username often has
 POP3 support is still experimental and hasn\'t been thoroughly tested\&. You can expect it to work against common mail servers, nevertheless\&.
 .RE
 .PP
+\fBIMAP Module\fR
+.PP
+.RS 4
+The Internet Message Access Protocol (IMAP) is used by email clients to retrieve email messages from a mail server\&. The module sends the LOGIN command to authenticate\&. The LOGIN command is the simplest, fastest and most supported authentication mechanism for IMAP\&.
+.RE
+.PP
 \fBSIP Module\fR
 .PP
 .RS 4
@@ -1004,6 +1012,36 @@ PostgreSQL is often used as a backend database\&. The PostgreSQL module supports
 .PP
 .RS 4
 The MySQL module supports native authentication\&.
+.RE
+.PP
+\fBMySQL Module\fR
+.PP
+.RS 4
+The MSSQL module supports mixed authentication\&.
+.RE
+.PP
+\fBMongoDB Module\fR
+.PP
+.RS 4
+The MongoDB module supports MongoDB\-CR and SCRAM\-SHA\-1 authentication\&.
+.RE
+.PP
+\fBCassandra Module\fR
+.PP
+.RS 4
+Apache Cassandra is a popular NoSQL database often left unsecured with weak credentials or no authentication\&.
+.RE
+.PP
+\fBOWA Module\fR
+.PP
+.RS 4
+Outlook Web App allows users to access a Microsoft Exchange Server mailbox from a web browser and experience Microsoft Outlook without a mail client\&. The module supports Basic Authentication\&.
+.RE
+.PP
+\fBWinRM Module\fR
+.PP
+.RS 4
+Windows Remote Management (WinRM) is the Microsoft implementation of WS\-Management Protocol, a standard Simple Object Access Protocol (SOAP)\-based, firewall\-friendly protocol that allows hardware and operating systems, from different vendors, to interoperate\&. It is often used to administer Windows machines\&. The module supports Basic and Negotiate authentication\&.
 .RE
 .SH "BUGS"
 .\" bugs, reporting
@@ -1034,8 +1072,8 @@ nmap\-dev
 (recommended) or to Fyodor directly\&.
 .SH "AUTHORS"
 .PP
-ithilgore (Fotis Hantzis)
-ithilgore\&.ryu\&.l@gmail\&.com
+ithilgore (Fotios (Fotis) Chantzis)
+ithilgore@sock\-raw\&.org
 (\m[blue]\fB\%http://sock-raw.org\fR\m[])
 .PP
 Fyodor

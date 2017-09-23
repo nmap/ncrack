@@ -440,7 +440,7 @@ $ ncrack scanme.nmap.org:22 ftp://10.0.0.10 ssh://192.168.1.*:5910
         "everything that isn't an option is a target specification". 
       </para>
 
-       <example id="man-rep-exscan"><title>Global service specification
+       <example id="man-rep-exscan-1"><title>Global service specification
           example</title>
         <screen>
 
@@ -697,7 +697,7 @@ to (time-out): maximum cracking time for service, regardless of success so far
       precedence.
     </para>
 
-    <example id="man-rep-exscan"><title>Service Option Hierarchy
+    <example id="man-rep-exscan-2"><title>Service Option Hierarchy
         example</title>
         <screen>
 
@@ -730,7 +730,7 @@ $ ncrack scanme.nmap.org:22,cl=10,at=1 10.0.0.120 10.0.0.20 -p 21 -m ftp:CL=1 -g
        For the above example, Ncrack would print the following:
      </para>
 
-    <example id="man-rep-exscan"><title>Service Option Hierarchy Output
+    <example id="man-rep-exscan-3"><title>Service Option Hierarchy Output
         example</title>
         <screen>
 
@@ -956,7 +956,7 @@ Ncrack finished.
    <varlistentry>
      <term>
        <option>cr <replaceable>max-conattempts</replaceable></option>
-       (Adjust the max number of connection attempts) 
+       (Adjust the max number of connection retries) 
      </term>
      <listitem>
 
@@ -965,7 +965,10 @@ Ncrack finished.
        </para>
 
        <para>
-
+         This option allows the user to specify the maximum amount of consecutive failed
+         attempts against that particular service. If at any time, during the cracking session,
+         Ncrack fails to connect against that particular service, then it will stop cracking
+         it entirely.
        </para>
 
          
@@ -1873,7 +1876,9 @@ Ncrack finished.
      <para>
        Ncrack's architecture is modular with each module corresponding to
        one particular service or protocol. Currently, Ncrack supports the
-       protocols FTP, Telnet, SSH, RDP, VNC, HTTP(S), POP3(S), SIP, Redis and PostgreSQL.
+       protocols SSH, RDP, FTP, Telnet, HTTP(S), POP3(S), IMAP, SMB, VNC, SIP
+       Redis, PostgreSQL, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA.
+       
        If you want to write and contribute your own Ncrack modules, be sure to read
        the Ncrack Developer's Guide at <ulink url="http://nmap.org/ncrack/devguide.html" />
        Below we describe some key points for each of them.
@@ -2037,10 +2042,24 @@ Ncrack finished.
             tested. You can expect it to work against common mail servers,
             nevertheless.
           </para>
-            
         </listitem>
       </varlistentry>
     </variablelist>
+
+      <variablelist><title>IMAP Module</title>
+      <varlistentry>
+        <listitem>
+          <para>  
+            The Internet Message Access Protocol (IMAP) is used by email clients to
+            retrieve email messages from a mail server. The module sends the LOGIN
+            command to authenticate. The LOGIN command is the simplest, fastest and
+            most supported authentication mechanism for IMAP.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+
 
     <variablelist><title>SIP Module</title>
       <varlistentry>
@@ -2098,6 +2117,69 @@ Ncrack finished.
         </listitem>
       </varlistentry>
     </variablelist>
+
+
+     <variablelist><title>MySQL Module</title>
+      <varlistentry>
+        <listitem>
+          <para>
+           The MSSQL module supports mixed authentication.
+          </para>
+            
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+     <variablelist><title>MongoDB Module</title>
+      <varlistentry>
+        <listitem>
+          <para>
+           The MongoDB module supports MongoDB-CR and SCRAM-SHA-1 authentication.
+          </para>
+            
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+     <variablelist><title>Cassandra Module</title>
+      <varlistentry>
+        <listitem>
+          <para>
+            Apache Cassandra is a popular NoSQL database often left unsecured with weak credentials
+            or no authentication. 
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+
+     <variablelist><title>OWA Module</title>
+      <varlistentry>
+        <listitem>
+          <para>
+            Outlook Web App allows users to access a Microsoft Exchange Server mailbox from a web
+            browser and experience Microsoft Outlook without a mail client. The module supports
+            Basic Authentication.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+
+    <variablelist><title>WinRM Module</title>
+      <varlistentry>
+        <listitem>
+          <para>
+            Windows Remote Management (WinRM) is the Microsoft implementation of
+            WS-Management Protocol, a standard Simple Object Access Protocol 
+            (SOAP)-based, firewall-friendly protocol that allows hardware and
+            operating systems, from different vendors, to interoperate. It is often used to
+            administer Windows machines. The module supports Basic and Negotiate authentication.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
 
     </refsect1>
 
