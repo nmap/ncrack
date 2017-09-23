@@ -229,6 +229,7 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
   winrm_info *info = NULL;
   winrm_state *hstate = NULL;
   con->ops_free = &winrm_free;
+  const char *hostinfo = serv->HostInfo();
 
   char *tmp;
   size_t tmplen;
@@ -347,11 +348,11 @@ ncrack_winrm(nsock_pool nsp, Connection *con)
       break;
 
     case WINRM_KERBEROS_AUTH:
-      printf("Kerberos authentication technique not implemented yet.");
+      error("%s Kerberos authentication technique not implemented yet.", hostinfo);
       break;
 
     case WINRM_CREDSSP_AUTH:
-      printf("CREDSSP authentication technique not implemented yet.");
+      error("%s CREDSSP authentication technique not implemented yet.", hostinfo);
       break;
 
   }

@@ -289,7 +289,7 @@ owa_basic(nsock_pool nsp, Connection *con)
       else 
         tmplen += strlen(serv->target->NameIP());
 
-      snprintf(tmp, sizeof(tmp) - 1, "%d", tmplen);
+      snprintf(tmp, sizeof(tmp) - 1, "%lu", tmplen);
 
       con->outbuf->snprintf(20 + strlen(tmp), "Content-Length: %s\r\n\r\n", tmp);
 
