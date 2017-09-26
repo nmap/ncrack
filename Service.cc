@@ -374,6 +374,16 @@ getNextPair(char **user, char **pass)
 
     //printf("ssh special case\n");
 
+    /* catches bug where ssh module crashed when user had specified correct username and
+     * password in the first attempt
+     */
+    if (just_started == false && PassArray->size() == 1 && UserArray->size() == 1) {
+      uservi = UserArray->end();
+      passvi = PassArray->end();
+      loginlist_fini = true;
+      return -1;
+    }
+
     /* special case for ssh */
     if (just_started == true) {
       //printf("just started\n");
