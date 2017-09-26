@@ -125,7 +125,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nbase_addrset.c 34574 2015-06-03 13:01:29Z dmiller $ */
+/* $Id$ */
 
 /* The code in this file has tests in the file ncat/tests/test-addrset.sh. Run that
    program after making any big changes. Also, please add tests for any new
@@ -249,10 +249,10 @@ static void in_addr_to_octets(const struct in_addr *ia, uint8_t octets[4])
 {
     u32 hbo = ntohl(ia->s_addr);
 
-    octets[0] = (uint8_t) ((hbo & (0xFF << 24)) >> 24);
-    octets[1] = (uint8_t) ((hbo & (0xFF << 16)) >> 16);
-    octets[2] = (uint8_t) ((hbo & (0xFF << 8)) >> 8);
-    octets[3] = (uint8_t) (hbo & 0xFF);
+    octets[0] = (uint8_t) ((hbo & (0xFFU << 24)) >> 24);
+    octets[1] = (uint8_t) ((hbo & (0xFFU << 16)) >> 16);
+    octets[2] = (uint8_t) ((hbo & (0xFFU << 8)) >> 8);
+    octets[3] = (uint8_t) (hbo & 0xFFU);
 }
 
 #define BITVECTOR_BITS (sizeof(bitvector_t) * CHAR_BIT)

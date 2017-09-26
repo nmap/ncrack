@@ -17,10 +17,12 @@
 /* Modified by Fyodor (fyodor@nmap.org) for inclusion in the Nmap
  * Security Scanner.
  *
- * $Id: inet_pton.c 31700 2013-08-09 00:16:52Z d33tah $
+ * $Id$
  */
 
 #include "nbase.h"
+
+#ifndef HAVE_INET_PTON
 
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -243,3 +245,5 @@ inet_pton6(const char *src, unsigned char *dst)
     return (1);
 }
 #endif
+
+#endif /* ifndef HAVE_INET_PTON */

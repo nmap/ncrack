@@ -3,7 +3,7 @@
  *                                                                         *
  ***********************IMPORTANT NSOCK LICENSE TERMS***********************
  *                                                                         *
- * The nsock parallel socket event library is (C) 1999-2015 Insecure.Com   *
+ * The nsock parallel socket event library is (C) 1999-2017 Insecure.Com   *
  * LLC This library is free software; you may redistribute and/or          *
  * modify it under the terms of the GNU General Public License as          *
  * published by the Free Software Foundation; Version 2.  This guarantees  *
@@ -63,12 +63,12 @@
 
 #include <string.h>
 
-#define DEFAULT_PROXY_PORT_SOCKS 1080
+#define DEFAULT_PROXY_PORT_SOCKS4 1080
 
 
 extern struct timeval nsock_tod;
 extern const struct proxy_spec ProxySpecSocks4;
-extern const struct proxy_spec ProxySpecSocks4a;
+
 
 struct socks4_data {
     uint8_t  version;
@@ -79,11 +79,12 @@ struct socks4_data {
 } __attribute__((packed));
 
 
-static int proxy_socks_node_new(struct proxy_node **node, const struct uri *uri) {
+static int proxy_socks4_node_new(struct proxy_node **node, const struct uri *uri) {
   int rc;
   struct proxy_node *proxy;
 
   proxy = (struct proxy_node *)safe_zalloc(sizeof(struct proxy_node));
+  proxy->spec = &ProxySpecSocks4;
 
   rc = proxy_resolve(uri->host, (struct sockaddr *)&proxy->ss, &proxy->sslen);
   if (rc < 0)
@@ -95,21 +96,11 @@ static int proxy_socks_node_new(struct proxy_node **node, const struct uri *uri)
   }
 
   if (uri->port == -1)
-    proxy->port = DEFAULT_PROXY_PORT_SOCKS;
+    proxy->port = DEFAULT_PROXY_PORT_SOCKS4;
   else
     proxy->port = (unsigned short)uri->port;
 
-  rc = asprintf(&proxy->nodestr, "%s://%s:%d", uri->scheme, uri->host, proxy->port);
-
-  if (!strcmp(uri->scheme, "socks4")) {
-    proxy->spec = &ProxySpecSocks4;
-  } else if (!strcmp(uri->scheme, "socks4a")) {
-    proxy->spec = &ProxySpecSocks4a;
-  } else {
-    rc = -1;
-    goto err_out;
-  }
-
+  rc = asprintf(&proxy->nodestr, "socks4://%s:%d", uri->host, proxy->port);
   if (rc < 0) {
     /* asprintf() failed for some reason but this is not a disaster (yet).
      * Set nodestr to NULL and try to keep on going. */
@@ -127,12 +118,11 @@ err_out:
   return rc;
 }
 
-static void proxy_socks_node_delete(struct proxy_node *node) {
+static void proxy_socks4_node_delete(struct proxy_node *node) {
   if (!node)
     return;
 
-  if (node->nodestr)
-    free(node->nodestr);
+  free(node->nodestr);
 
   free(node);
 }
@@ -146,16 +136,11 @@ static inline void socks4_data_init(struct socks4_data *socks4,
   socks4->version = 4;
   socks4->type = 1;
   socks4->port = htons(port);
-  if (ss) {
-    assert(ss->ss_family == AF_INET);
-    socks4->address = sin->sin_addr.s_addr;
-  } else {
-    socks4->address = htonl(0xff);
-  }
+  assert(ss->ss_family == AF_INET);
+  socks4->address = sin->sin_addr.s_addr;
 }
 
-static int handle_state_initial_socks4(struct npool *nsp, struct nevent *nse,
-                                       void *udata) {
+static int handle_state_initial(struct npool *nsp, struct nevent *nse, void *udata) {
   struct proxy_chain_context *px_ctx = nse->iod->px_ctx;
   struct sockaddr_storage *ss;
   size_t sslen;
@@ -189,46 +174,6 @@ static int handle_state_initial_socks4(struct npool *nsp, struct nevent *nse,
   return 0;
 }
 
-static int handle_state_initial_socks4a(struct npool *nsp, struct nevent *nse,
-                                        void *udata) {
-  struct proxy_chain_context *px_ctx = nse->iod->px_ctx;
-  char *target_name = nse->iod->hostname;
-  size_t target_name_len = strlen(target_name) * sizeof(char);
-  unsigned short port;
-  struct proxy_node *next;
-  struct socks4_data socks4a;
-  size_t outgoing_len = sizeof(struct socks4_data) + target_name_len + 1;
-  uint8_t *outgoing;
-  int timeout;
-
-  px_ctx->px_state = PROXY_STATE_SOCKS4_TCP_CONNECTED;
-
-  next = proxy_ctx_node_next(px_ctx);
-  if (next) {
-    port = next->port;
-  } else {
-    port = px_ctx->target_port;
-  }
-
-  socks4_data_init(&socks4a, NULL, 0, port);
-
-  timeout = TIMEVAL_MSEC_SUBTRACT(nse->timeout, nsock_tod);
-
-  outgoing = (uint8_t *)safe_zalloc(outgoing_len);
-
-  /* Copy contents of socks4a data packet into memory */
-  memcpy(outgoing, &socks4a, sizeof(socks4a));
-  memcpy(outgoing + sizeof(socks4a), target_name, target_name_len + 1);
-
-  nsock_write(nsp, (nsock_iod)nse->iod, nsock_proxy_ev_dispatch, timeout, udata,
-              (char *)outgoing, outgoing_len);
-  free(outgoing);
-
-  nsock_readbytes(nsp, (nsock_iod)nse->iod, nsock_proxy_ev_dispatch, timeout,
-                  udata, 8);
-  return 0;
-}
-
 static int handle_state_tcp_connected(struct npool *nsp, struct nevent *nse, void *udata) {
   struct proxy_chain_context *px_ctx = nse->iod->px_ctx;
   char *res;
@@ -239,7 +184,7 @@ static int handle_state_tcp_connected(struct npool *nsp, struct nevent *nse, voi
   if (!(reslen == 8 && res[1] == 90)) {
     struct proxy_node *node = px_ctx->px_current;
 
-    nsock_log_debug("Ignoring invalid socks reply from proxy %s",
+    nsock_log_debug("Ignoring invalid socks4 reply from proxy %s",
                     node->nodestr);
     return -EINVAL;
   }
@@ -256,17 +201,14 @@ static int handle_state_tcp_connected(struct npool *nsp, struct nevent *nse, voi
   return 0;
 }
 
-static void proxy_socks_handler_common(nsock_pool nspool, nsock_event nsevent, void *udata, enum nsock_proxy_type proxy_type) {
+static void proxy_socks4_handler(nsock_pool nspool, nsock_event nsevent, void *udata) {
   int rc = 0;
   struct npool *nsp = (struct npool *)nspool;
   struct nevent *nse = (struct nevent *)nsevent;
 
   switch (nse->iod->px_ctx->px_state) {
     case PROXY_STATE_INITIAL:
-      if (proxy_type == PROXY_TYPE_SOCKS4)
-        rc = handle_state_initial_socks4(nsp, nse, udata);
-      else if (proxy_type == PROXY_TYPE_SOCKS4A)
-        rc = handle_state_initial_socks4a(nsp, nse, udata);
+      rc = handle_state_initial(nsp, nse, udata);
       break;
 
     case PROXY_STATE_SOCKS4_TCP_CONNECTED:
@@ -288,25 +230,11 @@ static void proxy_socks_handler_common(nsock_pool nspool, nsock_event nsevent, v
   }
 }
 
-static void proxy_socks4a_handler(nsock_pool nspool, nsock_event nsevent, void *udata) {
-  proxy_socks_handler_common(nspool, nsevent, udata, PROXY_TYPE_SOCKS4A);
-}
-
-static void proxy_socks4_handler(nsock_pool nspool, nsock_event nsevent, void *udata) {
-  proxy_socks_handler_common(nspool, nsevent, udata, PROXY_TYPE_SOCKS4);
-}
-
 /* ---- PROXY DEFINITION ---- */
 static const struct proxy_op ProxyOpsSocks4 = {
-  proxy_socks_node_new,
-  proxy_socks_node_delete,
+  proxy_socks4_node_new,
+  proxy_socks4_node_delete,
   proxy_socks4_handler,
-};
-
-static const struct proxy_op ProxyOpsSocks4a = {
-  proxy_socks_node_new,
-  proxy_socks_node_delete,
-  proxy_socks4a_handler,
 };
 
 const struct proxy_spec ProxySpecSocks4 = {
@@ -315,8 +243,3 @@ const struct proxy_spec ProxySpecSocks4 = {
   &ProxyOpsSocks4,
 };
 
-const struct proxy_spec ProxySpecSocks4a = {
-  "socks4a://",
-  PROXY_TYPE_SOCKS4A,
-  &ProxyOpsSocks4a,
-};

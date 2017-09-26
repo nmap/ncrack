@@ -3,7 +3,7 @@
  *                                                                         *
  ***********************IMPORTANT NSOCK LICENSE TERMS***********************
  *                                                                         *
- * The nsock parallel socket event library is (C) 1999-2015 Insecure.Com   *
+ * The nsock parallel socket event library is (C) 1999-2017 Insecure.Com   *
  * LLC This library is free software; you may redistribute and/or          *
  * modify it under the terms of the GNU General Public License as          *
  * published by the Free Software Foundation; Version 2.  This guarantees  *
@@ -77,12 +77,11 @@ static void proxy_parser_delete(struct proxy_parser *parser);
 /* --- Implemented proxy backends --- */
 extern const struct proxy_spec ProxySpecHttp;
 extern const struct proxy_spec ProxySpecSocks4;
-extern const struct proxy_spec ProxySpecSocks4a;
+
 
 static const struct proxy_spec *ProxyBackends[] = {
   &ProxySpecHttp,
   &ProxySpecSocks4,
-  &ProxySpecSocks4a,
   NULL
 };
 
@@ -140,6 +139,7 @@ void nsock_proxychain_delete(nsock_proxychain chain) {
 
 int nsock_pool_set_proxychain(nsock_pool nspool, nsock_proxychain chain) {
   struct npool *nsp = (struct npool *)nspool;
+  assert(nsp != NULL);
 
   if (nsp && nsp->px_chain) {
     nsock_log_error("Invalid call. Existing proxychain on this nsock_pool");

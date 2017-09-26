@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: snprintf.c 32741 2014-02-20 18:44:12Z dmiller $ */
+/* $Id$ */
 
 #if HAVE_CONFIG_H
 #include "nbase_config.h"
@@ -242,6 +242,8 @@ append_string (struct state *state,
                int prec,
                int flags)
 {
+  if(!arg)
+    arg = (unsigned char *) "(null)";
   if(prec != -1)
     width -= prec;
   else

@@ -3,7 +3,7 @@
  * connections from the nsock parallel socket event library                *
  ***********************IMPORTANT NSOCK LICENSE TERMS***********************
  *                                                                         *
- * The nsock parallel socket event library is (C) 1999-2015 Insecure.Com   *
+ * The nsock parallel socket event library is (C) 1999-2017 Insecure.Com   *
  * LLC This library is free software; you may redistribute and/or          *
  * modify it under the terms of the GNU General Public License as          *
  * published by the Free Software Foundation; Version 2.  This guarantees  *
@@ -52,7 +52,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nsock_connect.c 35001 2015-07-28 11:17:39Z andrew $ */
+/* $Id$ */
 
 #include "nsock.h"
 #include "nsock_internal.h"
@@ -184,8 +184,8 @@ int nsock_setup_udp(nsock_pool nsp, nsock_iod ms_iod, int af) {
   return nsi->sd;
 }
 
-/* This does the actual logistics of requesting a TCP connection.  It is shared
- * by nsock_connect_tcp and nsock_connect_ssl */
+/* This does the actual logistics of requesting a connection.  It is shared
+ * by nsock_connect_tcp and nsock_connect_ssl, among others */
 void nsock_connect_internal(struct npool *ms, struct nevent *nse, int type, int proto, struct sockaddr_storage *ss, size_t sslen,
                             unsigned short port) {
 
@@ -253,10 +253,10 @@ void nsock_connect_internal(struct npool *ms, struct nevent *nse, int type, int 
       memcpy(&iod->peer, ss, sslen);
     iod->peerlen = sslen;
 
-    if (connect(iod->sd, (struct sockaddr *)ss, sslen) == -1) {
+    if (ms->engine->io_operations->iod_connect(ms, iod->sd, (struct sockaddr *)ss, sslen) == -1) {
       int err = socket_errno();
 
-      if (proto == IPPROTO_UDP || (err != EINPROGRESS && err != EAGAIN)) {
+      if ((proto == IPPROTO_UDP) || (err != EINPROGRESS && err != EAGAIN)) {
         nse->event_done = 1;
         nse->status = NSE_STATUS_ERROR;
         nse->errnum = err;
@@ -326,10 +326,8 @@ nsock_event_id nsock_connect_unixsock_datagram(nsock_pool nsp, nsock_iod nsiod, 
  * ORDER.  ss should be a sockaddr_storage, sockaddr_in6, or sockaddr_in as
  * appropriate (just like what you would pass to connect).  sslen should be the
  * sizeof the structure you are passing in. */
-nsock_event_id nsock_connect_tcp(nsock_pool nsp, nsock_iod ms_iod,
-                                 nsock_ev_handler handler, int timeout_msecs,
-                                 void *userdata, struct sockaddr *saddr,
-                                 size_t sslen, unsigned short port) {
+nsock_event_id nsock_connect_tcp(nsock_pool nsp, nsock_iod ms_iod, nsock_ev_handler handler, int timeout_msecs,
+                                 void *userdata, struct sockaddr *saddr, size_t sslen, unsigned short port) {
   struct niod *nsi = (struct niod *)ms_iod;
   struct npool *ms = (struct npool *)nsp;
   struct nevent *nse;
@@ -349,6 +347,7 @@ nsock_event_id nsock_connect_tcp(nsock_pool nsp, nsock_iod ms_iod,
 
   return nse->id;
 }
+
 
 /* Currently a copy of nsock_connect_tcp, called by l_connect only when a
  * socks4a proxy is specified.  This will help us to avoid targetname
@@ -381,6 +380,7 @@ nsock_event_id nsock_connect_tcp_socks4a(nsock_pool nsp, nsock_iod ms_iod,
   return nse->id;
 }
 
+
 /* Request an SCTP association to another system (by IP address).  The in_addr
  * is normal network byte order, but the port number should be given in HOST
  * BYTE ORDER.  ss should be a sockaddr_storage, sockaddr_in6, or sockaddr_in as
@@ -409,7 +409,7 @@ nsock_event_id nsock_connect_sctp(nsock_pool nsp, nsock_iod ms_iod, nsock_ev_han
   return nse->id;
 }
 
-/* Request an SSL over TCP/SCTP connection to another system (by IP address).
+/* Request an SSL over TCP/SCTP/UDP connection to another system (by IP address).
  * The in_addr is normal network byte order, but the port number should be given
  * in HOST BYTE ORDER.  This function will call back only after it has made the
  * connection AND done the initial SSL negotiation.  From that point on, you use
@@ -430,7 +430,12 @@ nsock_event_id nsock_connect_ssl(nsock_pool nsp, nsock_iod nsiod, nsock_ev_handl
   struct nevent *nse;
 
   if (!ms->sslctx)
-    nsock_pool_ssl_init(ms, 0);
+  {
+    if (proto == IPPROTO_UDP)
+      nsock_pool_dtls_init(ms, 0);
+    else
+      nsock_pool_ssl_init(ms, 0);
+  }
 
   assert(nsi->state == NSIOD_STATE_INITIAL || nsi->state == NSIOD_STATE_UNKNOWN);
 
@@ -438,14 +443,22 @@ nsock_event_id nsock_connect_ssl(nsock_pool nsp, nsock_iod nsiod, nsock_ev_handl
   assert(nse);
 
   /* Set our SSL_SESSION so we can benefit from session-id reuse. */
-  nsi_set_ssl_session(nsi, (SSL_SESSION *)ssl_session);
+  /* but not with DTLS; save space in ClientHello message */
+  if (proto != IPPROTO_UDP)
+    nsi_set_ssl_session(nsi, (SSL_SESSION *)ssl_session);
 
-  nsock_log_info("SSL connection requested to %s:%hu/%s (IOD #%li) EID %li",
+  if (proto == IPPROTO_UDP)
+    nsock_log_info("DTLS connection requested to %s:%hu/udp (IOD #%li) EID %li",
+
+                 inet_ntop_ez(ss, sslen), port, nsi->id, nse->id);
+  else
+    nsock_log_info("SSL connection requested to %s:%hu/%s (IOD #%li) EID %li",
                  inet_ntop_ez(ss, sslen), port, (proto == IPPROTO_TCP ? "tcp" : "sctp"),
                  nsi->id, nse->id);
 
   /* Do the actual connect() */
-  nsock_connect_internal(ms, nse, SOCK_STREAM, proto, ss, sslen, port);
+  nsock_connect_internal(ms, nse, (proto == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM), proto, ss, sslen, port);
+
   nsock_pool_add_event(ms, nse);
 
   return nse->id;

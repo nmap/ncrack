@@ -1,6 +1,6 @@
 /*
  * Nsock regression test suite
- * Same license as nmap -- see http://nmap.org/book/man-legal.html
+ * Same license as nmap -- see https://nmap.org/book/man-legal.html
  */
 
 
@@ -14,12 +14,6 @@
 #include <errno.h>
 #include <assert.h>
 #include <nsock.h>
-
-
-#if !defined(container_of)
-#define container_of(ptr, type, member) \
-        ((type *)((char *)(ptr)-(char *)(&((type *)0)->member)))
-#endif
 
 
 #define PORT_UDP    55234

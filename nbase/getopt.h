@@ -23,7 +23,7 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-/* $Id: getopt.h 32717 2014-02-12 20:25:51Z dmiller $ */
+/* $Id$ */
 
 #ifndef MY_GETOPT_H_INCLUDED
 #define MY_GETOPT_H_INCLUDED

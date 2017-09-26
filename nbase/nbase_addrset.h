@@ -125,7 +125,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nbase_addrset.h 34574 2015-06-03 13:01:29Z dmiller $ */
+/* $Id$ */
 
 #ifndef _NBASE_ADDRSET_H
 #define _NBASE_ADDRSET_H

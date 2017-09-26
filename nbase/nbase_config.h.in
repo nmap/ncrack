@@ -130,7 +130,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nbase_config.h.in 34574 2015-06-03 13:01:29Z dmiller $ */
+/* $Id$ */
 #ifndef NBASE_CONFIG_H
 #define NBASE_CONFIG_H
 
@@ -220,8 +220,6 @@
 #undef HAVE_INTTYPES_H
 
 #undef HAVE_MACH_O_DYLD_H
-
-#undef HAVE_RPC_TYPES_H
 
 #undef HAVE_SYS_STAT_H
 

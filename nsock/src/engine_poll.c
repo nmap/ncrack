@@ -3,7 +3,7 @@
  *                                                                         *
  ***********************IMPORTANT NSOCK LICENSE TERMS***********************
  *                                                                         *
- * The nsock parallel socket event library is (C) 1999-2015 Insecure.Com   *
+ * The nsock parallel socket event library is (C) 1999-2017 Insecure.Com   *
  * LLC This library is free software; you may redistribute and/or          *
  * modify it under the terms of the GNU General Public License as          *
  * published by the Free Software Foundation; Version 2.  This guarantees  *
@@ -52,7 +52,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: engine_poll.c 34756 2015-06-27 08:21:53Z henri $ */
+/* $Id$ */
 
 #ifndef WIN32
 /* Allow the use of POLLRDHUP, if available. */
@@ -106,13 +106,14 @@
   #define POLL_X_FLAGS (POLLERR | POLLHUP)
 #endif /* POLLRDHUP */
 
+extern struct io_operations posix_io_operations;
 
 /* --- ENGINE INTERFACE PROTOTYPES --- */
 static int poll_init(struct npool *nsp);
 static void poll_destroy(struct npool *nsp);
-static int poll_iod_register(struct npool *nsp, struct niod *iod, int ev);
+static int poll_iod_register(struct npool *nsp, struct niod *iod, struct nevent *nse, int ev);
 static int poll_iod_unregister(struct npool *nsp, struct niod *iod);
-static int poll_iod_modify(struct npool *nsp, struct niod *iod, int ev_set, int ev_clr);
+static int poll_iod_modify(struct npool *nsp, struct niod *iod, struct nevent *nse, int ev_set, int ev_clr);
 static int poll_loop(struct npool *nsp, int msec_timeout);
 
 
@@ -124,7 +125,8 @@ struct io_engine engine_poll = {
   poll_iod_register,
   poll_iod_unregister,
   poll_iod_modify,
-  poll_loop
+  poll_loop,
+  &posix_io_operations
 };
 
 
@@ -212,7 +214,7 @@ void poll_destroy(struct npool *nsp) {
   free(pinfo);
 }
 
-int poll_iod_register(struct npool *nsp, struct niod *iod, int ev) {
+int poll_iod_register(struct npool *nsp, struct niod *iod, struct nevent *nse, int ev) {
   struct poll_engine_info *pinfo = (struct poll_engine_info *)nsp->engine_data;
   int sd;
 
@@ -265,7 +267,7 @@ int poll_iod_unregister(struct npool *nsp, struct niod *iod) {
   return 1;
 }
 
-int poll_iod_modify(struct npool *nsp, struct niod *iod, int ev_set, int ev_clr) {
+int poll_iod_modify(struct npool *nsp, struct niod *iod, struct nevent *nse, int ev_set, int ev_clr) {
   int sd;
   int new_events;
   struct poll_engine_info *pinfo = (struct poll_engine_info *)nsp->engine_data;
@@ -292,10 +294,6 @@ int poll_iod_modify(struct npool *nsp, struct niod *iod, int ev_set, int ev_clr)
     pinfo->events[sd].events |= POLL_R_FLAGS;
   if (iod->watched_events & EV_WRITE)
     pinfo->events[sd].events |= POLL_W_FLAGS;
-#ifndef WIN32
-  if (iod->watched_events & EV_EXCEPT)
-    pinfo->events[sd].events |= POLL_X_FLAGS;
-#endif
 
   return 1;
 }
@@ -356,9 +354,17 @@ int poll_loop(struct npool *nsp, int msec_timeout) {
   } while (results_left == -1 && sock_err == EINTR); /* repeat only if signal occurred */
 
   if (results_left == -1 && sock_err != EINTR) {
-    nsock_log_error("nsock_loop error %d: %s", sock_err, socket_strerror(sock_err));
-    nsp->errnum = sock_err;
-    return -1;
+#ifdef WIN32
+    for (int i = 0; sock_err != EINVAL || i <= pinfo->max_fd; i++) {
+      if (sock_err != EINVAL || pinfo->events[i].fd != -1) {
+#endif
+        nsock_log_error("nsock_loop error %d: %s", sock_err, socket_strerror(sock_err));
+        nsp->errnum = sock_err;
+        return -1;
+#ifdef WIN32
+      }
+    }
+#endif
   }
 
   iterate_through_event_lists(nsp);
@@ -393,7 +399,7 @@ static inline int get_evmask(struct npool *nsp, struct niod *nsi) {
       if (pev->revents & POLL_W_FLAGS)
         evmask |= EV_WRITE;
       if (pev->events && (pev->revents & POLL_X_FLAGS))
-        evmask |= (EV_READ | EV_WRITE | EV_EXCEPT);
+        evmask |= EV_EXCEPT;
   }
   return evmask;
 }

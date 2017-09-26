@@ -128,7 +128,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: nbase_misc.c 35137 2015-08-18 16:21:25Z gio $ */
+/* $Id$ */
 
 #include "nbase.h"
 
@@ -264,7 +264,7 @@ int inheritable_socket(int af, int style, int protocol) {
   /* WSASocket is just like socket, except that the sockets it creates are
      inheritable by subprocesses (such as are created by CreateProcess), while
      those created by socket are not. */
-  return WSASocket(af, style, protocol, NULL, 0, 0);
+  return WSASocket(af, style, protocol, NULL, 0, WSA_FLAG_OVERLAPPED);
 #else
   return socket(af, style, protocol);
 #endif

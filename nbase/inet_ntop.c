@@ -17,10 +17,12 @@
 /* Modified by Fyodor (fyodor@nmap.org) for inclusion in the Nmap
  * Security Scanner.
  *
- * $Id: inet_ntop.c 31700 2013-08-09 00:16:52Z d33tah $
+ * $Id$
  */
 
 #include "nbase.h"
+
+#ifndef HAVE_INET_NTOP
 
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -249,3 +251,5 @@ inet_ntop6(const unsigned char *src, char *dst, size_t size)
     return (dst);
 }
 #endif
+
+#endif /* ifndef HAVE_INET_NTOP */

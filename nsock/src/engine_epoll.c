@@ -3,7 +3,7 @@
  *                                                                         *
  ***********************IMPORTANT NSOCK LICENSE TERMS***********************
  *                                                                         *
- * The nsock parallel socket event library is (C) 1999-2015 Insecure.Com   *
+ * The nsock parallel socket event library is (C) 1999-2017 Insecure.Com   *
  * LLC This library is free software; you may redistribute and/or          *
  * modify it under the terms of the GNU General Public License as          *
  * published by the Free Software Foundation; Version 2.  This guarantees  *
@@ -52,7 +52,7 @@
  *                                                                         *
  ***************************************************************************/
 
-/* $Id: engine_epoll.c 34756 2015-06-27 08:21:53Z henri $ */
+/* $Id$ */
 
 #ifdef HAVE_CONFIG_H
 #include "nsock_config.h"
@@ -74,22 +74,23 @@
 
 #define EPOLL_R_FLAGS (EPOLLIN | EPOLLPRI)
 #define EPOLL_W_FLAGS EPOLLOUT
-#ifdef EPOLLRDHUP
-  #define EPOLL_X_FLAGS (EPOLLERR | EPOLLRDHUP| EPOLLHUP)
-#else
-  /* EPOLLRDHUP was introduced later and might be unavailable on older systems. */
-  #define EPOLL_X_FLAGS (EPOLLERR | EPOLLHUP)
-#endif /* EPOLLRDHUP */
+
+/* EPOLLRDHUP was introduced later and might be unavailable on older systems. */
+#ifndef EPOLLRDHUP
+  #define EPOLLRDHUP 0
+#endif
+#define EPOLL_X_FLAGS (EPOLLERR | EPOLLRDHUP| EPOLLHUP)
 
 
 /* --- ENGINE INTERFACE PROTOTYPES --- */
 static int epoll_init(struct npool *nsp);
 static void epoll_destroy(struct npool *nsp);
-static int epoll_iod_register(struct npool *nsp, struct niod *iod, int ev);
+static int epoll_iod_register(struct npool *nsp, struct niod *iod, struct nevent *nse, int ev);
 static int epoll_iod_unregister(struct npool *nsp, struct niod *iod);
-static int epoll_iod_modify(struct npool *nsp, struct niod *iod, int ev_set, int ev_clr);
+static int epoll_iod_modify(struct npool *nsp, struct niod *iod, struct nevent *nse, int ev_set, int ev_clr);
 static int epoll_loop(struct npool *nsp, int msec_timeout);
 
+extern struct io_operations posix_io_operations;
 
 /* ---- ENGINE DEFINITION ---- */
 struct io_engine engine_epoll = {
@@ -99,7 +100,8 @@ struct io_engine engine_epoll = {
   epoll_iod_register,
   epoll_iod_unregister,
   epoll_iod_modify,
-  epoll_loop
+  epoll_loop,
+  &posix_io_operations
 };
 
 
@@ -159,7 +161,7 @@ void epoll_destroy(struct npool *nsp) {
   free(einfo);
 }
 
-int epoll_iod_register(struct npool *nsp, struct niod *iod, int ev) {
+int epoll_iod_register(struct npool *nsp, struct niod *iod, struct nevent *nse, int ev) {
   int sd;
   struct epoll_event epev;
   struct epoll_engine_info *einfo = (struct epoll_engine_info *)nsp->engine_data;
@@ -176,8 +178,6 @@ int epoll_iod_register(struct npool *nsp, struct niod *iod, int ev) {
     epev.events |= EPOLL_R_FLAGS;
   if (ev & EV_WRITE)
     epev.events |= EPOLL_W_FLAGS;
-  if (ev & EV_EXCEPT)
-    epev.events |= EPOLL_X_FLAGS;
 
   sd = nsock_iod_get_sd(iod);
   if (epoll_ctl(einfo->epfd, EPOLL_CTL_ADD, sd, &epev) < 0)
@@ -204,7 +204,7 @@ int epoll_iod_unregister(struct npool *nsp, struct niod *iod) {
   return 1;
 }
 
-int epoll_iod_modify(struct npool *nsp, struct niod *iod, int ev_set, int ev_clr) {
+int epoll_iod_modify(struct npool *nsp, struct niod *iod, struct nevent *nse, int ev_set, int ev_clr) {
   int sd;
   struct epoll_event epev;
   int new_events;
@@ -231,8 +231,6 @@ int epoll_iod_modify(struct npool *nsp, struct niod *iod, int ev_set, int ev_clr
     epev.events |= EPOLL_R_FLAGS;
   if (iod->watched_events & EV_WRITE)
     epev.events |= EPOLL_W_FLAGS;
-  if (iod->watched_events & EV_EXCEPT)
-    epev.events |= EPOLL_X_FLAGS;
 
   sd = nsock_iod_get_sd(iod);
 
@@ -326,7 +324,7 @@ static inline int get_evmask(struct epoll_engine_info *einfo, int n) {
   if (einfo->events[n].events & EPOLL_W_FLAGS)
     evmask |= EV_WRITE;
   if (einfo->events[n].events & EPOLL_X_FLAGS)
-    evmask |= (EV_READ | EV_WRITE | EV_EXCEPT);
+    evmask |= EV_EXCEPT;
 
   return evmask;
 }

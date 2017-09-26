@@ -1,6 +1,6 @@
 dnl -----------------------------------------------------------------
 dnl Nbase local macros
-dnl $Id: acinclude.m4 29833 2012-09-19 16:41:31Z david $
+dnl $Id$
 dnl -----------------------------------------------------------------
 
 dnl
@@ -11,7 +11,7 @@ dnl Note that if the system doesn't have gai_strerror(), we
 dnl can't use getaddrinfo() because we can't get strings
 dnl describing the error codes.
 dnl
-AC_DEFUN([APR_CHECK_WORKING_GETADDRINFO],[
+AC_DEFUN(APR_CHECK_WORKING_GETADDRINFO,[
   AC_CACHE_CHECK(for working getaddrinfo, ac_cv_working_getaddrinfo,[
   AC_TRY_RUN( [
 #ifdef HAVE_NETDB_H
@@ -54,7 +54,7 @@ if test "$ac_cv_working_getaddrinfo" = "yes"; then
   if test "$ac_cv_func_gai_strerror" != "yes"; then
     ac_cv_working_getaddrinfo="no"
   else
-    AC_DEFINE([HAVE_GETADDRINFO], [1], [Define if getaddrinfo exists and works well enough for APR])
+    AC_DEFINE(HAVE_GETADDRINFO, 1, [Define if getaddrinfo exists and works well enough for APR])
   fi
 fi
 ])
@@ -62,7 +62,7 @@ fi
 dnl
 dnl check for working getnameinfo() -- from Apache 2.0.40
 dnl
-AC_DEFUN([APR_CHECK_WORKING_GETNAMEINFO],[
+AC_DEFUN(APR_CHECK_WORKING_GETNAMEINFO,[
   AC_CACHE_CHECK(for working getnameinfo, ac_cv_working_getnameinfo,[
   AC_TRY_RUN( [
 #ifdef HAVE_NETDB_H
@@ -113,11 +113,11 @@ int main(void) {
   ac_cv_working_getnameinfo="yes"
 ])])
 if test "$ac_cv_working_getnameinfo" = "yes"; then
-  AC_DEFINE([HAVE_GETNAMEINFO], [1], [Define if getnameinfo exists])
+  AC_DEFINE(HAVE_GETNAMEINFO, 1, [Define if getnameinfo exists])
 fi
 ])
 
-AC_DEFUN([APR_CHECK_SOCKADDR_IN6],[
+AC_DEFUN(APR_CHECK_SOCKADDR_IN6,[
 AC_CACHE_CHECK(for sockaddr_in6, ac_cv_define_sockaddr_in6,[
 AC_TRY_COMPILE([
 #ifdef HAVE_SYS_TYPES_H
@@ -137,13 +137,13 @@ struct sockaddr_in6 sa;
 
 if test "$ac_cv_define_sockaddr_in6" = "yes"; then
   have_sockaddr_in6=1
-  AC_DEFINE([HAVE_SOCKADDR_IN6], [1], [struct sockaddr_in6 is available])
+  AC_DEFINE(HAVE_SOCKADDR_IN6, 1, [Define if struct sockaddr_in6 exists])
 else
   have_sockaddr_in6=0
 fi
 ])
 
-AC_DEFUN([CHECK_AF_INET6_DEFINE],[
+AC_DEFUN(CHECK_AF_INET6_DEFINE,[
 AC_CACHE_CHECK(for AF_INET6 definition, ac_cv_define_af_inet6,[
 AC_TRY_COMPILE([
 #ifdef HAVE_SYS_TYPES_H
@@ -166,13 +166,13 @@ int af = AF_INET6;
 
 if test "$ac_cv_define_af_inet6" = "yes"; then
   have_af_inet6=1
-  AC_DEFINE([HAVE_AF_INET6], [1], [AF_INET6 macro is defined])
+  AC_DEFINE(HAVE_AF_INET6, 1, [Define if AF_INET6 is defined])
 else
   have_af_inet6=0
 fi
 ])
 
-AC_DEFUN([APR_CHECK_SOCKADDR_STORAGE],[
+AC_DEFUN(APR_CHECK_SOCKADDR_STORAGE,[
 AC_CACHE_CHECK(for sockaddr_storage, ac_cv_define_sockaddr_storage,[
 AC_TRY_COMPILE([
 #ifdef HAVE_SYS_TYPES_H
@@ -195,21 +195,21 @@ struct sockaddr_storage sa;
 
 if test "$ac_cv_define_sockaddr_storage" = "yes"; then
   have_sockaddr_storage=1
-  AC_DEFINE([HAVE_SOCKADDR_STORAGE], [1], [struct sockaddr_storage is available])
+  AC_DEFINE(HAVE_SOCKADDR_STORAGE, 1, [Define if struct sockaddr_storage exists])
 else
   have_sockaddr_storage=0
 fi
 ])
 
 dnl This test taken from GCC libjava.
-AC_DEFUN([CHECK_PROC_SELF_EXE],[
+AC_DEFUN(CHECK_PROC_SELF_EXE,[
   if test x"$cross_compiling" = x"no"; then
     AC_CHECK_FILES(/proc/self/exe, [
-      AC_DEFINE([HAVE_PROC_SELF_EXE], [1], [Define if you have /proc/self/exe])])
+      AC_DEFINE(HAVE_PROC_SELF_EXE, 1, [Define if you have /proc/self/exe])])
   else
     case $host in
       *-linux*)
-      AC_DEFINE([HAVE_PROC_SELF_EXE], [1], [Define if you have /proc/self/exe])
+      AC_DEFINE(HAVE_PROC_SELF_EXE, 1, [Define if you have /proc/self/exe])
       ;;
     esac
   fi
