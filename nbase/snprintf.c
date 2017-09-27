@@ -48,8 +48,8 @@
 #endif /* HAVE_CONFIG_H */
 
 #ifndef lint
-static const char rcsid[] =
-     "@(#) $Header$";
+//static const char rcsid[] =
+//     "@(#) $Header$";
 #endif
 
 #include <stdio.h>
