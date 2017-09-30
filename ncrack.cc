@@ -249,6 +249,7 @@ print_usage(void)
       "    ssl: enable SSL over this service\n"
       "    path <name>: used in modules like HTTP ('=' needs escaping if "
            "used)\n"
+      "    db <name>: used in modules like MongoDB to specify the database\n"
       "TIMING AND PERFORMANCE:\n"
       "  Options which take <time> are in seconds, unless you append 'ms'\n"
       "  (miliseconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m)."
@@ -1372,6 +1373,7 @@ ncrack_main(int argc, char **argv)
       int col_to = colno++;
       int col_ssl = colno++;
       int col_path = colno++;
+      int col_db = colno++;
       int numrows = ServicesTable.size() + 1;
       NcrackOutputTable *Tbl = new NcrackOutputTable(numrows, colno);
 
@@ -1384,6 +1386,7 @@ ncrack_main(int argc, char **argv)
       Tbl->addItem(0, col_to, false, "to", sizeof("to") - 1);
       Tbl->addItem(0, col_ssl, false, "ssl", sizeof("ssl") - 1);
       Tbl->addItem(0, col_path, false, "path", sizeof("path") - 1);
+      Tbl->addItem(0, col_db, false, "db", sizeof("db") - 1);
 
       int rowno = 1;
 

@@ -324,6 +324,10 @@ parse_module_options(char *const exp)
     vi->misc.path = Strndup(temp.misc.path, strlen(temp.misc.path)+1);
     free(temp.misc.path);
   }
+  if (temp.misc.db) {
+    vi->misc.db = Strndup(temp.misc.db, strlen(temp.misc.db)+1);
+    free(temp.misc.db);
+  }
   if (temp.misc.ssl)
     vi->misc.ssl = temp.misc.ssl;
 }
@@ -363,6 +367,12 @@ apply_host_options(Service *service, char *const options)
     service->path = Strndup(temp.misc.path, strlen(temp.misc.path)+1);
     free(temp.misc.path);
   }
+  if (temp.misc.db) {
+    if (service->db)
+      free(service->db);
+    service->db = Strndup(temp.misc.db, strlen(temp.misc.db)+1);
+    free(temp.misc.db);
+  }
   if (temp.misc.ssl)
     service->ssl = temp.misc.ssl;
 
@@ -401,6 +411,11 @@ apply_service_options(Service *service)
     if (service->path)
       free(service->path);
     service->path = Strndup(vi->misc.path, strlen(vi->misc.path));
+  }
+  if (vi->misc.db) {
+    if (service->db)
+      free(service->db);
+    service->db = Strndup(vi->misc.db, strlen(vi->misc.db));
   }
   if (vi->misc.ssl)
     service->ssl = vi->misc.ssl;
@@ -663,6 +678,8 @@ check_service_option(global_service *temp, char *argname, char *argval)
     temp->misc.path = Strndup(argval, strlen(argval));
   } else if (!strcmp("ssl", argname)) {
     temp->misc.ssl = true;
+  } else if (!strcmp("db", argname)) { 
+    temp->misc.db = Strndup(argval, strlen(argval));
   } else 
     error("Unknown service option: %s", argname);
 }

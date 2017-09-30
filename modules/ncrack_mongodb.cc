@@ -240,7 +240,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
       tmplen = 4 + 4  /* mesage length + request ID*/
          + 4 + 4 + 4  /* response to + opcode + queryflags */
-         + strlen(serv->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+         + strlen(serv->db) + strlen(".$cmd") + 1 /* full collection name + null byte */
          + 4 + 4 /* number to skip, number to return */
          + 4 /* query length */
          + 1 + strlen("listDatabases") + 1 + 4 + 4 /* element list database length */
@@ -248,9 +248,9 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
          ;
       tmp = (char *)safe_malloc(tmplen + 1);    
 
-      full_collection_name = (char *)safe_malloc(strlen(serv->database) + strlen(".$cmd") + 1);
+      full_collection_name = (char *)safe_malloc(strlen(serv->db) + strlen(".$cmd") + 1);
 
-      sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
+      sprintf(full_collection_name, "%s%s", serv->db, ".$cmd");
 
       snprintf((char *)tmp, tmplen,
          "%c%c%c%c" /* message length */ 
@@ -335,7 +335,7 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
       tmplen = 4 + 4  /* mesage length + request ID*/
          + 4 + 4 + 4  /* response to + opcode + queryflags */
-         + strlen(serv->database) + strlen(".$cmd") + 1 /* full collection name + null byte */
+         + strlen(serv->db) + strlen(".$cmd") + 1 /* full collection name + null byte */
          + 4 + 4 /* number to skip, number to return */
          + 4 /* query length */
          + 1 + strlen("isMaster") + 1 + 4 /* element list database length */
@@ -344,9 +344,9 @@ ncrack_mongodb(nsock_pool nsp, Connection *con)
 
       tmp = (char *)safe_malloc(tmplen + 1);    
 
-      full_collection_name = (char *)safe_malloc(strlen(serv->database) + strlen(".$cmd") + 1);
+      full_collection_name = (char *)safe_malloc(strlen(serv->db) + strlen(".$cmd") + 1);
 
-      sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
+      sprintf(full_collection_name, "%s%s", serv->db, ".$cmd");
 
       snprintf((char *)tmp, tmplen,
          "%c%c%c%c" /* message length */ 
@@ -474,8 +474,8 @@ mongodb_cr(nsock_pool nsp, Connection *con)
       con->outbuf = new Buf(); 
       con->state = MONGODB_CR;
 
-      full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
-      sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
+      full_collection_name = (char *)safe_malloc(strlen(serv->db) + 6 + 1);
+      sprintf(full_collection_name, "%s%s", serv->db, ".$cmd");
    
       querylen =  4 /* query length */
          + 1 + strlen("getnonce") + 1 + 4 + 4 /* element getnonce length */
@@ -591,8 +591,8 @@ mongodb_cr(nsock_pool nsp, Connection *con)
         * authenticate, user, nonce, and key
         */
         char *full_collection_name;
-        full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
-        sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
+        full_collection_name = (char *)safe_malloc(strlen(serv->db) + 6 + 1);
+        sprintf(full_collection_name, "%s%s", serv->db, ".$cmd");
 
         querylen = 4 /* query length */
          + 1 + strlen("authenticate") + 1 + 4 + 4 /* element authenticate length */
@@ -750,8 +750,8 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
       */
       info->client_nonce = (char *)safe_malloc(12 + 1);
       rand_str(info->client_nonce, 12);
-      full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
-      sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
+      full_collection_name = (char *)safe_malloc(strlen(serv->db) + 6 + 1);
+      sprintf(full_collection_name, "%s%s", serv->db, ".$cmd");
 
       /* Allocate 12 bytes for the client nonce, the length of the username
       * and 8 bytes for the following sequence "n,,n=,r="
@@ -1056,8 +1056,8 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
           delete con->outbuf;
         con->outbuf = new Buf(); 
 
-        full_collection_name = (char *)safe_malloc(strlen(serv->database) + 6 + 1);
-        sprintf(full_collection_name, "%s%s", serv->database, ".$cmd");
+        full_collection_name = (char *)safe_malloc(strlen(serv->db) + 6 + 1);
+        sprintf(full_collection_name, "%s%s", serv->db, ".$cmd");
 
         /* Craft the packet. */
         querylen = 4 /* query length */

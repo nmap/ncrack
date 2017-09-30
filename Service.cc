@@ -175,7 +175,7 @@ Service()
   timeout = -1;
   path = Strndup("/", 2); /* path is '/' by default */
   
-  database = Strndup("admin", 5); /* databse is 'admin' by default */
+  db = Strndup("admin", 5); /* databse is 'admin' by default */
   domain = Strndup("Workstation", 11); /* domain is 'Workstation' by default */
 
   ssl = false;
@@ -215,7 +215,7 @@ Service(const Service& ref)
   //  free(path);
   path = Strndup(ref.path, strlen(ref.path));
 
-  database = Strndup(ref.database, strlen(ref.database));
+  db = Strndup(ref.db, strlen(ref.db));
 
   domain = Strndup(ref.domain, strlen(ref.domain));
 

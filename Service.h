@@ -296,7 +296,7 @@ class Service
 		bool ssl;   /* true -> SSL enabled over this service */
     char *path; /* used for HTTP or other modules that need a path-name */
 
-    char *database; /* used for MongoDB or other modules that need a database name */
+    char *db; /* used for MongoDB or other modules that need a database name */
 
     char *domain; /* used for HTTP or other modules that need a path-name */
 
