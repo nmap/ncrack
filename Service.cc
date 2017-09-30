@@ -156,6 +156,7 @@ Service()
   list_finished = false;
   just_started = true;
   more_rounds = false;
+  skip_username = false;
 
   end.orly = false;
   end.reason = NULL;
@@ -244,6 +245,7 @@ Service(const Service& ref)
   list_finished = false;
   just_started = true;
   more_rounds = false;
+  skip_username = false;
 
   end.orly = false;
   end.reason = NULL;
@@ -342,7 +344,7 @@ getNextPair(char **user, char **pass)
   /* If the login pair pool is not empty, then give priority to these
    * pairs and extract the first one you find. */
   if (!pair_pool.empty()) {
-    
+
     list <loginpair>::iterator pairli = pair_pool.begin();
     tmp = pair_pool.front();
     *user = tmp.user;
@@ -370,9 +372,24 @@ getNextPair(char **user, char **pass)
     return 0;
   }
 
-  if (!strcmp(name, "ssh")) {
+  if (!strcmp(name, "mongodb")) {
+    if (skip_username == true) {
+      uservi--;
+      if (o.debugging > 5)
+        log_write(LOG_STDOUT, "%s skipping username!!!! %s\n", HostInfo(), *(uservi));
+      uservi = UserArray->erase(uservi);
+      if (uservi == UserArray->end()) {
+        if (o.debugging > 8)
+          log_write(LOG_STDOUT, "%s Username list finished!\n", HostInfo());
+        loginlist_fini = true;
+        return -1;
+      } 
+      printf("next user: %s\n", *uservi);
+      skip_username = false;
+    }
+  }
 
-    //printf("ssh special case\n");
+  if (!strcmp(name, "ssh")) {
 
     /* catches bug where ssh module crashed when user had specified correct username and
      * password in the first attempt
@@ -386,7 +403,6 @@ getNextPair(char **user, char **pass)
 
     /* special case for ssh */
     if (just_started == true) {
-      //printf("just started\n");
 
       /* keep using same username for first timing probe */
       if (passvi == PassArray->end()) {                                          
@@ -403,8 +419,6 @@ getNextPair(char **user, char **pass)
       *pass = *passvi;
       passvi++;
 
-      //printf("user: %s \n", *user);
-      //printf("pass: %s \n", *pass);
       return 0;
     } 
   }
@@ -452,6 +466,7 @@ getNextPair(char **user, char **pass)
     }
     *pass = *passvi;
     *user = *uservi;
+    printf("current user: %s\n", *user);
     uservi++;
 
     /* Iteration of password list for each username. */
@@ -499,7 +514,7 @@ removeFromPool(char *user, char *pass)
         log_write(LOG_STDOUT, "%s Pool: Removed '%s' \n", HostInfo(), tmp.pass);
       else
         log_write(LOG_STDOUT, "%s Pool: Removed %s %s\n", HostInfo(),
-          tmp.user, tmp.pass);
+            tmp.user, tmp.pass);
     }
     mirror_pair_pool.erase(li);
   }
@@ -527,7 +542,7 @@ appendToPool(char *user, char *pass)
       log_write(LOG_STDOUT, "%s Pool: Append '%s' \n", HostInfo(), tmp.pass);
     else
       log_write(LOG_STDOUT, "%s Pool: Append '%s' '%s' \n", HostInfo(),
-        tmp.user, tmp.pass);
+          tmp.user, tmp.pass);
   }
 
   /* 

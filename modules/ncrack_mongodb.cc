@@ -877,6 +877,9 @@ mongodb_scram_sha1(nsock_pool nsp, Connection *con)
         // serv->end.reason = (char *)safe_malloc(tmpsize);
         // snprintf(serv->end.reason, tmpsize,
         //     "Response does not contain conversationId.\n");
+        if (o.debugging > 5)
+          log_write(LOG_STDOUT, "%s skipping username: %s\n", serv->HostInfo(), con->user);
+        serv->skip_username = true;
         return ncrack_module_end(nsp, con);
       }
 
