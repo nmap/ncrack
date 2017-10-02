@@ -379,10 +379,14 @@ getNextPair(char **user, char **pass)
         log_write(LOG_STDOUT, "%s skipping username!!!! %s\n", HostInfo(), *(uservi));
       uservi = UserArray->erase(uservi);
       if (uservi == UserArray->end()) {
-        if (o.debugging > 8)
-          log_write(LOG_STDOUT, "%s Username list finished!\n", HostInfo());
-        loginlist_fini = true;
-        return -1;
+        uservi = UserArray->begin();
+        passvi++;
+        if (passvi == PassArray->end()) {
+          if (o.debugging > 8)
+            log_write(LOG_STDOUT, "%s Password list finished!\n", HostInfo());
+          loginlist_fini = true;
+          return -1;
+        }
       } 
       printf("next user: %s\n", *uservi);
       skip_username = false;
