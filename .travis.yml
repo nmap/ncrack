@@ -5,3 +5,14 @@ os:
 compiler:
   - gcc
   - clang
+script: ./configure && make
+matrix:
+  include:
+    - if: branch = master
+      os: osx
+      compiler: gcc
+      script: brew install --HEAD ncrack && brew test ncrack
+    - if: branch = master
+      os: osx
+      compiler: clang
+      script: brew install --HEAD ncrack && brew test ncrack
