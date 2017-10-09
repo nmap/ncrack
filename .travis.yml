@@ -13,8 +13,10 @@ matrix:
     - if: branch = master
       os: osx
       compiler: gcc
+      before_script: 
       script: brew install --HEAD ncrack && brew test ncrack
     - if: branch = master
       os: osx
       compiler: clang
+      before_script: 
       script: brew install --HEAD ncrack && brew test ncrack
