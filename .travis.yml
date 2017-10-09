@@ -5,6 +5,7 @@ os:
 compiler:
   - gcc
   - clang
+before_script: if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap Homebrew/bundle && brew bundle; fi
 script: ./configure && make
 matrix:
   include:
