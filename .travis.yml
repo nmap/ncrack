@@ -1,4 +1,5 @@
 language: c
+rvm: 2.3.3
 os:
   - linux
   - osx
