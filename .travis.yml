@@ -1,5 +1,7 @@
 language: c
 rvm: 2.3.3
+env:
+  global: LDFLAGS=-L/usr/local/opt/openssl/lib CPPFLAGS=-I/usr/local/opt/openssl/include
 os:
   - linux
   - osx
