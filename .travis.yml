@@ -1,0 +1,24 @@
+language: c
+rvm: 2.3.3
+env:
+  global: LDFLAGS=-L/usr/local/opt/openssl/lib CPPFLAGS=-I/usr/local/opt/openssl/include
+os:
+  - linux
+  - osx
+compiler:
+  - gcc
+  - clang
+before_script: if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew bundle; fi
+script: ./configure && make
+matrix:
+  include:
+    - if: branch = master
+      os: osx
+      compiler: gcc
+      before_script: 
+      script: brew install --HEAD ncrack && brew test ncrack
+    - if: branch = master
+      os: osx
+      compiler: clang
+      before_script: 
+      script: brew install --HEAD ncrack && brew test ncrack
