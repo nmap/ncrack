@@ -2,12 +2,12 @@
 .\"     Title: ncrack
 .\"    Author: [see the "Authors" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.1 <http://docbook.sf.net/>
-.\"      Date: 09/22/2017
+.\"      Date: 10/11/2017
 .\"    Manual: Ncrack Reference Guide
 .\"    Source: Ncrack
 .\"  Language: English
 .\"
-.TH "NCRACK" "1" "09/22/2017" "Ncrack" "Ncrack Reference Guide"
+.TH "NCRACK" "1" "10/11/2017" "Ncrack" "Ncrack Reference Guide"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -1023,7 +1023,7 @@ The MSSQL module supports mixed authentication\&.
 \fBMongoDB Module\fR
 .PP
 .RS 4
-The MongoDB module supports MongoDB\-CR and SCRAM\-SHA\-1 authentication\&.
+The MongoDB module supports MongoDB\-CR and SCRAM\-SHA\-1 authentication\&. The pairwise and passwords\-first option will be ignored for the MongoDB module, due to them being inefficient against MongoDB\&. The optimal way of cracking MongoDB is to take advantage of a user\-enumeration vulnerability inherent in its authentication mechanism, which Ncrack exploits\&.
 .RE
 .PP
 \fBCassandra Module\fR

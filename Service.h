@@ -255,6 +255,11 @@ class Service
      */
     bool more_rounds;
 
+    /* Will skip current username and move on to the next one if true.
+     * Currently used for MongoDB user-enum vulnerability in SCRAM_SHA1 auth.
+     */
+    bool skip_username;
+
     unsigned int failed_connections;
     long active_connections;
     struct timeval last; /* time of last activated connection */
