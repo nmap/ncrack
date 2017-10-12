@@ -2134,7 +2134,11 @@ Ncrack finished.
       <varlistentry>
         <listitem>
           <para>
-           The MongoDB module supports MongoDB-CR and SCRAM-SHA-1 authentication.
+            The MongoDB module supports MongoDB-CR and SCRAM-SHA-1 authentication. The pairwise
+            and passwords-first option will be ignored for the MongoDB module, due to them being
+            inefficient against MongoDB. The optimal way of cracking MongoDB is to take advantage
+            of a user-enumeration vulnerability inherent in its authentication mechanism, which
+            Ncrack exploits.
           </para>
             
         </listitem>
