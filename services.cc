@@ -328,6 +328,10 @@ parse_module_options(char *const exp)
     vi->misc.db = Strndup(temp.misc.db, strlen(temp.misc.db)+1);
     free(temp.misc.db);
   }
+  if (temp.misc.domain) {
+    vi->misc.domain = Strndup(temp.misc.domain, strlen(temp.misc.domain)+1);
+    free(temp.misc.domain);
+  }
   if (temp.misc.ssl)
     vi->misc.ssl = temp.misc.ssl;
 }
@@ -373,6 +377,12 @@ apply_host_options(Service *service, char *const options)
     service->db = Strndup(temp.misc.db, strlen(temp.misc.db)+1);
     free(temp.misc.db);
   }
+  if (temp.misc.domain) {
+    if (service->domain)
+      free(service->domain);
+    service->domain = Strndup(temp.misc.domain, strlen(temp.misc.domain)+1);
+    free(temp.misc.domain);
+  }
   if (temp.misc.ssl)
     service->ssl = temp.misc.ssl;
 
@@ -417,6 +427,11 @@ apply_service_options(Service *service)
       free(service->db);
     service->db = Strndup(vi->misc.db, strlen(vi->misc.db));
   }
+  if (vi->misc.domain) {
+    if (service->domain)
+      free(service->domain);
+    service->domain = Strndup(vi->misc.domain, strlen(vi->misc.domain));
+  }
   if (vi->misc.ssl)
     service->ssl = vi->misc.ssl;
 
@@ -460,7 +475,7 @@ prepare_timing_template(timing_options *timing)
     timing->max_connection_limit = 1;
     timing->auth_tries = 1;
     timing->connection_delay = 10000; /* 10 secs */
-    timing->connection_retries = 1;
+    timing->connection_retries = 20;
     if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 50;
   } else if (o.timing_level == 1) { /* Sneaky */
@@ -468,7 +483,7 @@ prepare_timing_template(timing_options *timing)
     timing->max_connection_limit = 2;
     timing->auth_tries = 2;
     timing->connection_delay = 7500; 
-    timing->connection_retries = 1;
+    timing->connection_retries = 30;
     if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 150;
   } else if (o.timing_level == 2) { /* Polite */
@@ -476,7 +491,7 @@ prepare_timing_template(timing_options *timing)
     timing->max_connection_limit = 5;
     timing->auth_tries = 5;
     timing->connection_delay = 5000;
-    timing->connection_retries = 1;
+    timing->connection_retries = 30;
     if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 500;
   } else if (o.timing_level == 4) { /* Aggressive */
@@ -484,7 +499,7 @@ prepare_timing_template(timing_options *timing)
     timing->max_connection_limit = 150;
     timing->auth_tries = 0;
     timing->connection_delay = 0;
-    timing->connection_retries = 15;
+    timing->connection_retries = 40;
     if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 3000;
   } else if (o.timing_level == 5) { /* Insane */
@@ -492,7 +507,7 @@ prepare_timing_template(timing_options *timing)
     timing->max_connection_limit = 1000;
     timing->auth_tries = 0;
     timing->connection_delay = 0;
-    timing->connection_retries = 20;
+    timing->connection_retries = 50;
     if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 10000;
   } else { /* Normal */
@@ -500,7 +515,7 @@ prepare_timing_template(timing_options *timing)
     timing->max_connection_limit = 80;
     timing->auth_tries = 0;
     timing->connection_delay = 0;
-    timing->connection_retries = 10;
+    timing->connection_retries = 30;
     if (o.connection_limit == NOT_ASSIGNED)
       o.connection_limit = 1500;
   }
@@ -680,6 +695,8 @@ check_service_option(global_service *temp, char *argname, char *argval)
     temp->misc.ssl = true;
   } else if (!strcmp("db", argname)) { 
     temp->misc.db = Strndup(argval, strlen(argval));
+  } else if (!strcmp("domain", argname)) { 
+    temp->misc.domain = Strndup(argval, strlen(argval));
   } else 
     error("Unknown service option: %s", argname);
 }

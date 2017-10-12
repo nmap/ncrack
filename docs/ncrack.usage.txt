@@ -20,6 +20,8 @@ SERVICE SPECIFICATION:
   Misc options:
     ssl: enable SSL over this service
     path <name>: used in modules like HTTP ('=' needs escaping if used)
+    db <name>: used in modules like MongoDB to specify the database
+    domain <name>: used in modules like WinRM to specify the domain
 TIMING AND PERFORMANCE:
   Options which take <time> are in seconds, unless you append 'ms'
   (miliseconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m).

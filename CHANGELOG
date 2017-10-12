@@ -54,8 +54,8 @@ o Implemented 'cr' (connection retries) option (caps number of consecutive
   connection attempts until host/service is removed from list)
   [Evangelos Deirmetzoglou - GSoC 2017]
 
-o Added 'db' module option for protocols that need a specific database
-  specification (e.g. MongoDB)
+o Added 'db' and 'domain' module options for protocols that need a specific
+  database (e.g. MongoDB) or domain (e.g. WinRM)
 
 o Updated Ncrack to use latest Nsock & Nbase versions. 
 

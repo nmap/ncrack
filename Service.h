@@ -303,7 +303,7 @@ class Service
 
     char *db; /* used for MongoDB or other modules that need a database name */
 
-    char *domain; /* used for HTTP or other modules that need a path-name */
+    char *domain; /* used for modules like WinRM that need a domain */
 
 		void *module_data; /* service/module-specific data */
 

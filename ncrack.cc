@@ -250,6 +250,7 @@ print_usage(void)
       "    path <name>: used in modules like HTTP ('=' needs escaping if "
            "used)\n"
       "    db <name>: used in modules like MongoDB to specify the database\n"
+      "    domain <name>: used in modules like WinRM to specify the domain\n"
       "TIMING AND PERFORMANCE:\n"
       "  Options which take <time> are in seconds, unless you append 'ms'\n"
       "  (miliseconds), 'm' (minutes), or 'h' (hours) to the value (e.g. 30m)."
@@ -340,6 +341,8 @@ lookup_init(const char *const filename)
       continue;
 
     temp.misc.ssl = false;
+    temp.misc.db = NULL;
+    temp.misc.domain = NULL;
 
     if (sscanf(line, "%127s %hu/%15s", servicename, &portno, proto) != 3)
       fatal("invalid ncrack-services file: %s", filename);
@@ -355,6 +358,12 @@ lookup_init(const char *const filename)
       || !strncmp(servicename, "pop3s", sizeof("pop3s"))
       || !strncmp(servicename, "owa", sizeof("owa")))
       temp.misc.ssl = true;
+
+    if (!strncmp(servicename, "mongodb", sizeof("mongodb")))
+        temp.misc.db = Strndup("admin", sizeof("admin"));
+
+    if (!strncmp(servicename, "winrm", sizeof("winrm")))
+        temp.misc.domain = Strndup("Workstation", sizeof("Workstation"));
 
     for (vi = ServicesTable.begin(); vi != ServicesTable.end(); vi++) {
       if ((vi->lookup.portno == temp.lookup.portno) 
@@ -1374,6 +1383,7 @@ ncrack_main(int argc, char **argv)
       int col_ssl = colno++;
       int col_path = colno++;
       int col_db = colno++;
+      int col_domain = colno++;
       int numrows = ServicesTable.size() + 1;
       NcrackOutputTable *Tbl = new NcrackOutputTable(numrows, colno);
 
@@ -1387,6 +1397,7 @@ ncrack_main(int argc, char **argv)
       Tbl->addItem(0, col_ssl, false, "ssl", sizeof("ssl") - 1);
       Tbl->addItem(0, col_path, false, "path", sizeof("path") - 1);
       Tbl->addItem(0, col_db, false, "db", sizeof("db") - 1);
+      Tbl->addItem(0, col_domain, false, "domain", sizeof("domain") - 1);
 
       int rowno = 1;
 
@@ -1437,6 +1448,12 @@ ncrack_main(int argc, char **argv)
         Tbl->addItem(rowno, col_path, false, ServicesTable[i].misc.path ?
             ServicesTable[i].misc.path : "null");
 
+        Tbl->addItem(rowno, col_db, false, ServicesTable[i].misc.db ?
+            ServicesTable[i].misc.db : "null");
+
+        Tbl->addItem(rowno, col_domain, false, ServicesTable[i].misc.domain ?
+            ServicesTable[i].misc.domain : "null");
+
         rowno++;
       }      
       log_write(LOG_PLAIN, "%s", Tbl->printableTable(NULL));
@@ -1452,11 +1469,12 @@ ncrack_main(int argc, char **argv)
       for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
         if ((*li)->target == Targets[i]) 
           log_write(LOG_PLAIN, "  %s:%hu cl=%ld, CL=%ld, at=%ld, cd=%ld, "
-              "cr=%ld, to=%lldms, ssl=%s, path=%s\n", 
+              "cr=%ld, to=%lldms, ssl=%s, path=%s, db=%s, domain=%s\n",
               (*li)->name, (*li)->portno, (*li)->min_connection_limit,
               (*li)->max_connection_limit, (*li)->auth_tries, 
               (*li)->connection_delay, (*li)->connection_retries,
-              (*li)->timeout, (*li)->ssl ? "yes" : "no", (*li)->path);
+              (*li)->timeout, (*li)->ssl ? "yes" : "no", (*li)->path,
+              (*li)->db, (*li)->domain);
       }
     }
   } else {

@@ -589,6 +589,8 @@ $ ncrack scanme.nmap.org 10.0.0.120-122 192.168.2.0/24 -p 22,ftp:3210,telnet
     <screen>
 ssl: enable SSL over this service
 path: path-name used in modules like HTTP ('=' needs escaping if used)
+db: used in modules like MongoDB to specify the database
+domain: used in modules like WinRM to specify the domain
 cl (min connection limit): minimum number of concurrent parallel connections
 CL (max connection limit): maximum number of concurrent parallel connections
 at (authentication tries): authentication attempts per connection
@@ -670,6 +672,48 @@ to (time-out): maximum cracking time for service, regardless of success so far
   </varlistentry>
   </variablelist>
 
+  <variablelist>
+  <varlistentry>
+        <term>
+          <option>db &lt;name&gt;</option> (Database name)
+        </term>
+        <listitem>
+          <para>
+            Some services like MongoDB require a specific database name
+            to crack. This option allows you to specify the database. 
+          </para>
+
+          <para>
+            By default, the db name for MongoDB is initialized to 'admin'
+            but will be ignored by services that do not require it.
+          </para>
+
+        </listitem>
+  </varlistentry>
+</variablelist>
+
+  <variablelist>
+  <varlistentry>
+        <term>
+          <option>domain &lt;name&gt;</option> (Domain name)
+        </term>
+        <listitem>
+          <para>
+            Some services like WinRM require a specific domain to crack.
+            This option allows you to specify the domain.
+          </para>
+
+          <para>
+            By default, the domain name for WinRM is initialized to 'Workstation'
+            but will be ignored by services that do not require it.
+          </para>
+
+        </listitem>
+  </varlistentry>
+  </variablelist>
+
+
+
   <variablelist><title>Service Option Hierarchy</title>
 
     <para>
@@ -736,32 +780,56 @@ $ ncrack scanme.nmap.org:22,cl=10,at=1 10.0.0.120 10.0.0.20 -p 21 -m ftp:CL=1 -g
 
 $ ncrack scanme.nmap.org:22,cl=10,at=1 10.0.0.120 10.0.0.20 -p 21 -m ftp:CL=1 -g CL=3 -sL -d
 
-Starting Ncrack 0.01ALPHA ( http://ncrack.org ) at 2009-08-05 18:32 EEST
+Starting Ncrack 0.6 ( http://ncrack.org ) at 2017-10-12 01:13 CDT
 
 ----- [ Timing Template ] -----
-cl=7, CL=80, at=0, cd=0, cr=10, to=0
+cl=7, CL=80, at=0, cd=0, cr=30, to=0
 
 ----- [ ServicesTable ] -----
-SERVICE   cl  CL  at  cd  cr  to  ssl path
-ftp:21    N/A 1   N/A N/A N/A N/A no  null
-ssh:22    N/A N/A N/A N/A N/A N/A no  null
-telnet:23 N/A N/A N/A N/A N/A N/A no  null
-smtp:25   N/A N/A N/A N/A N/A N/A no  null
-http:80   N/A N/A N/A N/A N/A N/A no  null
-https:443 N/A N/A N/A N/A N/A N/A yes null
+SERVICE            cl  CL  at  cd  cr  to  ssl path db    domain
+ftp:21             N/A 1   N/A N/A N/A N/A no  null null  null
+ssh:22             N/A N/A N/A N/A N/A N/A no  null null  null
+telnet:23          N/A N/A N/A N/A N/A N/A no  null null  null
+http:80            N/A N/A N/A N/A N/A N/A no  null null  null
+pop3:110           N/A N/A N/A N/A N/A N/A no  null null  null
+imap:143           N/A N/A N/A N/A N/A N/A no  null null  null
+netbios-ssn:445    N/A N/A N/A N/A N/A N/A no  null null  null
+smb:445            N/A N/A N/A N/A N/A N/A no  null null  null
+smb:139            N/A N/A N/A N/A N/A N/A no  null null  null
+https:443          N/A N/A N/A N/A N/A N/A yes null null  null
+owa:443            N/A N/A N/A N/A N/A N/A yes null null  null
+sip:5060           N/A N/A N/A N/A N/A N/A no  null null  null
+pop3s:995          N/A N/A N/A N/A N/A N/A yes null null  null
+mssql:1443         N/A N/A N/A N/A N/A N/A no  null null  null
+mysql:3306         N/A N/A N/A N/A N/A N/A no  null null  null
+ms-wbt-server:3389 N/A N/A N/A N/A N/A N/A no  null null  null
+rdp:3389           N/A N/A N/A N/A N/A N/A no  null null  null
+psql:5432          N/A N/A N/A N/A N/A N/A no  null null  null
+vnc:5801           N/A N/A N/A N/A N/A N/A no  null null  null
+vnc:5900           N/A N/A N/A N/A N/A N/A no  null null  null
+vnc:5901           N/A N/A N/A N/A N/A N/A no  null null  null
+vnc:6001           N/A N/A N/A N/A N/A N/A no  null null  null
+redis:6379         N/A N/A N/A N/A N/A N/A no  null null  null
+winrm:5985         N/A N/A N/A N/A N/A N/A no  null null  Workstation
+winrm:5986         N/A N/A N/A N/A N/A N/A no  null null  Workstation
+cassandra:9160     N/A N/A N/A N/A N/A N/A no  null null  null
+cassandra:9042     N/A N/A N/A N/A N/A N/A no  null null  null
+mongodb:27017      N/A N/A N/A N/A N/A N/A no  null admin null
 
 ----- [ Targets ] -----
-Host: 64.13.134.52 ( scanme.nmap.org )
-  ssh:22 cl=10, CL=10, at=1, cd=0, cr=10, to=0, ssl=no, path=/
+Host: 45.33.32.156 ( scanme.nmap.org ) 
+  ssh:22 cl=10, CL=10, at=1, cd=0, cr=30, to=0ms, ssl=no, path=/, db=admin, domain=Workstation
 Host: 10.0.0.120
-  ftp:21 cl=3, CL=1, at=0, cd=0, cr=10, to=0, ssl=no, path=/
+  ftp:21 cl=3, CL=1, at=0, cd=0, cr=30, to=0ms, ssl=no, path=/, db=admin, domain=Workstation
 Host: 10.0.0.20
-  ftp:21 cl=3, CL=1, at=0, cd=0, cr=10, to=0, ssl=no, path=/
+  ftp:21 cl=3, CL=1, at=0, cd=0, cr=30, to=0ms, ssl=no, path=/, db=admin, domain=Workstation
+
 
 Ncrack done: 3 services would be scanned.
 Probes sent: 0 | timed-out: 0 | prematurely-closed: 0
 
 Ncrack finished.
+
 
        </screen>
      </example>
