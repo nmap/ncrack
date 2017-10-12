@@ -764,15 +764,15 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_vnc(nsp, con);
   else if (!strcmp(name, "redis"))
     ncrack_redis(nsp, con);
-  else if (!strcmp(name, "winrm"))
-    ncrack_winrm(nsp, con);
   else if (!strcmp(name, "imap"))
     ncrack_imap(nsp, con);
   else if (!strcmp(name, "cassandra"))
     ncrack_imap(nsp, con);  
+#if HAVE_OPENSSL
+  else if (!strcmp(name, "winrm"))
+    ncrack_winrm(nsp, con);
   else if (!strcmp(name, "mongodb"))
     ncrack_mongodb(nsp, con);
-#if HAVE_OPENSSL
   else if (!strcmp(name, "pop3s"))
     ncrack_pop3(nsp, con);
   else if (!strcmp(name, "mysql"))
