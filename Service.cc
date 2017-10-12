@@ -388,7 +388,7 @@ getNextPair(char **user, char **pass)
           return -1;
         }
       } 
-      printf("next user: %s\n", *uservi);
+      //printf("next user: %s\n", *uservi);
       skip_username = false;
     }
   }
@@ -427,7 +427,7 @@ getNextPair(char **user, char **pass)
     } 
   }
 
-  if (o.pairwise) {
+  if (o.pairwise && strcmp(name, "mongodb")) {
 
     if (uservi == UserArray->end() && passvi == PassArray->end()) {
       if (o.debugging > 8)
@@ -454,27 +454,8 @@ getNextPair(char **user, char **pass)
     uservi++;
     passvi++;
 
-    /* Iteration of username list for each password (default). */
-  } else if (!o.passwords_first) {
-    /* If username list finished one iteration then reset the username pointer
-     * to show at the beginning and get password from password list. */
-    if (uservi == UserArray->end()) {
-      uservi = UserArray->begin();
-      passvi++;
-      if (passvi == PassArray->end()) {
-        if (o.debugging > 8)
-          log_write(LOG_STDOUT, "%s Password list finished!\n", HostInfo());
-        loginlist_fini = true;
-        return -1;
-      }
-    }
-    *pass = *passvi;
-    *user = *uservi;
-    printf("current user: %s\n", *user);
-    uservi++;
-
+  } else if (o.passwords_first && strcmp(name, "mongodb")) {
     /* Iteration of password list for each username. */
-  } else if (o.passwords_first) { 
     /* If password list finished one iteration then reset the password pointer
      * to show at the beginning and get next username from username list. */
     if (passvi == PassArray->end()) {                                          
@@ -490,8 +471,27 @@ getNextPair(char **user, char **pass)
     *user = *uservi;
     *pass = *passvi;
     passvi++;
+
+  } else if (!o.passwords_first || !strcmp(name, "mongodb")) {
+    /* Iteration of username list for each password (default). */
+    /* If username list finished one iteration then reset the username pointer
+     * to show at the beginning and get password from password list. */
+    if (uservi == UserArray->end()) {
+      uservi = UserArray->begin();
+      passvi++;
+      if (passvi == PassArray->end()) {
+        if (o.debugging > 8)
+          log_write(LOG_STDOUT, "%s Password list finished!\n", HostInfo());
+        loginlist_fini = true;
+        return -1;
+      }
+    }
+    *pass = *passvi;
+    *user = *uservi;
+    uservi++;
   }
 
+    
   return 0;
 }
 
