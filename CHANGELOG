@@ -39,6 +39,29 @@
                   -- [ Ncrack Changelog ] --
 
 
+Ncrack 0.6 [2017-10-11]
+
+o Added new modules: MongoDB and MSSQL 
+  [Evangelos Deirmetzoglou - GSoC 2017]
+
+o Added new modules: Cassandra and IMAP
+  [Panagiotis Ilias / Barrend]
+
+o Improved WinRM module to support NTLM authentication
+  [Evangelos Deirmetzoglou for Google Summer of Code 2017]
+
+o Implemented 'cr' (connection retries) option (caps number of consecutive
+  connection attempts until host/service is removed from list)
+  [Evangelos Deirmetzoglou - GSoC 2017]
+
+o Added 'db' module option for protocols that need a specific database
+  specification (e.g. MongoDB)
+
+o Updated Ncrack to use latest Nsock & Nbase versions. 
+
+o Added --stealthy-linear timing option for stealthier cracking sessions
+
+
 Ncrack 0.5 [2016-03-17]
 
 o Added 4 new modules: Redis, PostgreSQL, MySQL, SIP. Thanks to edeirme for
