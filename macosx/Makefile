@@ -27,7 +27,7 @@ LICENSES_FILE = licenses
 
 EXTRA_DIST = README.md ../COPYING ../docs/3rd-party-licenses.txt ../docs/licenses
 
-CONFIGURE_ARGS = --prefix="$(PREFIX)" CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" PYTHON="$(PYTHON)"
+CONFIGURE_ARGS = --prefix="$(PREFIX)" CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" 
 
 # Flags for building universal binaries. See
 # http://developer.apple.com/documentation/Porting/Conceptual/PortingUnix/compiling/chapter_4_section_3.html.
@@ -57,12 +57,8 @@ LDFLAGS += $(UNIVERSAL_LDFLAGS)
 
 
 # Jhbuild static libraries
-PYTHON = $(JHBUILD_PREFIX)/bin/python2.7
 OPENSSL_STATIC = $(JHBUILD_PREFIX)/lib/libssl.a $(JHBUILD_PREFIX)/lib/libcrypto.a
 LIBZ_STATIC = $(JHBUILD_PREFIX)/lib/libz.a
-APR_STATIC = $(JHBUILD_PREFIX)/lib/libapr-1.a \
-$(JHBUILD_PREFIX)/lib/libaprutil-1.a \
-$(JHBUILD_PREFIX)/lib/libapriconv-1.a
 
 # These are the positions used by the createdmg.sh and check_test.sh scripts
 export ICON_SIZE=88
