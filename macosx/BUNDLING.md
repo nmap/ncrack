@@ -52,7 +52,6 @@ And we'll start over together:
 	~~~~
 	$ jhbuild build meta-gtk-osx-bootstrap
 	$ jhbuild build meta-gtk-osx-core
-	$ jhbuild build meta-gtk-osx-python
 	~~~~
 	
 	Go to **Observation** if errors appear... 
@@ -81,22 +80,6 @@ $ alias jhbuild="PATH=gtk-prefix/bin:$PATH jhbuild"
 
 Now continue at **step 3** with the --force option at the end of each command, to reinstall everything from scratch with this new python binary.
 
-### Possible error
-
-For those of you who have this error while trying to make,
-
-~~~~
-svn: E155021: This client is too old to work with the working copy at...
-~~~~
-
-You need to **update SVN**.<br/>
-Go to [http://www.wandisco.com/subversion/download#osx](http://www.wandisco.com/subversion/download#osx) and download and install the approriate version for your OS.
-
-Now, add the path for the new SVN version to your _$PATH_:
-
-~~~~
-$ export PATH=/opt/subversion/bin:$PATH
-~~~~
 
 ## <a name="bundler"></a>gtk-mac-bundler
 
@@ -112,24 +95,7 @@ $ make install
 #### Prerequisite:
 —`openssl.modules`:
 
-This is a jhbuild moduleset that can be used to build/update openssl, libapr and libsvn.
-First, locate this part in your Jhbuild `~/.jhbuildrc` configuration file:
-
-~~~~
-if not _host_tiger:
-    skip.append('make')
-    skip.append('subversion')
-~~~~
-
-And comment this line with a #: 
-
-~~~~
-if not _host_tiger:
-    skip.append('make')
-	# skip.append('subversion')
-~~~~
-
-This will **stop Jhbuild from ignoring subversion**, which was in the ignore list.
+This is a jhbuild moduleset that can be used to build/update openssl 
 
 #### Usage:
 

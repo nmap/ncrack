@@ -20,7 +20,7 @@ The ncrack command-line binaries will be installed in `/usr/local/bin`, and addi
 
 In order to compile, build and run Ncrack on Mac OS, you will requiere the followings:
 
-1.	**Jhbuild** for bundling and dependencies (see the [BUNDLING file](../BUNDLING.md))
+1. **Jhbuild** for bundling and dependencies (see the [BUNDLING file](../BUNDLING.md))
 2. **Xcode** for Mac OS 10.8 or later ([https://developer.apple.com/xcode](https://developer.apple.com/xcode/))
 3. **Xcode Command-line Tools** for Mac OS 10.8 or later ([https://developer.apple.com/downloads](https://developer.apple.com/downloads/) — then download the latest version compatible with your OS version)
 
