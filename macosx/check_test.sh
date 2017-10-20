@@ -3,7 +3,7 @@
 export version=$(grep '^\#[ \t]*define[ \t]\+NCRACK_VERSION' ../ncrack.h | sed -e 's/.*"\(.*\)".*/\1/' -e 'q')
 export title="ncrack-${version}"
 export disk="/Volumes/${title}"
-export backgroundPictureName="nmap.png"
+export backgroundPictureName="ncrack.png"
 export finalDMGName="${title}.dmg"
 export applicationName="${title}.mpkg"
 RES="True"
