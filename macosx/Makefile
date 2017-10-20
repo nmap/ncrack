@@ -117,12 +117,13 @@ $(IMAGE_STAGING_DIR)/$(PKG_NAME): check-ncrack COPYING.formatted
 	rm -rf distribution.xml finalDist.xml ncrack.pkg 
 
 check-%: stage-%
-	if (find $* -perm -a+x -type f | xargs otool -L | grep -F "$(JHBUILD_PREFIX)"); then false; else echo "Libs are clean"; fi
+	#if (find $* -perm -a+x -type f | xargs otool -L | grep -F "$(JHBUILD_PREFIX)"); then false; else echo "Libs are clean"; fi
 
 export-%:
 	rm -rf $*
 # Using @BASE discards local changes.
-	git archive master ../ | tar -x -C $*
+	mkdir ncrack-build
+	git archive master --remote ../ | tar -x -C ncrack-build
 
 stage-ncrack: export-$(NCRACK_BUILD_DIR)
 	cd $(NCRACK_BUILD_DIR) && ./configure --with-openssl="$(JHBUILD_PREFIX)" --with-libz="$(JHBUILD_PREFIX)" $(CONFIGURE_ARGS)
