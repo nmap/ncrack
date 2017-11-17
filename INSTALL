@@ -1,0 +1,16 @@
+
+
+Ideally, you should be able to just type:
+
+./configure
+make
+make install
+
+
+For Kali Linux, you might also need to do:
+
+apt install libssl1.0-dev
+
+It needs an older SSL version due to OpenSSH code for the SSH module.
+
+
