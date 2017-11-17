@@ -14,3 +14,8 @@ apt install libssl1.0-dev
 It needs an older SSL version due to OpenSSH code for the SSH module.
 
 
+For Ubuntu, you might also need to add the -lrt flag to the LDFLAGS variable in the Makefile, 
+if you get the undefined reference to `clock_gettime' error:
+
+LDFLAGS = -Lnbase -Lnsock/src -Lopensshlib $(DBGFLAGS) $(STATIC) -lrt
+
