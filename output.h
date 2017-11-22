@@ -149,6 +149,19 @@
 
 #define LOG_NAMES {"normal", "XML"}
 
+#define MAX_IPPROTOSTRLEN 4
+#define IPPROTO2STR(p)		\
+  ((p)==IPPROTO_TCP ? "tcp" :	\
+   (p)==IPPROTO_UDP ? "udp" :	\
+   (p)==IPPROTO_SCTP ? "sctp" :	\
+   "n/a")
+#define IPPROTO2STR_UC(p)	\
+  ((p)==IPPROTO_TCP ? "TCP" :	\
+   (p)==IPPROTO_UDP ? "UDP" :	\
+   (p)==IPPROTO_SCTP ? "SCTP" :	\
+   "N/A")
+
+
 void memprint(const char *addr, size_t bytes);
 
 /* Write some information (printf style args) to the given log stream(s).

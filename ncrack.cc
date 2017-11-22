@@ -1261,7 +1261,7 @@ ncrack_main(int argc, char **argv)
   //char *xslfname = o.XSLStyleSheet();
   char *xslfname = NULL; // no stylesheet for now
 
-  xml_start_document("ncrackun");
+  xml_start_document("ncrackrun");
   if (xslfname) {
     xml_open_pi("xml-stylesheet");
     xml_attribute("href", "%s", xslfname);
@@ -1284,7 +1284,6 @@ ncrack_main(int argc, char **argv)
   xml_attribute("xmloutputversion", NCRACK_XMLOUTPUTVERSION);
   xml_close_start_tag();
   xml_newline();
-
 
   xml_open_start_tag("verbose");
   xml_attribute("level", "%d", o.verbose);
@@ -1575,6 +1574,7 @@ ncrack_main(int argc, char **argv)
     ncrack(SG);
   }
 
+
   log_write(LOG_STDOUT, "\n");
   /* Now print the final results for each service 
    * In addition, check if any of the services timed out so that 
@@ -1583,15 +1583,39 @@ ncrack_main(int argc, char **argv)
    */
   bool save_state = false;
   for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
-    if ((*li)->end.reason != NULL && 
-        !strncmp((*li)->end.reason, SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT)))
+
+     xml_open_start_tag("service");
+     xml_attribute("starttime", "%lu", (unsigned long) (*li)->StartTime());
+     xml_attribute("endtime", "%lu", (unsigned long) (*li)->EndTime());
+     xml_close_start_tag();
+     xml_newline();
+
+     xml_open_start_tag("address");
+     xml_attribute("addr", "%s", (*li)->target->NameIP());
+     xml_attribute("addrtype", "%s", (o.af() == AF_INET) ? "ipv4" : "ipv6");
+     xml_close_empty_tag();
+     xml_newline();
+
+     xml_open_start_tag("port");
+     xml_attribute("protocol", IPPROTO2STR((*li)->proto));
+     xml_attribute("portid", "%d", (*li)->portno);
+     xml_attribute("name", (*li)->name);
+     xml_close_start_tag();
+     xml_newline();
+
+    if ((*li)->end.reason != NULL && !strncmp((*li)->end.reason, SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT)))
       save_state = true;
+
+    xml_open_start_tag("credentials");
     if ((*li)->credentials_found.size() != 0)
       print_service_output(*li);
+    xml_close_start_tag();
+    xml_newline();
   }
 
   /* Print final output information */
   print_final_output(SG);
+  log_flush_all();
 
   /* If any service timed out, then save a .restore file */
   if (save_state)
@@ -1611,7 +1635,7 @@ ncrack_main(int argc, char **argv)
 
 
 /* Start the timeout clocks of any targets that aren't already timedout */
-  static void
+static void
 startTimeOutClocks(ServiceGroup *SG)
 {
   struct timeval tv;
@@ -1628,7 +1652,7 @@ startTimeOutClocks(ServiceGroup *SG)
 /* 
  * It handles module endings
  */
-  void
+void
 ncrack_module_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
@@ -2026,7 +2050,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 }
 
 
-  void
+void
 ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
@@ -2125,7 +2149,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
 
-  void
+void
 ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
@@ -2164,7 +2188,7 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 }
 
 
-  void
+void
 ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
@@ -2189,7 +2213,7 @@ ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
 
-  void
+void
 ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   nsock_iod nsi = nse_iod(nse);
@@ -2286,7 +2310,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 /*
  * Poll for interactive user input every time this timer is called.
  */
-  static void
+static void
 status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   int key_ret;
@@ -2314,7 +2338,7 @@ status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 }
 
-  static void
+static void
 signal_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
@@ -2340,7 +2364,7 @@ signal_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 }
 
 
-  static void
+static void
 ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
 {
   Service *serv;
@@ -2540,7 +2564,7 @@ next:
 
 
 
-  static int
+static int
 ncrack(ServiceGroup *SG)
 {
   /* nsock variables */
