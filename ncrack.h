@@ -140,6 +140,9 @@
 #define NCRACK_NUM_VERSION "0.7.0.0"
 #endif
 
+#define NCRACK_XMLOUTPUTVERSION "1.00"
+
+
 #define NCRACK_NAME "Ncrack"
 #define NCRACK_URL "http://ncrack.org"
 

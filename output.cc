@@ -132,6 +132,7 @@
 #include "output.h"
 #include "NcrackOps.h"
 #include "ncrack_error.h"
+#include "xml.h"
 
 extern NcrackOps o;
 static const char *logtypes[LOG_NUM_FILES]=LOG_NAMES;
@@ -405,6 +406,43 @@ logfilename(const char *str, struct tm *tm)
 }
 
 
+static std::string quote(const char *s) {
+  std::string result("");
+  const char *p;
+  bool space;
+
+  space = false;
+  for (p = s; *p != '\0'; p++) {
+    if (isspace(*p))
+      space = true;
+    if (*p == '"' || *p == '\\')
+      result += "\\";
+    result += *p;
+  }
+
+  if (space)
+    result = "\"" + result + "\"";
+
+  return result;
+}
+
+
+/* Return a std::string containing all n strings separated by whitespace, and
+   individually quoted if needed. */
+std::string join_quoted(const char * const strings[], unsigned int n) {
+  std::string result("");
+  unsigned int i;
+
+  for (i = 0; i < n; i++) {
+    if (i > 0)
+      result += " ";
+    result += quote(strings[i]);
+  }
+
+  return result;
+}
+
+
 /* prints current status */
 void
 printStatusMessage(ServiceGroup *SG)
@@ -498,5 +536,51 @@ print_final_output(ServiceGroup *SG)
     log_write(LOG_PLAIN, "Probes sent: %lu | timed-out: %lu |"
         " prematurely-closed: %lu\n", SG->connections_total,
         SG->connections_timedout, SG->connections_closed);
+
+  xml_end_tag(); /* ncrackrun */
+  xml_newline();
+  log_flush_all();
 }
+
+
+
+/* Helper function to write the status and address/hostname info of a host
+   into the XML log */
+static void write_xml_initial_hostinfo(Target *currenths,
+                                       const char *status) {
+  xml_open_start_tag("status");
+  xml_close_empty_tag();
+  xml_newline();
+  xml_open_start_tag("address");
+  xml_attribute("addr", "%s", currenths->targetipstr());
+  xml_attribute("addrtype", "%s", (o.af() == AF_INET) ? "ipv4" : "ipv6");
+  xml_close_empty_tag();
+  xml_newline();
+  //print_MAC_XML_Info(currenths);
+
+  /* Output a hostnames element whenever we have a name to write or the target
+     is up. */
+  if (currenths->TargetName() != NULL || *currenths->HostName() || strcmp(status, "up") == 0) {
+    xml_start_tag("hostnames");
+    xml_newline();
+    if (currenths->TargetName() != NULL) {
+      xml_open_start_tag("hostname");
+      xml_attribute("name", "%s", currenths->TargetName());
+      xml_attribute("type", "user");
+      xml_close_empty_tag();
+      xml_newline();
+    }
+    if (*currenths->HostName()) {
+      xml_open_start_tag("hostname");
+      xml_attribute("name", "%s", currenths->HostName());
+      xml_attribute("type", "PTR");
+      xml_close_empty_tag();
+      xml_newline();
+    }
+    xml_end_tag();
+    xml_newline();
+  }
+  log_flush_all();
+}
+
 

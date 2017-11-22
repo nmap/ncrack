@@ -1,8 +1,5 @@
-
 /***************************************************************************
- * output.h -- Handles the Ncrack output system.  This currently involves  *
- * console-style human readable output, XML output and greppable output.   *
- *                                                                         *
+ * xml.h                                                                   *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
  * The Nmap Security Scanner is (C) 1996-2017 Insecure.Com LLC ("The Nmap  *
@@ -128,73 +125,41 @@
  *                                                                         *
  ***************************************************************************/
 
+/* $Id: xml.h 15135 2009-08-19 21:05:21Z david $ */
 
-#ifndef OUTPUT_H
-#define OUTPUT_H
+#ifndef _XML_H
+#define _XML_H
 
 #include <stdarg.h>
-#include <time.h>
-#include <string>
-#include "ServiceGroup.h"
 
-#define LOG_NUM_FILES 2 /* # of values that actual files(they must come first)*/
-#define LOG_FILE_MASK 3 /* The mask for log typs in the file array */
-#define LOG_NORMAL 1
-#define LOG_XML 2
-#define LOG_STDOUT 1024
-#define LOG_STDERR 2048
-#define LOG_MAX LOG_STDERR /* The maximum log type value */
+int xml_write_raw(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
+int xml_write_escaped(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
+int xml_write_escaped_v(const char *fmt, va_list va) __attribute__ ((format (printf, 1, 0)));
 
-#define LOG_PLAIN LOG_NORMAL|LOG_STDOUT
+int xml_start_document(const char *rootnode);
 
-#define LOG_NAMES {"normal", "XML"}
+int xml_start_comment();
+int xml_end_comment();
 
-void memprint(const char *addr, size_t bytes);
+int xml_open_pi(const char *name);
+int xml_close_pi();
 
-/* Write some information (printf style args) to the given log stream(s).
-   Remember to watch out for format string bugs. */
-void log_write(int logt, const char *fmt, ...)
-     __attribute__ ((format (printf, 2, 3)));
+int xml_open_start_tag(const char *name, const bool write = true);
+int xml_close_start_tag(const bool write = true);
+int xml_close_empty_tag();
+int xml_start_tag(const char *name, const bool write = true);
+int xml_end_tag();
 
-/* This is the workhorse of the logging functions.  Usually it is
-   called through log_write(), but it can be called directly if you
-   are dealing with a vfprintf-style va_list.  Unlike log_write, YOU
-   CAN ONLY CALL THIS WITH ONE LOG TYPE (not a bitmask full of them).
-   In addition, YOU MUST SANDWHICH EACH EXECUTION IF THIS CALL BETWEEN
-   va_start() AND va_end() calls. */
-void log_vwrite(int logt, const char *fmt, va_list ap);
+int xml_attribute(const char *name, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
 
-/* Close the given log stream(s) */
-void log_close(int logt);
+int xml_newline();
 
-/* Flush the given log stream(s).  In other words, all buffered output
-   is written to the log immediately */
-void log_flush(int logt);
-
-/* Flush every single log stream -- all buffered output is written to the
-   corresponding logs immediately */
-void log_flush_all();
-
-/* Open a log descriptor of the type given to the filename given.  If 
-   o.append_output is nonzero, the file will be appended instead of clobbered if
-   it already exists.  If the file does not exist, it will be created */
-int log_open(int logt, char *filename);
-
-char *logfilename(const char *str, struct tm *tm);
-
-/* Return a std::string containing all n strings separated by whitespace, and
-   individually quoted if needed. */
-std::string join_quoted(const char * const strings[], unsigned int n);
-
-/* prints current status */
-void printStatusMessage(ServiceGroup *SG);
-
-/* Prints all credentials found so far */
-void print_creds(ServiceGroup *SG);
-
-void print_final_output(ServiceGroup *SG);
-
-void print_service_output(Service *serv);
+int xml_depth();
+bool xml_tag_open();
+bool xml_root_written();
 
 
-#endif /* OUTPUT_H */
+char *xml_unescape(const char *str);
+
+#endif
+

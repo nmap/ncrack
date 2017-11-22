@@ -146,6 +146,7 @@
 #include "ncrack_tty.h"
 #include "ncrack_input.h"
 #include "ncrack_resume.h"
+#include "xml.h"
 #include <time.h>
 #include <vector>
 
@@ -836,8 +837,8 @@ ncrack_main(int argc, char **argv)
   FILE *inputfd = NULL;
   char *normalfilename = NULL;
   char *xmlfilename = NULL;
+  time_t timep;
   unsigned int i; /* iteration var */
-  int argiter;    /* iteration for argv */
   char services_file[256]; /* path name for "ncrack-services" file */
   char username_file[256];
   char password_file[256];
@@ -1253,13 +1254,58 @@ ncrack_main(int argc, char **argv)
   }
 
   /* Brief info incase they forget what was scanned */
+  timep = time(NULL);
   Strncpy(mytime, ctime(&now), sizeof(mytime));
   chomp(mytime);
+
+  //char *xslfname = o.XSLStyleSheet();
+  char *xslfname = NULL; // no stylesheet for now
+
+  xml_start_document("ncrackun");
+  if (xslfname) {
+    xml_open_pi("xml-stylesheet");
+    xml_attribute("href", "%s", xslfname);
+    xml_attribute("type", "text/xsl");
+    xml_close_pi();
+    xml_newline();
+  }
+
+  xml_start_comment();
+  xml_write_escaped(" %s %s scan initiated %s as: %s ", NCRACK_NAME, NCRACK_VERSION, mytime, join_quoted(argv, argc).c_str());
+  xml_end_comment();
+  xml_newline();
+
+  xml_open_start_tag("ncrackrun");
+  xml_attribute("scanner", "ncrack");
+  xml_attribute("args", "%s", join_quoted(argv, argc).c_str());
+  xml_attribute("start", "%lu", (unsigned long) timep);
+  xml_attribute("startstr", "%s", mytime);
+  xml_attribute("version", "%s", NCRACK_VERSION);
+  xml_attribute("xmloutputversion", NCRACK_XMLOUTPUTVERSION);
+  xml_close_start_tag();
+  xml_newline();
+
+
+  xml_open_start_tag("verbose");
+  xml_attribute("level", "%d", o.verbose);
+  xml_close_empty_tag();
+  xml_newline();
+  xml_open_start_tag("debugging");
+  xml_attribute("level", "%d", o.debugging);
+  xml_close_empty_tag();
+  xml_newline();
+
+  std::string command;
+  if (argc > 0)
+    command += argv[0];
+  for (i = 1; i < (unsigned int)argc; i++) {
+    command += " ";
+    command += argv[i];
+  }
+
   log_write(LOG_NORMAL, "# ");
-  log_write(LOG_NORMAL|LOG_XML, "%s %s scan initiated %s as: ", NCRACK_NAME,
-      NCRACK_VERSION, mytime);
-  for (argiter = 0; argiter < argc; argiter++)
-    log_write(LOG_NORMAL, "%s ", argv[argiter]);
+  log_write(LOG_NORMAL, "%s %s scan initiated %s as: ", NCRACK_NAME, NCRACK_VERSION, mytime);
+  log_write(LOG_NORMAL, "%s", command.c_str());
   log_write(LOG_NORMAL, "\n");
 
   /* 
@@ -1539,7 +1585,7 @@ ncrack_main(int argc, char **argv)
   for (li = SG->services_all.begin(); li != SG->services_all.end(); li++) {
     if ((*li)->end.reason != NULL && 
         !strncmp((*li)->end.reason, SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT)))
-        save_state = true;
+      save_state = true;
     if ((*li)->credentials_found.size() != 0)
       print_service_output(*li);
   }
@@ -1565,7 +1611,7 @@ ncrack_main(int argc, char **argv)
 
 
 /* Start the timeout clocks of any targets that aren't already timedout */
-static void
+  static void
 startTimeOutClocks(ServiceGroup *SG)
 {
   struct timeval tv;
@@ -1582,7 +1628,7 @@ startTimeOutClocks(ServiceGroup *SG)
 /* 
  * It handles module endings
  */
-void
+  void
 ncrack_module_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
@@ -1655,10 +1701,10 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       if (o.debugging > 6) {
         if (!strcmp(serv->name, "redis"))
           log_write(LOG_STDOUT, "%s (EID %li) Login failed: '%s'\n",
-            hostinfo, nsock_iod_id(con->niod), con->pass);
+              hostinfo, nsock_iod_id(con->niod), con->pass);
         else 
           log_write(LOG_STDOUT, "%s (EID %li) Login failed: '%s' '%s'\n",
-            hostinfo, nsock_iod_id(con->niod), con->user, con->pass);
+              hostinfo, nsock_iod_id(con->niod), con->user, con->pass);
       }
     } else {
       serv->appendToPool(con->user, con->pass);
@@ -1782,7 +1828,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 }
 
 
-void
+  void
 ncrack_connection_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
@@ -1939,7 +1985,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
     serv->setLinearState(LINEAR_DONE);
     serv->ideal_parallelism = 1;
   }
-    
+
 
   /*
    * If service was on 'services_finishing' (credential list finished, pool
@@ -1980,7 +2026,7 @@ ncrack_connection_end(nsock_pool nsp, void *mydata)
 }
 
 
-void
+  void
 ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
@@ -2079,7 +2125,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
 
-void
+  void
 ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
@@ -2118,7 +2164,7 @@ ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 }
 
 
-void
+  void
 ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
@@ -2143,7 +2189,7 @@ ncrack_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 
 
-void
+  void
 ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   nsock_iod nsi = nse_iod(nse);
@@ -2193,7 +2239,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
     return call_module(nsp, con);
 
   } else if (status == NSE_STATUS_TIMEOUT || status == NSE_STATUS_ERROR
-             || status == NSE_STATUS_PROXYERROR) {
+      || status == NSE_STATUS_PROXYERROR) {
 
     /* This is not good. connect() really shouldn't generally be timing out. */
     if (o.debugging > 2) {
@@ -2240,7 +2286,7 @@ ncrack_connect_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 /*
  * Poll for interactive user input every time this timer is called.
  */
-static void
+  static void
 status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   int key_ret;
@@ -2268,7 +2314,7 @@ status_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
 }
 
-static void
+  static void
 signal_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 {
   enum nse_status status = nse_status(nse);
@@ -2294,7 +2340,7 @@ signal_timer_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 }
 
 
-static void
+  static void
 ncrack_probes(nsock_pool nsp, ServiceGroup *SG)
 {
   Service *serv;
@@ -2494,7 +2540,7 @@ next:
 
 
 
-static int
+  static int
 ncrack(ServiceGroup *SG)
 {
   /* nsock variables */
