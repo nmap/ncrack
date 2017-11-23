@@ -1491,8 +1491,7 @@ Ncrack finished.
 
         <para>
           Requests that <literal>XML output</literal> be
-          directed to the given filename. Currently this is not
-          implemented.
+          directed to the given filename. 
         </para>
 
         </listitem>

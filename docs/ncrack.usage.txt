@@ -1,4 +1,4 @@
-Ncrack 0.6 ( http://ncrack.org )
+Ncrack 0.7 ( http://ncrack.org )
 Usage: ncrack [Options] {target and service specification}
 TARGET SPECIFICATION:
   Can pass hostnames, IP addresses, networks, etc.
