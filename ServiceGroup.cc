@@ -356,8 +356,10 @@ set_servlist(Service *serv, list <Service *> *list)
     serv->setListFull();
   else if (list == &services_finishing && !serv->getListFinishing())
     serv->setListFinishing();
-  else if (list == &services_finished && !serv->getListFinished())
+  else if (list == &services_finished && !serv->getListFinished()) {
     serv->setListFinished();
+    serv->stopTimeOutClock(nsock_gettimeofday());
+  }
   else
     return false;
 

@@ -1853,7 +1853,7 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
 }
 
 
-  void
+void
 ncrack_connection_end(nsock_pool nsp, void *mydata)
 {
   Connection *con = (Connection *) mydata;
