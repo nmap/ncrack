@@ -493,6 +493,12 @@ print_service_output(Service *serv)
     log_write(LOG_PLAIN, "%s %hu/%s %s: '%s' '%s'\n",
         ip, serv->portno, proto2str(serv->proto), serv->name,
         vi->user, vi->pass);
+    xml_open_start_tag("credentials");
+    xml_attribute("username", "%s", vi->user);
+    xml_attribute("password", "%s", vi->pass);
+    xml_close_start_tag();
+    xml_end_tag();
+    xml_newline();
   }
 }
 

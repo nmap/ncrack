@@ -1601,15 +1601,16 @@ ncrack_main(int argc, char **argv)
      xml_attribute("portid", "%d", (*li)->portno);
      xml_attribute("name", (*li)->name);
      xml_close_start_tag();
+     xml_end_tag(); /* </port> */
      xml_newline();
 
     if ((*li)->end.reason != NULL && !strncmp((*li)->end.reason, SERVICE_TIMEDOUT, sizeof(SERVICE_TIMEDOUT)))
       save_state = true;
 
-    xml_open_start_tag("credentials");
     if ((*li)->credentials_found.size() != 0)
       print_service_output(*li);
-    xml_close_start_tag();
+
+    xml_end_tag(); /* </service> */
     xml_newline();
   }
 
