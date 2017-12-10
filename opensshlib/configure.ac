@@ -2381,6 +2381,7 @@ if test "x$openssl" = "xyes" ; then
 		[AC_LANG_PROGRAM([[
 	#include <stdio.h>
 	#include <string.h>
+	#define OPENSSL_API_COMPAT 0x10000000L
 	#include <openssl/opensslv.h>
 	#include <openssl/crypto.h>
 	#define DATA "conftest.ssllibver"
@@ -2422,8 +2423,10 @@ if test "x$openssl" = "xyes" ; then
 	AC_MSG_CHECKING([whether OpenSSL's headers match the library])
 	AC_RUN_IFELSE(
 		[AC_LANG_PROGRAM([[
-	#include <string.h>
-	#include <openssl/opensslv.h>
+		#include <string.h>
+		#define OPENSSL_API_COMPAT 0x10000000L
+		#include <openssl/crypto.h>
+		#include <openssl/opensslv.h>
 		]], [[
 		exit(SSLeay() == OPENSSL_VERSION_NUMBER ? 0 : 1);
 		]])],
@@ -2452,7 +2455,10 @@ if test "x$openssl" = "xyes" ; then
 
 	AC_MSG_CHECKING([if programs using OpenSSL functions will link])
 	AC_LINK_IFELSE(
-		[AC_LANG_PROGRAM([[ #include <openssl/evp.h> ]],
+		[AC_LANG_PROGRAM([[
+		#define OPENSSL_API_COMPAT 0x10000000L
+		#include <openssl/evp.h>
+	        ]],
 		[[ SSLeay_add_all_algorithms(); ]])],
 		[
 			AC_MSG_RESULT([yes])
