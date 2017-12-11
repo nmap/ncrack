@@ -100,6 +100,7 @@ ncrackssh_input_kex_dh_gex_group(ncrack_ssh_state *nstate)
 	struct kex *kex = nstate->kex;
 	BIGNUM *p = NULL, *g = NULL;
 	int r, bits;
+	const BIGNUM *kex_dh_pub_key;
 
   //printf("DH GEX GROUP\n");
 
@@ -124,18 +125,19 @@ ncrackssh_input_kex_dh_gex_group(ncrack_ssh_state *nstate)
 		goto out;
 	}
 	p = g = NULL; /* belong to kex->dh now */
+	DH_get0_key(kex->dh, &kex_dh_pub_key, NULL);
 
 	/* generate and send 'e', client DH public key */
 	if ((r = dh_gen_key(kex->dh, kex->we_need * 8)) != 0 ||
 	    (r = sshpkt_start(nstate, SSH2_MSG_KEX_DH_GEX_INIT)) != 0 ||
-	    (r = sshpkt_put_bignum2(nstate, kex->dh->pub_key)) != 0 ||
+	    (r = sshpkt_put_bignum2(nstate, kex_dh_pub_key)) != 0 ||
 	    (r = sshpkt_send(nstate)) != 0)
 		goto out;
 	debug("SSH2_MSG_KEX_DH_GEX_INIT sent");
 #ifdef DEBUG_KEXDH
 	DHparams_print_fp(stderr, kex->dh);
 	fprintf(stderr, "pub= ");
-	BN_print_fp(stderr, kex->dh->pub_key);
+	BN_print_fp(stderr, kex_dh_pub_key);
 	fprintf(stderr, "\n");
 #endif
 
@@ -161,6 +163,7 @@ ncrackssh_input_kex_dh_gex_reply(ncrack_ssh_state *nstate)
 	u_char hash[SSH_DIGEST_MAX_LENGTH];
 	size_t klen = 0, slen, sbloblen, hashlen;
 	int kout, r;
+	const BIGNUM *kex_dh_pub_key, *kex_dh_p, *kex_dh_g;
 
 	debug("got SSH2_MSG_KEX_DH_GEX_REPLY");
 	if (kex->verify_host_key == NULL) {
@@ -225,6 +228,8 @@ ncrackssh_input_kex_dh_gex_reply(ncrack_ssh_state *nstate)
 #endif
 	if (nstate->compat & SSH_OLD_DHGEX)
 		kex->min = kex->max = -1;
+	DH_get0_key(kex->dh, &kex_dh_pub_key, NULL);
+	DH_get0_pqg(kex->dh, &kex_dh_p, NULL, &kex_dh_g);
 
 	/* calc and verify H */
 	hashlen = sizeof(hash);
@@ -236,8 +241,8 @@ ncrackssh_input_kex_dh_gex_reply(ncrack_ssh_state *nstate)
 	    sshbuf_ptr(kex->peer), sshbuf_len(kex->peer),
 	    server_host_key_blob, sbloblen,
 	    kex->min, kex->nbits, kex->max,
-	    kex->dh->p, kex->dh->g,
-	    kex->dh->pub_key,
+	    kex_dh_p, kex_dh_g,
+	    kex_dh_pub_key,
 	    dh_server_pub,
 	    shared_secret,
 	    hash, &hashlen)) != 0)

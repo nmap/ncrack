@@ -77,10 +77,13 @@ rsa_public_encrypt(BIGNUM *out, BIGNUM *in, RSA *key)
 	u_char *inbuf = NULL, *outbuf = NULL;
 	int len, ilen, olen, r = SSH_ERR_INTERNAL_ERROR;
 
-	if (BN_num_bits(key->e) < 2 || !BN_is_odd(key->e))
+	const BIGNUM *key_n, *key_e, *key_d;
+	RSA_get0_key(key, &key_n, &key_e, &key_d);
+
+	if (BN_num_bits(key_e) < 2 || !BN_is_odd(key_e))
 		return SSH_ERR_INVALID_ARGUMENT;
 
-	olen = BN_num_bytes(key->n);
+	olen = BN_num_bytes(key_n);
 	if ((outbuf = malloc(olen)) == NULL) {
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
@@ -123,7 +126,10 @@ rsa_private_decrypt(BIGNUM *out, BIGNUM *in, RSA *key)
 	u_char *inbuf = NULL, *outbuf = NULL;
 	int len, ilen, olen, r = SSH_ERR_INTERNAL_ERROR;
 
-	olen = BN_num_bytes(key->n);
+	const BIGNUM *key_n, *key_e, *key_d;
+	RSA_get0_key(key, &key_n, &key_e, &key_d);
+
+	olen = BN_num_bytes(key_n);
 	if ((outbuf = malloc(olen)) == NULL) {
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
@@ -165,6 +171,12 @@ rsa_generate_additional_parameters(RSA *rsa)
 	BN_CTX *ctx = NULL;
 	int r;
 
+	BIGNUM *rsa_d, *rsa_p, *rsa_q;
+	BIGNUM *rsa_dmp1, *rsa_dmq1;
+	RSA_get0_key(rsa, NULL, NULL, (const BIGNUM**)&rsa_d);
+	RSA_get0_factors(rsa, (const BIGNUM**)&rsa_p, (const BIGNUM**)&rsa_q);
+	RSA_get0_crt_params(rsa, (const BIGNUM**)&rsa_dmp1, (const BIGNUM**)&rsa_dmq1, NULL);
+
 	if ((ctx = BN_CTX_new()) == NULL)
 		return SSH_ERR_ALLOC_FAIL;
 	if ((aux = BN_new()) == NULL) {
@@ -172,10 +184,10 @@ rsa_generate_additional_parameters(RSA *rsa)
 		goto out;
 	}
 
-	if ((BN_sub(aux, rsa->q, BN_value_one()) == 0) ||
-	    (BN_mod(rsa->dmq1, rsa->d, aux, ctx) == 0) ||
-	    (BN_sub(aux, rsa->p, BN_value_one()) == 0) ||
-	    (BN_mod(rsa->dmp1, rsa->d, aux, ctx) == 0)) {
+	if ((BN_sub(aux, rsa_q, BN_value_one()) == 0) ||
+	    (BN_mod(rsa_dmq1, rsa_d, aux, ctx) == 0) ||
+	    (BN_sub(aux, rsa_p, BN_value_one()) == 0) ||
+	    (BN_mod(rsa_dmp1, rsa_d, aux, ctx) == 0)) {
 		r = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}

@@ -56,6 +56,7 @@ kexdh_client(ncrack_ssh_state *nstate)
 {
 	struct kex *kex = nstate->kex;
 	int r;
+	const BIGNUM *kex_dh_pub_key;
 
   //printf("kexdh client\n");
 
@@ -76,15 +77,16 @@ kexdh_client(ncrack_ssh_state *nstate)
 		goto out;
 	}
 	debug("sending SSH2_MSG_KEXDH_INIT");
+	DH_get0_key(kex->dh, &kex_dh_pub_key, NULL);
 	if ((r = dh_gen_key(kex->dh, kex->we_need * 8)) != 0 ||
 	    (r = sshpkt_start(nstate, SSH2_MSG_KEXDH_INIT)) != 0 ||
-	    (r = sshpkt_put_bignum2(nstate, kex->dh->pub_key)) != 0 ||
+	    (r = sshpkt_put_bignum2(nstate, kex_dh_pub_key)) != 0 ||
 	    (r = sshpkt_send(nstate)) != 0)
 		goto out;
 #ifdef DEBUG_KEXDH
 	DHparams_print_fp(stderr, kex->dh);
 	fprintf(stderr, "pub= ");
-	BN_print_fp(stderr, kex->dh->pub_key);
+	BN_print_fp(stderr, kex_dh_pub_key);
 	fprintf(stderr, "\n");
 #endif
 	debug("expecting SSH2_MSG_KEXDH_REPLY");
@@ -105,6 +107,7 @@ ncrackssh_input_kex_dh(ncrack_ssh_state *nstate)
 	u_char hash[SSH_DIGEST_MAX_LENGTH];
 	size_t klen = 0, slen, sbloblen, hashlen;
 	int kout, r;
+	const BIGNUM *kex_dh_pub_key;
 
 	if (kex->verify_host_key == NULL) {
 		r = SSH_ERR_INVALID_ARGUMENT;
@@ -163,6 +166,8 @@ ncrackssh_input_kex_dh(ncrack_ssh_state *nstate)
 	dump_digest("shared secret", kbuf, kout);
 #endif
 
+	DH_get0_key(kex->dh, &kex_dh_pub_key, NULL);
+
 	/* calc and verify H */
 	hashlen = sizeof(hash);
 	if ((r = kex_dh_hash(
@@ -171,7 +176,7 @@ ncrackssh_input_kex_dh(ncrack_ssh_state *nstate)
 	    sshbuf_ptr(kex->my), sshbuf_len(kex->my),
 	    sshbuf_ptr(kex->peer), sshbuf_len(kex->peer),
 	    server_host_key_blob, sbloblen,
-	    kex->dh->pub_key,
+	    kex_dh_pub_key,
 	    dh_server_pub,
 	    shared_secret,
 	    hash, &hashlen)) != 0)

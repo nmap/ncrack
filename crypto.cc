@@ -418,28 +418,27 @@ void rsa_encrypt(uint8_t *input, uint8_t *output, int length,
     uint8_t *mod_bin, uint32_t mod_size, uint8_t *exp_bin)
 {
   uint8_t input_temp[256];
-  BIGNUM val1, val2, bn_mod, bn_exp;
-  BN_init(&bn_mod); BN_init(&bn_exp); BN_init(&val1); BN_init(&val2);
+  BIGNUM *val1 = BN_new(), *val2 = BN_new(), *bn_mod = BN_new(), *bn_exp = BN_new();
 
   BN_CTX *bn_ctx = BN_CTX_new();
   memcpy(input_temp, input, length);
   mem_reverse(input_temp, length);
   mem_reverse(mod_bin, mod_size);
   mem_reverse(exp_bin, 4);
-  BN_bin2bn(input_temp, length, &val1);
-  BN_bin2bn(exp_bin, 4, &bn_exp);
-  BN_bin2bn(mod_bin, mod_size, &bn_mod);
-  BN_mod_exp(&val2, &val1, &bn_exp, &bn_mod, bn_ctx);
-  int output_length = BN_bn2bin(&val2, output);
+  BN_bin2bn(input_temp, length, val1);
+  BN_bin2bn(exp_bin, 4, bn_exp);
+  BN_bin2bn(mod_bin, mod_size, bn_mod);
+  BN_mod_exp(val2, val1, bn_exp, bn_mod, bn_ctx);
+  int output_length = BN_bn2bin(val2, output);
   mem_reverse(output, output_length);
   if (output_length < (int) mod_size)
     memset(output + output_length, 0, mod_size - output_length);
 
   BN_CTX_free(bn_ctx);
-  BN_clear_free(&val1);
-  BN_free(&val2);
-  BN_free(&bn_mod);
-  BN_free(&bn_exp);
+  BN_clear_free(val1);
+  BN_free(val2);
+  BN_free(bn_mod);
+  BN_free(bn_exp);
 
 }
 

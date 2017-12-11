@@ -70,34 +70,33 @@ static void bf_ssh1_init (EVP_CIPHER_CTX * ctx, const unsigned char *key,
 }
 #endif
 
-static int (*orig_bf)(EVP_CIPHER_CTX *, u_char *,
+static int (*orig_do_cipher)(EVP_CIPHER_CTX *, u_char *,
     const u_char *, LIBCRYPTO_EVP_INL_TYPE) = NULL;
 
 static int
-bf_ssh1_cipher(EVP_CIPHER_CTX *ctx, u_char *out, const u_char *in,
+bf_ssh1_do_cipher(EVP_CIPHER_CTX *ctx, u_char *out, const u_char *in,
     LIBCRYPTO_EVP_INL_TYPE len)
 {
 	int ret;
 
 	swap_bytes(in, out, len);
-	ret = (*orig_bf)(ctx, out, out, len);
+	ret = (*orig_do_cipher)(ctx, out, out, len);
 	swap_bytes(out, out, len);
 	return (ret);
 }
 
+static EVP_CIPHER *ssh1_bf;
+
 const EVP_CIPHER *
 evp_ssh1_bf(void)
 {
-	static EVP_CIPHER ssh1_bf;
-
-	memcpy(&ssh1_bf, EVP_bf_cbc(), sizeof(EVP_CIPHER));
-	orig_bf = ssh1_bf.do_cipher;
-	ssh1_bf.nid = NID_undef;
-#ifdef SSH_OLD_EVP
-	ssh1_bf.init = bf_ssh1_init;
-#endif
-	ssh1_bf.do_cipher = bf_ssh1_cipher;
-	ssh1_bf.key_len = 32;
-	return (&ssh1_bf);
+	ssh1_bf = EVP_CIPHER_meth_dup(EVP_bf_cbc());
+	orig_do_cipher = EVP_CIPHER_meth_get_do_cipher(ssh1_bf);
+	/* FIXME(hb): Do we need to set the associated NID?
+	   (ssh1_bf.nid = NID_undef)
+	   Do we need to set key length? (ssh1_bf.key_len = 32)
+	*/
+	EVP_CIPHER_meth_set_do_cipher(ssh1_bf, bf_ssh1_do_cipher);
+	return (ssh1_bf);
 }
 #endif /* WITH_OPENSSL */

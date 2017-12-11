@@ -215,14 +215,15 @@ choose_dh(int min, int wantbits, int max)
 /* diffie-hellman-groupN-sha1 */
 
 int
-dh_pub_is_valid(DH *dh, BIGNUM *dh_pub)
+dh_pub_is_valid(DH *dh, const BIGNUM *dh_pub)
 {
 	int i;
 	int n = BN_num_bits(dh_pub);
 	int bits_set = 0;
 	BIGNUM *tmp;
+	const BIGNUM *dh_p;
 
-	if (dh_pub->neg) {
+	if (BN_is_negative(dh_pub)) {
 		logit("invalid public DH value: negative");
 		return 0;
 	}
@@ -235,7 +236,9 @@ dh_pub_is_valid(DH *dh, BIGNUM *dh_pub)
 		ssh_error("%s: BN_new failed", __func__);
 		return 0;
 	}
-	if (!BN_sub(tmp, dh->p, BN_value_one()) ||
+
+	DH_get0_pqg(dh, &dh_p, NULL, NULL);
+	if (!BN_sub(tmp, dh_p, BN_value_one()) ||
 	    BN_cmp(dh_pub, tmp) != -1) {		/* pub_exp > p-2 */
 		BN_clear_free(tmp);
 		logit("invalid public DH value: >= p-1");
@@ -246,13 +249,13 @@ dh_pub_is_valid(DH *dh, BIGNUM *dh_pub)
 	for (i = 0; i <= n; i++)
 		if (BN_is_bit_set(dh_pub, i))
 			bits_set++;
-	debug2("bits set: %d/%d", bits_set, BN_num_bits(dh->p));
+	debug2("bits set: %d/%d", bits_set, BN_num_bits(dh_p));
 
 	/* if g==2 and bits_set==1 then computing log_g(dh_pub) is trivial */
 	if (bits_set > 1)
 		return 1;
 
-	logit("invalid public DH value (%d/%d)", bits_set, BN_num_bits(dh->p));
+	logit("invalid public DH value (%d/%d)", bits_set, BN_num_bits(dh_p));
 	return 0;
 }
 
@@ -260,15 +263,17 @@ int
 dh_gen_key(DH *dh, int need)
 {
 	int pbits;
+	const BIGNUM *dh_p, *dh_pub_key;
+	DH_get0_pqg(dh, &dh_p, NULL, NULL);
 
-	if (need < 0 || dh->p == NULL ||
-	    (pbits = BN_num_bits(dh->p)) <= 0 ||
+	if (need < 0 || dh_p == NULL ||
+	    (pbits = BN_num_bits(dh_p)) <= 0 ||
 	    need > INT_MAX / 2 || 2 * need > pbits)
 		return SSH_ERR_INVALID_ARGUMENT;
-	dh->length = MIN(need * 2, pbits - 1);
+	DH_set_length(dh, MIN(need * 2, pbits - 1));
+	DH_get0_key(dh, &dh_pub_key, NULL);
 	if (DH_generate_key(dh) == 0 ||
-	    !dh_pub_is_valid(dh, dh->pub_key)) {
-		BN_clear_free(dh->priv_key);
+	    !dh_pub_is_valid(dh, dh_pub_key)) {
 		return SSH_ERR_LIBCRYPTO_ERROR;
 	}
 	return 0;
@@ -278,11 +283,13 @@ DH *
 dh_new_group_asc(const char *gen, const char *modulus)
 {
 	DH *dh;
+	const BIGNUM *dh_p, *dh_g;
 
 	if ((dh = DH_new()) == NULL)
 		return NULL;
-	if (BN_hex2bn(&dh->p, modulus) == 0 ||
-	    BN_hex2bn(&dh->g, gen) == 0) {
+	DH_get0_pqg(dh, &dh_p, NULL, &dh_g);
+	if (BN_hex2bn((BIGNUM**)&dh_p, modulus) == 0 ||
+	    BN_hex2bn((BIGNUM**)&dh_g, gen) == 0) {
 		DH_free(dh);
 		return NULL;
 	}
@@ -301,8 +308,7 @@ dh_new_group(BIGNUM *gen, BIGNUM *modulus)
 
 	if ((dh = DH_new()) == NULL)
 		return NULL;
-	dh->p = modulus;
-	dh->g = gen;
+	DH_set0_pqg(dh, modulus, NULL, gen);
 
 	return (dh);
 }

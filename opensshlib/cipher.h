@@ -66,7 +66,7 @@ struct sshcipher;
 struct sshcipher_ctx {
 	int	plaintext;
 	int	encrypt;
-	EVP_CIPHER_CTX evp;
+	EVP_CIPHER_CTX *evp;
 	struct chachapoly_ctx cp_ctx; /* XXX union with evp? */
 	struct aesctr_ctx ac_ctx; /* XXX union with evp? */
 	const struct sshcipher *cipher;
