@@ -54,6 +54,7 @@ ssh_ecdsa_sign(const struct sshkey *key, u_char **sigp, size_t *lenp,
 	size_t len, dlen;
 	struct sshbuf *b = NULL, *bb = NULL;
 	int ret = SSH_ERR_INTERNAL_ERROR;
+	const BIGNUM *r, *s;
 
 	if (lenp != NULL)
 		*lenp = 0;
@@ -80,8 +81,9 @@ ssh_ecdsa_sign(const struct sshkey *key, u_char **sigp, size_t *lenp,
 		ret = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
-	if ((ret = sshbuf_put_bignum2(bb, sig->r)) != 0 ||
-	    (ret = sshbuf_put_bignum2(bb, sig->s)) != 0)
+	ECDSA_SIG_get0(sig, &r, &s);
+	if ((ret = sshbuf_put_bignum2(bb, r)) != 0 ||
+	    (ret = sshbuf_put_bignum2(bb, s)) != 0)
 		goto out;
 	if ((ret = sshbuf_put_cstring(b, sshkey_ssh_name_plain(key))) != 0 ||
 	    (ret = sshbuf_put_stringb(b, bb)) != 0)
@@ -121,6 +123,7 @@ ssh_ecdsa_verify(const struct sshkey *key,
 	int ret = SSH_ERR_INTERNAL_ERROR;
 	struct sshbuf *b = NULL, *sigbuf = NULL;
 	char *ktype = NULL;
+	BIGNUM *r = BN_new(), *s = BN_new();
 
 	if (key == NULL || key->ecdsa == NULL ||
 	    sshkey_type_plain(key->type) != KEY_ECDSA)
@@ -152,11 +155,12 @@ ssh_ecdsa_verify(const struct sshkey *key,
 		ret = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
-	if (sshbuf_get_bignum2(sigbuf, sig->r) != 0 ||
-	    sshbuf_get_bignum2(sigbuf, sig->s) != 0) {
+	if (sshbuf_get_bignum2(sigbuf, r) != 0 ||
+	    sshbuf_get_bignum2(sigbuf, s) != 0) {
 		ret = SSH_ERR_INVALID_FORMAT;
 		goto out;
 	}
+	ECDSA_SIG_set0(sig, r, s);
 	if (sshbuf_len(sigbuf) != 0) {
 		ret = SSH_ERR_UNEXPECTED_TRAILING_DATA;
 		goto out;

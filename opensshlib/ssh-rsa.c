@@ -126,10 +126,15 @@ ssh_rsa_verify(const struct sshkey *key,
 	size_t len, diff, modlen, dlen;
 	struct sshbuf *b = NULL;
 	u_char digest[SSH_DIGEST_MAX_LENGTH], *osigblob, *sigblob = NULL;
+	const BIGNUM* rsa_n;
 
 	if (key == NULL || key->rsa == NULL ||
-	    sshkey_type_plain(key->type) != KEY_RSA ||
-	    BN_num_bits(key->rsa->n) < SSH_RSA_MINIMUM_MODULUS_SIZE)
+	    sshkey_type_plain(key->type) != KEY_RSA)
+		return SSH_ERR_INVALID_ARGUMENT;
+
+	RSA_get0_key(key->rsa, &rsa_n, NULL, NULL);
+
+	if (BN_num_bits(rsa_n) < SSH_RSA_MINIMUM_MODULUS_SIZE)
 		return SSH_ERR_INVALID_ARGUMENT;
 
 	if ((b = sshbuf_from(signature, signaturelen)) == NULL)

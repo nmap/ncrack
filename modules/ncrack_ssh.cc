@@ -577,8 +577,8 @@ ssh_free(Connection *con)
     }
   }
 
-  EVP_CIPHER_CTX_cleanup(&p->receive_context.evp);
-  EVP_CIPHER_CTX_cleanup(&p->send_context.evp);
+  EVP_CIPHER_CTX_free(p->receive_context.evp);
+  EVP_CIPHER_CTX_free(p->send_context.evp);
 
   buffer_free(p->input);
   buffer_free(p->output);
