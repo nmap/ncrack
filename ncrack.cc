@@ -961,7 +961,7 @@ ncrack_main(int argc, char **argv)
         } else if (!strcmp(long_options[option_index].name, "services")) {
           parse_services(optarg, services_cmd);
         } else if (!strcmp(long_options[option_index].name, "list")) {
-          o.list_only++;
+          o.list_only = true;
         } else if (!optcmp(long_options[option_index].name,
               "connection-limit")) {
           o.connection_limit = atoi(optarg);
