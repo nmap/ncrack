@@ -1,8 +1,6 @@
-
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_cassandra.cc -- ncrack module for the Cassandra DBMS Service     *
+ * Created by Barrend                                                      *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -129,29 +127,82 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef MODULES_H 
-#define MODULES_H 1
 
+
+#include "ncrack.h"
 #include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
 
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
-void ncrack_imap(nsock_pool nsp, Connection *con);
-void ncrack_smb(nsock_pool nsp, Connection *con);
-void ncrack_rdp(nsock_pool nsp, Connection *con);
-void ncrack_vnc(nsock_pool nsp, Connection *con);
-void ncrack_sip(nsock_pool nsp, Connection *con);
-void ncrack_redis(nsock_pool nsp, Connection *con);
-void ncrack_psql(nsock_pool nsp, Connection *con);
-void ncrack_mysql(nsock_pool nsp, Connection *con);
-void ncrack_winrm(nsock_pool nsp, Connection *con);
-void ncrack_owa(nsock_pool nsp, Connection *con);
-void ncrack_cassandra(nsock_pool nsp, Connection *con);
-void ncrack_mssql(nsock_pool nsp, Connection *con);
-void ncrack_mongodb(nsock_pool nsp, Connection *con);
-void ncrack_cvs(nsock_pool nsp, Connection *con);
+#define CVS_TIMEOUT 20000 //here
 
-#endif
+extern NcrackOps o;
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+static int cvs_loop_read(nsock_pool nsp, Connection *con);
+    
+
+enum states { CVS_INIT, CVS_USER };
+
+static int
+cvs_loop_read(nsock_pool nsp, Connection *con)
+{
+  if ((con->inbuf == NULL) || !(memsearch((const char *)con->inbuf->get_dataptr(),"I LOVE YOU\n", con->inbuf->get_len())))
+  {
+    nsock_read(nsp, con->niod, ncrack_read_handler, CVS_TIMEOUT, con);
+    return -1;
+  }
+  if (memsearch((const char *)con->inbuf->get_dataptr(),"I HATE YOU\n",con->inbuf->get_len()))
+    return 1;
+  return 0;
+}
+
+void
+ncrack_cvs(nsock_pool nsp, Connection *con)
+{
+  nsock_iod nsi = con->niod;
+  char *pass1;
+  char *pass;
+  char key[] = {
+        111, 52, 75, 119, 49, 34, 82, 81, 95, 65, 112, 86, 118, 110, 122, 105, 0, 57, 83, 43, 46, 102, 40, 89, 38, 103, 45, 50, 42, 123, 91, 35, 125, 55, 54, 66, 124, 126, 59, 47, 92, 71, 115, 0, 0, 0, 0, 56, 0, 121, 117, 104, 101, 100, 69, 73, 99, 63, 94, 93, 39, 37, 61, 48, 58, 113, 32, 90, 44, 98, 60, 51, 33, 97, 62
+      };
+  
+  int32_t i;
+  switch(con->state)
+  {
+    case CVS_INIT:
+
+      con->state = CVS_USER;    
+      delete con->inbuf;
+      con->inbuf = NULL;
+      printf("0");
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+      memset(pass, 0, sizeof(pass));
+      strncpy(pass, pass1, 512);
+      for (i = 0; i< strlen(pass1); i++){
+        pass[i] = key[pass[i] - 0x20];
+      }
+      printf("1");
+      con->outbuf->snprintf(69 + strlen(con->user) + strlen(con->pass), "BEGIN VERIFICATION REQUEST\n/home/cvsroot\n%s\nA%s\nEND VERIFICATION REQUEST\n", con->user, con->pass);
+      nsock_write(nsp, nsi, ncrack_write_handler, CVS_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+      printf("2");
+    case CVS_USER: 
+      if (cvs_loop_read(nsp,con) < 0){
+        break;
+      }
+      if (cvs_loop_read(nsp,con) == 0)
+        con->auth_success = true;
+      
+      con->state = CVS_INIT;
+
+      return ncrack_module_end(nsp, con);
+  }
+}
+
