@@ -165,11 +165,12 @@ void
 ncrack_cvs(nsock_pool nsp, Connection *con)
 {
   nsock_iod nsi = con->niod;
-  char *pass1;
+  const char *pass1;
   char pass[513];
   char key[] = { 0, 120, 53, 0, 0, 109, 72, 108, 70, 64, 76, 67, 116, 74, 68, 87, 111, 52, 75, 119, 49, 34, 82, 81, 95, 65, 112, 86, 118, 110, 122, 105, 0, 57, 83, 43, 46, 102, 40, 89, 38, 103, 45, 50, 42, 123, 91, 35, 125, 55, 54, 66, 124, 126, 59, 47, 92, 71, 115, 0, 0, 0, 0, 56, 0, 121, 117, 104, 101, 100, 69, 73, 99, 63, 94, 93, 39, 37, 61, 48, 58, 113, 32, 90, 44, 98, 60, 51, 33, 97, 62};
-  char *empty = "";
-  int32_t i;
+  const char *empty = "";
+  //int32_t i;
+  unsigned i;
   switch(con->state)
   {
     case CVS_INIT:
@@ -184,7 +185,7 @@ ncrack_cvs(nsock_pool nsp, Connection *con)
       pass1 = empty;
       memset(pass, 0, sizeof(pass));
       strncpy(pass, pass1, 512);
-      for (i = 0; i< strlen(pass1); i++){
+      for (i = 0; i < strlen(pass1); i++){
         pass[i] = key[pass[i] - 0x20];
       }
       printf("1");
