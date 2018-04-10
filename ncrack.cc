@@ -795,6 +795,8 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_ssh(nsp, con);
   else if (!strcmp(name, "owa"))
     ncrack_owa(nsp, con);
+  else if (!strcmp(name, "wordpress") || !strcmp(name, "wp"))
+    ncrack_wordpress(nsp, con);
   else if (!strcmp(name, "https"))
     ncrack_http(nsp, con);
   else if (!strcmp(name, "sip"))
@@ -1831,13 +1833,14 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       ncrack_connection_end(nsp, con);
     } else if (serv->just_started) {
       con->check_closed = true;
-      nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
+      nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
     } else if ((!serv->auth_tries
           || con->login_attempts < (unsigned long)serv->auth_tries)
         && con->login_attempts < serv->supported_attempts
         && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
       if (pair_ret == 1)
         con->from_pool = true;
+
 
       call_module(nsp, con);
     } else {
@@ -2091,6 +2094,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
     if (con->inbuf == NULL)
       con->inbuf = new Buf();
+
     con->inbuf->append(str, nbytes);
 
     return call_module(nsp, con);
