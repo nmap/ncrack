@@ -136,16 +136,6 @@
 using namespace std;
 
 #define USER_AGENT "User-Agent: Ncrack (https://nmap.org/ncrack) \r\n"
-#define HTTP_LANG "Accept-Language: en-US,en;q=0.5\r\n"
-#define HTTP_ENCODING "Accept-Encoding: gzip, deflate, br\r\n"
-#define HTTP_ACCEPT "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
-#define HTTP_COOKIE "Cookie: PrivateComputer=true; PBack=0\r\n"
-#define HTTP_CONNECTION "Connection: close\r\n"
-#define HTTP_CONTENT_TYPE "Content-Type: application/x-www-form-urlencoded\r\n"
-#define HTTP_UPGRADE "Upgrade-Insecure-Requests: 1\r\n"
-
-#define HTTP_UNKNOWN "Service might not be HTTP."
-#define HTTP_NOAUTH_SCHEME "Service didn't reply with authentication scheme."
 #define WORDPRESS_TIMEOUT 10000
 
 extern NcrackOps o;
@@ -166,7 +156,6 @@ typedef struct wordpress_info {
 void
 ncrack_wordpress(nsock_pool nsp, Connection *con)
 {
-
   Service *serv = con->service;
   nsock_iod nsi = con->niod;
   wp_info *info; 
@@ -174,18 +163,21 @@ ncrack_wordpress(nsock_pool nsp, Connection *con)
   size_t formlen;
 
   info = NULL;
-  if (con->misc_info) {
-    info = (wp_info *) con->misc_info;
-    /* check if we have already verified existence for the wp-login panel
-     * If yes and we just started this connection, 
-     * then jump straight to the WORDPRESS_AUTH state */
+  if (serv->module_data) {
+    info = (wp_info *) serv->module_data;
+    /* Check if we have already verified existence for the wp-login panel
+     * the serv->module_data carries data across all connections because it is
+     * in the Service variable, not the Connection one.
+     * If we have verified the existence and we just started this connection, 
+     * then jump straight to the WORDPRESS_AUTH state - so we only need to do this
+     * once for this particular service (not once per connection) */
     if (info->wpadmin_ok && con->state == WORDPRESS_INIT)
       con->state = WORDPRESS_AUTH;
   }
 
-  if (con->misc_info == NULL) {
-    con->misc_info = (wp_info *)safe_zalloc(sizeof(wp_info));
-    info = (wp_info *)con->misc_info;
+  if (serv->module_data == NULL) {
+    serv->module_data = (wp_info *)safe_zalloc(sizeof(wp_info));
+    info = (wp_info *)serv->module_data;
   } 
 
   switch (con->state)
@@ -210,8 +202,8 @@ ncrack_wordpress(nsock_pool nsp, Connection *con)
         con->outbuf->append("/", 1);
         con->outbuf->snprintf(strlen(serv->path), "%s", serv->path);
       } else {
-        /* default path */
-        con->outbuf->append("/wordpress/wp-login.php", 23); // TODO: change this
+        /* default path - TODO: change this to /wp-login.php for default */
+        con->outbuf->append("/wordpress/wp-login.php", 23);       
       }
 
       con->outbuf->append(" HTTP/1.1\r\nHost: ", 17);
