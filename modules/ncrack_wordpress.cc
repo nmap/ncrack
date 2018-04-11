@@ -153,6 +153,12 @@ typedef struct wordpress_info {
 } wp_info;
 
 
+typedef struct http_info {
+  /* true if Content-Length in received HTTP packet > 0 */
+  int content_expected;
+} http_info;
+
+
 void
 ncrack_wordpress(nsock_pool nsp, Connection *con)
 {
@@ -161,8 +167,9 @@ ncrack_wordpress(nsock_pool nsp, Connection *con)
   wp_info *info; 
   char tmp[16];
   size_t formlen;
-
   info = NULL;
+
+
   if (serv->module_data) {
     info = (wp_info *) serv->module_data;
     /* Check if we have already verified existence for the wp-login panel
@@ -214,6 +221,14 @@ ncrack_wordpress(nsock_pool nsp, Connection *con)
         con->outbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
 
       con->outbuf->snprintf(61, "\r\nUser-Agent: %s", USER_AGENT);
+      /* We want to "keep-alive" the connection as long as possible, because the time cost
+       * of a new TCP connection is usually higher than the waiting time for a response for
+       * each authentication attempt. 
+       * This is a general concept in network authentication cracking and that Ncrack tries
+       * to abide by: we want to have as many connections as optimally possible
+       * without DoS-ing the service while at the same time maximizing the number of
+       * authentication attempts per connection.
+       */
       con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
 
       /* mark end of HTTP packet */
@@ -252,9 +267,6 @@ ncrack_wordpress(nsock_pool nsp, Connection *con)
         serv->end.reason = Strndup("No service available on that URL.", 68);
         return ncrack_module_end(nsp, con);
       }
-
-      // Useful for debugging
-      //memprint((const char *)con->inbuf->get_dataptr(), con->inbuf->get_len());
 
       delete con->inbuf;
       con->inbuf = NULL;
@@ -356,10 +368,24 @@ ncrack_wordpress(nsock_pool nsp, Connection *con)
 static int
 wordpress_loop_read(nsock_pool nsp, Connection *con)
 {
+  http_info *http_state;  /* per connection state */
+  char *ptr;
+  char tmp[2];
+  long int num;
+
+  if (con->misc_info) {
+    http_state = (http_info *)con->misc_info;
+  } else {
+    http_state = (http_info *)safe_zalloc(sizeof(http_info));
+  }
+
   if (con->inbuf == NULL) {
     nsock_read(nsp, con->niod, ncrack_read_handler, WORDPRESS_TIMEOUT, con);
     return -1;
   }
+
+  // Useful for debugging
+  //memprint((const char *)con->inbuf->get_dataptr(), con->inbuf->get_len());
 
   /* Until when do we keep reading data? 
    * </html>\n is a good indicator but keep in mind other implementations might send </html>\r\n instead
@@ -367,20 +393,41 @@ wordpress_loop_read(nsock_pool nsp, Connection *con)
    * the reply always ends in </html>\n then we search for that as the end of the packet (to avoid any 
    * fancy HTTP parsing) - we do this only when we are in WORDPRESS_GET state 
    */
-  if (con->state == WORDPRESS_GET && (!memsearch((const char *)con->inbuf->get_dataptr(), "</html>\n", con->inbuf->get_len()))) { 
-    nsock_read(nsp, con->niod, ncrack_read_handler, WORDPRESS_TIMEOUT, con);
-    return -1;
-  }
-  
-  /* 
-   * For the rest of the cases - when we need an indicator for the replies from wordpress to our authentication
-   * attempts, we search for \r\n\r\n as the end of the packet 
-   */
-  if (!memsearch((const char *)con->inbuf->get_dataptr(), "\r\n\r\n", con->inbuf->get_len())) {
-    nsock_read(nsp, con->niod, ncrack_read_handler, WORDPRESS_TIMEOUT, con);
-    return -1;
+
+  if ((ptr = memsearch((const char *)con->inbuf->get_dataptr(), "Content-Length:", con->inbuf->get_len()))) {
+
+     /* make pointer point to the end of string "Content-Length:" (plus one space) */
+     ptr += 16; /* it should now point to the Content-Length number */
+
+     tmp[0] = *ptr;
+     tmp[1] = '\0';
+     num = strtol(tmp, NULL, 10);
+     /* if first character of Content-length is anything else other than 0, then we expect to 
+      * see an HTTP payload */
+     if (num != 0) {
+       http_state->content_expected = 1;
+     }
   }
 
+  /* If you have content (content-length > 0) then you need to read until </html> */
+  if (http_state->content_expected) {
+    if (!memsearch((const char *)con->inbuf->get_dataptr(), "</html>\n", con->inbuf->get_len())) { 
+      http_state->content_expected = 0;
+      nsock_read(nsp, con->niod, ncrack_read_handler, WORDPRESS_TIMEOUT, con);
+      return -1;
+    }
+  } else {
+    /* 
+     * For the rest of the cases - when we need an indicator for the replies from wordpress to our authentication
+     * attempts, we search for \r\n\r\n as the end of the packet 
+     */
+    if (!memsearch((const char *)con->inbuf->get_dataptr(), "\r\n\r\n", con->inbuf->get_len())) {
+      nsock_read(nsp, con->niod, ncrack_read_handler, WORDPRESS_TIMEOUT, con);
+      return -1;
+    }
+  }
+  
+ 
   return 0;
 }
 
