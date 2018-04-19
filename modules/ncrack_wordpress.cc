@@ -135,7 +135,7 @@
 
 using namespace std;
 
-#define USER_AGENT "User-Agent: Ncrack (https://nmap.org/ncrack) \r\n"
+#define USER_AGENT "Ncrack (https://nmap.org/ncrack)\r\n"
 #define WORDPRESS_TIMEOUT 10000
 
 extern NcrackOps o;
@@ -156,6 +156,7 @@ typedef struct wordpress_info {
 typedef struct http_info {
   /* true if Content-Length in received HTTP packet > 0 */
   int content_expected;
+  int chunk_expected;
 } http_info;
 
 
@@ -209,8 +210,8 @@ ncrack_wordpress(nsock_pool nsp, Connection *con)
         con->outbuf->append("/", 1);
         con->outbuf->snprintf(strlen(serv->path), "%s", serv->path);
       } else {
-        /* default path - TODO: change this to /wp-login.php for default */
-        con->outbuf->append("/wordpress/wp-login.php", 23);       
+        /* default path - /wp-login.php */
+        con->outbuf->append("/wp-login.php", 13);       
       }
 
       con->outbuf->append(" HTTP/1.1\r\nHost: ", 17);
@@ -220,7 +221,7 @@ ncrack_wordpress(nsock_pool nsp, Connection *con)
       else 
         con->outbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
 
-      con->outbuf->snprintf(61, "\r\nUser-Agent: %s", USER_AGENT);
+      con->outbuf->snprintf(48, "\r\nUser-Agent: %s", USER_AGENT);
       /* We want to "keep-alive" the connection as long as possible, because the time cost
        * of a new TCP connection is usually higher than the waiting time for a response for
        * each authentication attempt. 
@@ -290,14 +291,14 @@ ncrack_wordpress(nsock_pool nsp, Connection *con)
         con->outbuf->snprintf(strlen(serv->path), "%s", serv->path);
       } else {
         /* default path */
-        con->outbuf->append("/wordpress/wp-login.php", 23); // TODO: change this
+        con->outbuf->append("/wp-login.php", 13); 
       }
       con->outbuf->append(" HTTP/1.1\r\nHost: ", 17);
       if (serv->target->targetname)
         con->outbuf->append(serv->target->targetname, strlen(serv->target->targetname));
       else 
         con->outbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
-      con->outbuf->snprintf(61, "\r\nUser-Agent: %s", USER_AGENT);
+      con->outbuf->snprintf(48, "\r\nUser-Agent: %s", USER_AGENT);
       con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
       /* Up until this point, the data we put in the buffer were exactly the same as in the HTTP
        * GET request, from hereon the data are different: 
@@ -395,7 +396,6 @@ wordpress_loop_read(nsock_pool nsp, Connection *con)
    */
 
   if ((ptr = memsearch((const char *)con->inbuf->get_dataptr(), "Content-Length:", con->inbuf->get_len()))) {
-
      /* make pointer point to the end of string "Content-Length:" (plus one space) */
      ptr += 16; /* it should now point to the Content-Length number */
 
@@ -407,15 +407,33 @@ wordpress_loop_read(nsock_pool nsp, Connection *con)
      if (num != 0) {
        http_state->content_expected = 1;
      }
+  } else if ((ptr = memsearch((const char *)con->inbuf->get_dataptr(), "Transfer-Encoding: chunked", con->inbuf->get_len()))) {
+    http_state->chunk_expected = 1;
   }
 
   /* If you have content (content-length > 0) then you need to read until </html> */
   if (http_state->content_expected) {
-    if (!memsearch((const char *)con->inbuf->get_dataptr(), "</html>\n", con->inbuf->get_len())) { 
+    if (!memsearch((const char *)con->inbuf->get_dataptr(), "</html>\n", con->inbuf->get_len())) {  
       http_state->content_expected = 0;
       nsock_read(nsp, con->niod, ncrack_read_handler, WORDPRESS_TIMEOUT, con);
       return -1;
     }
+  } else if (http_state->chunk_expected) {
+ 
+    if (con->state == WORDPRESS_GET && !memsearch((const char *)con->inbuf->get_dataptr(), "</html>\n\t", con->inbuf->get_len())) { 
+      http_state->chunk_expected = 0;
+      nsock_read(nsp, con->niod, ncrack_read_handler, WORDPRESS_TIMEOUT, con);
+      return -1;
+    } 
+
+    if ((ptr = memsearch((const char *)con->inbuf->get_dataptr(), "\r\n\r\n", con->inbuf->get_len()))) {
+      ptr += 4;
+      if (memcmp(ptr, "\0", 1)) {
+        http_state->chunk_expected = 0;
+        return 0;
+      }
+    }
+    
   } else {
     /* 
      * For the rest of the cases - when we need an indicator for the replies from wordpress to our authentication
