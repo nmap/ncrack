@@ -357,7 +357,9 @@ lookup_init(const char *const filename)
      */
     if (!strncmp(servicename, "https", sizeof("https"))
       || !strncmp(servicename, "pop3s", sizeof("pop3s"))
-      || !strncmp(servicename, "owa", sizeof("owa")))
+      || !strncmp(servicename, "owa", sizeof("owa"))
+      || !strncmp(servicename, "wordpress-tls", sizeof("wordpress-tls")) 
+      || !strncmp(servicename, "wp-tls", sizeof("wp-tls")))
       temp.misc.ssl = true;
 
     if (!strncmp(servicename, "mongodb", sizeof("mongodb")))
@@ -778,7 +780,13 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_imap(nsp, con);
   else if (!strcmp(name, "cassandra"))
     ncrack_cassandra(nsp, con);  
+  else if (!strcmp(name, "joomla"))
+    ncrack_joomla(nsp, con);  
+  else if (!strcmp(name, "wordpress") || !strcmp(name, "wp"))
+    ncrack_wordpress(nsp, con);
 #if HAVE_OPENSSL
+  else if (!strcmp(name, "wordpress-tls") || !strcmp(name, "wp-tls"))
+    ncrack_wordpress(nsp, con);
   else if (!strcmp(name, "winrm"))
     ncrack_winrm(nsp, con);
   else if (!strcmp(name, "mongodb"))
@@ -795,8 +803,6 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_ssh(nsp, con);
   else if (!strcmp(name, "owa"))
     ncrack_owa(nsp, con);
-  else if (!strcmp(name, "wordpress") || !strcmp(name, "wp"))
-    ncrack_wordpress(nsp, con);
   else if (!strcmp(name, "https"))
     ncrack_http(nsp, con);
   else if (!strcmp(name, "sip"))
