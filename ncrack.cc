@@ -6,7 +6,7 @@
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
- * The Nmap Security Scanner is (C) 1996-2017 Insecure.Com LLC ("The Nmap  *
+ * The Nmap Security Scanner is (C) 1996-2018 Insecure.Com LLC ("The Nmap  *
  * Project"). Nmap is also a registered trademark of the Nmap Project.     *
  * This program is free software; you may redistribute and/or modify it    *
  * under the terms of the GNU General Public License as published by the   *
@@ -90,12 +90,12 @@
  * Covered Software without special permission from the copyright holders. *
  *                                                                         *
  * If you have any questions about the licensing restrictions on using     *
- * Nmap in other works, are happy to help.  As mentioned above, we also    *
- * offer alternative license to integrate Nmap into proprietary            *
+ * Nmap in other works, we are happy to help.  As mentioned above, we also *
+ * offer an alternative license to integrate Nmap into proprietary         *
  * applications and appliances.  These contracts have been sold to dozens  *
  * of software vendors, and generally include a perpetual license as well  *
- * as providing for priority support and updates.  They also fund the      *
- * continued development of Nmap.  Please email sales@nmap.com for further *
+ * as providing support and updates.  They also fund the continued         *
+ * development of Nmap.  Please email sales@nmap.com for further           *
  * information.                                                            *
  *                                                                         *
  * If you have received a written license agreement or contract for        *
@@ -357,7 +357,9 @@ lookup_init(const char *const filename)
      */
     if (!strncmp(servicename, "https", sizeof("https"))
       || !strncmp(servicename, "pop3s", sizeof("pop3s"))
-      || !strncmp(servicename, "owa", sizeof("owa")))
+      || !strncmp(servicename, "owa", sizeof("owa"))
+      || !strncmp(servicename, "wordpress-tls", sizeof("wordpress-tls")) 
+      || !strncmp(servicename, "wp-tls", sizeof("wp-tls")))
       temp.misc.ssl = true;
 
     if (!strncmp(servicename, "mongodb", sizeof("mongodb")))
@@ -780,7 +782,13 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_cassandra(nsp, con);  
   else if (!strcmp(name,"cvs"))
     ncrack_cvs(nsp,con);
+  else if (!strcmp(name, "joomla"))
+    ncrack_joomla(nsp, con);  
+  else if (!strcmp(name, "wordpress") || !strcmp(name, "wp"))
+    ncrack_wordpress(nsp, con);
 #if HAVE_OPENSSL
+  else if (!strcmp(name, "wordpress-tls") || !strcmp(name, "wp-tls"))
+    ncrack_wordpress(nsp, con);
   else if (!strcmp(name, "winrm"))
     ncrack_winrm(nsp, con);
   else if (!strcmp(name, "mongodb"))
@@ -1833,13 +1841,14 @@ ncrack_module_end(nsock_pool nsp, void *mydata)
       ncrack_connection_end(nsp, con);
     } else if (serv->just_started) {
       con->check_closed = true;
-      nsock_read(nsp, nsi, ncrack_read_handler, 100, con);
+      nsock_read(nsp, nsi, ncrack_read_handler, 10, con);
     } else if ((!serv->auth_tries
           || con->login_attempts < (unsigned long)serv->auth_tries)
         && con->login_attempts < serv->supported_attempts
         && (pair_ret = serv->getNextPair(&con->user, &con->pass)) != -1) {
       if (pair_ret == 1)
         con->from_pool = true;
+
 
       call_module(nsp, con);
     } else {
@@ -2093,6 +2102,7 @@ ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata)
 
     if (con->inbuf == NULL)
       con->inbuf = new Buf();
+
     con->inbuf->append(str, nbytes);
 
     return call_module(nsp, con);
