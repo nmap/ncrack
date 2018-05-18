@@ -127,8 +127,6 @@
  *                                                                         *
  ***************************************************************************/
 
-
-
 #include "ncrack.h"
 #include "nsock.h"
 #include "NcrackOps.h"
@@ -145,19 +143,18 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 static int cvs_loop_read(nsock_pool nsp, Connection *con);
     
-
 enum states { CVS_INIT, CVS_USER };
+
+static char key[] = { 0, 120, 53, 0, 0, 109, 72, 108, 70, 64, 76, 67, 116, 74, 68, 87, 111, 52, 75, 119, 49, 34, 82, 81, 95, 65, 112, 86, 118, 110, 122, 105, 0, 57, 83, 43, 46, 102, 40, 89, 38, 103, 45, 50, 42, 123, 91, 35, 125, 55, 54, 66, 124, 126, 59, 47, 92, 71, 115, 0, 0, 0, 0, 56, 0, 121, 117, 104, 101, 100, 69, 73, 99, 63, 94, 93, 39, 37, 61, 48, 58, 113, 32, 90, 44, 98, 60, 51, 33, 97, 62};
 
 static int
 cvs_loop_read(nsock_pool nsp, Connection *con)
 {
-  if ((con->inbuf == NULL) || !(memsearch((const char *)con->inbuf->get_dataptr(),"I LOVE YOU\n", con->inbuf->get_len())))
-  {
+  if ((con->inbuf == NULL) || !memsearch((const char *)con->inbuf->get_dataptr(), "\n", con->inbuf->get_len())) {
     nsock_read(nsp, con->niod, ncrack_read_handler, CVS_TIMEOUT, con);
     return -1;
   }
-  if (memsearch((const char *)con->inbuf->get_dataptr(),"I HATE YOU\n",con->inbuf->get_len()))
-    return 1;
+
   return 0;
 }
 
@@ -165,44 +162,40 @@ void
 ncrack_cvs(nsock_pool nsp, Connection *con)
 {
   nsock_iod nsi = con->niod;
-  //char *pass1="";
-  char pass[512];
-  char key[] = { 0, 120, 53, 0, 0, 109, 72, 108, 70, 64, 76, 67, 116, 74, 68, 87, 111, 52, 75, 119, 49, 34, 82, 81, 95, 65, 112, 86, 118, 110, 122, 105, 0, 57, 83, 43, 46, 102, 40, 89, 38, 103, 45, 50, 42, 123, 91, 35, 125, 55, 54, 66, 124, 126, 59, 47, 92, 71, 115, 0, 0, 0, 0, 56, 0, 121, 117, 104, 101, 100, 69, 73, 99, 63, 94, 93, 39, 37, 61, 48, 58, 113, 32, 90, 44, 98, 60, 51, 33, 97, 62};
-  int32_t i;
-  //unsigned i;
+  char encoded_pass[512];
+  size_t i = 0;
+
   switch(con->state)
   {
     case CVS_INIT:
-      
-      con->state = CVS_USER;    
-      delete con->inbuf;
-      con->inbuf = NULL;
-      printf("0");
+
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
-      memset(pass, 0, sizeof(pass));
-      
-      /*
-      for (i = 0; i < strlen(pass); i++){
-        pass[i] = key[pass[i] - 0x20];
+
+      memset(encoded_pass, 0, sizeof(encoded_pass));
+      strncpy(encoded_pass, con->pass, sizeof(encoded_pass) - 1);
+
+      for (i = 0; i < strlen(con->pass); i++) {
+        encoded_pass[i] = key[encoded_pass[i] - 0x20];
       }
-      */
-      pass[0] = key[pass[0] - 0x20];
-      pass[1] = key[pass[1] - 0x20];
-      pass[2] = key[pass[2] - 0x20];
-      printf("1");
-      con->outbuf->snprintf(69 + strlen(con->user) + strlen(con->pass), "BEGIN VERIFICATION REQUEST\n/home/cvsroot\n%s\nA%s\nEND VERIFICATION REQUEST\n", con->user, con->pass);
+
+      con->state = CVS_USER;
+      con->outbuf->snprintf(69 + strlen(con->user) + strlen(encoded_pass),
+          "BEGIN VERIFICATION REQUEST\n/home/cvsroot\n%s\nA%s\nEND VERIFICATION REQUEST\n",
+          con->user, encoded_pass);
       nsock_write(nsp, nsi, ncrack_write_handler, CVS_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
-      printf("2");
       break;
+
     case CVS_USER: 
+
       if (cvs_loop_read(nsp,con) < 0){
         break;
       }
-      if (cvs_loop_read(nsp,con) == 0)
+
+      if (memsearch((const char *)con->inbuf->get_dataptr(),"I LOVE YOU\n", con->inbuf->get_len()))
         con->auth_success = true;
-      
+
       con->state = CVS_INIT;
 
       return ncrack_module_end(nsp, con);
