@@ -4190,8 +4190,8 @@ rdp_confirm_active(Connection *con)
   uint32_t flags = 0x0030 | SEC_ENCRYPT;
   Buf *data = new Buf();
 
-  caplen = RDP_CAPLEN_GENERAL +
-    RDP_CAPLEN_BITMAP 
+  caplen =  RDP_CAPLEN_GENERAL 
+    + RDP_CAPLEN_BITMAP 
     + RDP_CAPLEN_ORDER
     + RDP_CAPLEN_COLCACHE
     + RDP_CAPLEN_ACTIVATE
@@ -4199,6 +4199,7 @@ rdp_confirm_active(Connection *con)
     + RDP_CAPLEN_SHARE 
     + RDP_CAPLEN_BRUSHCACHE
     + RDP_CAPLEN_INPUT
+    + RDP_CAPLEN_FONT
     + RDP_CAPLEN_SOUND
     + RDP_CAPLEN_GLYPHCACHE
     + RDP_CAPLEN_MULTIFRAGMENTUPDATE
