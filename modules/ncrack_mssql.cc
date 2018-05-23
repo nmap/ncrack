@@ -326,10 +326,10 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
 
       char *username;
       username = (char *)safe_malloc(30 + 1);
-      sprintf(username, "%s", con->user);
+      snprintf(username, 31, "%s", con->user);
       char *password;
       password = (char *)safe_malloc(30 + 1);
-      sprintf(password, "%s", con->pass);
+      snprintf(password, 31, "%s", con->pass);
 
       /* Fill it up to 30 chars with zeros. */
       memset(username + strlen(con->user), 0, 30 - strlen(con->user));

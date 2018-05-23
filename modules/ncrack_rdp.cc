@@ -185,6 +185,8 @@ typedef struct rdp_state {
 
   int login_result;
 
+  int rdp_version; /* 4, 5, 6 */
+
   uint8_t order_state_type;
 
   typedef struct order_memblt {
@@ -722,6 +724,200 @@ typedef struct rdp_bmpcache_caps {
 } __attribute__((__packed__)) rdp_bmpcache_caps;
 
 
+#define RDP_CAPSET_BMPCACHE2	19
+#define RDP_CAPLEN_BMPCACHE2	0x28
+#define BMPCACHE2_C0_CELLS	0x78
+#define BMPCACHE2_C1_CELLS	0x78
+#define BMPCACHE2_C2_CELLS	0x150
+typedef struct rdp_bmpcache_caps2 {
+
+  uint16_t type;
+  uint16_t len;
+  uint16_t bitmap_cache_persist;
+  uint16_t caches_num; /* big endian */
+  uint32_t bmp_c0_cells;
+  uint32_t bmp_c1_cells;
+  uint32_t bmp_c2_cells;
+  uint8_t unused[20];
+
+  rdp_bmpcache_caps2() {
+    type = RDP_CAPSET_BMPCACHE2;
+    len = RDP_CAPLEN_BMPCACHE2;
+    bitmap_cache_persist = 0;
+    caches_num = htons(3);
+    bmp_c0_cells = BMPCACHE2_C0_CELLS;
+    bmp_c1_cells = BMPCACHE2_C1_CELLS;
+    bmp_c2_cells = BMPCACHE2_C2_CELLS;
+    memset(&unused, 0, sizeof(unused));
+  }
+
+} __attribute__((__packed__)) rdp_bmpcache_caps2;
+
+
+#define RDP_CAPSET_BRUSHCACHE	15
+#define RDP_CAPLEN_BRUSHCACHE	0x08
+typedef struct rdp_brushcache_caps {
+  uint16_t type;
+  uint16_t len;
+  uint32_t cache_type;
+
+  rdp_brushcache_caps() {
+    type = RDP_CAPSET_BRUSHCACHE;
+    len = RDP_CAPLEN_BRUSHCACHE;
+    cache_type = 1;
+  }
+
+} __attribute__((__packed__)) rdp_brushcache_caps;
+
+
+#define RDP_CAPSET_MULTIFRAGMENTUPDATE 26
+#define RDP_CAPLEN_MULTIFRAGMENTUPDATE 8
+typedef struct rdp_multifragment_caps {
+
+  uint16_t type;
+  uint16_t len;
+  uint32_t max_request_size;
+
+  rdp_multifragment_caps() {
+    type = RDP_CAPSET_MULTIFRAGMENTUPDATE;
+    len = RDP_CAPLEN_MULTIFRAGMENTUPDATE;
+    max_request_size = 65535;
+  }
+
+} __attribute__((__packed__)) rdp_multifragment_caps;
+
+
+#define RDP_CAPSET_LARGE_POINTER	27
+#define RDP_CAPLEN_LARGE_POINTER	6
+typedef struct rdp_large_pointer_caps {
+
+  uint16_t type;
+  uint16_t len;
+  uint16_t flags;
+
+  rdp_large_pointer_caps() {
+    type = RDP_CAPSET_LARGE_POINTER;
+    len = RDP_CAPLEN_LARGE_POINTER;
+    flags = 1;
+  }
+  
+} __attribute__((__packed__)) rdp_large_pointer_caps;
+
+
+#define RDP_CAPSET_GLYPHCACHE	16
+#define RDP_CAPLEN_GLYPHCACHE	52
+typedef struct rdp_glyphcache_caps {
+  
+  uint16_t type;
+  uint16_t len;
+  uint16_t entries1; uint16_t maxcellsize1;
+  uint16_t entries2; uint16_t maxcellsize2;
+  uint16_t entries3; uint16_t maxcellsize3;
+  uint16_t entries4; uint16_t maxcellsize4;
+  uint16_t entries5; uint16_t maxcellsize5;
+  uint16_t entries6; uint16_t maxcellsize6;
+  uint16_t entries7; uint16_t maxcellsize7;
+  uint16_t entries8; uint16_t maxcellsize8;
+  uint16_t entries9; uint16_t maxcellsize9;
+  uint16_t entries10; uint16_t maxcellsize10;
+  uint32_t frag_cache;
+  uint16_t glyph_support_level;
+  uint16_t pad0;
+
+  rdp_glyphcache_caps() {
+    type = RDP_CAPSET_GLYPHCACHE;
+    len = RDP_CAPLEN_GLYPHCACHE;
+    entries1 = 254; maxcellsize1 = 4;
+    entries2 = 254; maxcellsize2 = 4;
+    entries3 = 254; maxcellsize3 = 8;
+    entries4 = 254; maxcellsize4 = 8;
+    entries5 = 254; maxcellsize5 = 16;
+    entries6 = 254; maxcellsize6 = 32;
+    entries7 = 254; maxcellsize7 = 64;
+    entries8 = 254; maxcellsize8 = 128;
+    entries9 = 254; maxcellsize9 = 256;
+    entries10 = 64; maxcellsize10 = 2048;
+    frag_cache = 0x01000100;
+    glyph_support_level = 0x0002;
+    pad0 = 0;
+  }
+
+} __attribute__((__packed__)) rdp_glyphcache_caps;
+
+
+#define RDP_CAPSET_FONT		14
+#define RDP_CAPLEN_FONT		8
+typedef struct rdp_font_caps {
+  
+  uint16_t type;
+  uint16_t len;
+  uint16_t flags;
+  uint16_t pad0;
+
+  rdp_font_caps() {
+    type = RDP_CAPSET_FONT;
+    len = RDP_CAPLEN_FONT;
+    flags = 0x0001;
+    pad0 = 0;
+  }
+} __attribute__((__packed__)) rdp_font_caps;
+
+
+
+#define RDP_CAPSET_INPUT	13
+#define RDP_CAPLEN_INPUT	88
+typedef struct rdp_input_caps {
+
+  uint16_t type;
+  uint16_t len;
+  uint16_t flags;
+  uint16_t pad0;
+  uint32_t keyboard_layout;
+  uint32_t keyboard_type;
+  uint32_t keyboard_subtype;
+  uint32_t keyboard_funckey;
+  uint16_t ime_filename[64];
+
+  rdp_input_caps() {
+    type = RDP_CAPSET_INPUT;
+    len = RDP_CAPLEN_INPUT;
+    flags = 0x0001;
+    pad0 = 0;
+    keyboard_layout = 0x409;
+    keyboard_type = 0x4;
+    keyboard_subtype = 0;
+    keyboard_funckey = 0xC;
+    memset(ime_filename, 0, sizeof(ime_filename));
+
+    //for (int i = 0; i < sizeof(ime_filename) - 1; i++) {
+    //  ime_filename[i] = '\0'; 
+    //  ime_filename[i+1] = 0;
+    //}
+  }
+
+} __attribute__((__packed__)) rdp_input_caps;
+
+
+#define RDP_CAPSET_SOUND	12
+#define RDP_CAPLEN_SOUND	8
+typedef struct rdp_sound_caps {
+
+    uint16_t type;
+    uint16_t len;
+    uint16_t sound_flags;
+    uint16_t pad0; 
+
+    rdp_sound_caps() {
+      type = RDP_CAPSET_SOUND;
+      len = RDP_CAPLEN_SOUND;
+      sound_flags = 0x0001;
+      pad0 = 0;
+    }
+
+} __attribute__((__packed__)) rdp_sound_caps;
+
+
+
 #define RDP_CAPSET_COLCACHE 10
 #define RDP_CAPLEN_COLCACHE 0x08
 typedef struct rdp_colcache_caps {
@@ -804,6 +1000,27 @@ typedef struct rdp_pointer_caps {
   }
 
 } __attribute__((__packed__)) rdp_pointer_caps;
+
+
+#define RDP_CAPLEN_NEWPOINTER	0x0a
+
+typedef struct rdp_newpointer_caps {
+  
+  uint16_t type;
+  uint16_t len;
+  uint16_t color_ptr;
+  uint16_t cache_size;
+  uint16_t cache_size_new;
+
+  rdp_newpointer_caps() {
+    type = RDP_CAPSET_POINTER;
+    len = RDP_CAPLEN_NEWPOINTER;
+    color_ptr = 1;
+    cache_size = 20;
+    cache_size_new = 20;
+  }
+
+} __attribute__((__packed__)) rdp_newpointer_caps;
 
 
 #define RDP_CAPSET_SHARE 9
@@ -944,6 +1161,22 @@ typedef struct iso_itu_t_data {
   }
 
 } __attribute__((__packed__)) iso_itu_t_data;
+
+
+/* negotiate protocol */
+typedef struct iso_neg {
+  uint8_t negreq;
+  uint8_t zero;
+  uint16_t eight;
+  uint32_t neg_proto;
+
+  iso_neg() {
+    negreq = 1;  // negotiate request 
+    zero = 0;
+    eight = 8;
+    neg_proto = 0; // RDP = 0, SSL = 1, HYBRID = 2
+  }
+} __attribute__((__packed__)) iso_neg;
 
 
 /* 
@@ -1105,6 +1338,7 @@ typedef struct client_core_data {
   uint8_t word2;  /* 0 */
   uint32_t word3; /* 1 */
   uint8_t product_id[64]; /* all 0 */
+  uint8_t server_selected_protocol[4]; /* all 0 */
 
 } __attribute__((__packed__)) client_core_data;
 
@@ -1168,6 +1402,21 @@ typedef struct client_cluster_data {
   uint32_t pad; /* ? rdesktop seems to send another 32 zero bits */
 
 } __attribute__((__packed__)) client_cluster_data;
+
+
+/* 
+ * TS_TIME_ZONE_INFORMATION  
+ * (RDPv5 only)
+ */
+#if 0
+typedef struct ts_timezone_info {
+
+  uint32_t timezone;
+
+
+
+} __attribute__((__packed__)) ts_timezone_info;
+#endif
 
 
 
@@ -1295,8 +1544,14 @@ typedef struct mcs_response {
 
 }  __attribute__((__packed__)) mcs_response;
 
-static uint8_t pad0[8] = {
-  0, 0, 0, 0, 0, 0, 0, 0
+static uint8_t pad0[64] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0
 };
 
 static uint8_t pad54[40] = {
@@ -1407,7 +1662,8 @@ rdp_iso_connection_request(Connection *con)
 {
   iso_tpkt tpkt;
   iso_itu_t itu_t;
-  uint16_t length = 30 + strlen(COOKIE_USERNAME);
+  iso_neg neg;
+  uint16_t length = 30 + strlen(COOKIE_USERNAME) + 8;  // + 8 for RDP version 5
 
   tpkt.version = 3;
   tpkt.reserved = 0;
@@ -1427,6 +1683,9 @@ rdp_iso_connection_request(Connection *con)
       "Cookie: mstshash=");
   con->outbuf->snprintf(strlen(COOKIE_USERNAME), "%s", COOKIE_USERNAME);
   con->outbuf->snprintf(2, "%c%c", '\r', '\n');
+
+  // send negotiation request 
+  con->outbuf->append(&neg, sizeof(neg));
 
 }
 
@@ -1636,7 +1895,7 @@ rdp_mcs_connect(Connection *con)
   client_security_data csd;
   client_cluster_data cluster;
 
-  uint16_t datalen = 259;
+  uint16_t datalen = 259 + 4;
   uint16_t total_length = datalen + 115;
 
 #if 0
@@ -1645,7 +1904,7 @@ rdp_mcs_connect(Connection *con)
       sizeof(mcs) + sizeof(ccr) + sizeof(ccd) + sizeof(csd) + sizeof(cluster));
 #endif
 
-  rdp_iso_data(con, 379);
+  rdp_iso_data(con, 379 + 4);
 
   /* 
    * MCS Connect Initial structure 
@@ -1693,7 +1952,7 @@ rdp_mcs_connect(Connection *con)
    * previous words + the size of word4 (2+2+1+2+2 = 9). The rest is the size
    * of the whole remaining packet
    */
-  int length = 250;
+  int length = 250 + 4;
 
 
   /* Fill in the mcs_data:
@@ -1725,8 +1984,8 @@ rdp_mcs_connect(Connection *con)
    * http://msdn.microsoft.com/en-us/library/cc240510%28v=PROT.10%29.aspx
    */
   ccd.hdr.type = CS_CORE;
-  ccd.hdr.length = 212;
-  ccd.version1 = 1;   /* RDP 4 by default */
+  ccd.hdr.length = 216;
+  ccd.version1 = 4;   /* RDP 5 by default -- for RDP 4 the version1 would be 1 */
   ccd.version2 = 8;
   ccd.width = 800;
   ccd.height = 600;
@@ -1750,6 +2009,7 @@ rdp_mcs_connect(Connection *con)
   ccd.word2 = 0;
   ccd.word3 = 1;
   memset(&ccd.product_id, 0, 64);
+  memset(&ccd.server_selected_protocol, 0, 4);
 
   /* Client Cluster Data (TS_UD_CS_CLUSTER)
    * http://msdn.microsoft.com/en-us/library/cc240514%28v=PROT.10%29.aspx
@@ -2822,8 +3082,16 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
       break;
 
     default:
-      if (o.debugging > 8)
+      if (o.debugging > 8) {
         printf("PDU data unimplemented %u\n", pdu_type);
+        
+        rdp_state *info = (rdp_state *)con->misc_info;
+        printf("-----------DATA--------\n");
+        char *string = hexdump((u8*)info->rdp_packet, info->rdp_packet_end - info->rdp_packet);
+        log_write(LOG_PLAIN, "%s", string);
+        printf("-----------DATA--------\n");
+        
+      }
       break;
   }
 
@@ -2974,12 +3242,10 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
     printf("    RDP length: %u\n", length);
   info->rdp_next_packet += length;
 
-#if 0
   printf("-----------DATA--------\n");
   char *string = hexdump((u8*)info->rdp_packet, length);
   log_write(LOG_PLAIN, "%s", string);
   printf("-----------DATA--------\n");
-#endif
 
   return info->rdp_packet;
 }
@@ -3612,6 +3878,7 @@ rdp_security_exchange(Connection *con)
 static void
 rdp_client_info(Connection *con)
 {
+  rdp_state *info = (rdp_state *)con->misc_info;
   Buf *data; 
   char domain[16];
   char shell[256];
@@ -3619,7 +3886,15 @@ rdp_client_info(Connection *con)
   uint16_t username_length, password_length, domain_length,
            shell_length, workingdir_length;
   uint32_t total_length;
-  uint32_t flags = RDP_LOGON_AUTO | RDP_LOGON_NORMAL;
+  uint32_t flags = RDP_LOGON_AUTO | RDP_LOGON_NORMAL; // TODO: test the flags 
+  int packetlen = 0;
+
+  /* length of strings in TS_EXTENDED_PACKET includes null terminator */
+	int len_ip = 2 * strlen("172.16.51.1") + 2;  // TODO: change this to non-hardcoded IP
+	int len_dll = 2 * strlen("C:\\WINNT\\System32\\mstscax.dll") + 2;
+
+  time_t t = time(NULL);
+	time_t tzone;
 
   data = new Buf();
   domain[0] = shell[0] = workingdir[0] = 0;
@@ -3633,6 +3908,11 @@ rdp_client_info(Connection *con)
   char *u_password = unicode_alloc(con->pass);
   char *u_shell = unicode_alloc(shell);
   char *u_workdingdir = unicode_alloc(workingdir);
+  
+  char *u_ip = unicode_alloc("172.16.51.1");
+  char *u_dll = unicode_alloc("C:\\WINNT\\System32\\mstscax.dll");
+  char *u_gtb_normal = unicode_alloc("GTB, normaltid");
+  char *u_gtb_sommar = unicode_alloc("GTB, sommartid");
 
   domain_length = strlen(domain) * 2;
   username_length = strlen(con->user) * 2;
@@ -3640,51 +3920,144 @@ rdp_client_info(Connection *con)
   shell_length = strlen(shell) * 2;
   workingdir_length = strlen(workingdir) * 2;
 
-  /* Now fill in the data to our temporary buffer. These will be later
-   * encrypted by rdp_encrypt_data()
-   */
-  data->append(pad0, 4);
-  data->append(&flags, sizeof(flags));
+  if (info->rdp_version == 4) {
 
-  data->append(&domain_length, sizeof(domain_length));
-  data->append(&username_length, sizeof(username_length));
-  data->append(&password_length, sizeof(password_length));
-  data->append(&shell_length, sizeof(shell_length));
-  data->append(&workingdir_length, sizeof(workingdir_length));
+    /* Now fill in the data to our temporary buffer. These will be later
+     * encrypted by rdp_encrypt_data()
+     */
 
-  /* Make sure the minimum length is 2, which means only the unicode NULL
-   * (2 bytes) character is sent. Note, that this is not the special
-   * additional NULL character that follows every string for this header,
-   * but the string itself denoting it is empty.
-   */
-  data->append(u_domain, domain_length ? domain_length : 2);
-  data->append(u_username, username_length ? username_length : 2);
-  data->append(pad0, 2);  /* extra unicode NULL terminator */
+    //TODO: check if these need to be explicitly sent in little endian
+    data->append(pad0, 4);
+    data->append(&flags, sizeof(flags));
 
-  data->append(u_password, password_length ? password_length : 2);
-  data->append(pad0, 2);
+    data->append(&domain_length, sizeof(domain_length));
+    data->append(&username_length, sizeof(username_length));
+    data->append(&password_length, sizeof(password_length));
+    data->append(&shell_length, sizeof(shell_length));
+    data->append(&workingdir_length, sizeof(workingdir_length));
 
-  data->append(u_shell, shell_length ? shell_length : 2);
-  data->append(u_workdingdir, workingdir_length ? workingdir_length : 2);
+    /* Make sure the minimum length is 2, which means only the unicode NULL
+     * (2 bytes) character is sent. Note, that this is not the special
+     * additional NULL character that follows every string for this header,
+     * but the string itself denoting it is empty.
+     */
+    data->append(u_domain, domain_length ? domain_length : 2);
+    data->append(u_username, username_length ? username_length : 2);
+    data->append(pad0, 2);  /* extra unicode NULL terminator */
 
-  /* 18 = the size of all above fields (pad0, flags and the lengths of each
-   * variable
-   * 10 = the size of the unicode NULL terminators for each of the above 5
-   * strings, which are not included in the lengths 
-   * see: http://msdn.microsoft.com/en-us/library/cc240475%28v=PROT.10%29.aspx
-   */
-  if (o.debugging > 8)
-    printf("username: %s pass: %s\n", con->user, con->pass);
+    data->append(u_password, password_length ? password_length : 2);
+    data->append(pad0, 2);
 
-  total_length = 18 + domain_length + username_length + password_length +
-    shell_length + workingdir_length + 10; 
+    data->append(u_shell, shell_length ? shell_length : 2);
+    data->append(u_workdingdir, workingdir_length ? workingdir_length : 2);
 
-#if 0
-  printf("-----------DATA--------\n");
+    /* 18 = the size of all above fields (pad0, flags and the lengths of each
+     * variable
+     * 10 = the size of the unicode NULL terminators for each of the above 5
+     * strings, which are not included in the lengths 
+     * see: http://msdn.microsoft.com/en-us/library/cc240475%28v=PROT.10%29.aspx
+     */
+    if (o.debugging > 8)
+      printf("username: %s pass: %s\n", con->user, con->pass);
+
+    total_length = 18 + domain_length + username_length + password_length +
+      shell_length + workingdir_length + 10; 
+
+  } else {
+
+		packetlen =
+			/* size of TS_INFO_PACKET */
+			4 +	/* CodePage */
+			4 +	/* flags */
+			2 +	/* cbDomain */
+			2 +	/* cbUserName */
+			2 +	/* cbPassword */
+			2 +	/* cbAlternateShell */
+			2 +	/* cbWorkingDir */
+			2 + domain_length +	/* Domain */
+			2 + username_length +	/* UserName */
+			2 + password_length +	/* Password */
+			2 + shell_length +	/* AlternateShell */
+			2 + workingdir_length +	/* WorkingDir */
+			/* size of TS_EXTENDED_INFO_PACKET */
+			2 +	/* clientAddressFamily */
+			2 +	/* cbClientAddress */
+			len_ip +	/* clientAddress */
+			2 +	/* cbClientDir */
+			len_dll +	/* clientDir */
+			/* size of TS_TIME_ZONE_INFORMATION */
+			4 +	/* Bias, (UTC = local time + bias */
+			64 +	/* StandardName, 32 unicode char array, Descriptive standard time on client */
+			16 +	/* StandardDate */
+			4 +	/* StandardBias */
+			64 +	/* DaylightName, 32 unicode char array */
+			16 +	/* DaylightDate */
+			4 +	/* DaylightBias */
+			4 +	/* clientSessionId */
+			4 +	/* performanceFlags */
+			2 +	/* cbAutoReconnectCookie, either 0 or 0x001c */
+			/* size of ARC_CS_PRIVATE_PACKET */
+			0;	/* autoReconnectCookie: +28 if you have a cookie */
+
+      data->append(pad0, 4);
+      data->append(&flags, sizeof(flags));
+      data->append(&domain_length, sizeof(domain_length));
+      data->append(&username_length, sizeof(username_length));
+      data->append(&password_length, sizeof(password_length));
+      data->append(&shell_length, sizeof(shell_length));
+      data->append(&workingdir_length, sizeof(workingdir_length));
+
+      /* no null terminator needed because domain is null - same for other null vars */
+      data->append(u_domain, domain_length ? domain_length : 2);
+      data->append(u_username, username_length ? username_length : 2);
+      data->append(pad0, 2);  /* extra unicode NULL terminator */
+      data->append(u_password, password_length ? password_length : 2);
+      data->append(pad0, 2);
+      data->append(u_shell, shell_length ? shell_length : 2);
+      data->append(u_workdingdir, workingdir_length ? workingdir_length : 2);
+
+      /* TS_EXTENDED_INFO_PACKET */
+      uint16_t af = 2;
+      data->append(&af, 2);
+      data->append(&len_ip, 2);
+      data->append(u_ip, len_ip - 2); data->append(pad0, 2);
+      data->append(&len_dll, 2);
+      data->append(u_dll, len_dll - 2); data->append(pad0, 2);
+      
+      /* TS_TIME_ZONE_INFORMATION */
+      tzone = (mktime(gmtime(&t)) - mktime(localtime(&t))) / 60;
+      data->append(&tzone, 4);
+      data->append(u_gtb_normal, 2 * strlen("GTB, normaltid"));
+      data->append(pad0, 2);
+      data->append(pad0, 62 - 2 * strlen("GTB, normaltid"));
+  
+      uint32_t val = 0x0a0000; data->append(&val, sizeof(val));
+      val = 0x050000; data->append(&val, sizeof(val));
+      val = 3; data->append(&val, sizeof(val));
+      val = 0; data->append(&val, sizeof(val));
+      val = 0; data->append(&val, sizeof(val));
+      data->append(u_gtb_sommar, 2 * strlen("GTB, sommartid"));
+      data->append(pad0, 2);
+      data->append(pad0, 62 - 2 * strlen("GTB, sommartid"));
+      
+      val = 0x30000; data->append(&val, sizeof(val));
+      val = 0x050000; data->append(&val, sizeof(val));
+      val = 2; data->append(&val, sizeof(val));
+      data->append(pad0, 4);
+      val = 0xffffffc4; data->append(&val, sizeof(val)); /* daylight bias */
+
+      data->append(pad0, 4); /* clientSessionId (must be 0) */
+      data->append(pad0, 4); // rdp5 performance flags
+      data->append(pad0, 2);  /* auto reconnect length */
+
+      total_length = packetlen;
+
+  }
+
+  printf("-----------DATA OUTGOING --------\n");
   char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
   log_write(LOG_PLAIN, "%s", string);
-  printf("-----------DATA--------\n");
-#endif
+  printf("-----------DATA OUTGOING END --------\n");
 
   total_length += sizeof(mcs_data) + sizeof(sec_header);
   rdp_iso_data(con, total_length);
@@ -3695,6 +4068,10 @@ rdp_client_info(Connection *con)
       SEC_LOGON_INFO | SEC_ENCRYPT);
 
   delete data;
+  free(u_gtb_normal);
+  free(u_gtb_sommar);
+  free(u_dll);
+  free(u_ip);
   free(u_domain);
   free(u_username);
   free(u_password);
@@ -3800,19 +4177,41 @@ rdp_confirm_active(Connection *con)
   rdp_control_caps control;
   rdp_pointer_caps pointer;
   rdp_share_caps share;
-  rdp_caps_0x0d caps1;
-  rdp_caps_0x0c caps2;
-  rdp_caps_0x0e caps3;
-  rdp_caps_0x10 caps4;
+  rdp_bmpcache_caps2 bmpcache2;
+  rdp_newpointer_caps newpointer;
+  rdp_brushcache_caps brushcache;
+  rdp_input_caps input;
+  rdp_sound_caps sound;
+  rdp_font_caps font;
+  rdp_glyphcache_caps glyph;
+  rdp_multifragment_caps multifrag;
+  rdp_large_pointer_caps largepointer;
   uint16_t total_length;
   uint32_t flags = 0x0030 | SEC_ENCRYPT;
   Buf *data = new Buf();
 
-  caplen = RDP_CAPLEN_GENERAL + RDP_CAPLEN_BITMAP + RDP_CAPLEN_ORDER
-    + RDP_CAPLEN_BMPCACHE + RDP_CAPLEN_COLCACHE + RDP_CAPLEN_ACTIVATE
-    + RDP_CAPLEN_CONTROL + RDP_CAPLEN_POINTER + RDP_CAPLEN_SHARE 
-    + sizeof(caps1) + sizeof(caps2) + sizeof(caps3) + sizeof(caps4)
+  caplen = RDP_CAPLEN_GENERAL +
+    RDP_CAPLEN_BITMAP 
+    + RDP_CAPLEN_ORDER
+    + RDP_CAPLEN_COLCACHE
+    + RDP_CAPLEN_ACTIVATE
+    + RDP_CAPLEN_CONTROL
+    + RDP_CAPLEN_SHARE 
+    + RDP_CAPLEN_BRUSHCACHE
+    + RDP_CAPLEN_INPUT
+    + RDP_CAPLEN_SOUND
+    + RDP_CAPLEN_GLYPHCACHE
+    + RDP_CAPLEN_MULTIFRAGMENTUPDATE
+    + RDP_CAPLEN_LARGE_POINTER
     + 4;
+
+  if (info->rdp_version >= 5) {
+		caplen += RDP_CAPLEN_BMPCACHE2;
+		caplen += RDP_CAPLEN_NEWPOINTER;
+	} else {
+		caplen += RDP_CAPLEN_BMPCACHE;
+		caplen += RDP_CAPLEN_POINTER;
+	}
 
   pdu.length = 2 + 14 + caplen + sizeof(RDP_SOURCE);
   pdu.mcs_userid = info->mcs_userid + 1001;
@@ -3823,16 +4222,26 @@ rdp_confirm_active(Connection *con)
   data->append(&general, sizeof(general));
   data->append(&bitmap, sizeof(bitmap));
   data->append(&order, sizeof(order));
-  data->append(&bmpcache, sizeof(bmpcache));
+
+  if (info->rdp_version >= 5) {
+    data->append(&bmpcache2, sizeof(bmpcache2));
+    data->append(&newpointer, sizeof(newpointer));
+  } else {
+    data->append(&bmpcache, sizeof(bmpcache));
+    data->append(&pointer, sizeof(pointer));
+  }
+
   data->append(&colcache, sizeof(colcache));
   data->append(&activate, sizeof(activate));
   data->append(&control, sizeof(control));
-  data->append(&pointer, sizeof(pointer));
   data->append(&share, sizeof(share));
-  data->append(&caps1, sizeof(caps1));
-  data->append(&caps2, sizeof(caps2));
-  data->append(&caps3, sizeof(caps3));
-  data->append(&caps4, sizeof(caps4));
+  data->append(&brushcache, sizeof(brushcache));
+  data->append(&input, sizeof(input));
+  data->append(&sound, sizeof(sound));
+  data->append(&font, sizeof(font));
+  data->append(&glyph, sizeof(glyph));
+  data->append(&multifrag, sizeof(multifrag));
+  data->append(&largepointer, sizeof(largepointer));
 
   total_length = data->get_len();
   total_length += sizeof(mcs_data) + sizeof(sec_header);
@@ -3840,12 +4249,11 @@ rdp_confirm_active(Connection *con)
   total_length -= sizeof(mcs_data);
   rdp_mcs_data(con, total_length);
 
-#if 0
-  printf("-----------DATA-------- %u \n", data->get_len());
+
+  printf("-----------OUTGOING DATA-------- %u \n", data->get_len());
   char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
   log_write(LOG_PLAIN, "%s", string);
-  printf("-----------DATA--------\n");
-#endif
+  printf("-----------OUTGOING DATA END--------\n");
 
   rdp_encrypt_data(con, (uint8_t *)data->get_dataptr(), data->get_len(), flags);
 
@@ -3886,6 +4294,12 @@ rdp_data(Connection *con, Buf *data, uint8_t pdu_type)
   total_length -= sizeof(mcs_data);
   rdp_mcs_data(con, total_length);
 
+  printf("-----------OUTGOING DATA-------- %u \n", data->get_len());
+  char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
+  log_write(LOG_PLAIN, "%s", string);
+  printf("-----------OUTGOING DATA END--------\n");
+
+
   rdp_encrypt_data(con, (uint8_t *)rdp->get_dataptr(), rdp->get_len(), flags);
 
   delete rdp;
@@ -3904,6 +4318,11 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
   if (con->misc_info)
     info = (rdp_state *) con->misc_info;
+  else {
+    con->misc_info = (rdp_state *)safe_zalloc(sizeof(rdp_state));
+    info = (rdp_state *)con->misc_info;
+    info->rdp_version = 5;  //TODO: assume RDP version 5 for now
+  }
 
   switch (con->state)
   {
@@ -3948,7 +4367,6 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       con->state = RDP_MCS_AURQ;
 
-      con->misc_info = (rdp_state *)safe_zalloc(sizeof(rdp_state));
 
       if (rdp_mcs_connect_response(con) < 0)
         return ncrack_module_end(nsp, con);
