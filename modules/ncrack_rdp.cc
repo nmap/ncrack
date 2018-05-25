@@ -184,7 +184,6 @@ typedef struct rdp_state {
   uint16_t packet_len;
 
   int login_result;
-
   int rdp_version; /* 4, 5, 6 */
 
   uint8_t order_state_type;
@@ -227,9 +226,9 @@ static void rdp_encrypt_data(Connection *con, uint8_t *data, uint32_t datalen,
 static void rdp_mcs_data(Connection *con, uint16_t datalen);
 static void rdp_security_exchange(Connection *con);
 static void rdp_client_info(Connection *con);
-static u_char *rdp_mcs_recv_data(Connection *con, uint16_t *channel);
-static u_char *rdp_secure_recv_data(Connection *con);
-static u_char *rdp_recv_data(Connection *con, uint8_t *pdu_type);
+static u_char *rdp_mcs_recv_data(Connection *con, uint16_t *channel, bool *fastpath, uint8_t *fastpath_header);
+static u_char *rdp_secure_recv_data(Connection *con, bool *fastpath);
+static u_char *rdp_recv_data(Connection *con, uint8_t *pdu_type, bool *fastpath);
 static void rdp_data(Connection *con, Buf *data, uint8_t pdu_type);
 static void rdp_synchronize(Connection *con);
 static void rdp_control(Connection *con, uint16_t action);
@@ -243,7 +242,7 @@ static int rdp_parse_rdpdata_pdu(Connection *con, u_char *p);
 static char *rdp_disc_reason(uint32_t code);
 static void rdp_fonts_send(Connection *con, uint16_t sequence);
 static void rdp_disconnect(Connection *con);
-static u_char *rdp_iso_recv_data_loop(Connection *con);
+static u_char *rdp_iso_recv_data_loop(Connection *con, bool *fastpath, uint8_t *fastpath_header);
 static void rdp_parse_update_pdu(Connection *con, u_char *p);
 static void rdp_parse_orders(Connection *con, u_char *p, uint16_t num);
 //static void rdp_parse_second_order(u_char *p);
@@ -303,6 +302,7 @@ enum RDP_UPDATE_PDU_TYPE
   RDP_UPDATE_SYNCHRONISE = 3
 };
 
+#define FASTPATH_OUTPUT_ENCRYPTED 0x2
 
 #define RDP_ORDER_STANDARD   0x01
 #define RDP_ORDER_SECONDARY  0x02
@@ -519,7 +519,7 @@ typedef struct rdp_confirm_active_pdu {
     userid = 0x3ea;
     source_len = sizeof(RDP_SOURCE);
     memcpy(source, RDP_SOURCE, sizeof(RDP_SOURCE));
-    num_caps = 0xd;
+    num_caps = 16;
     memset(&pad, 0, sizeof(pad));
   } 
 
@@ -529,6 +529,12 @@ typedef struct rdp_confirm_active_pdu {
 /* RDP capabilities */
 #define RDP_CAPSET_GENERAL 1  /* generalCapabilitySet in T.128 p.138 */
 #define RDP_CAPLEN_GENERAL 0x18
+/* extraFlags, [MS-RDPBCGR] 2.2.7.1.1 */
+#define FASTPATH_OUTPUT_SUPPORTED	0x0001
+#define LONG_CREDENTIALS_SUPPORTED	0x0004
+#define AUTORECONNECT_SUPPORTED		0x0008
+#define ENC_SALTED_CHECKSUM		0x0010
+#define NO_BITMAP_COMPRESSION_HDR	0x0400
 typedef struct rdp_general_caps {
 
   uint16_t type;
@@ -539,11 +545,12 @@ typedef struct rdp_general_caps {
   uint16_t protocol_version;
   uint16_t pad;
   uint16_t compression_type;
-  uint16_t pad2; /* careful with this, might trigger rdp5 */
+  uint16_t extra_flags; /* careful with this, might trigger rdp5 */
   uint16_t update_cap;
   uint16_t remote_unshare_cap;
   uint16_t compression_level;
-  uint16_t pad3;
+  uint8_t refresh_rect;
+  uint8_t suppress_output;
 
   rdp_general_caps() {
 
@@ -554,11 +561,12 @@ typedef struct rdp_general_caps {
     protocol_version = 0x200;
     pad = 0;
     compression_type = 0;
-    pad2 = 0;
+    extra_flags = 0;
     update_cap = 0;
     remote_unshare_cap = 0;
     compression_level = 0;
-    pad3 = 0;
+    refresh_rect = 0;
+    suppress_output = 0;
   }
 
 } __attribute__((__packed__)) rdp_general_caps;
@@ -579,8 +587,9 @@ typedef struct rdp_bitmap_caps {
   uint16_t pad;
   uint16_t allow_resize;
   uint16_t compression;
-  uint16_t unknown1;
-  uint16_t unknown2;
+  uint8_t high_color_flags;
+  uint8_t drawing_flags;
+  uint16_t multiple_rectangle;
   uint16_t pad2;
 
   rdp_bitmap_caps() {
@@ -595,12 +604,14 @@ typedef struct rdp_bitmap_caps {
     pad = 0;
     allow_resize = 1;
     compression = 1;
-    unknown1 = 0;
-    unknown2 = 1;
+    high_color_flags = 0;
+    drawing_flags = 0;
+    multiple_rectangle = 1;
     pad2 = 0;
   } 
 
 } __attribute__((__packed__)) rdp_bitmap_caps;
+
 
 
 #define RDP_CAPSET_ORDER 3
@@ -876,7 +887,7 @@ typedef struct rdp_input_caps {
   uint32_t keyboard_type;
   uint32_t keyboard_subtype;
   uint32_t keyboard_funckey;
-  uint16_t ime_filename[64];
+  uint8_t ime_filename[64];
 
   rdp_input_caps() {
     type = RDP_CAPSET_INPUT;
@@ -1133,6 +1144,16 @@ typedef struct iso_tpkt {
   uint16_t length;  /* total packet length (including this header) - be */
 
 } __attribute__((__packed__)) iso_tpkt;
+
+
+/* TPKT header - fastpath version */
+typedef struct iso_tpkt_fast {
+
+  uint8_t version;  /* default version = 3 */
+  uint8_t length1;
+  uint8_t length2;  /* total packet length (including this header) - be */
+
+} __attribute__((__packed__)) iso_tpkt_fast;
 
 
 /* ITU-T header */
@@ -3086,10 +3107,10 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
         printf("PDU data unimplemented %u\n", pdu_type);
         
         rdp_state *info = (rdp_state *)con->misc_info;
-        printf("-----------DATA--------\n");
+        printf("============== INCOMING DATA ===============\n");
         char *string = hexdump((u8*)info->rdp_packet, info->rdp_packet_end - info->rdp_packet);
         log_write(LOG_PLAIN, "%s", string);
-        printf("-----------DATA--------\n");
+        printf("============= INCOMING DATA END ===============\n");
         
       }
       break;
@@ -3106,6 +3127,7 @@ rdp_process_loop(Connection *con)
 {
   bool loop = true;
   uint8_t pdu_type = 0;
+  bool fastpath = false;
   rdp_state *info = (rdp_state *)con->misc_info;
   u_char *p;
   int pdudata_ret;
@@ -3118,7 +3140,7 @@ rdp_process_loop(Connection *con)
     if (o.debugging > 8)
       printf(" ------------------ RDP LOOP -----------------\n");
 
-    p = rdp_recv_data(con, &pdu_type);
+    p = rdp_recv_data(con, &pdu_type, &fastpath);
     if (p == NULL) {
       if (o.debugging > 8)
         printf("LOOP NOTH NULL DATA\n");
@@ -3127,6 +3149,13 @@ rdp_process_loop(Connection *con)
       //info->packet_len = 0;
       //info->rdp_packet = NULL;
       return LOOP_NOTH;
+    }
+
+    if (fastpath == true) {
+      printf("fastpath in rdp_process_loop \n");
+      // process
+
+      continue; 
     }
 
     switch (pdu_type) {
@@ -3192,7 +3221,7 @@ rdp_process_loop(Connection *con)
 
 
 static u_char *
-rdp_recv_data(Connection *con, uint8_t *pdu_type)
+rdp_recv_data(Connection *con, uint8_t *pdu_type, bool *fastpath)
 {
   rdp_state *info = (rdp_state *)con->misc_info;
   uint16_t length;
@@ -3201,7 +3230,7 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
 
   if (info->rdp_packet == NULL) {
 
-    info->rdp_packet = rdp_secure_recv_data(con);
+    info->rdp_packet = rdp_secure_recv_data(con, fastpath);
     if (info->rdp_packet == NULL) {
       if (o.debugging > 8)
         printf("rdp packet NULL!\n");
@@ -3242,10 +3271,10 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
     printf("    RDP length: %u\n", length);
   info->rdp_next_packet += length;
 
-  printf("-----------DATA--------\n");
+  printf("============= INCOMING DATA ==============\n");
   char *string = hexdump((u8*)info->rdp_packet, length);
   log_write(LOG_PLAIN, "%s", string);
-  printf("-----------DATA--------\n");
+  printf("============== INCOMING DATA END ==============\n");
 
   return info->rdp_packet;
 }
@@ -3253,16 +3282,38 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
 
 
 static u_char*
-rdp_secure_recv_data(Connection *con)
+rdp_secure_recv_data(Connection *con, bool *fastpath)
 {
   u_char *p;
   uint16_t channel;
   uint32_t flags;
+  uint8_t fastpath_flags;
+  uint8_t fastpath_header;
   rdp_state *info = (rdp_state *)con->misc_info;
   uint32_t datalen;
 
 
-  while ((p = rdp_mcs_recv_data(con, &channel)) != NULL) {
+  while ((p = rdp_mcs_recv_data(con, &channel, fastpath, &fastpath_header)) != NULL) {
+
+    if (*fastpath == true) {
+
+      printf("fastpath in rdp_secure_recvdata\n");
+
+      fastpath_flags = (fastpath_header & 0xc0) >> 6;
+      if (fastpath_flags & FASTPATH_OUTPUT_ENCRYPTED) {
+        /* Skip signature */
+        p += 8;
+
+        datalen = (info->rdp_packet_end - p);
+
+        if (info->decrypt_use_count == 4096)
+          info->decrypt_use_count = 0;
+      
+        RC4(&info->rc4_decrypt_key, datalen, p, p);
+        info->decrypt_use_count++;
+      }
+      return p;
+    }
 
     flags = *(uint32_t *)p;
     p += 4;
@@ -3320,15 +3371,18 @@ rdp_secure_recv_data(Connection *con)
 
 
 static u_char *
-rdp_mcs_recv_data(Connection *con, uint16_t *channel)
+rdp_mcs_recv_data(Connection *con, uint16_t *channel, bool *fastpath, uint8_t *fastpath_header)
 {
   u_char *p;
   char error[64];
   uint8_t opcode;
 
-  p = rdp_iso_recv_data_loop(con);
+  p = rdp_iso_recv_data_loop(con, fastpath, fastpath_header);
   if (p == NULL)
     return NULL;
+
+  if (*fastpath == true)
+    return p;
 
   /* Check opcode */
   opcode = (*(uint8_t *)p) >> 2;
@@ -3368,9 +3422,10 @@ rdp_mcs_recv_data(Connection *con, uint16_t *channel)
 
 
 static u_char *
-rdp_iso_recv_data_loop(Connection *con)
+rdp_iso_recv_data_loop(Connection *con, bool *fastpath, uint8_t *fastpath_header)
 {
   iso_tpkt *tpkt;
+  iso_tpkt_fast *fast_tpkt;
   iso_itu_t_data *itu_t;
   char error[64];
   rdp_state *info = (rdp_state *)con->misc_info;
@@ -3382,10 +3437,25 @@ rdp_iso_recv_data_loop(Connection *con)
   tpkt = (iso_tpkt *) ((u_char *)con->inbuf->get_dataptr());
   itu_t = (iso_itu_t_data *) ((u_char *)tpkt + sizeof(iso_tpkt));
 
-  if (tpkt->version != 3)
-    fatal("rdp_module: not supported TPKT version: %d\n", tpkt->version);
+  // this is a fastpath pdu if the T.123 version is not 3
+  if (tpkt->version != 3) {
+    printf("FASTPATH\n");
+    fast_tpkt = (iso_tpkt_fast *)((u_char *)con->inbuf->get_dataptr());
+    *fastpath = true;
+    *fastpath_header = fast_tpkt->version;
+    info->packet_len = fast_tpkt->length1;
+    if (info->packet_len & 0x80) {
+      printf("length bigger\n");
+      info->packet_len &= ~0x80;
+      info->packet_len = (info->packet_len << 8) + fast_tpkt->length2;
+    }
 
-  info->packet_len = ntohs(tpkt->length);
+    info->rdp_packet_end = (u_char *)fast_tpkt + info->packet_len;
+
+  } else {
+    info->packet_len = ntohs(tpkt->length);
+    info->rdp_packet_end = (u_char *)tpkt + info->packet_len;
+  }
 
   if (info->packet_len < 4) {
     con->service->end.orly = true;
@@ -3393,7 +3463,12 @@ rdp_iso_recv_data_loop(Connection *con)
     return NULL;
   }
 
-  info->rdp_packet_end = (u_char *)tpkt + info->packet_len;
+  if (*fastpath == true) {
+    printf("fastpath return\n");
+    p = ((u_char *)(fast_tpkt) + sizeof(iso_tpkt));
+    return p;
+  }
+
 
   p = ((u_char *)(itu_t) + sizeof(iso_itu_t_data));
 
@@ -4190,7 +4265,7 @@ rdp_confirm_active(Connection *con)
   uint32_t flags = 0x0030 | SEC_ENCRYPT;
   Buf *data = new Buf();
 
-  caplen =  RDP_CAPLEN_GENERAL 
+  caplen = RDP_CAPLEN_GENERAL 
     + RDP_CAPLEN_BITMAP 
     + RDP_CAPLEN_ORDER
     + RDP_CAPLEN_COLCACHE
@@ -4218,6 +4293,13 @@ rdp_confirm_active(Connection *con)
   pdu.mcs_userid = info->mcs_userid + 1001;
   pdu.shareid = info->shareid;
   pdu.caplen = caplen;
+
+  if (info->rdp_version >= 5) {
+    general.extra_flags |= NO_BITMAP_COMPRESSION_HDR;
+		general.extra_flags |= AUTORECONNECT_SUPPORTED;
+		general.extra_flags |= LONG_CREDENTIALS_SUPPORTED;
+		general.extra_flags |= FASTPATH_OUTPUT_SUPPORTED;
+  }
 
   data->append(&pdu, sizeof(pdu));
   data->append(&general, sizeof(general));
@@ -4251,7 +4333,7 @@ rdp_confirm_active(Connection *con)
   rdp_mcs_data(con, total_length);
 
 
-  printf("-----------OUTGOING DATA-------- %u \n", data->get_len());
+  printf("-----------CONFIRM ACTIVE OUTGOING DATA-------- %u \n", data->get_len());
   char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
   log_write(LOG_PLAIN, "%s", string);
   printf("-----------OUTGOING DATA END--------\n");
@@ -4295,8 +4377,8 @@ rdp_data(Connection *con, Buf *data, uint8_t pdu_type)
   total_length -= sizeof(mcs_data);
   rdp_mcs_data(con, total_length);
 
-  printf("-----------OUTGOING DATA-------- %u \n", data->get_len());
-  char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
+  printf("-----------OUTGOING DATA-------- %u \n", rdp->get_len());
+  char *string = hexdump((u8*)rdp->get_dataptr(), rdp->get_len());
   log_write(LOG_PLAIN, "%s", string);
   printf("-----------OUTGOING DATA END--------\n");
 
@@ -4522,8 +4604,12 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       con->state = RDP_DEMAND_ACTIVE_INPUT_SYNC;
 
+      printf("RDP_DEMAND_ACTIVE_SYNC\n");
+      printf("rdp_synchronize\n"); 
       rdp_synchronize(con);
+      printf("rdp_control cooperate\n");
       rdp_control(con, RDP_CTL_COOPERATE);
+      printf("rdp_control request\n");
       rdp_control(con, RDP_CTL_REQUEST_CONTROL);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
@@ -4536,6 +4622,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
       if (con->outbuf)
         delete con->outbuf;
       con->outbuf = new Buf();
+
+      printf("DEMAND_ACTIVE_INPUT_SYNC\n");
 
       con->state = RDP_DEMAND_ACTIVE_FONTS;
 
@@ -4553,8 +4641,17 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       con->state = RDP_LOOP;
 
-      rdp_fonts_send(con, 1);
-      rdp_fonts_send(con, 2);
+      printf("DEMAND_ACTIVE_FONTS\n");
+
+      if (info->rdp_version >= 5) {
+        // normally we would send a bmpcache2 here
+        // but we don't have any so don't have to send anything
+        printf("rdp_fonts_send\n");
+        rdp_fonts_send(con, 3);
+      } else {
+        rdp_fonts_send(con, 1);
+        rdp_fonts_send(con, 2);
+      }
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());  
