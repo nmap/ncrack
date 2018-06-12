@@ -1662,7 +1662,8 @@ rdp_loop_read(nsock_pool nsp, Connection *con)
     return -1;
   }
 
-  printf("RDP LOOP READ SUCCESS length: %d \n", total_length);
+  if (o.debugging > 9)
+    printf("RDP LOOP READ SUCCESS length: %d \n", total_length);
 
   return 0;
 
