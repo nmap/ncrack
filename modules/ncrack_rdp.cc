@@ -266,6 +266,8 @@ static u_char *rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool
 static u_char *rdp_parse_ber(u_char *p, int tag, int *length);
 static u_char *rdp_process_fastpath(Connection *con, u_char *p); 
 static u_char *rdp_parse_bitmap_update(u_char *p);
+static void rdp_parse_bmpcache2(Connection *con, u_char *p, uint16_t sec_flags, bool compressed);
+
 
 /* RDP PDU codes */
 enum RDP_PDU_TYPE
@@ -353,6 +355,26 @@ enum RDP_ORDER_TYPE
   RDP_ORDER_TEXT2 = 27
 };
 
+enum RDP_SECONDARY_ORDER_TYPE
+{
+	RDP_ORDER_RAW_BMPCACHE = 0,
+	RDP_ORDER_COLCACHE = 1,
+	RDP_ORDER_BMPCACHE = 2,
+	RDP_ORDER_FONTCACHE = 3,
+	RDP_ORDER_RAW_BMPCACHE2 = 4,
+	RDP_ORDER_BMPCACHE2 = 5,
+	RDP_ORDER_BRUSHCACHE = 7
+};
+
+/* RDP_BMPCACHE2_ORDER */
+#define ID_MASK			0x0007
+#define MODE_MASK		0x0038
+#define SQUARE			0x0080
+#define PERSIST			0x0100
+#define FLAG_51_UNKNOWN		0x0800
+#define MODE_SHIFT		3
+#define LONG_FORMAT		0x80
+#define BUFSIZE_MASK		0x3FFF
 
 /* ISO PDU codes */
 enum ISO_PDU_CODE
@@ -1640,6 +1662,8 @@ rdp_loop_read(nsock_pool nsp, Connection *con)
     return -1;
   }
 
+  printf("RDP LOOP READ SUCCESS length: %d \n", total_length);
+
   return 0;
 
 }
@@ -2611,6 +2635,7 @@ rdp_parse_memblt(u_char *p, uint32_t params, bool delta, rdp_state *info)
     info->win7_vista_fingerprint = true;
   }
 
+
   if (o.debugging > 8)
     printf("MEMBLT(op=0x%x,x=%d,y=%d,cx=%d,cy=%d,id=%d,idx=%d)\n",
          info->memblt.opcode, info->memblt.x, info->memblt.y, info->memblt.cx,
@@ -2788,6 +2813,64 @@ rdp_coord(u_char *p, bool delta, int16_t *coord)
 }
 
 
+static void
+rdp_parse_bmpcache2(Connection *con, u_char *p, uint16_t sec_flags, bool compressed)
+{
+    uint8_t cache_id, cache_idx_low, Bpp, width, height;
+    uint16_t buffer_size, cache_idx;
+    rdp_state *info = (rdp_state *) con->misc_info;
+
+    cache_id = sec_flags & ID_MASK;
+    Bpp = ((sec_flags & MODE_MASK) >> MODE_SHIFT) - 2;
+
+    if (sec_flags & PERSIST)
+      p += 8; /* skip bitmap id */
+
+    if (sec_flags & SQUARE) {
+      width = *(uint8_t *)p;
+      p += 1;
+      height = width;
+    } else {
+      width = *(uint8_t *)p;
+      p += 1;
+      height = *(uint8_t *)p;
+      p += 1;
+    }
+
+    buffer_size = ntohs(*(uint16_t *)p);
+    p += 2;
+    buffer_size &= BUFSIZE_MASK;
+
+    cache_idx = *(uint8_t *)p;
+    p += 1;
+
+    if (cache_idx & LONG_FORMAT) {
+      cache_idx_low = *(uint8_t *)p;
+      p += 1;
+      cache_idx = ((cache_idx ^ LONG_FORMAT) << 8) + cache_idx_low;
+    }
+
+    if (o.debugging > 9)
+      printf("rdp_parse_bmpcache2(), compr=%d, flags=%x, cx=%d, cy=%d, id=%d, idx=%d, Bpp=%d, bs=%d\n",
+	       compressed, sec_flags, width, height, cache_id, cache_idx, Bpp, buffer_size);
+
+    /* Windows 2012 fail fingerprint */
+    if (compressed == true &&
+        sec_flags == 0x4a2 &&
+        width == 64 && 
+        height == 64 &&
+        cache_id == 1 &&
+        //cache_idx == 3 &&
+        Bpp == 2 && 
+        buffer_size == 25) {
+      if (o.debugging > 9) 
+        printf("================ WIN 2012 FAIL ================\n");
+      info->login_result = LOGIN_FAIL;
+    }
+
+}
+
+
 
 static void
 rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
@@ -2812,16 +2895,48 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
 
     if (flags & RDP_ORDER_SECONDARY) {
 
+      if (o.debugging > 9)
+        printf("SECONDARY ORDERS \n");
+
       /* parse secondary order: we just ignore everything here after we parse
        * the length field to know how many bytes to skip to move on to the next
        * order
        */
       uint16_t second_length = *(uint16_t *)p; 
       p += 2;
-      /* skip secondary flags */
+      uint16_t sec_flags = *(uint16_t *)p;
       p += 2;
-      /* skip type */
+      uint8_t sec_type = *(uint8_t *)p;
       p += 1;
+
+      switch (sec_type)
+      {
+        case RDP_ORDER_RAW_BMPCACHE:
+          //process_raw_bmpcache(s);
+          break;
+        case RDP_ORDER_COLCACHE:
+          //process_colcache(s);
+          break;
+        case RDP_ORDER_BMPCACHE:
+          //process_bmpcache(s);
+          break;
+        case RDP_ORDER_FONTCACHE:
+          //process_fontcache(s);
+          break;
+        case RDP_ORDER_RAW_BMPCACHE2:
+          rdp_parse_bmpcache2(con, p, sec_flags, false);	/* uncompressed */
+          break;
+        case RDP_ORDER_BMPCACHE2:
+          rdp_parse_bmpcache2(con, p, sec_flags, true);	/* compressed */
+          break;
+        case RDP_ORDER_BRUSHCACHE:
+          //process_brushcache(s, flags);
+          break;
+        default:
+          if (o.debugging > 8)
+             printf("process_secondary_order(), unhandled secondary order %d", sec_type);
+      }
+      
       /* now add length and ignore that many bytes */
       p += (int16_t) second_length + 7;
 
@@ -3201,6 +3316,8 @@ rdp_process_fastpath_code(Connection *con, u_char *p, uint8_t code)
 		case FASTPATH_UPDATETYPE_ORDERS:
       num = *(uint16_t *) p;
       p += 2;
+      if (o.debugging > 9)
+        printf("RDP PARSE ORDERS \n");
 			rdp_parse_orders(con, p, num);
 			break;
 		case FASTPATH_UPDATETYPE_BITMAP:
@@ -3231,7 +3348,8 @@ rdp_process_fastpath_code(Connection *con, u_char *p, uint8_t code)
 			//process_new_pointer_pdu(s);
 			break;
 		default:
-			printf("unhandled opcode %d", code);
+      if (o.debugging > 9)
+			  printf("unhandled opcode %d", code);
 	}
   return p;
 
@@ -3261,17 +3379,21 @@ rdp_process_fastpath(Connection *con, u_char *p)
     length = *(uint16_t *) p;
     p += 2;
 
+    if (o.debugging > 9)
+      printf("FASTPATH LENGTH: %d \n", length);
+
     info->rdp_next_packet = next = p + length;
 
     if (ctype & RDP_MPPC_COMPRESSED) {
-      printf(" ---------------- COMPRESSED! \n");
+      if (o.debugging > 9)
+        printf(" ----------- COMPRESSED \n");
     }
 
     if (frag == FASTPATH_FRAGMENT_SINGLE) {
       rdp_process_fastpath_code(con, p, code);
     } else {
-      printf(" -------------- FRAGMENTED! \n");
-
+      if (o.debugging > 9)
+        printf(" ---------- FRAGMENTED \n");
     }
 
     p = next;
@@ -3307,20 +3429,17 @@ rdp_process_loop(Connection *con)
       if (o.debugging > 8)
         printf("LOOP NOTH NULL DATA\n");
 
-      //con->inbuf->get_data(NULL, info->packet_len);
-      //info->packet_len = 0;
-      //info->rdp_packet = NULL;
+      // TODO: check if these 3 lines should stay here 
+      con->inbuf->get_data(NULL, info->packet_len);
+      info->packet_len = 0;
+      info->rdp_packet = NULL;
+
+      // we need this extra check here for RDPv5 because of fastpath
+      if (info->login_result != LOGIN_INIT)
+        return LOOP_AUTH;
+
       return LOOP_NOTH;
     }
-
-#if 0
-    if (fastpath == true) {
-      printf("fastpath in rdp_process_loop \n");
-      p = rdp_process_fastpath(con, p);
-
-      continue; 
-    }
-#endif 
 
     switch (pdu_type) {
       case RDP_PDU_DEMAND_ACTIVE:
@@ -3395,6 +3514,8 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
 
   if (info->rdp_packet == NULL) {
 
+    if (o.debugging > 9)
+      printf("BEFORE RDP SECURE RECV DATA \n");
     info->rdp_packet = rdp_secure_recv_data(con, &fastpath);
     if (info->rdp_packet == NULL) {
       if (o.debugging > 8)
@@ -3402,18 +3523,27 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
       return NULL;
     } 
     if (fastpath == true) {
-      printf("rdp_recv_data fastpath = true\n");
-      return rdp_process_fastpath(con, info->rdp_packet);
-    }
+      if (o.debugging > 9)
+        printf("rdp_recv_data fastpath = true\n");
+      
+      rdp_process_fastpath(con, info->rdp_packet);
+      return NULL;
+    } 
 
     info->rdp_next_packet = info->rdp_packet;
+    
 
     /* Time to get the next TCP segment */
   } else if ((info->rdp_next_packet >= info->rdp_packet_end) 
       || (info->rdp_next_packet == NULL)) {
 
+    if (o.debugging > 9) {
+      printf("rdp_packet_end: %x \n", info->rdp_packet_end);
+      printf("rdp_next_packet: %x \n", info->rdp_next_packet);
+    }
+
     if (o.debugging > 8)
-      printf(" RECV DATA TCP NEXT SEGMENT\n");
+      printf(" RECV DATA TCP NEXT SEGMENT %u\n", info->packet_len);
     /* Eat away the ISO packet */
     con->inbuf->get_data(NULL, info->packet_len);
     return NULL;
@@ -3433,9 +3563,11 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
   info->rdp_packet += 2;
 
   if (length == 0x8000) {
+    if (o.debugging > 9)
+      printf(" SKIP OVER THIS MESSAGE \n");
 		/* skip over this message in stream */
 		info->rdp_next_packet += 8;
-		return False;
+		return NULL;
 	}
 
   /* Get pdu type */
@@ -3449,10 +3581,12 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
     printf("    RDP length: %u\n", length);
   info->rdp_next_packet += length;
 
-  printf("============= INCOMING DATA ==============\n");
-  char *string = hexdump((u8*)info->rdp_packet, length);
-  log_write(LOG_PLAIN, "%s", string);
-  printf("============== INCOMING DATA END ==============\n");
+  if (o.debugging > 8) {
+    printf("============= INCOMING DATA ==============\n");
+    char *string = hexdump((u8*)info->rdp_packet, length);
+    log_write(LOG_PLAIN, "%s", string);
+    printf("============== INCOMING DATA END ==============\n");
+  }
 
   return info->rdp_packet;
 }
@@ -3475,10 +3609,14 @@ rdp_secure_recv_data(Connection *con, bool *fastpath)
 
     if (*fastpath == true) {
 
-      printf("fastpath in rdp_secure_recvdata\n");
+      if (o.debugging > 9)
+        printf("fastpath in rdp_secure_recvdata\n");
 
       fastpath_flags = (fastpath_header & 0xc0) >> 6;
       if (fastpath_flags & FASTPATH_OUTPUT_ENCRYPTED) {
+
+        if (o.debugging > 9)
+          printf("FASTPATH OUTPUT ENCRYPTED\n");
         /* Skip signature */
         p += 8;
 
@@ -3513,7 +3651,7 @@ rdp_secure_recv_data(Connection *con, bool *fastpath)
 
       datalen = (info->rdp_packet_end - p);
 
-      if (o.debugging > 8)
+      if (o.debugging > 9)
         printf("  Sec length: %u\n", datalen);
 
       RC4(&info->rc4_decrypt_key, datalen, p, p);
@@ -3521,7 +3659,7 @@ rdp_secure_recv_data(Connection *con, bool *fastpath)
     }
 
     if (flags & SEC_LICENCE_NEG) {
-      if (o.debugging > 8)
+      if (o.debugging > 9)
         printf("SEC LICENSE\n");
 
       /* Eat away the ISO packet */
@@ -3531,12 +3669,12 @@ rdp_secure_recv_data(Connection *con, bool *fastpath)
     }
 
     if (flags & 0x0400) {
-      if (o.debugging > 8)
+      if (o.debugging > 9)
         printf("----SEC REDIRECT-----\n");
     }
 
     if (channel != MCS_GLOBAL_CHANNEL) {
-      if (o.debugging > 8)
+      if (o.debugging > 9)
         printf("non-global channel\n");
 
     }
@@ -3608,6 +3746,7 @@ rdp_iso_recv_data_loop(Connection *con, bool *fastpath, uint8_t *fastpath_header
   char error[64];
   rdp_state *info = (rdp_state *)con->misc_info;
   u_char *p;
+  bool length_bigger = false;
 
   if (o.debugging > 8)
     printf("TCP length: %u\n", con->inbuf->get_len());
@@ -3617,17 +3756,27 @@ rdp_iso_recv_data_loop(Connection *con, bool *fastpath, uint8_t *fastpath_header
 
   // this is a fastpath pdu if the T.123 version is not 3
   if (tpkt->version != 3) {
-    printf("FASTPATH\n");
+    if (o.debugging > 8)
+      printf("FASTPATH\n");
     fast_tpkt = (iso_tpkt_fast *)((u_char *)con->inbuf->get_dataptr());
     *fastpath = true;
     *fastpath_header = fast_tpkt->version;
     info->packet_len = fast_tpkt->length1;
     if (info->packet_len & 0x80) {
-      printf("length bigger\n");
+      if (o.debugging > 9)
+        printf("length bigger\n");
       info->packet_len &= ~0x80;
       info->packet_len = (info->packet_len << 8) + fast_tpkt->length2;
+      length_bigger = true;
     }
-    printf("fastpath length: %u\n", info->packet_len);
+    if (o.debugging > 9) {
+      printf("fastpath length: %u\n", info->packet_len);
+
+      printf("============== FASTPATH HEADER ===============\n");
+      char *string = hexdump((u8*)fast_tpkt, sizeof(iso_tpkt_fast));
+      log_write(LOG_PLAIN, "%s", string);
+      printf("============= FASTPATH HEADER END ===============\n");
+    }
 
     info->rdp_packet_end = (u_char *)fast_tpkt + info->packet_len;
 
@@ -3643,8 +3792,14 @@ rdp_iso_recv_data_loop(Connection *con, bool *fastpath, uint8_t *fastpath_header
   }
 
   if (*fastpath == true) {
-    printf("fastpath return\n");
-    p = ((u_char *)(fast_tpkt) + sizeof(iso_tpkt));
+    if (o.debugging > 9)
+      printf("fastpath return\n");
+
+    // if length is not bigger then iso_tpkt_fast is 1 byte less
+    if (length_bigger == true) 
+      p = ((u_char *)(fast_tpkt) + sizeof(iso_tpkt_fast));
+    else 
+      p = ((u_char *)(fast_tpkt) - 1 + sizeof(iso_tpkt_fast));
     return p;
   }
 
@@ -4308,10 +4463,12 @@ rdp_client_info(Connection *con)
 
   }
 
-  printf("-----------DATA OUTGOING --------\n");
-  char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
-  log_write(LOG_PLAIN, "%s", string);
-  printf("-----------DATA OUTGOING END --------\n");
+  if (o.debugging > 9) {
+    printf("-----------DATA OUTGOING --------\n");
+    char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
+    log_write(LOG_PLAIN, "%s", string);
+    printf("-----------DATA OUTGOING END --------\n");
+  }
 
   total_length += sizeof(mcs_data) + sizeof(sec_header);
   rdp_iso_data(con, total_length);
@@ -4511,11 +4668,12 @@ rdp_confirm_active(Connection *con)
   total_length -= sizeof(mcs_data);
   rdp_mcs_data(con, total_length);
 
-
-  printf("-----------CONFIRM ACTIVE OUTGOING DATA-------- %u \n", data->get_len());
-  char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
-  log_write(LOG_PLAIN, "%s", string);
-  printf("-----------OUTGOING DATA END--------\n");
+  if (o.debugging > 9) {
+    printf("-----------CONFIRM ACTIVE OUTGOING DATA-------- %u \n", data->get_len());
+    char *string = hexdump((u8*)data->get_dataptr(), data->get_len());
+    log_write(LOG_PLAIN, "%s", string);
+    printf("-----------OUTGOING DATA END--------\n");
+  }
 
   rdp_encrypt_data(con, (uint8_t *)data->get_dataptr(), data->get_len(), flags);
 
@@ -4555,12 +4713,13 @@ rdp_data(Connection *con, Buf *data, uint8_t pdu_type)
   rdp_iso_data(con, total_length);
   total_length -= sizeof(mcs_data);
   rdp_mcs_data(con, total_length);
-
-  printf("-----------OUTGOING DATA-------- %u \n", rdp->get_len());
-  char *string = hexdump((u8*)rdp->get_dataptr(), rdp->get_len());
-  log_write(LOG_PLAIN, "%s", string);
-  printf("-----------OUTGOING DATA END--------\n");
-
+ 
+  if (o.debugging > 9) {
+    printf("-----------OUTGOING DATA-------- %u \n", rdp->get_len());
+    char *string = hexdump((u8*)rdp->get_dataptr(), rdp->get_len());
+    log_write(LOG_PLAIN, "%s", string);
+    printf("-----------OUTGOING DATA END--------\n");
+  }
 
   rdp_encrypt_data(con, (uint8_t *)rdp->get_dataptr(), rdp->get_len(), flags);
 
@@ -4783,12 +4942,16 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       con->state = RDP_DEMAND_ACTIVE_INPUT_SYNC;
 
-      printf("RDP_DEMAND_ACTIVE_SYNC\n");
-      printf("rdp_synchronize\n"); 
+      if (o.debugging > 9) {
+        printf("RDP_DEMAND_ACTIVE_SYNC\n");
+        printf("rdp_synchronize\n"); 
+      }
       rdp_synchronize(con);
-      printf("rdp_control cooperate\n");
+      if (o.debugging > 9) 
+        printf("rdp_control cooperate\n");
       rdp_control(con, RDP_CTL_COOPERATE);
-      printf("rdp_control request\n");
+      if (o.debugging > 9) 
+        printf("rdp_control request\n");
       rdp_control(con, RDP_CTL_REQUEST_CONTROL);
 
       nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
@@ -4802,7 +4965,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      printf("DEMAND_ACTIVE_INPUT_SYNC\n");
+      if (o.debugging > 9) 
+        printf("DEMAND_ACTIVE_INPUT_SYNC\n");
 
       con->state = RDP_DEMAND_ACTIVE_FONTS;
 
@@ -4820,12 +4984,14 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
       con->state = RDP_LOOP;
 
-      printf("DEMAND_ACTIVE_FONTS\n");
+      if (o.debugging > 9) 
+        printf("DEMAND_ACTIVE_FONTS\n");
 
       if (info->rdp_version >= 5) {
         // normally we would send a bmpcache2 here
         // but we don't have any so don't have to send anything
-        printf("rdp_fonts_send\n");
+        if (o.debugging > 9) 
+          printf("rdp_fonts_send\n");
         rdp_fonts_send(con, 3);
       } else {
         rdp_fonts_send(con, 1);
@@ -4855,7 +5021,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
         case LOOP_WRITE:
 
-          printf(" ----- LOOP WRITE ------\n");
+          if (o.debugging > 9) 
+            printf(" ----- LOOP WRITE ------\n");
 
           con->state = RDP_DEMAND_ACTIVE_SYNC;
           nsock_write(nsp, nsi, ncrack_write_handler, RDP_TIMEOUT, con,
@@ -4864,7 +5031,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
         case LOOP_DISC:
 
-          printf(" ----- LOOP DISC ------\n");
+          if (o.debugging > 9) 
+            printf(" ----- LOOP DISC ------\n");
 
           delete con->inbuf;
           con->inbuf = NULL;
@@ -4880,14 +5048,16 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
         case LOOP_NOTH:
 
-          printf(" ----- LOOP NOTH ------\n");
+          if (o.debugging > 9) 
+            printf(" ----- LOOP NOTH ------\n");
 
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
 
         case LOOP_AUTH:
 
-          printf(" ----- LOOP AUTH ------\n");
+          if (o.debugging > 9) 
+            printf(" ----- LOOP AUTH ------\n");
 
           if (info->login_result == LOGIN_SUCCESS) {
             con->auth_success = true;
@@ -4907,7 +5077,8 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
 
         default:
 
-          printf(" ----- LOOP DEFAULT  ------\n");
+          if (o.debugging > 9) 
+            printf(" ----- LOOP DEFAULT  ------\n");
           nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
           break;
       }
