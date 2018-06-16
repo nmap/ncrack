@@ -184,6 +184,16 @@ typedef struct rdp_state {
   uint16_t packet_len;
 
   int login_result;
+
+  /* 
+   * hack to find pattern for RDPv5 to determine when
+   * there is an authentication failure, since Windows
+   * does not explicitly send a status message about that
+   * if we detect a certain number of patterns a specific number
+   * of times, then we can assume that this is a failure
+   */
+  int login_pattern_fail; 
+
   int rdp_version; /* 4, 5, 6 */
 
   uint8_t order_state_type;
@@ -405,6 +415,10 @@ enum RDP_CONTROL_PDU_TYPE
 };
 
 #define RDP_KEYPRESS 0
+
+#define PERF_DISABLE_FULLWINDOWDRAG	0x02
+#define PERF_DISABLE_MENUANIMATIONS	0x04
+#define PERF_ENABLE_FONT_SMOOTHING	0x80
 
 #define CS_CORE 0xC001;
 #define CS_SECURITY 0xC002;
@@ -1639,7 +1653,10 @@ static int
 rdp_loop_read(nsock_pool nsp, Connection *con)
 {
   uint16_t total_length;
-  u_char *ioptr;
+  iso_tpkt *tpkt;
+  iso_tpkt_fast *fast_tpkt = NULL;
+
+  printf("----rdp loop read----\n");
 
   /* Make sure we get at least 4 bytes: this is the TPKT header which
    * contains the total size of the message
@@ -1650,10 +1667,20 @@ rdp_loop_read(nsock_pool nsp, Connection *con)
   }
 
   /* Get message length from TPKT header. It is in big-endian byte order */
-  ioptr = (u_char *)con->inbuf->get_dataptr() + 2;
-  memcpy(&total_length, ioptr, sizeof(total_length));
+  tpkt = (iso_tpkt *) ((u_char *)con->inbuf->get_dataptr());
+  if (tpkt->version != 3) { // fastpath
+    fast_tpkt = (iso_tpkt_fast *)((u_char *)con->inbuf->get_dataptr());
+    total_length = fast_tpkt->length1;
+    if (total_length & 0x80) {
+      total_length &= ~0x80;
+      total_length = (total_length << 8) + fast_tpkt->length2;
+    }
+  } else {
+    total_length = ntohs(tpkt->length); // big endian
+  }
 
-  total_length = ntohs(total_length); /* convert to host-byte order */
+  printf("total length: %u \n", total_length);
+  printf("inbuf length: %u \n", con->inbuf->get_len());
 
   /* If we haven't received all the bytes of the message, according to the
    * total length that we calculated, then try and get the rest */
@@ -2636,6 +2663,27 @@ rdp_parse_memblt(u_char *p, uint32_t params, bool delta, rdp_state *info)
     info->win7_vista_fingerprint = true;
   }
 
+  if (info->memblt.opcode == 0xcc &&
+      info->memblt.x == 384 &&
+      info->memblt.y == 192 &&
+      info->memblt.cx == 64 &&
+      info->memblt.cy == 64 &&
+      info->memblt.cache_id == 2) {
+
+      info->login_pattern_fail++;
+
+      // we need to see this pattern 4 times to indicate failure
+      if (info->login_pattern_fail >= 4) {
+      
+        if (o.debugging > 9) 
+          printf("================ WIN 2012 FAIL ================\n");
+        info->login_result = LOGIN_FAIL;
+        info->login_pattern_fail = 0;
+      }
+
+  }
+
+
 
   if (o.debugging > 8)
     printf("MEMBLT(op=0x%x,x=%d,y=%d,cx=%d,cy=%d,id=%d,idx=%d)\n",
@@ -2855,6 +2903,7 @@ rdp_parse_bmpcache2(Connection *con, u_char *p, uint16_t sec_flags, bool compres
       printf("rdp_parse_bmpcache2(), compr=%d, flags=%x, cx=%d, cy=%d, id=%d, idx=%d, Bpp=%d, bs=%d\n",
 	       compressed, sec_flags, width, height, cache_id, cache_idx, Bpp, buffer_size);
 
+#if 0
     /* Windows 2012 fail fingerprint */
     if (compressed == true &&
         sec_flags == 0x4a2 &&
@@ -2868,6 +2917,7 @@ rdp_parse_bmpcache2(Connection *con, u_char *p, uint16_t sec_flags, bool compres
         printf("================ WIN 2012 FAIL ================\n");
       info->login_result = LOGIN_FAIL;
     }
+#endif
 
 }
 
@@ -3483,7 +3533,15 @@ rdp_process_loop(Connection *con)
 
   }
 
+
+  printf("-----eating away packet for length: %d \n", info->packet_len);
   con->inbuf->get_data(NULL, info->packet_len);
+  printf("-----bytes left in buf: %d \n", con->inbuf->get_len());
+  if (con->inbuf->get_len() == 0) {
+    delete con->inbuf;
+    con->inbuf = NULL;
+  }
+
   info->packet_len = 0;
   info->rdp_packet = NULL;
 
@@ -4299,6 +4357,11 @@ rdp_client_info(Connection *con)
   uint32_t flags = RDP_LOGON_AUTO | RDP_LOGON_NORMAL; // TODO: test the flags 
   int packetlen = 0;
 
+  uint32_t rdp5_performance_flags = (PERF_DISABLE_FULLWINDOWDRAG |
+				  PERF_DISABLE_MENUANIMATIONS |
+				  PERF_ENABLE_FONT_SMOOTHING);
+
+
   /* length of strings in TS_EXTENDED_PACKET includes null terminator */
 	int len_ip = 2 * strlen("172.16.51.1") + 2;  // TODO: change this to non-hardcoded IP
 	int len_dll = 2 * strlen("C:\\WINNT\\System32\\mstscax.dll") + 2;
@@ -4457,7 +4520,7 @@ rdp_client_info(Connection *con)
       val = 0xffffffc4; data->append(&val, sizeof(val)); /* daylight bias */
 
       data->append(pad0, 4); /* clientSessionId (must be 0) */
-      data->append(pad0, 4); // rdp5 performance flags
+      data->append(&rdp5_performance_flags, sizeof(rdp5_performance_flags)); // rdp5 performance flags
       data->append(pad0, 2);  /* auto reconnect length */
 
       total_length = packetlen;
