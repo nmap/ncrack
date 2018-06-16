@@ -10,8 +10,6 @@ http 80/tcp
 wordpress 80/tcp
 wp 80/tcp
 joomla 80/tcp
-wordpress 80/tcp
-wp 80/tcp
 pop3 110/tcp
 imap 143/tcp
 netbios-ssn 445/tcp
