@@ -129,6 +129,9 @@
  ***************************************************************************/
 
 #include "Buf.h"
+#include "NcrackOps.h"
+
+extern NcrackOps o;
 
 Buf::Buf()
 {
@@ -281,8 +284,10 @@ int
 Buf::get_data(void *dst, u_int len)
 {
 	if (len > end - offset) {
-		error("%s: trying to get more bytes %d than in buffer %d",
+    if (o.debugging > 9) {
+  		error("%s: trying to get more bytes %d than in buffer %d",
 		    __func__, len, end - offset);
+    }
 		return (-1);
 	}
   

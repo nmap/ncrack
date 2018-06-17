@@ -1670,7 +1670,8 @@ rdp_loop_read(nsock_pool nsp, Connection *con)
   iso_tpkt *tpkt;
   iso_tpkt_fast *fast_tpkt = NULL;
 
-  printf("----rdp loop read----\n");
+  if (o.debugging > 9)
+    printf("----rdp loop read----\n");
 
   /* Make sure we get at least 4 bytes: this is the TPKT header which
    * contains the total size of the message
@@ -1693,8 +1694,10 @@ rdp_loop_read(nsock_pool nsp, Connection *con)
     total_length = ntohs(tpkt->length); // big endian
   }
 
-  printf("total length: %u \n", total_length);
-  printf("inbuf length: %u \n", con->inbuf->get_len());
+  if (o.debugging > 9) {
+    printf("total length: %u \n", total_length);
+    printf("inbuf length: %u \n", con->inbuf->get_len());
+  }
 
   /* If we haven't received all the bytes of the message, according to the
    * total length that we calculated, then try and get the rest */
@@ -3592,10 +3595,14 @@ rdp_process_loop(Connection *con)
 
   }
 
+  if (o.debugging > 9)
+    printf("-----eating away packet for length: %d \n", info->packet_len);
 
-  printf("-----eating away packet for length: %d \n", info->packet_len);
   con->inbuf->get_data(NULL, info->packet_len);
-  printf("-----bytes left in buf: %d \n", con->inbuf->get_len());
+
+  if (o.debugging > 9)
+    printf("-----bytes left in buf: %d \n", con->inbuf->get_len());
+
   if (con->inbuf->get_len() == 0) {
     delete con->inbuf;
     con->inbuf = NULL;
@@ -3656,8 +3663,9 @@ rdp_recv_data(Connection *con, uint8_t *pdu_type)
       || (info->rdp_next_packet == NULL)) {
 
     if (o.debugging > 9) {
-      printf("rdp_packet_end: %x \n", info->rdp_packet_end);
-      printf("rdp_next_packet: %x \n", info->rdp_next_packet);
+      //printf("rdp_packet_end: %x \n", info->rdp_packet_end);
+      //printf("rdp_next_packet: %x \n", info->rdp_next_packet);
+      ;
     }
 
     if (o.debugging > 8)
