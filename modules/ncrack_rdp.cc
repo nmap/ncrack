@@ -161,6 +161,16 @@ extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 
+typedef struct stream_struct
+{
+  u_char *p;
+  u_char *end;
+  u_char *data;
+  unsigned int size;
+} *stream;
+
+
+
 typedef struct rdp_state {
 
   uint8_t crypted_random[256];
@@ -182,6 +192,8 @@ typedef struct rdp_state {
   u_char *rdp_next_packet;
   u_char *rdp_packet_end;
   uint16_t packet_len;
+
+  stream assembled[0x0F];
 
   int login_result;
 
@@ -314,6 +326,8 @@ enum RDP_UPDATE_PDU_TYPE
   RDP_UPDATE_PALETTE = 2,
   RDP_UPDATE_SYNCHRONISE = 3
 };
+
+#define FASTPATH_MULTIFRAGMENT_MAX_SIZE 65535UL
 
 #define FASTPATH_OUTPUT_ENCRYPTED 0x2
 #define FASTPATH_OUTPUT_COMPRESSION_USED	(0x2 << 6)
@@ -2677,8 +2691,8 @@ rdp_parse_memblt(u_char *p, uint32_t params, bool delta, rdp_state *info)
       
         if (o.debugging > 9) 
           printf("================ WIN 2012 FAIL ================\n");
-        info->login_result = LOGIN_FAIL;
-        info->login_pattern_fail = 0;
+        //info->login_result = LOGIN_FAIL;
+        //info->login_pattern_fail = 0;
       }
 
   }
@@ -2867,7 +2881,7 @@ rdp_parse_bmpcache2(Connection *con, u_char *p, uint16_t sec_flags, bool compres
 {
     uint8_t cache_id, cache_idx_low, Bpp, width, height;
     uint16_t buffer_size, cache_idx;
-    rdp_state *info = (rdp_state *) con->misc_info;
+    //rdp_state *info = (rdp_state *) con->misc_info;
 
     cache_id = sec_flags & ID_MASK;
     Bpp = ((sec_flags & MODE_MASK) >> MODE_SHIFT) - 2;
@@ -2985,7 +2999,7 @@ rdp_parse_orders(Connection *con, u_char *p, uint16_t num)
           break;
         default:
           if (o.debugging > 8)
-             printf("process_secondary_order(), unhandled secondary order %d", sec_type);
+             printf("process_secondary_order(), unhandled secondary order %d\n", sec_type);
       }
       
       /* now add length and ignore that many bytes */
@@ -3400,7 +3414,7 @@ rdp_process_fastpath_code(Connection *con, u_char *p, uint8_t code)
 			break;
 		default:
       if (o.debugging > 9)
-			  printf("unhandled opcode %d", code);
+			  printf("unhandled opcode %d\n", code);
 	}
   return p;
 
@@ -3445,7 +3459,50 @@ rdp_process_fastpath(Connection *con, u_char *p)
     } else {
       if (o.debugging > 9)
         printf(" ---------- FRAGMENTED \n");
-    }
+
+      if (info->assembled[code] == NULL) {
+        info->assembled[code] = (stream_struct *)safe_malloc(sizeof(struct stream_struct));
+        memset(info->assembled[code], 0, sizeof(struct stream_struct));
+
+        // realloc
+        u_char *data;
+        if (info->assembled[code]->size < FASTPATH_MULTIFRAGMENT_MAX_SIZE) {
+          data = info->assembled[code]->data;
+          info->assembled[code]->size = FASTPATH_MULTIFRAGMENT_MAX_SIZE;
+          info->assembled[code]->data = (u_char *)safe_realloc(data, FASTPATH_MULTIFRAGMENT_MAX_SIZE);
+          info->assembled[code]->p = info->assembled[code]->data + (info->assembled[code]->p - data);
+          info->assembled[code]->end = info->assembled[code]->data + (info->assembled[code]->end - data);
+        }
+
+        // reset 
+        struct stream_struct tmp;
+        tmp = *(info->assembled[code]);
+        memset(info->assembled[code], 0, sizeof(struct stream_struct));
+        info->assembled[code]->size = tmp.size;
+        info->assembled[code]->end = info->assembled[code]->p = info->assembled[code]->data = tmp.data;
+      }
+
+      if (frag == FASTPATH_FRAGMENT_FIRST) {
+        // reset 
+        struct stream_struct tmp;
+        tmp = *(info->assembled[code]);
+        memset(info->assembled[code], 0, sizeof(struct stream_struct));
+        info->assembled[code]->size = tmp.size;
+        info->assembled[code]->end = info->assembled[code]->p = info->assembled[code]->data = tmp.data;
+      }
+
+      memcpy(info->assembled[code]->p, p, length);
+      info->assembled[code]->p += length;
+
+      if (frag == FASTPATH_FRAGMENT_LAST) {
+        printf(" -------- LAST FRAGMENT \n");
+
+        info->assembled[code]->end = info->assembled[code]->p;
+        info->assembled[code]->p = info->assembled[code]->data;
+
+        rdp_process_fastpath_code(con, info->assembled[code]->p, code);
+      }
+		}
 
     p = next;
 
