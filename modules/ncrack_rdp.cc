@@ -3331,6 +3331,8 @@ rdp_parse_bitmap_update(u_char *p)
   num = *(uint16_t *)p;
   p += 2;
 
+  printf("num: %d\n", num);
+
   for (i = 0; i < num; i++) {
     p += 2; // left
     p += 2; // top
@@ -3387,7 +3389,7 @@ rdp_process_fastpath_code(Connection *con, u_char *p, uint8_t code)
 			break;
 		case FASTPATH_UPDATETYPE_BITMAP:
       p += 1;
-			p = rdp_parse_bitmap_update(p);
+			//p = rdp_parse_bitmap_update(p);
 			break;
 		case FASTPATH_UPDATETYPE_PALETTE:
       p += 2;
