@@ -2678,21 +2678,21 @@ rdp_parse_memblt(u_char *p, uint32_t params, bool delta, rdp_state *info)
   }
 
   if (info->memblt.opcode == 0xcc &&
-      info->memblt.x == 384 &&
-      info->memblt.y == 192 &&
+      info->memblt.x == 256 &&
+      info->memblt.y == 256 &&
       info->memblt.cx == 64 &&
       info->memblt.cy == 64 &&
       info->memblt.cache_id == 2) {
 
       info->login_pattern_fail++;
 
-      // we need to see this pattern 4 times to indicate failure
-      if (info->login_pattern_fail >= 4) {
+      // we need to see this pattern 6 times to indicate failure
+      if (info->login_pattern_fail >= 6) {
       
         if (o.debugging > 9) 
           printf("================ WIN 2012 FAIL ================\n");
-        //info->login_result = LOGIN_FAIL;
-        //info->login_pattern_fail = 0;
+        info->login_result = LOGIN_FAIL;
+        info->login_pattern_fail = 0;
       }
 
   }
@@ -5187,6 +5187,7 @@ ncrack_rdp(nsock_pool nsp, Connection *con)
           delete con->inbuf;
           con->inbuf = NULL;
 
+          info->login_pattern_fail = 0;
           con->force_close = true;
           rdp_disconnect(con);
 
