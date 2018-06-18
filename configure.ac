@@ -343,11 +343,11 @@ fi
 MODULES_SRCS="$MODULES_SRCS ncrack_ftp.cc ncrack_telnet.cc ncrack_http.cc \
 ncrack_pop3.cc ncrack_vnc.cc ncrack_redis.cc  ncrack_owa.cc \
 ncrack_imap.cc ncrack_cassandra.cc ncrack_mssql.cc ncrack_cvs.cc \
-ncrack_wordpress.cc ncrack_joomla.cc"
+ncrack_wordpress.cc ncrack_joomla.cc ncrack_dicom.cc"
 MODULES_OBJS="$MODULES_OBJS ncrack_ftp.o ncrack_telnet.o ncrack_http.o \
 ncrack_pop3.o ncrack_vnc.o ncrack_redis.o ncrack_owa.o \
 ncrack_imap.o ncrack_cassandra.o ncrack_mssql.o ncrack_cvs.o \
-ncrack_wordpress.o ncrack_joomla.o"
+ncrack_wordpress.o ncrack_joomla.o ncrack_dicom.o"
 
 AC_SUBST(MODULES_SRCS)
 AC_SUBST(MODULES_OBJS)

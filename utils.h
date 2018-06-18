@@ -268,5 +268,8 @@ int strbuf_append(char **buf, size_t *size, size_t *offset, const char *s, size_
 int strbuf_append_str(char **buf, size_t *size, size_t *offset, const char *s);
 int strbuf_sprintf(char **buf, size_t *size, size_t *offset, const char *fmt, ...);
 
+uint32_t le_to_be32(uint32_t x);
+uint16_t le_to_be16(uint16_t x);
+
 
 #endif /* UTILS_H */

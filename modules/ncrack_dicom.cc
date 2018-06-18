@@ -1,8 +1,6 @@
 
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_dicom.cc -- ncrack module for the DICOM protocol                 *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -129,32 +127,251 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef MODULES_H 
-#define MODULES_H 1
 
+#include "ncrack.h"
 #include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
 
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
-void ncrack_imap(nsock_pool nsp, Connection *con);
-void ncrack_smb(nsock_pool nsp, Connection *con);
-void ncrack_rdp(nsock_pool nsp, Connection *con);
-void ncrack_vnc(nsock_pool nsp, Connection *con);
-void ncrack_sip(nsock_pool nsp, Connection *con);
-void ncrack_redis(nsock_pool nsp, Connection *con);
-void ncrack_psql(nsock_pool nsp, Connection *con);
-void ncrack_mysql(nsock_pool nsp, Connection *con);
-void ncrack_winrm(nsock_pool nsp, Connection *con);
-void ncrack_owa(nsock_pool nsp, Connection *con);
-void ncrack_cassandra(nsock_pool nsp, Connection *con);
-void ncrack_mssql(nsock_pool nsp, Connection *con);
-void ncrack_mongodb(nsock_pool nsp, Connection *con);
-void ncrack_cvs(nsock_pool nsp, Connection *con);
-void ncrack_wordpress(nsock_pool nsp, Connection *con);
-void ncrack_joomla(nsock_pool nsp, Connection *con);
-void ncrack_dicom(nsock_pool nsp, Connection *con);
+#define DICOM_TIMEOUT 20000
 
-#endif
+
+#define DICOM_APP "1.2.840.10008.3.1.1.1"
+#define DICOM_ABS "1.2.840.10008.1.1"
+#define DICOM_TRX "1.2.840.10008.1.2.1"
+#define DICOM_UID "1.3.12.2.1107.5.9.20000101"
+#define DICOM_IMPL "Ncrack - https://nmap.org/ncrack"
+
+
+typedef struct dicom_assoc {
+
+  struct assoc_request {
+
+    struct app_ctx {
+      uint16_t item_type; // 0x10 = app context
+      uint16_t item_length;
+      u_char ctx[21];
+
+      app_ctx() {
+        item_type = 0x10;
+        item_length = le_to_be16(21);
+        memcpy(ctx, DICOM_APP, sizeof(ctx));
+      }
+    } __attribute__((__packed__));
+
+    struct pres_context {
+
+      struct abstract_syntax {
+        uint16_t item_type; // 0x30 = abstract
+        uint16_t item_length;
+        u_char abs_syntax[17];
+        
+        abstract_syntax() {
+          item_type = 0x30;
+          item_length = le_to_be16(17);
+          memcpy(abs_syntax, DICOM_ABS, sizeof(abs_syntax));
+        }
+      } __attribute__((__packed__)); 
+      struct transfer_syntax {
+        uint16_t item_type; // 0x40 = transfer
+        uint16_t item_length;
+        u_char trx_syntax[19]; // explicit vr little endian
+
+        transfer_syntax() {
+          item_type = 0x40;
+          item_length = le_to_be16(19);
+          memcpy(trx_syntax, DICOM_TRX, sizeof(trx_syntax));
+        }
+      } __attribute__((__packed__));
+
+      pres_context() {
+        item_type = 0x20;
+        item_length = le_to_be16(48);
+        context_id = 0x01;
+      }
+
+      uint16_t item_type; // 0x20 = presentation
+      uint16_t item_length;
+      uint8_t context_id;  
+      u_char pad0[3] = { 0x00, 0x00, 0x00 };
+      abstract_syntax abs;
+      transfer_syntax trx;
+    } __attribute__((__packed__));
+
+    struct user_info {
+
+      struct max_length {
+        uint16_t item_type; // 0x51 = max-length
+        uint16_t item_length;
+        uint32_t max_len;
+
+        max_length() {
+          item_type = 0x51;
+          item_length = le_to_be16(4);
+          max_len = le_to_be32(528378);
+        }
+      } __attribute__((__packed__));
+      struct implementation_id {
+        uint16_t item_type; // 0x52 = class uid
+        uint16_t item_length; 
+        u_char class_uid[26]; 
+
+        implementation_id() {
+          item_type = 0x52;
+          item_length = le_to_be16(26);
+          memcpy(class_uid, DICOM_UID, sizeof(class_uid));
+        }
+      } __attribute__((__packed__));
+      struct async_neg {
+        uint16_t item_type; // 0x53 = async op
+        uint16_t item_length;
+        uint16_t max_num_ops_invoked;
+        uint16_t max_num_ops_performed;
+
+        async_neg() {
+          item_type = 0x53;
+          item_length = le_to_be16(4);
+          max_num_ops_invoked = 0;
+          max_num_ops_performed = 0;
+        }
+      } __attribute__((__packed__));
+      struct implementation_version {
+        uint16_t item_type; // 0x55 = impl version
+        uint16_t item_length;
+        u_char impl_version[32];
+
+        implementation_version() {
+          item_type = 0x55;
+          item_length = le_to_be16(32);
+          memcpy(impl_version, DICOM_IMPL, sizeof(impl_version));
+        }
+      } __attribute__((__packed__));
+
+      user_info() {
+        item_type = 0x50;
+        item_length = le_to_be16(82);
+      }
+
+      uint16_t item_type; // 0x50 = user-info
+      uint16_t item_length;
+      max_length max;
+      implementation_id uid;
+      async_neg async;
+      implementation_version impl;
+
+    } __attribute__((__packed__));
+
+    assoc_request() {
+      version = le_to_be16(1);
+    }
+    
+    uint16_t version;
+    u_char pad[2] = { 0x00, 0x00 };
+    u_char called_ae[16] = { 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+                             0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
+    u_char calling_ae[16] = { 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+                              0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
+    u_char pad0[32] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+    app_ctx app;
+    pres_context pres;
+    user_info user;
+  };
+
+  dicom_assoc() {
+    pdu_type = le_to_be16(0x100);
+    pdu_length = le_to_be32(232);
+  }
+
+  uint16_t pdu_type;
+  uint32_t pdu_length;
+  assoc_request assoc;
+
+} __attribute__((__packed__)) dicom_assoc;
+
+
+
+extern NcrackOps o;
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+static int dicom_loop_read(nsock_pool nsp, Connection *con, char *ftp_code_ret);
+
+enum states { DICOM_INIT, DICOM_FINI };
+
+
+static int
+dicom_loop_read(nsock_pool nsp, Connection *con)
+{
+  uint32_t *pdu_length;
+
+  /* we need at least 6 bytes to read the whole PDU length */
+  if (con->inbuf == NULL || con->inbuf->get_len() < 6) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, DICOM_TIMEOUT, con);
+    return -1;
+  }
+
+  pdu_length = (uint32_t *)((u_char *)con->inbuf->get_dataptr());
+  if (o.debugging > 9)
+    printf("pdu length: %d\n", *pdu_length);
+
+  /* now read until we receive all bytes mentioned in length */
+  if (con->inbuf->get_len() < *pdu_length) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, DICOM_TIMEOUT, con);
+    return -1;
+  }
+
+  return 0;
+}
+
+
+
+void
+ncrack_dicom(nsock_pool nsp, Connection *con)
+{
+  nsock_iod nsi = con->niod;
+  Service *serv = con->service;
+  dicom_assoc da;
+
+  switch (con->state)
+  {
+    case DICOM_INIT:
+
+      con->state = DICOM_FINI;
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      memcpy(da.assoc.called_ae, con->user, strlen(con->user));
+      memcpy(da.assoc.calling_ae, con->pass, strlen(con->pass));
+
+      con->outbuf->append(&da, sizeof(da));
+
+      printf("da size: %d \n", sizeof(da));
+      printf("buf len: %d \n", con->outbuf->get_len());
+
+      nsock_write(nsp, nsi, ncrack_write_handler, DICOM_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case DICOM_FINI:
+
+      if (dicom_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = DICOM_INIT;
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      return ncrack_module_end(nsp, con);
+  }
+}

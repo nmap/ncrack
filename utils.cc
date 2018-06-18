@@ -701,3 +701,15 @@ int strbuf_sprintf(char **buf, size_t *size, size_t *offset, const char *fmt, ..
   return n;
 }
 
+
+uint32_t le_to_be32(uint32_t x)
+{
+	return (((x>>24) & 0x000000ff) | ((x>>8) & 0x0000ff00) | ((x<<8) & 0x00ff0000) | ((x<<24) & 0xff000000));
+}
+
+
+uint16_t le_to_be16(uint16_t x)
+{
+  return ((x>>8) | (x<<8)); 
+}
+
