@@ -143,10 +143,7 @@
 #define DICOM_TRX_IMP_L "1.2.840.10008.1.2"
 #define DICOM_TRX_EXP_B "1.2.840.10008.1.2.2"
 #define DICOM_UID "1.3.12.2.1107.5.9.20000101"
-
-//#define DICOM_IMPL "Ncrack - https://nmap.org/ncrack"
-
-#define DICOM_IMPL "SIEMENS_SWFSYNGO"
+#define DICOM_IMPL "Ncrack - https://nmap.org/ncrack"
 
 
 typedef struct dicom_assoc {
@@ -271,18 +268,18 @@ typedef struct dicom_assoc {
       struct implementation_version {
         uint16_t item_type; // 0x55 = impl version
         uint16_t item_length;
-        u_char impl_version[16];
+        u_char impl_version[32];
 
         implementation_version() {
           item_type = 0x55;
-          item_length = le_to_be16(16);
+          item_length = le_to_be16(32);
           memcpy(impl_version, DICOM_IMPL, sizeof(impl_version));
         }
       } __attribute__((__packed__));
 
       user_info() {
         item_type = 0x50;
-        item_length = le_to_be16(66);
+        item_length = le_to_be16(82);
       }
 
       uint16_t item_type; // 0x50 = user-info
@@ -315,7 +312,7 @@ typedef struct dicom_assoc {
 
   dicom_assoc() {
     pdu_type = le_to_be16(0x100);
-    pdu_length = le_to_be32(259);  // 275
+    pdu_length = le_to_be32(275);
   }
 
   uint16_t pdu_type;
@@ -382,12 +379,11 @@ ncrack_dicom(nsock_pool nsp, Connection *con)
         delete con->outbuf;
       con->outbuf = new Buf();
 
-      //memcpy(da.assoc.called_ae, con->user, strlen(con->user));
-      //memcpy(da.assoc.calling_ae, con->pass, strlen(con->pass));
-      //
+      memcpy(da.assoc.called_ae, con->user, strlen(con->user));
+      memcpy(da.assoc.calling_ae, con->pass, strlen(con->pass));
       
-      memcpy(da.assoc.called_ae, "ARCHIV", strlen("ARCHIV"));
-      memcpy(da.assoc.calling_ae, "4HDFDN", strlen("4HDFDN"));
+      //memcpy(da.assoc.called_ae, "ARCHIV", strlen("ARCHIV"));
+      //memcpy(da.assoc.calling_ae, "4HDFDN", strlen("4HDFDN"));
 
       con->outbuf->append(&da, sizeof(da));
 
