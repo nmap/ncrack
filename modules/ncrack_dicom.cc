@@ -138,12 +138,13 @@
 
 
 #define DICOM_APP "1.2.840.10008.3.1.1.1"
-#define DICOM_ABS "1.2.840.10008.1.1"
+#define DICOM_ABS "1.2.840.10008.5.1.4.1.1.7"
 #define DICOM_TRX_EXP_L "1.2.840.10008.1.2.1"
 #define DICOM_TRX_IMP_L "1.2.840.10008.1.2"
 #define DICOM_TRX_EXP_B "1.2.840.10008.1.2.2"
-#define DICOM_UID "1.3.12.2.1107.5.9.20000101"
-#define DICOM_IMPL "Ncrack - https://nmap.org/ncrack"
+#define DICOM_UID "1.2.826.0.1.3680043.2.1545.1"
+//#define DICOM_IMPL "Ncrack - https://nmap.org/ncrack"
+#define DICOM_IMPL "Ncrack"
 
 
 typedef struct dicom_assoc {
@@ -167,15 +168,16 @@ typedef struct dicom_assoc {
       struct abstract_syntax {
         uint16_t item_type; // 0x30 = abstract
         uint16_t item_length;
-        u_char abs_syntax[17];
+        u_char abs_syntax[25];
         
         abstract_syntax() {
           item_type = 0x30;
-          item_length = le_to_be16(17);
+          item_length = le_to_be16(25);
           memcpy(abs_syntax, DICOM_ABS, sizeof(abs_syntax));
         }
       } __attribute__((__packed__));
 
+#if 0
       struct transfer_syntax_explicit_l {
         uint16_t item_type; // 0x40 = transfer
         uint16_t item_length;
@@ -185,18 +187,6 @@ typedef struct dicom_assoc {
           item_type = 0x40;
           item_length = le_to_be16(19);
           memcpy(trx_syntax, DICOM_TRX_EXP_L, sizeof(trx_syntax));
-        }
-      } __attribute__((__packed__));
-
-      struct transfer_syntax_implicit_l {
-        uint16_t item_type; // 0x40 = transfer
-        uint16_t item_length;
-        u_char trx_syntax[17]; // implicit vr little endian
-
-        transfer_syntax_implicit_l() {
-          item_type = 0x40;
-          item_length = le_to_be16(17);
-          memcpy(trx_syntax, DICOM_TRX_IMP_L, sizeof(trx_syntax));
         }
       } __attribute__((__packed__));
 
@@ -211,10 +201,24 @@ typedef struct dicom_assoc {
           memcpy(trx_syntax, DICOM_TRX_EXP_B, sizeof(trx_syntax));
         }
       } __attribute__((__packed__));
+#endif
+
+      struct transfer_syntax_implicit_l {
+        uint16_t item_type; // 0x40 = transfer
+        uint16_t item_length;
+        u_char trx_syntax[17]; // implicit vr little endian
+
+        transfer_syntax_implicit_l() {
+          item_type = 0x40;
+          item_length = le_to_be16(17);
+          memcpy(trx_syntax, DICOM_TRX_IMP_L, sizeof(trx_syntax));
+        }
+      } __attribute__((__packed__));
+
 
       pres_context() {
         item_type = 0x20;
-        item_length = le_to_be16(92);
+        item_length = le_to_be16(54);
         context_id = 0x01;
       }
 
@@ -223,9 +227,9 @@ typedef struct dicom_assoc {
       uint8_t context_id;  
       u_char pad0[3] = { 0x00, 0x00, 0x00 };
       abstract_syntax abs;
-      transfer_syntax_explicit_l trx_el;
+      //transfer_syntax_explicit_l trx_el;
       transfer_syntax_implicit_l trx_il;
-      transfer_syntax_explicit_b trx_eb;
+      //transfer_syntax_explicit_b trx_eb;
     } __attribute__((__packed__));
 
     struct user_info {
@@ -238,17 +242,17 @@ typedef struct dicom_assoc {
         max_length() {
           item_type = 0x51;
           item_length = le_to_be16(4);
-          max_len = le_to_be32(528378);
+          max_len = le_to_be32(16384);
         }
       } __attribute__((__packed__));
       struct implementation_id {
         uint16_t item_type; // 0x52 = class uid
         uint16_t item_length; 
-        u_char class_uid[26]; 
+        u_char class_uid[28]; 
 
         implementation_id() {
           item_type = 0x52;
-          item_length = le_to_be16(26);
+          item_length = le_to_be16(28);
           memcpy(class_uid, DICOM_UID, sizeof(class_uid));
         }
       } __attribute__((__packed__));
@@ -268,25 +272,25 @@ typedef struct dicom_assoc {
       struct implementation_version {
         uint16_t item_type; // 0x55 = impl version
         uint16_t item_length;
-        u_char impl_version[32];
+        u_char impl_version[6];
 
         implementation_version() {
           item_type = 0x55;
-          item_length = le_to_be16(32);
+          item_length = le_to_be16(6);
           memcpy(impl_version, DICOM_IMPL, sizeof(impl_version));
         }
       } __attribute__((__packed__));
 
       user_info() {
         item_type = 0x50;
-        item_length = le_to_be16(82);
+        item_length = le_to_be16(50);  // 26
       }
 
       uint16_t item_type; // 0x50 = user-info
       uint16_t item_length;
       max_length max;
       implementation_id uid;
-      async_neg async;
+      //async_neg async;
       implementation_version impl;
 
     } __attribute__((__packed__));
@@ -312,7 +316,7 @@ typedef struct dicom_assoc {
 
   dicom_assoc() {
     pdu_type = le_to_be16(0x100);
-    pdu_length = le_to_be32(275);
+    pdu_length = le_to_be32(205);  // 231
   }
 
   uint16_t pdu_type;
