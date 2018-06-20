@@ -146,6 +146,7 @@
 //#define DICOM_IMPL "Ncrack - https://nmap.org/ncrack"
 #define DICOM_IMPL "Ncrack"
 
+#define DICOM_ERROR "Received bogus pdu type"
 
 typedef struct dicom_assoc {
 
@@ -348,7 +349,9 @@ dicom_loop_read(nsock_pool nsp, Connection *con)
     return -1;
   }
 
-  pdu_length = (uint32_t *)((u_char *)con->inbuf->get_dataptr());
+  pdu_length = (uint32_t *)((u_char *)con->inbuf->get_dataptr() + 2);
+  *pdu_length = le_to_be32(*pdu_length);
+
   if (o.debugging > 9)
     printf("pdu length: %d\n", *pdu_length);
 
@@ -369,6 +372,7 @@ ncrack_dicom(nsock_pool nsp, Connection *con)
   nsock_iod nsi = con->niod;
   Service *serv = con->service;
   dicom_assoc da;
+  uint8_t *pdu_type;
 
   switch (con->state)
   {
@@ -386,13 +390,7 @@ ncrack_dicom(nsock_pool nsp, Connection *con)
       memcpy(da.assoc.called_ae, con->user, strlen(con->user));
       memcpy(da.assoc.calling_ae, con->pass, strlen(con->pass));
       
-      //memcpy(da.assoc.called_ae, "ARCHIV", strlen("ARCHIV"));
-      //memcpy(da.assoc.calling_ae, "4HDFDN", strlen("4HDFDN"));
-
       con->outbuf->append(&da, sizeof(da));
-
-      printf("da size: %d \n", sizeof(da));
-      printf("buf len: %d \n", con->outbuf->get_len());
 
       nsock_write(nsp, nsi, ncrack_write_handler, DICOM_TIMEOUT, con,
           (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
@@ -403,6 +401,24 @@ ncrack_dicom(nsock_pool nsp, Connection *con)
       if (dicom_loop_read(nsp, con) < 0)
         break;
 
+      pdu_type = (uint8_t *)((u_char *)con->inbuf->get_dataptr());
+      if (o.debugging > 9)
+        printf("pdu_type: %d \n", *pdu_type);
+
+      if (*pdu_type == 0x03) { // ASSOC REJECT 
+        ;
+      } else if (*pdu_type == 0x02) { // ASSOC ACCEPT
+        con->auth_success = true; 
+        con->force_close = true;      
+      } else { 
+        /* received weird pdu  
+         * close connection and stop cracking
+         */
+        con->force_close = true;
+        con->close_reason = MODULE_ERR;
+        serv->end.orly = true;
+        serv->end.reason = Strndup(DICOM_ERROR, sizeof(DICOM_ERROR));
+      }
       con->state = DICOM_INIT;
 
       delete con->inbuf;
