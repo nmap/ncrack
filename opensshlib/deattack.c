@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <malloc.h>
+
 #include "deattack.h"
 #include "crc32.h"
 #include "sshbuf.h"

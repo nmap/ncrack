@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <malloc.h>
+
 #include "xmalloc.h"
 #include "log.h"
 
