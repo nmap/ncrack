@@ -333,7 +333,7 @@ extern NcrackOps o;
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
-static int dicom_loop_read(nsock_pool nsp, Connection *con, char *ftp_code_ret);
+static int dicom_loop_read(nsock_pool nsp, Connection *con);
 
 enum states { DICOM_INIT, DICOM_FINI };
 

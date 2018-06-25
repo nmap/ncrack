@@ -3325,7 +3325,7 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
 
 
 
-u_char *
+static u_char *
 rdp_parse_bitmap_update(u_char *p)
 {
   uint16_t num, width, height, bpp, Bpp, compress, buffer_size, size;
