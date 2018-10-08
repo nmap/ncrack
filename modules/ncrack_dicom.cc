@@ -143,7 +143,6 @@
 #define DICOM_TRX_IMP_L "1.2.840.10008.1.2"
 #define DICOM_TRX_EXP_B "1.2.840.10008.1.2.2"
 #define DICOM_UID "1.2.826.0.1.3680043.2.1545.1"
-//#define DICOM_IMPL "Ncrack - https://nmap.org/ncrack"
 #define DICOM_IMPL "Ncrack"
 
 #define DICOM_ERROR "Received bogus pdu type"
