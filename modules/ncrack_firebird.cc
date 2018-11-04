@@ -1,8 +1,6 @@
-
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_firebird.cc -- ncrack module for firebird database               *                   *
+ * Created by Barrend                                                      *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -129,33 +127,91 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef MODULES_H 
-#define MODULES_H 1
-
+#include "ncrack.h"
 #include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
+#ifndef LIBFIREBIRD
+void dummy_firebird() {
+	printf("\n");
+}
+#include <ibase.h>
+#define FB_TIMEOUT 20000 //here
+#define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
 
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
-void ncrack_imap(nsock_pool nsp, Connection *con);
-void ncrack_smb(nsock_pool nsp, Connection *con);
-void ncrack_rdp(nsock_pool nsp, Connection *con);
-void ncrack_vnc(nsock_pool nsp, Connection *con);
-void ncrack_sip(nsock_pool nsp, Connection *con);
-void ncrack_redis(nsock_pool nsp, Connection *con);
-void ncrack_psql(nsock_pool nsp, Connection *con);
-void ncrack_mysql(nsock_pool nsp, Connection *con);
-void ncrack_winrm(nsock_pool nsp, Connection *con);
-void ncrack_owa(nsock_pool nsp, Connection *con);
-void ncrack_cassandra(nsock_pool nsp, Connection *con);
-void ncrack_mssql(nsock_pool nsp, Connection *con);
-void ncrack_mongodb(nsock_pool nsp, Connection *con);
-void ncrack_cvs(nsock_pool nsp, Connection *con);
-void ncrack_wordpress(nsock_pool nsp, Connection *con);
-void ncrack_joomla(nsock_pool nsp, Connection *con);
-void ncrack_dicom(nsock_pool nsp, Connection *con);
-void ncrack_firebird(nsock_pool nsp, Connection *con);
+extern NcrackOps o;
 
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+static int firebird_loop_read(nsock_pool nsp, Connection *con);
+    
+enum states { FB_INIT, FB_USER };
+
+static int
+firebird_loop_read(nsock_pool nsp, Connection *con)
+{
+  if ((con->inbuf == NULL) || !memsearch((const char *)con->inbuf->get_dataptr(), "Symmetric\n", con->inbuf->get_len())) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, FB_TIMEOUT, con);
+    return -1;
+  }
+
+  return 0;
+}
+
+void
+ncrack_firebird(nsock_pool nsp, Connection *con)
+{
+  nsock_iod nsi = con->niod;
+  char database[256];
+  char connection_string[1024];
+	int ret;
+  isc_db_handle db;
+  ISC_STATUS_ARRAY status;
+  char *dpb = NULL;
+  short dpb_length = 0;
+  Service *serv; 
+	
+	switch(con->state)
+  {
+    
+    case FB_INIT:
+    
+    	strncpy(database, DEFAULT_DB, sizeof(database));
+    	database[sizeof(database)-1] = 0;
+    
+    	if (con->outbuf) 
+      	delete con->outbuf;
+    	con->outbuf = new Buf();
+      
+      dpb_length=(short) (1+ strlen(con->user) + 2 + strlen(con->pass) +2);  
+      if ((dpb = (char *) malloc(dpb_length)) == NULL)  //no database data found
+      {
+        printf("Invalid database path");
+      }
+			*dpb = isc_dpb_version1;
+			dpb_length=1;
+      isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, "%s" , strlen(con->user));
+      isc_modify_dpb(&dpb, &dpb_length, isc_dpb_password, "%s", strlen(con->pass));
+
+ 
+      con->outbuf->snprintf(sizeof(serv->target->NameIP()) + sizeof(database), "%s:%s", serv->target->NameIP(), database);
+	 		nsock_write(nsp, nsi, ncrack_write_handler, FB_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      con->state = FB_USER;
+     
+      if(isc_attach_database(status, 0, con->outbuf->get_dataptr(), &db, dpb_length, dpb)) {
+        isc_free(dpb);
+				if ((ret = firebird_loop_read(nsp, con)) = 0)
+					break;
+			else {
+        isc_detach_database(status, &db);
+        isc_free(dpb);
+				con->auth_success = true;
+				}
+			}
+      return ncrack_module_end(nsp, con);
+   } 
+}
 #endif
