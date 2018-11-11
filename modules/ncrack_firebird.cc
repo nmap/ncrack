@@ -196,12 +196,12 @@ ncrack_firebird(nsock_pool nsp, Connection *con)
       isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, "%s" , strlen(con->user));
       isc_modify_dpb(&dpb, &dpb_length, isc_dpb_password, "%s", strlen(con->pass));
 
- 
-      con->outbuf->snprintf(sizeof(serv->target->NameIP()) + sizeof(database), "%s:%s", serv->target->NameIP(), database);
-	 		nsock_write(nsp, nsi, ncrack_write_handler, FB_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+ 			snprintf(connection_string, sizeof(connection_string), "%s:%s", serv->target->NameIP(), database);
+      //con->outbuf->snprintf(sizeof(serv->target->NameIP()) + sizeof(database), "%s:%s", serv->target->NameIP(), database);
+	 		//nsock_write(nsp, nsi, ncrack_write_handler, FB_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       con->state = FB_USER;
      
-      if(isc_attach_database(status, 0, con->outbuf->get_dataptr(), &db, dpb_length, dpb)) {
+      if(isc_attach_database(status, 0, connection_string, &db, dpb_length, dpb)) {
         isc_free(dpb);
 				if ((ret = firebird_loop_read(nsp, con)) = 0)
 					break;
