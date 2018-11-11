@@ -136,7 +136,7 @@
 void dummy_firebird() {
 	printf("\n");
 }
-#include <ibase.h>
+#include "ibase.h"
 #define FB_TIMEOUT 20000 //here
 #define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
 
@@ -164,7 +164,7 @@ firebird_loop_read(nsock_pool nsp, Connection *con)
 void
 ncrack_firebird(nsock_pool nsp, Connection *con)
 {
-  nsock_iod nsi = con->niod;
+  //nsock_iod nsi = con->niod;
   char database[256];
   char connection_string[1024];
 	int ret;
@@ -172,7 +172,7 @@ ncrack_firebird(nsock_pool nsp, Connection *con)
   ISC_STATUS_ARRAY status;
   char *dpb = NULL;
   short dpb_length = 0;
-  Service *serv; 
+  Service *serv=0; 
 	
 	switch(con->state)
   {
