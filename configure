@@ -2320,26 +2320,6 @@ else
   STRIP="$ac_cv_path_STRIP"
 fi
 
-echo "Checking for firebird (libfbclient.so) ..."
- for i in $LIBDIRS ; do
-     if [ "X" = "X$FIREBIRD_PATH" ]; then
-         if [ -f "$i/libfbclient.so" -o -f "$i/libfbclient.dylib" -o -f "$i/libfbclient.a" ]; then
-             FIREBIRD_PATH="$i"
-         fi
-     fi
-     if [ "X" = "X$FIREBIRD_PATH" ]; then
-         TMP_LIB=`/bin/ls $i/libfbclient.so.* 2> /dev/null | grep libfbclient.`
-         if [ -n "$TMP_LIB" ]; then
-           FIREBIRD_PATH="$i"
-         fi
-     fi
-     if [ "X" = "X$FIREBIRD_PATH" ]; then
-         TMP_LIB=`/bin/ls $i/libfbclient.dll* 2> /dev/null | grep libfbclient.`
-         if [ -n "$TMP_LIB" ]; then
-           FIREBIRD_PATH="$i"
-         fi
-     fi
- done
 
 
 ac_aux_dir=

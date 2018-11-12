@@ -126,7 +126,6 @@
  * Nmap, and also available from https://svn.nmap.org/nmap/COPYING)        *
  *                                                                         *
  ***************************************************************************/
-
 #include "ncrack.h"
 #include "nsock.h"
 #include "NcrackOps.h"
@@ -136,6 +135,7 @@
 void dummy_firebird() {
 	printf("\n");
 }
+#else
 #include "ibase.h"
 #define FB_TIMEOUT 20000 //here
 #define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
