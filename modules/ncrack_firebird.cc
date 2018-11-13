@@ -131,14 +131,14 @@
 #include "NcrackOps.h"
 #include "Service.h"
 #include "modules.h"
-#include "ibase.h"
 #define FB_TIMEOUT 20000 //here
-#ifndef LIBFIREBIRD
 #define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
+#ifndef LIBFIREBIRD
 void dummy_firebird() {
 	printf("\n");
 }
 #else
+#include "ibase.h"
 
 extern NcrackOps o;
 
@@ -164,7 +164,7 @@ firebird_loop_read(nsock_pool nsp, Connection *con)
 void
 ncrack_firebird(nsock_pool nsp, Connection *con)
 {
-  //nsock_iod nsi = con->niod;
+  nsock_iod nsi = con->niod;
   char database[256];
   char connection_string[1024];
 	int ret;
@@ -195,7 +195,6 @@ ncrack_firebird(nsock_pool nsp, Connection *con)
 			dpb_length=1;
       isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, "%s" , strlen(con->user));
       isc_modify_dpb(&dpb, &dpb_length, isc_dpb_password, "%s", strlen(con->pass));
-
  			snprintf(connection_string, sizeof(connection_string), "%s:%s", serv->target->NameIP(), database);
       //con->outbuf->snprintf(sizeof(serv->target->NameIP()) + sizeof(database), "%s:%s", serv->target->NameIP(), database);
 	 		//nsock_write(nsp, nsi, ncrack_write_handler, FB_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
