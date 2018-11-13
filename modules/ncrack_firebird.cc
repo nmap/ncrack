@@ -131,14 +131,14 @@
 #include "NcrackOps.h"
 #include "Service.h"
 #include "modules.h"
+#include "ibase.h"
+#define FB_TIMEOUT 20000 //here
 #ifndef LIBFIREBIRD
+#define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
 void dummy_firebird() {
 	printf("\n");
 }
 #else
-#include "ibase.h"
-#define FB_TIMEOUT 20000 //here
-#define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
 
 extern NcrackOps o;
 
