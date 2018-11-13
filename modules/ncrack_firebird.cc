@@ -133,11 +133,11 @@
 #include "modules.h"
 #define FB_TIMEOUT 20000 //here
 #define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
-#ifndef LIBFIREBIRD
-void dummy_firebird() {
-	printf("\n");
-}
-#else
+//#ifndef LIBFIREBIRD
+//void dummy_firebird() {
+//	printf("\n");
+//}
+//#else
 #include "ibase.h"
 
 extern NcrackOps o;
@@ -213,4 +213,4 @@ ncrack_firebird(nsock_pool nsp, Connection *con)
       return ncrack_module_end(nsp, con);
    } 
 }
-#endif
+//#endif
