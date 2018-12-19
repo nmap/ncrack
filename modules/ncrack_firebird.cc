@@ -133,18 +133,57 @@
 #include "modules.h"
 #define FB_TIMEOUT 20000 //here
 #define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
-//#ifndef LIBFIREBIRD
-//void dummy_firebird() {
-//	printf("\n");
-//}
-//#else
-#include "ibase.h"
+/*#ifndef LIBFIREBIRD
+void dummy_firebird() {
+	printf("\n");
+}
+#else */
+//#include <ibase.h>
+
 
 extern NcrackOps o;
 
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
+#define  ISC_EXPORT __stdcall
+#define  ISC_EXPORT_VARARG  __cdecl
+#else
+#define  ISC_EXPORT
+#define  ISC_EXPORT_VARARG
+#endif
+
+#define isc_dpb_version1	1
+#define isc_dpb_user_name	28
+#define isc_dpb_password	29
+
+#if defined(_LP64) || defined(__LP64__) || defined(__arch64__) || defined(_WIN64)
+typedef unsigned int  FB_API_HANDLE;
+#else
+typedef void*   FB_API_HANDLE;
+#endif
+
+#if defined(_LP64) || defined(__LP64__) || defined(__arch64__)
+typedef int       ISC_LONG;
+typedef unsigned int  ISC_ULONG;
+#else
+typedef signed long   ISC_LONG;
+typedef unsigned long ISC_ULONG;
+#endif
+
+
+typedef FB_API_HANDLE isc_db_handle;
+typedef char ISC_SCHAR;
+typedef intptr_t ISC_STATUS;
+
+#define ISC_STATUS_LENGTH 20
+typedef ISC_STATUS ISC_STATUS_ARRAY[ISC_STATUS_LENGTH];
+int ISC_EXPORT isc_modify_dpb(ISC_SCHAR**, short*, unsigned short, const ISC_SCHAR*, short);
+ISC_STATUS ISC_EXPORT isc_attach_database(ISC_STATUS*, short, const ISC_SCHAR*, isc_db_handle*, short, const ISC_SCHAR*);
+ISC_STATUS ISC_EXPORT isc_detach_database(ISC_STATUS *, isc_db_handle *);
+ISC_LONG ISC_EXPORT isc_free(ISC_SCHAR *);
 
 static int firebird_loop_read(nsock_pool nsp, Connection *con);
     
@@ -164,7 +203,7 @@ firebird_loop_read(nsock_pool nsp, Connection *con)
 void
 ncrack_firebird(nsock_pool nsp, Connection *con)
 {
-  nsock_iod nsi = con->niod;
+  //nsock_iod nsi = con->niod;
   char database[256];
   char connection_string[1024];
 	int ret;
@@ -193,8 +232,9 @@ ncrack_firebird(nsock_pool nsp, Connection *con)
       }
 			*dpb = isc_dpb_version1;
 			dpb_length=1;
-      isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, "%s" , strlen(con->user));
-      isc_modify_dpb(&dpb, &dpb_length, isc_dpb_password, "%s", strlen(con->pass));
+      //isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, "%s" , strlen(con->user));
+      isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, con->user , strlen(con->user));
+      isc_modify_dpb(&dpb, &dpb_length, isc_dpb_password, con->pass, strlen(con->pass));
  			snprintf(connection_string, sizeof(connection_string), "%s:%s", serv->target->NameIP(), database);
       //con->outbuf->snprintf(sizeof(serv->target->NameIP()) + sizeof(database), "%s:%s", serv->target->NameIP(), database);
 	 		//nsock_write(nsp, nsi, ncrack_write_handler, FB_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
@@ -202,7 +242,7 @@ ncrack_firebird(nsock_pool nsp, Connection *con)
      
       if(isc_attach_database(status, 0, connection_string, &db, dpb_length, dpb)) {
         isc_free(dpb);
-				if ((ret = firebird_loop_read(nsp, con)) = 0)
+				if ((ret = firebird_loop_read(nsp, con)) == 0)
 					break;
 			else {
         isc_detach_database(status, &db);
@@ -213,4 +253,5 @@ ncrack_firebird(nsock_pool nsp, Connection *con)
       return ncrack_module_end(nsp, con);
    } 
 }
+
 //#endif
