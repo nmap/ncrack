@@ -137,8 +137,10 @@
 void dummy_firebird() {
 	printf("\n");
 }
-#else */
+#else*/ 
 //#include <ibase.h>
+#include <stddef.h>
+#include <inttypes.h>
 
 
 extern NcrackOps o;
@@ -180,7 +182,10 @@ typedef intptr_t ISC_STATUS;
 
 #define ISC_STATUS_LENGTH 20
 typedef ISC_STATUS ISC_STATUS_ARRAY[ISC_STATUS_LENGTH];
-int ISC_EXPORT isc_modify_dpb(ISC_SCHAR**, short*, unsigned short, const ISC_SCHAR*, short);
+//int ISC_EXPORT isc_modify_dpb(ISC_SCHAR**, short*, unsigned short, const ISC_SCHAR*, short);
+int ISC_EXPORT isc_modify_dpb(ISC_SCHAR**, short*, unsigned short, const ISC_SCHAR*, short){
+	return 0;
+	}
 ISC_STATUS ISC_EXPORT isc_attach_database(ISC_STATUS*, short, const ISC_SCHAR*, isc_db_handle*, short, const ISC_SCHAR*);
 ISC_STATUS ISC_EXPORT isc_detach_database(ISC_STATUS *, isc_db_handle *);
 ISC_LONG ISC_EXPORT isc_free(ISC_SCHAR *);
