@@ -133,21 +133,100 @@
 #include "modules.h"
 #define FB_TIMEOUT 20000 //here
 #define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
+
+#define API_ROUTINE
 /*#ifndef LIBFIREBIRD
 void dummy_firebird() {
 	printf("\n");
 }
 #else*/ 
 //#include <ibase.h>
-#include <stddef.h>
-#include <inttypes.h>
-
+//#include <stddef.h>
+//#include <inttypes.h>
 
 extern NcrackOps o;
 
 extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+//typedef unsigned char* VoidPtr;
+
+
+//----------fb_assert Definition----------
+#ifdef DEV_BUILD
+#ifdef WIN_NT
+#include <io.h>     // isatty()
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>   // isatty()
+#endif
+
+unsigned char API_ROUTINE gds__alloc(signed long size_request)
+{
+  try
+  {
+    return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
+  }
+  catch (const Firebird::Exception&)
+  {
+    return NULL;
+  }
+}
+
+
+
+inline void fb_assert_impl(const char* msg, const char* file, int line, bool do_abort)
+{
+  const char* const ASSERT_FAILURE_STRING = "Assertion (%s) failure: %s %" LINEFORMAT"\n";
+
+  if (isatty(2))
+    fprintf(stderr, ASSERT_FAILURE_STRING, msg, file, line);
+  else
+    gds__log(ASSERT_FAILURE_STRING, msg, file, line);
+
+  if (do_abort)
+    abort();
+}
+
+#if !defined(fb_assert)
+
+#define fb_assert(ex) \
+  ((void) ( !(ex) && (fb_assert_impl(#ex, __FILE__, __LINE__, true), 1) ))
+
+#define fb_assert_continue(ex) \
+  ((void) ( !(ex) && (fb_assert_impl(#ex, __FILE__, __LINE__, false), 1) ))
+
+#endif  // fb_assert
+
+#else // DEV_BUILD
+
+#define fb_assert(ex) \
+  ((void) 0)
+
+#define fb_assert_continue(ex) \
+  ((void) 0)
+
+#endif  // DEV_BUILD 
+
+//--------------------------------------------
+
+
+/*
+namespace DtorException {
+  inline void devHalt()
+  {
+    // If any guard's dtor is executed during exception processing,
+    // (remember - this guards live on the stack), exception
+    // in leave() causes std::terminate() to be called, therefore
+    // losing original exception information. Not good for us.
+    // Therefore ignore in release and abort in debug.
+#ifdef DEV_BUILD
+    abort();
+#endif
+  }
+}
+*/
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
 #define  ISC_EXPORT __stdcall
@@ -157,9 +236,16 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 #define  ISC_EXPORT_VARARG
 #endif
 
-#define isc_dpb_version1	1
-#define isc_dpb_user_name	28
-#define isc_dpb_password	29
+#define FB_SUCCESS	0
+#define	FB_FAILURE	1
+
+#define isc_dpb_version1			1
+#define isc_dpb_user_name			28
+#define isc_dpb_password			29
+#define isc_dpb_lc_messages		47
+#define isc_dpb_lc_ctype			48
+#define	isc_dpb_reserved			53
+#define isc_dpb_sql_role_name	60
 
 #if defined(_LP64) || defined(__LP64__) || defined(__arch64__) || defined(_WIN64)
 typedef unsigned int  FB_API_HANDLE;
@@ -181,11 +267,147 @@ typedef char ISC_SCHAR;
 typedef intptr_t ISC_STATUS;
 
 #define ISC_STATUS_LENGTH 20
-typedef ISC_STATUS ISC_STATUS_ARRAY[ISC_STATUS_LENGTH];
-//int ISC_EXPORT isc_modify_dpb(ISC_SCHAR**, short*, unsigned short, const ISC_SCHAR*, short);
-int ISC_EXPORT isc_modify_dpb(ISC_SCHAR**, short*, unsigned short, const ISC_SCHAR*, short){
-	return 0;
+
+unsigned char API_ROUTINE gds__alloc(signed long size_request)
+{
+  try
+  {
+    return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
+  }
+  catch (const Firebird::Exception&)
+  {
+    return NULL;
+  }
+}
+
+
+int ISC_EXPORT isc_modify_dpb(ISC_SCHAR** dpb, short* dpb_size, unsigned short type,ISC_SCHAR* str, short str_len)
+{
+/**************************************
+ *
+ *	i s c _ m o d i f y _ d p b
+ *
+ **************************************
+ * CVC: This is exactly the same logic as isc_expand_dpb, but for one param.
+ * However, the difference is that when presented with a dpb type it that's
+ * unknown, it returns FB_FAILURE immediately. In contrast, isc_expand_dpb
+ * doesn't complain and instead treats those as integers and tries to skip
+ * them, hoping to sync in the next iteration.
+ *
+ * Functional description
+ *	Extend a database parameter block dynamically
+ *	to include runtime info.  Generated
+ *	by gpre to provide host variable support for
+ *	READY statement	options.
+ *	This expects one arg at a time.
+ *      the length of the string is passed by the caller and hence
+ * 	is not expected to be null terminated.
+ * 	this call is a variation of isc_expand_dpb without a variable
+ * 	arg parameters.
+ * 	Instead, this function is called recursively
+ *	Alternatively, this can have a parameter list with all possible
+ *	parameters either nulled or with proper value and type.
+ *
+ *  	**** This can be modified to be so at a later date, making sure
+ *	**** all callers follow the same convention
+ *
+ *	Note: dpb_size is signed short only for compatibility
+ *	with other calls (isc_attach_database) that take a dpb length.
+ *
+ **************************************/
+
+	// calculate length of database parameter block, setting initial length to include version
+
+	short new_dpb_length;
+
+	if (!*dpb || !(new_dpb_length = *dpb_size))
+	{
+		new_dpb_length = 1;
 	}
+
+	switch (type)
+	{
+	case isc_dpb_user_name:
+	case isc_dpb_password:
+	case isc_dpb_sql_role_name:
+	case isc_dpb_lc_messages:
+	case isc_dpb_lc_ctype:
+	case isc_dpb_reserved:
+		new_dpb_length += 2 + str_len;
+		break;
+
+	default:
+		return FB_FAILURE;
+	}
+
+	// if items have been added, allocate space
+
+	unsigned char* new_dpb;
+	if (new_dpb_length > *dpb_size)
+	{
+		// Note: gds__free done by GPRE generated code
+
+		new_dpb = (unsigned char*) gds__alloc((signed long)(sizeof(unsigned char) * new_dpb_length));
+
+		// FREE: done by client process in GPRE generated code
+		if (!new_dpb)
+		{
+			// NOMEM: don't trash existing dpb
+			return FB_FAILURE;		// NOMEM: not really handled
+		}
+
+		memcpy(new_dpb, *dpb, *dpb_size);
+	}
+	else
+		new_dpb = reinterpret_cast<unsigned char*>(*dpb);
+
+	unsigned char* p = new_dpb + *dpb_size;
+
+	if (!*dpb_size)
+	{
+		*p++ = isc_dpb_version1;
+	}
+
+	// copy in the new runtime items
+
+	switch (type)
+	{
+	case isc_dpb_user_name:
+	case isc_dpb_password:
+	case isc_dpb_sql_role_name:
+	case isc_dpb_lc_messages:
+	case isc_dpb_lc_ctype:
+	case isc_dpb_reserved:
+		{
+			const unsigned char* q = reinterpret_cast<const unsigned char*>(str);
+			if (q)
+			{
+				short length = str_len;
+				fb_assert(type <= MAX_UCHAR);
+				*p++ = (unsigned char) type;
+				fb_assert(length <= MAX_UCHAR);
+				*p++ = (unsigned char) length;
+				while (length--)
+				{
+					*p++ = *q++;
+				}
+			}
+			break;
+		}
+
+	default:
+		return FB_FAILURE;
+	}
+		*dpb_size = p - new_dpb;
+	*dpb = (ISC_SCHAR*) new_dpb;
+
+	return FB_SUCCESS;
+}
+
+
+typedef ISC_STATUS ISC_STATUS_ARRAY[ISC_STATUS_LENGTH];
+int ISC_EXPORT isc_modify_dpb(ISC_SCHAR**, short*, unsigned short, const ISC_SCHAR*, short);
+
 ISC_STATUS ISC_EXPORT isc_attach_database(ISC_STATUS*, short, const ISC_SCHAR*, isc_db_handle*, short, const ISC_SCHAR*);
 ISC_STATUS ISC_EXPORT isc_detach_database(ISC_STATUS *, isc_db_handle *);
 ISC_LONG ISC_EXPORT isc_free(ISC_SCHAR *);
