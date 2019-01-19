@@ -134,6 +134,8 @@
 #define FB_TIMEOUT 20000 //here
 #define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
 
+#include <unistd.h>   // isatty()
+
 #define API_ROUTINE
 /*#ifndef LIBFIREBIRD
 void dummy_firebird() {
@@ -152,17 +154,31 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 //typedef unsigned char* VoidPtr;
 
+#define LINEFORMAT "d"
+#define ISQL_ALLOC(x)	gds__alloc(x)
+unsigned char API_ROUTINE gds__alloc(signed long size_request)
+{
+  /*try
+  {
+    return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
+  }
+  catch (const Firebird::Exception&)
+  {*/
+    return NULL;
+  //}
+}
+
 
 //----------fb_assert Definition----------
-#ifdef DEV_BUILD
-#ifdef WIN_NT
-#include <io.h>     // isatty()
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>   // isatty()
-#endif
+//#ifdef DEV_BUILD
+//#ifdef WIN_NT
+//#include <io.h>     // isatty()
+//#endif
+//#ifdef HAVE_UNISTD_H
+//#include <unistd.h>   // isatty()
+//#endif
 
-unsigned char API_ROUTINE gds__alloc(signed long size_request)
+/*unsigned char API_ROUTINE gds__alloc(signed long size_request)
 {
   try
   {
@@ -173,7 +189,7 @@ unsigned char API_ROUTINE gds__alloc(signed long size_request)
     return NULL;
   }
 }
-
+*/
 
 
 inline void fb_assert_impl(const char* msg, const char* file, int line, bool do_abort)
@@ -183,7 +199,8 @@ inline void fb_assert_impl(const char* msg, const char* file, int line, bool do_
   if (isatty(2))
     fprintf(stderr, ASSERT_FAILURE_STRING, msg, file, line);
   else
-    gds__log(ASSERT_FAILURE_STRING, msg, file, line);
+    //gds__log(ASSERT_FAILURE_STRING, msg, file, line);
+		printf("Success");
 
   if (do_abort)
     abort();
@@ -197,7 +214,7 @@ inline void fb_assert_impl(const char* msg, const char* file, int line, bool do_
 #define fb_assert_continue(ex) \
   ((void) ( !(ex) && (fb_assert_impl(#ex, __FILE__, __LINE__, false), 1) ))
 
-#endif  // fb_assert
+//#endif  // fb_assert
 
 #else // DEV_BUILD
 
@@ -268,7 +285,7 @@ typedef intptr_t ISC_STATUS;
 
 #define ISC_STATUS_LENGTH 20
 
-unsigned char API_ROUTINE gds__alloc(signed long size_request)
+/*unsigned char API_ROUTINE gds__alloc(signed long size_request)
 {
   try
   {
@@ -278,8 +295,9 @@ unsigned char API_ROUTINE gds__alloc(signed long size_request)
   {
     return NULL;
   }
-}
+}*/
 
+#define MAX_UCHAR 0xFF		
 
 int ISC_EXPORT isc_modify_dpb(ISC_SCHAR** dpb, short* dpb_size, unsigned short type,ISC_SCHAR* str, short str_len)
 {
@@ -317,7 +335,6 @@ int ISC_EXPORT isc_modify_dpb(ISC_SCHAR** dpb, short* dpb_size, unsigned short t
  **************************************/
 
 	// calculate length of database parameter block, setting initial length to include version
-
 	short new_dpb_length;
 
 	if (!*dpb || !(new_dpb_length = *dpb_size))
