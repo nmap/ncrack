@@ -135,7 +135,7 @@
 #define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
 
 #include <unistd.h>   // isatty()
-
+typedef void* VoidPtr;
 #define API_ROUTINE
 /*#ifndef LIBFIREBIRD
 void dummy_firebird() {
@@ -156,29 +156,8 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 #define LINEFORMAT "d"
 #define ISQL_ALLOC(x)	gds__alloc(x)
-unsigned char API_ROUTINE gds__alloc(signed long size_request)
-{
-  /*try
-  {
-    return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
-  }
-  catch (const Firebird::Exception&)
-  {*/
-    return NULL;
-  //}
-}
-
-
-//----------fb_assert Definition----------
-//#ifdef DEV_BUILD
-//#ifdef WIN_NT
-//#include <io.h>     // isatty()
-//#endif
-//#ifdef HAVE_UNISTD_H
-//#include <unistd.h>   // isatty()
-//#endif
-
-/*unsigned char API_ROUTINE gds__alloc(signed long size_request)
+//unsigned char API_ROUTINE gds__alloc(signed long size_request)
+VoidPtr API_ROUTINE gds__alloc(signed long size_request)
 {
   try
   {
@@ -189,7 +168,29 @@ unsigned char API_ROUTINE gds__alloc(signed long size_request)
     return NULL;
   }
 }
-*/
+
+
+//----------fb_assert Definition----------
+#ifdef DEV_BUILD
+#ifdef WIN_NT
+#include <io.h>     // isatty()
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>   // isatty()
+#endif
+
+unsigned char API_ROUTINE gds__alloc(signed long size_request)
+{
+  try
+  {
+    return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
+  }
+  catch (const Firebird::Exception&)
+  {
+    return NULL;
+  }
+}
+
 
 
 inline void fb_assert_impl(const char* msg, const char* file, int line, bool do_abort)
@@ -214,7 +215,7 @@ inline void fb_assert_impl(const char* msg, const char* file, int line, bool do_
 #define fb_assert_continue(ex) \
   ((void) ( !(ex) && (fb_assert_impl(#ex, __FILE__, __LINE__, false), 1) ))
 
-//#endif  // fb_assert
+#endif  // fb_assert
 
 #else // DEV_BUILD
 
