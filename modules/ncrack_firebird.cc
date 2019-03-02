@@ -154,6 +154,12 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 //typedef unsigned char* VoidPtr;
 
+static inline Firebird::MemoryPool* getDefaultMemoryPool() FB_NOTHROW
+{
+	fb_assert(Firebird::MemoryPool::defaultMemoryManager);
+	return Firebird::MemoryPool::defaultMemoryManager;
+}
+
 #define LINEFORMAT "d"
 #define ISQL_ALLOC(x)	gds__alloc(x)
 //unsigned char API_ROUTINE gds__alloc(signed long size_request)
@@ -163,7 +169,8 @@ VoidPtr API_ROUTINE gds__alloc(signed long size_request)
   {
     return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
   }
-  catch (const Firebird::Exception&)
+  //catch (const Firebird::Exception&)
+  catch (int e)
   {
     return NULL;
   }
