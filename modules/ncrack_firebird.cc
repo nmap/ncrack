@@ -135,16 +135,7 @@
 #define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
 
 #include <unistd.h>   // isatty()
-typedef void* VoidPtr;
 #define API_ROUTINE
-/*#ifndef LIBFIREBIRD
-void dummy_firebird() {
-	printf("\n");
-}
-#else*/ 
-//#include <ibase.h>
-//#include <stddef.h>
-//#include <inttypes.h>
 
 extern NcrackOps o;
 
@@ -153,17 +144,15 @@ extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 //typedef unsigned char* VoidPtr;
-
-static inline Firebird::MemoryPool* getDefaultMemoryPool() FB_NOTHROW
-{
-	fb_assert(Firebird::MemoryPool::defaultMemoryManager);
-	return Firebird::MemoryPool::defaultMemoryManager;
-}
+typedef void* VoidPtr;
+//-----------------------------------------------------------------------
 
 #define LINEFORMAT "d"
-#define ISQL_ALLOC(x)	gds__alloc(x)
-//unsigned char API_ROUTINE gds__alloc(signed long size_request)
-VoidPtr API_ROUTINE gds__alloc(signed long size_request)
+//#define ISQL_ALLOC(x)	gds__alloc(x)
+#define ISQL_ALLOC(x)	gds__alloc(long)
+#define fb_assert(x) assert(x) //fb_assert definition
+VoidPtr API_ROUTINE gds__alloc(signed long);
+/*unsigned char API_ROUTINE gds__alloc(signed long size_request)
 {
   try
   {
@@ -174,84 +163,8 @@ VoidPtr API_ROUTINE gds__alloc(signed long size_request)
   {
     return NULL;
   }
-}
+}*/
 
-
-//----------fb_assert Definition----------
-#ifdef DEV_BUILD
-#ifdef WIN_NT
-#include <io.h>     // isatty()
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>   // isatty()
-#endif
-
-unsigned char API_ROUTINE gds__alloc(signed long size_request)
-{
-  try
-  {
-    return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
-  }
-  catch (const Firebird::Exception&)
-  {
-    return NULL;
-  }
-}
-
-
-
-inline void fb_assert_impl(const char* msg, const char* file, int line, bool do_abort)
-{
-  const char* const ASSERT_FAILURE_STRING = "Assertion (%s) failure: %s %" LINEFORMAT"\n";
-
-  if (isatty(2))
-    fprintf(stderr, ASSERT_FAILURE_STRING, msg, file, line);
-  else
-    //gds__log(ASSERT_FAILURE_STRING, msg, file, line);
-		printf("Success");
-
-  if (do_abort)
-    abort();
-}
-
-#if !defined(fb_assert)
-
-#define fb_assert(ex) \
-  ((void) ( !(ex) && (fb_assert_impl(#ex, __FILE__, __LINE__, true), 1) ))
-
-#define fb_assert_continue(ex) \
-  ((void) ( !(ex) && (fb_assert_impl(#ex, __FILE__, __LINE__, false), 1) ))
-
-#endif  // fb_assert
-
-#else // DEV_BUILD
-
-#define fb_assert(ex) \
-  ((void) 0)
-
-#define fb_assert_continue(ex) \
-  ((void) 0)
-
-#endif  // DEV_BUILD 
-
-//--------------------------------------------
-
-
-/*
-namespace DtorException {
-  inline void devHalt()
-  {
-    // If any guard's dtor is executed during exception processing,
-    // (remember - this guards live on the stack), exception
-    // in leave() causes std::terminate() to be called, therefore
-    // losing original exception information. Not good for us.
-    // Therefore ignore in release and abort in debug.
-#ifdef DEV_BUILD
-    abort();
-#endif
-  }
-}
-*/
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
 #define  ISC_EXPORT __stdcall
@@ -437,9 +350,13 @@ ISC_STATUS ISC_EXPORT isc_attach_database(ISC_STATUS*, short, const ISC_SCHAR*, 
 ISC_STATUS ISC_EXPORT isc_detach_database(ISC_STATUS *, isc_db_handle *);
 ISC_LONG ISC_EXPORT isc_free(ISC_SCHAR *);
 
+
+//---------------------------------------------------
+
 static int firebird_loop_read(nsock_pool nsp, Connection *con);
     
 enum states { FB_INIT, FB_USER };
+
 
 static int
 firebird_loop_read(nsock_pool nsp, Connection *con)
