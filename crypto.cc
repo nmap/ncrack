@@ -270,6 +270,7 @@ ntlm_create_hash(const char *password, uint8_t result[16])
   MD4_Init(&ntlm);
   MD4_Update(&ntlm, unicode, strlen(password) * 2);
   MD4_Final(result, &ntlm);
+  free(unicode);
 }
 
 
