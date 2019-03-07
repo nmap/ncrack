@@ -1,8 +1,6 @@
 
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_smb2.cc -- ncrack module for the SMB2 protocol                   *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -129,33 +127,329 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef MODULES_H 
-#define MODULES_H 1
-
+#include "ncrack.h"
 #include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
+#include "crypto.h"
+#include "ntlmssp.h"
+#include <list>
 
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
-void ncrack_imap(nsock_pool nsp, Connection *con);
-void ncrack_smb(nsock_pool nsp, Connection *con);
-void ncrack_smb2(nsock_pool nsp, Connection *con);
-void ncrack_rdp(nsock_pool nsp, Connection *con);
-void ncrack_vnc(nsock_pool nsp, Connection *con);
-void ncrack_sip(nsock_pool nsp, Connection *con);
-void ncrack_redis(nsock_pool nsp, Connection *con);
-void ncrack_psql(nsock_pool nsp, Connection *con);
-void ncrack_mysql(nsock_pool nsp, Connection *con);
-void ncrack_winrm(nsock_pool nsp, Connection *con);
-void ncrack_owa(nsock_pool nsp, Connection *con);
-void ncrack_cassandra(nsock_pool nsp, Connection *con);
-void ncrack_mssql(nsock_pool nsp, Connection *con);
-void ncrack_mongodb(nsock_pool nsp, Connection *con);
-void ncrack_cvs(nsock_pool nsp, Connection *con);
-void ncrack_wordpress(nsock_pool nsp, Connection *con);
-void ncrack_joomla(nsock_pool nsp, Connection *con);
-void ncrack_dicom(nsock_pool nsp, Connection *con);
+#ifdef WIN32
+#ifndef __attribute__
+# define __attribute__(x)
+#endif
+# pragma pack(1)
+#endif
 
+#define SMB2_TIMEOUT 20000
+
+#define SMB2_CMD_NEGPROT 0x00
+#define SMB2_CMD_SESSETUP 0x01
+
+#define SMB2_NEGOTIATE_SIGNING_ENABLED 0x0001
+
+#define NT_STATUS_SUCCESS 0x00000000
+#define NT_STATUS_MOREPRO 0xc0000016
+#define NT_STATUS_LOGON_FAILURE 0xc000006d
+
+extern NcrackOps o;
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+enum states { SMB2_INIT, SMB2_NEGPROT, SMB2_SESSETUP1, SMB2_SESSETUP2, SMB2_FINI };
+
+static int smb2_loop_read(nsock_pool nsp, Connection *con);
+static void smb2_prepend_length(Buf *buf);
+
+//static void smb_free(Connection *con);
+
+
+struct smb2_state {
+  struct auth_data *auth_data;
+  uint64_t session_id;
+  uint32_t msg_id;
+};
+
+static int
+smb2_loop_read(nsock_pool nsp, Connection *con)
+{
+  uint32_t netbios_length, total_length;
+  void *ioptr;
+
+  /* Make sure we get at least 4 bytes: these are the NetBIOS header which
+   * contains the total size of the message
+   */
+  if (con->inbuf == NULL || con->inbuf->get_len() < 4) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, SMB2_TIMEOUT, con);
+    return -1;
+  }
+
+  /* Get message length from NetBIOS header. It is in big-endian byte order and
+   * 24 bits in total, so do necessary conversions */
+  ioptr = con->inbuf->get_dataptr();
+  memcpy(&netbios_length, ioptr, sizeof(uint32_t));
+  netbios_length = ntohl(netbios_length); /* convert to host-byte order */
+  netbios_length &= 0x00FFFFFF; /* make it 24 bits */
+  /* total length = netbios length + 4 (for the length itself) */
+  total_length = netbios_length + 4;
+
+  /* If we haven't received all the bytes of the message, according to the
+   * total length that we calculated, then try and get the rest */
+  if (con->inbuf == NULL || con->inbuf->get_len() < total_length) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, SMB2_TIMEOUT, con);
+    return -1;
+  }
+
+  return 0;
+
+}
+
+static void
+smb2_prepend_length(Buf *buf)
+{
+  u_int len;
+  void *ptr;
+  uint32_t nbt_len;
+
+  /* Now caluclate total length */
+  len = buf->get_len();
+  ptr = buf->get_dataptr();
+
+  nbt_len = htonl(len - 4);
+  memcpy(ptr, &nbt_len, sizeof(uint32_t));
+
+}
+
+static void encode_u8(Buf *buf, uint8_t n) {
+  buf->append(&n, 1);
+}
+static void encode_le64(Buf *buf, uint64_t n) {
+  uint64_t u64 = htole64(n);
+  buf->append(&u64, 8);
+}
+static void encode_le32(Buf *buf, uint32_t n) {
+  uint32_t u32 = htole32(n);
+  buf->append(&u32, 4);
+}
+static void encode_le16(Buf *buf, uint16_t n) {
+  uint16_t u16 = htole16(n);
+  buf->append(&u16, 2);
+}
+static void encode_be32(Buf *buf, uint32_t n) {
+  uint32_t u32 = htobe32(n);
+  buf->append(&u32, 4);
+}
+static void encode_be16(Buf *buf, uint16_t n) {
+  uint16_t u16 = htobe16(n);
+  buf->append(&u16, 2);
+}
+
+static void smb2_encode_header(Connection *con, int cmd)
+{
+  smb2_state *smb2 = (smb2_state*)con->misc_info;
+  
+  encode_be32(con->outbuf,  0); // NetBios size, overwritten later
+  encode_be32(con->outbuf, 0xFE534d42); // ProtocolID
+  encode_le16(con->outbuf, 64); // StructureSize
+  encode_le16(con->outbuf,  0); // CreditCharge
+  encode_le32(con->outbuf,  0); // Status
+  encode_le16(con->outbuf, cmd); // Command
+  encode_le16(con->outbuf,  0); // CreditRequested
+  encode_le32(con->outbuf,  0); // Flags
+  encode_le32(con->outbuf,  0); // NextCommand
+  encode_le64(con->outbuf,  smb2->msg_id++); // MessageId
+  encode_le32(con->outbuf,  0); // Reserved
+  encode_le32(con->outbuf,  0); // TreeId
+  encode_le64(con->outbuf,  smb2->session_id); // SessionId
+  encode_le64(con->outbuf,  0); // Signature (16 bytes)
+  encode_le64(con->outbuf,  0); // Signature
+}
+
+static void smb2_encode_negprot_req(Connection *con)
+{
+  smb2_encode_header(con, SMB2_CMD_NEGPROT);
+
+  encode_le16(con->outbuf, 36); // StructureSize
+  encode_le16(con->outbuf,  1); // DialectCount
+  encode_le16(con->outbuf, SMB2_NEGOTIATE_SIGNING_ENABLED); // SecurityMode
+  encode_le16(con->outbuf,  0); // Reserved
+  encode_le32(con->outbuf,  0); // Capabilities
+  for (int i = 0; i < 16; i++) {
+    encode_u8(con->outbuf,  rand()%256); // ClientGuid
+  }
+  encode_le64(con->outbuf,  0); // ClientStartTime
+  encode_le16(con->outbuf,  0x0202); // Dialect
+
+  smb2_prepend_length(con->outbuf);
+}
+
+static void smb2_encode_sessetup_req(Connection *con, unsigned char *in_sec_buf = NULL, uint16_t in_sec_len = 0)
+{
+  smb2_state *smb2 = (smb2_state*)con->misc_info;
+  unsigned char *sec_buf;
+  uint16_t sec_len;
+  uint16_t *sec_off;
+
+  if (!in_sec_buf) {
+    smb2->auth_data = ntlmssp_init_context(con->user, con->pass, "", "", "abcdefgh");
+  }
+  ntlmssp_generate_blob(smb2->auth_data, in_sec_buf, in_sec_len, &sec_buf, &sec_len);
+
+  smb2_encode_header(con, SMB2_CMD_SESSETUP);
+  
+  encode_le16(con->outbuf, 25); // StructureSize
+  encode_u8(con->outbuf,    0); // Flags
+  encode_u8(con->outbuf, SMB2_NEGOTIATE_SIGNING_ENABLED); // SecurityMode
+  encode_le32(con->outbuf,  0); // Capabilities
+  encode_le32(con->outbuf,  0); // Channel
+  encode_le16(con->outbuf,  0); // SecurityBufferOffset
+  sec_off = (uint16_t*)(((uint8_t*)con->outbuf->get_dataptr()) + con->outbuf->get_len() - 2);
+  encode_le16(con->outbuf, sec_len); // SecurityBufferLength
+  encode_le64(con->outbuf,  0); // PreviousSessionId
+  *sec_off = htole16(con->outbuf->get_len() - 4);
+  con->outbuf->append(sec_buf, sec_len);
+
+  smb2_prepend_length(con->outbuf);  
+}
+
+static uint32_t smb2_get_status(Connection *con)
+{
+  uint32_t *p = (uint32_t*)(((uint8_t*)con->inbuf->get_dataptr()) + 4 + 4 + 2 + 2);
+  return le32toh(*p);
+}
+
+static uint32_t smb2_get_sessetup_sec_buf(Connection *con, unsigned char **buf, uint16_t *len)
+{
+  uint8_t *start = ((uint8_t*)con->inbuf->get_dataptr()) + 4;
+  uint8_t *rsp = start + 64;
+  uint16_t *sec_off = (uint16_t *)(rsp + 2 + 2);
+  uint16_t *sec_len = (uint16_t *)(rsp + 2 + 2 + 2);  
+  *buf = (unsigned char*)(start + le16toh(*sec_off));
+  *len = le16toh(*sec_len);
+}
+
+static uint64_t smb2_get_ses_id(Connection *con)
+{
+  uint8_t *start = ((uint8_t*)con->inbuf->get_dataptr()) + 4;
+  return le64toh(*((uint64_t*)(start+4+2+2+4+2+2+4+4+8+4+4)));
+}
+
+
+void
+ncrack_smb2(nsock_pool nsp, Connection *con)
+{
+  nsock_iod nsi = con->niod;
+  smb2_state *smb2 = (smb2_state*)con->misc_info;
+  //con->ops_free = &smb_free;
+
+  switch (con->state)
+  {
+    case SMB2_INIT:
+
+      con->state = SMB2_NEGPROT;
+
+      con->misc_info = (smb2_state *)safe_zalloc(sizeof(smb2_state));
+      con->outbuf = new Buf();
+      smb2_encode_negprot_req(con);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SMB2_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+
+    case SMB2_NEGPROT:
+      if (smb2_loop_read(nsp, con) < 0)
+        break;
+      con->state = SMB2_SESSETUP1;
+
+      // smb_decode_header(con);
+      // smb_decode_negresp(con);
+
+      /* Change state without any read or write */
+      nsock_timer_create(nsp, ncrack_timer_handler, 0, con);
+      break;
+
+    case SMB2_SESSETUP1:
+
+      if (smb2_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = SMB2_SESSETUP2;
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      smb2->session_id = smb2_get_ses_id(con);
+      smb2_encode_sessetup_req(con);
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SMB2_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+      
+    case SMB2_SESSETUP2:
+
+      if (smb2_loop_read(nsp, con) < 0)
+        break;
+     
+      con->state = SMB2_FINI;
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      {
+	unsigned char *buf;
+	uint16_t len;
+	smb2_get_sessetup_sec_buf(con, &buf, &len);
+	smb2->session_id = smb2_get_ses_id(con);	
+	smb2_encode_sessetup_req(con, buf, len);
+      }
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      nsock_write(nsp, nsi, ncrack_write_handler, SMB2_TIMEOUT, con,
+          (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+
+    case SMB2_FINI:
+
+      if (smb2_loop_read(nsp, con) < 0)
+        break;
+
+      con->state = SMB2_SESSETUP1;
+
+      if (smb2_get_status(con) == NT_STATUS_SUCCESS)
+	con->auth_success = true;
+      else if (smb2_get_status(con) == NT_STATUS_LOGON_FAILURE)
+	con->auth_success = false;
+
+      ntlmssp_destroy_context(smb2->auth_data);
+      smb2->auth_data = NULL;
+      smb2->session_id = 0;
+      
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      return ncrack_module_end(nsp, con);
+  }
+}
+
+
+#if 0
+static void
+smb_free(Connection *con)
+{
+
+
+}
 #endif

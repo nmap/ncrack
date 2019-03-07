@@ -816,6 +816,9 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_rdp(nsp, con);
   else if (!strcmp(name, "smb") || !strcmp(name, "netbios-ssn"))
     ncrack_smb(nsp, con);
+  else if (!strcmp(name, "smb2"))
+    ncrack_smb2(nsp, con);
+
 #endif
   else
     fatal("Invalid service module: %s", name);
