@@ -1,92 +1,136 @@
-/***************************************************************************
- * nsock_config.h.in -- Autoconf uses this template, combined with the     *
- * configure script knowledge about system capabilities, to build the      *
- * nsock_config.h include file that lets nsock better understand system    *
- *  particulars.                                                           *
- *                                                                         *
- ***********************IMPORTANT NSOCK LICENSE TERMS***********************
- *                                                                         *
- * The nsock parallel socket event library is (C) 1999-2017 Insecure.Com   *
- * LLC This library is free software; you may redistribute and/or          *
- * modify it under the terms of the GNU General Public License as          *
- * published by the Free Software Foundation; Version 2.  This guarantees  *
- * your right to use, modify, and redistribute this software under certain *
- * conditions.  If this license is unacceptable to you, Insecure.Com LLC   *
- * may be willing to sell alternative licenses (contact                    *
- * sales@insecure.com ).                                                   *
- *                                                                         *
- * As a special exception to the GPL terms, Insecure.Com LLC grants        *
- * permission to link the code of this program with any version of the     *
- * OpenSSL library which is distributed under a license identical to that  *
- * listed in the included docs/licenses/OpenSSL.txt file, and distribute   *
- * linked combinations including the two. You must obey the GNU GPL in all *
- * respects for all of the code used other than OpenSSL.  If you modify    *
- * this file, you may extend this exception to your version of the file,   *
- * but you are not obligated to do so.                                     *
- *                                                                         *
- * If you received these files with a written license agreement stating    *
- * terms other than the (GPL) terms above, then that alternative license   *
- * agreement takes precedence over this comment.                           *
- *                                                                         *
- * Source is provided to this software because we believe users have a     *
- * right to know exactly what a program is going to do before they run it. *
- * This also allows you to audit the software for security holes.          *
- *                                                                         *
- * Source code also allows you to port Nmap to new platforms, fix bugs,    *
- * and add new features.  You are highly encouraged to send your changes   *
- * to the dev@nmap.org mailing list for possible incorporation into the    *
- * main distribution.  By sending these changes to Fyodor or one of the    *
- * Insecure.Org development mailing lists, or checking them into the Nmap  *
- * source code repository, it is understood (unless you specify otherwise) *
- * that you are offering the Nmap Project (Insecure.Com LLC) the           *
- * unlimited, non-exclusive right to reuse, modify, and relicense the      *
- * code.  Nmap will always be available Open Source, but this is important *
- * because the inability to relicense code has caused devastating problems *
- * for other Free Software projects (such as KDE and NASM).  We also       *
- * occasionally relicense the code to third parties as discussed above.    *
- * If you wish to specify special license conditions of your               *
- * contributions, just say so when you send them.                          *
- *                                                                         *
- * This program is distributed in the hope that it will be useful, but     *
- * WITHOUT ANY WARRANTY; without even the implied warranty of              *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
- * General Public License v2.0 for more details                            *
- * (http://www.gnu.org/licenses/gpl-2.0.html).                             *
- *                                                                         *
- ***************************************************************************/
+/* ../include/nsock_config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* $Id$ */
-
-#undef HAVE_PCAP
-#undef DEC
-#undef LINUX
-#undef FREEBSD
-#undef OPENBSD
-#undef SOLARIS
-#undef SUNOS
+/* BSD/OS */
 #undef BSDI
-#undef IRIX
-#undef HPUX
-#undef NETBSD
-#undef MACOSX
 
-#undef SOLARIS_BPF_PCAP_CAPTURE
+/* DEC Alpha */
+#undef DEC
 
+/* FreeBSD */
+#undef FREEBSD
+
+/* SSL ALPN protos support */
+#undef HAVE_ALPN_SUPPORT
+
+/* DTLS_client_method available */
+#undef HAVE_DTLS_CLIENT_METHOD
+
+/* epoll is available */
+#undef HAVE_EPOLL
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the `kevent' function. */
+#undef HAVE_KEVENT
+
+/* Define to 1 if you have the `kqueue' function. */
+#undef HAVE_KQUEUE
+
+/* Define to 1 if you have the `nsl' library (-lnsl). */
+#undef HAVE_LIBNSL
+
+/* Define to 1 if you have the `posix4' library (-lposix4). */
+#undef HAVE_LIBPOSIX4
+
+/* Define to 1 if you have the `socket' library (-lsocket). */
+#undef HAVE_LIBSOCKET
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the <netdb.h> header file. */
+#undef HAVE_NETDB_H
+
+/* Define to 1 if you have the <net/bpf.h> header file. */
 #undef HAVE_NET_BPF_H
+
+/* openssl is available */
+#undef HAVE_OPENSSL
+
+/* libpcap is available */
+#undef HAVE_PCAP
+
+/* poll is available */
+#undef HAVE_POLL
+
+/* SSL_set_tlsext_host_name available */
+#undef HAVE_SSL_SET_TLSEXT_HOST_NAME
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the <sys/ioctl.h> header file. */
 #undef HAVE_SYS_IOCTL_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
 
 /* Define to 1 if you have the <sys/un.h> header file. */
 #undef HAVE_SYS_UN_H
 
-#undef HAVE_NETDB_H
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
 
-#undef HAVE_OPENSSL
-#undef HAVE_SSL_SET_TLSEXT_HOST_NAME
-#undef HAVE_DTLS_CLIENT_METHOD
-#undef HAVE_ALPN_SUPPORT
+/* HP-UX */
+#undef HPUX
 
-#undef HAVE_EPOLL
-#undef HAVE_POLL
-#undef HAVE_KQUEUE
+/* IRIX */
+#undef IRIX
 
+/* Linux */
+#undef LINUX
+
+/* Apple OS X */
+#undef MACOSX
+
+/* NetBSD */
+#undef NETBSD
+
+/* OpenBSD */
+#undef OPENBSD
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* Possibly using libpcap prior to 1.1.0. */
 #undef PCAP_NETMASK_UNKNOWN
+
+/* Sun/Oracle Solaris */
+#undef SOLARIS
+
+/* BPF packet capture on Solaris */
+#undef SOLARIS_BPF_PCAP_CAPTURE
+
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
+/* SunOS 4 */
+#undef SUNOS

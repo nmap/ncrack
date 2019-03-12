@@ -333,9 +333,9 @@ AC_CONFIG_SUBDIRS(opensshlib)
 
 # The following modules rely on crypto functions which rely on OpenSSL, so
 # build them only in case the system has OpenSSL.
-MODULES_SRCS="ncrack_ssh.cc ncrack_smb.cc ncrack_rdp.cc ncrack_sip.cc \
+MODULES_SRCS="ncrack_ssh.cc ncrack_smb.cc ncrack_smb2.cc ncrack_rdp.cc ncrack_sip.cc \
 ncrack_psql.cc ncrack_mysql.cc ncrack_winrm.cc ncrack_mongodb.cc"
-MODULES_OBJS="ncrack_ssh.o ncrack_smb.o ncrack_rdp.o ncrack_sip.o \
+MODULES_OBJS="ncrack_ssh.o ncrack_smb.o ncrack_smb2.o ncrack_rdp.o ncrack_sip.o \
 ncrack_psql.o ncrack_mysql.o ncrack_winrm.o ncrack_mongodb.o"
 
 fi

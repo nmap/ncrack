@@ -15,6 +15,7 @@ pop3 110/tcp
 imap 143/tcp
 netbios-ssn 445/tcp
 smb 445/tcp
+smb2 445/tcp
 smb 139/tcp
 https 443/tcp
 owa 443/tcp
