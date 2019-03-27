@@ -151,19 +151,18 @@ typedef void* VoidPtr;
 //#define ISQL_ALLOC(x)	gds__alloc(x)
 #define ISQL_ALLOC(x)	gds__alloc(long)
 #define fb_assert(x) assert(x) //fb_assert definition
-VoidPtr API_ROUTINE gds__alloc(signed long);
-/*unsigned char API_ROUTINE gds__alloc(signed long size_request)
+//VoidPtr API_ROUTINE gds__alloc(signed long);
+unsigned char API_ROUTINE gds__alloc(signed long size_request)
 {
   try
   {
     return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
   }
-  //catch (const Firebird::Exception&)
-  catch (int e)
+  catch (const Firebird::Exception&)
   {
     return NULL;
   }
-}*/
+}
 
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
