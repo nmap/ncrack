@@ -251,6 +251,7 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
             p++;
           }
         }
+        server_authentication_method[i] = '\0';
         server_authentication_method[strlen(server_authentication_method) + 1] = '\0';
         //printf("Server default authentication: %s\n", server_authentication_method);
         strncpy(mysql_auth_method, server_authentication_method, strlen(server_authentication_method));
@@ -278,6 +279,7 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
       for (i = 0; i < 21 ; i++){
         server_authentication_method[i] = *p++;
       }
+      server_authentication_method[i] = '\0';
       server_authentication_method[strlen(server_authentication_method) + 1] = '\0';
       strncpy(mysql_auth_method, server_authentication_method, strlen(server_authentication_method));
 
