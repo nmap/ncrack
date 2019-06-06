@@ -294,7 +294,7 @@ xml_input(FILE *inputfd, char *host_spec)
             if (i == 3)
               i = 0;
             if (!strncmp(cpe, "cpe", 3)) {
-              printf("cpe\n");
+              //printf("cpe\n");
               break;
             }
 
@@ -407,6 +407,8 @@ normal_input(FILE *inputfd, char *host_spec)
   char service_name[64];
   static bool port_parsing = false;
   static bool skip_over_newline = false;
+  char tmp[256];
+  size_t i = 0;
 
   /* check if file is indeed in Nmap's Normal output format */
   if (begin) {
@@ -420,6 +422,7 @@ normal_input(FILE *inputfd, char *host_spec)
   }
 
   memset(buf, 0, sizeof(buf));
+  memset(tmp, 0, sizeof(tmp));
 
   /* Ready to search for hosts and open ports */
   if (skip_over_newline) {
@@ -429,9 +432,22 @@ normal_input(FILE *inputfd, char *host_spec)
 
   while ((ch = getc(inputfd)) != EOF) {
 
+    /* copy each ch to tmp buffer for referencing later */
+    if (i < sizeof(tmp))
+      tmp[i++] = ch; 
+
     if (ch == '\n') {
 
 start_over:
+      /* Now get the open ports and services */
+      if (!strncmp(tmp, "PORT", 4)) {
+        port_parsing = true;
+      } else {
+        port_parsing = false;
+      }
+      i = 0; /* reset tmp */
+      memset(tmp, 0, sizeof(tmp));
+
 
       /* If you have already got an address from a previous invokation, then
        * search only for open ports, else go look for a new IP */
@@ -468,7 +484,7 @@ start_over:
           char *addr = NULL;
           if (!(addr = memsearch(buf, "for", line_length)))
             fatal("-iX corrupted Nmap -oN output file!\n");
-          /* Now poin t to the actual address string */
+          /* Now point to the actual address string */
           addr += sizeof("for");
 
           /* Check if there is a hostname as well as an IP, in which case we
@@ -502,18 +518,8 @@ start_over:
 
       } else {
 
-        /* Now get the open ports and services */
 
-        if (!port_parsing) {
-
-          if (!fgets(buf, 5, inputfd))
-            fatal("-iN fgets failure while searching for PORT\n");
-
-          if (!strncmp(buf, "PORT", 4)) {
-            port_parsing = true;
-          }
-
-        } else {
+        if (port_parsing) {
 
           memset(buf, '\0', sizeof(buf));
 
@@ -549,7 +555,7 @@ start_over:
 
           //printf("port: %s\n", portnum);
 
-          /* Now parse the rest of the line */
+          /* now parse the rest of the line */
           unsigned int line_length = 0;
           while ((ch = getc(inputfd)) != EOF) {
             if (ch == '\n') {
@@ -559,7 +565,7 @@ start_over:
             if (line_length < sizeof(buf) / sizeof(char) - 1)
               buf[line_length++] = (char) ch;
             else 
-              fatal("-iN possible buffer overflow while parsing port line.\n");
+              fatal("-in possible buffer overflow while parsing port line.\n");
           }
 
           if (line_length > sizeof(buf) / sizeof(char) - 1)
@@ -604,6 +610,7 @@ start_over:
       }
 
     }
+
 
   }
 
