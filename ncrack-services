@@ -23,7 +23,7 @@ wordpress-tls 443/tcp
 wp-tls 443/tcp
 sip 5060/tcp
 pop3s 995/tcp
-mssql 1443/tcp
+mssql 1433/tcp
 mysql 3306/tcp
 ms-wbt-server 3389/tcp
 rdp 3389/tcp
