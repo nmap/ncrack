@@ -262,7 +262,7 @@ dh_pub_is_valid(DH *dh, const BIGNUM *dh_pub)
 int
 dh_gen_key(DH *dh, int need)
 {
-	int pbits;
+	int r, pbits;
 	const BIGNUM *dh_p, *dh_pub_key;
 	DH_get0_pqg(dh, &dh_p, NULL, NULL);
 
@@ -271,8 +271,9 @@ dh_gen_key(DH *dh, int need)
 	    need > INT_MAX / 2 || 2 * need > pbits)
 		return SSH_ERR_INVALID_ARGUMENT;
 	DH_set_length(dh, MIN(need * 2, pbits - 1));
+	r = DH_generate_key(dh);
 	DH_get0_key(dh, &dh_pub_key, NULL);
-	if (DH_generate_key(dh) == 0 ||
+	if (r == 0 ||
 	    !dh_pub_is_valid(dh, dh_pub_key)) {
 		return SSH_ERR_LIBCRYPTO_ERROR;
 	}
