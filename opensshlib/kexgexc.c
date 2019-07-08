@@ -125,10 +125,11 @@ ncrackssh_input_kex_dh_gex_group(ncrack_ssh_state *nstate)
 		goto out;
 	}
 	p = g = NULL; /* belong to kex->dh now */
+	r = dh_gen_key(kex->dh, kex->we_need * 8);
 	DH_get0_key(kex->dh, &kex_dh_pub_key, NULL);
 
 	/* generate and send 'e', client DH public key */
-	if ((r = dh_gen_key(kex->dh, kex->we_need * 8)) != 0 ||
+	if (r != 0 ||
 	    (r = sshpkt_start(nstate, SSH2_MSG_KEX_DH_GEX_INIT)) != 0 ||
 	    (r = sshpkt_put_bignum2(nstate, kex_dh_pub_key)) != 0 ||
 	    (r = sshpkt_send(nstate)) != 0)
