@@ -304,7 +304,7 @@ print_usage(void)
       "  -h: Print this help summary page.\n"
       "MODULES:\n"
       "  SSH, RDP, FTP, Telnet, HTTP(S), Wordpress, POP3(S), IMAP, CVS, SMB, VNC, SIP, Redis, "
-      "PostgreSQL, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA, DICOM\n"
+      "PostgreSQL, MQTT, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA, DICOM\n"
       "EXAMPLES:\n"
       "  ncrack -v --user root localhost:22\n"
       "  ncrack -v -T5 https://192.168.0.1\n"
@@ -777,6 +777,8 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_vnc(nsp, con);
   else if (!strcmp(name, "redis"))
     ncrack_redis(nsp, con);
+  else if (!strcmp(name, "mqtt"))
+    ncrack_mqtt(nsp, con);
   else if (!strcmp(name, "imap"))
     ncrack_imap(nsp, con);
   else if (!strcmp(name, "cassandra"))
@@ -1183,7 +1185,7 @@ ncrack_main(int argc, char **argv)
         log_write(LOG_STDOUT, "\n%s version %s ( %s )\n",
             NCRACK_NAME, NCRACK_VERSION, NCRACK_URL);
         log_write(LOG_STDOUT, "Modules: SSH, RDP, FTP, Telnet, HTTP(S), Wordpress, POP3(S), IMAP, CVS, "
-            "SMB, VNC, SIP, Redis, PostgreSQL, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA, DICOM\n");
+            "SMB, VNC, SIP, Redis, PostgreSQL, MQTT, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA, DICOM\n");
         exit(EXIT_SUCCESS);
         break;
       case 'v':
