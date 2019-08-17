@@ -137,6 +137,7 @@
 #include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/sha.h>
+#include <openssl/bn.h>
 #ifndef WIN32
   #include <stdint.h>
 #endif

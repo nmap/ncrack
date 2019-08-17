@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -13,20 +13,20 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{133C627B-C6FC-438F-853D-66FF7EE484F5}</ProjectGuid>
     <RootNamespace>ncrack</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -76,7 +76,7 @@
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>nsock.lib;nbase.lib;opensshlib.lib;ws2_32.lib;advapi32.lib;libeay32.lib;ssleay32.lib</AdditionalDependencies>
+      <AdditionalDependencies>nsock.lib;nbase.lib;opensshlib.lib;ws2_32.lib;advapi32.lib;libcrypto.lib;libssl.lib</AdditionalDependencies>
       <OutputFile>.\Debug\ncrack.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>lib;..\nsock;..\nbase;..\opensshlib;OpenSSL\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -117,7 +117,7 @@
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>nbase.lib;opensshlib.lib;ws2_32.lib;advapi32.lib;libeay32.lib;ssleay32.lib</AdditionalDependencies>
+      <AdditionalDependencies>nbase.lib;opensshlib.lib;ws2_32.lib;advapi32.lib;libcrypto.lib;libssl.lib</AdditionalDependencies>
       <OutputFile>.\Release\ncrack.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>lib;..\nsock;..\nbase;..\opensshlib;OpenSSL\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -140,28 +140,34 @@
     <ClCompile Include="..\crypto.cc" />
     <ClCompile Include="..\modules\ncrack_vnc.cc" />
     <ClCompile Include="..\ncrack.cc" />
+    <ClCompile Include="..\xml.cc" />
     <ClCompile Include="..\ncrack_error.cc" />
+    <ClCompile Include="..\ncrack_resume.cc" />
+    <ClCompile Include="..\ntlmssp.cc" />
+    <ClCompile Include="..\ncrack_input.cc" />
     <ClCompile Include="..\modules\ncrack_ftp.cc" />
     <ClCompile Include="..\modules\ncrack_http.cc" />
-    <ClCompile Include="..\ncrack_input.cc" />
     <ClCompile Include="..\modules\ncrack_pop3.cc" />
     <ClCompile Include="..\modules\ncrack_mysql.cc" />
-
     <ClCompile Include="..\modules\ncrack_rdp.cc" />
     <ClCompile Include="..\modules\ncrack_sip.cc" />
-    <ClCompile Include="..\ncrack_resume.cc" />
     <ClCompile Include="..\modules\ncrack_smb.cc" />
+    <ClCompile Include="..\modules\ncrack_mqtt.cc" />
+    <ClCompile Include="..\modules\ncrack_dicom.cc" />
+    <ClCompile Include="..\modules\ncrack_joomla.cc" />
+    <ClCompile Include="..\modules\ncrack_smb2.cc" />
+    <ClCompile Include="..\modules\ncrack_wordpress.cc" />
+    <ClCompile Include="..\modules\ncrack_cvs.cc" />
+    <ClCompile Include="..\modules\ncrack_cassandra.cc" />
     <ClCompile Include="..\modules\ncrack_ssh.cc" />
     <ClCompile Include="..\modules\ncrack_telnet.cc" />
-
-  	<ClCompile Include="..\modules\ncrack_redis.cc" />
+    <ClCompile Include="..\modules\ncrack_redis.cc" />
     <ClCompile Include="..\modules\ncrack_psql.cc" />
     <ClCompile Include="..\modules\ncrack_mssql.cc" />
-    <ClCompile Include="..\modules\ncrack_mongodb.cc"/>
+    <ClCompile Include="..\modules\ncrack_mongodb.cc" />
     <ClCompile Include="..\modules\ncrack_imap.cc" />
     <ClCompile Include="..\modules\ncrack_winrm.cc" />
-  	<ClCompile Include="..\modules\ncrack_owa.cc" />
-
+    <ClCompile Include="..\modules\ncrack_owa.cc" />
     <ClCompile Include="..\ncrack_tty.cc" />
     <ClCompile Include="..\NcrackOps.cc" />
     <ClCompile Include="..\NcrackOutputTable.cc" />

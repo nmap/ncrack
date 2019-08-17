@@ -1,4 +1,4 @@
-
+﻿
 /***************************************************************************
  * ncrack_smb2.cc -- ncrack module for the SMB2 protocol                   *
  *                                                                         *
@@ -134,6 +134,7 @@
 #include "modules.h"
 #include "crypto.h"
 #include "ntlmssp.h"
+#include "endian.h"
 #include <list>
 
 #ifdef WIN32
@@ -240,11 +241,11 @@ static void encode_le16(Buf *buf, uint16_t n) {
   buf->append(&u16, 2);
 }
 static void encode_be32(Buf *buf, uint32_t n) {
-  uint32_t u32 = htobe32(n);
+  uint32_t u32 = htonl(n);
   buf->append(&u32, 4);
 }
 static void encode_be16(Buf *buf, uint16_t n) {
-  uint16_t u16 = htobe16(n);
+  uint16_t u16 = htons(n);
   buf->append(&u16, 2);
 }
 
@@ -322,7 +323,7 @@ static uint32_t smb2_get_status(Connection *con)
   return le32toh(*p);
 }
 
-static uint32_t smb2_get_sessetup_sec_buf(Connection *con, unsigned char **buf, uint16_t *len)
+static void smb2_get_sessetup_sec_buf(Connection *con, unsigned char **buf, uint16_t *len)
 {
   uint8_t *start = ((uint8_t*)con->inbuf->get_dataptr()) + 4;
   uint8_t *rsp = start + 64;

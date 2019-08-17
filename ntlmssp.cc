@@ -155,10 +155,13 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 #include <ctype.h>
 #include <stdio.h>
 #include <time.h>
+#include "endian.h"
 
 #include <openssl/hmac.h>
 #include <openssl/md4.h>
