@@ -134,7 +134,7 @@
 #include "modules.h"
 #include "crypto.h"
 #include "ntlmssp.h"
-#include "endian.h"
+#include "portable_endian.h"
 #include <list>
 
 #ifdef WIN32
