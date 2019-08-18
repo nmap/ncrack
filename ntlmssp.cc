@@ -161,7 +161,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <time.h>
-#include "endian.h"
+#include "portable_endian.h"
 
 #include <openssl/hmac.h>
 #include <openssl/md4.h>
