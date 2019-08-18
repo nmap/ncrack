@@ -218,7 +218,7 @@ ftp_loop_read(nsock_pool nsp, Connection *con, char *ftp_code_ret)
   }
 
   /* Return the ftp code to caller */
-  strncpy(ftp_code_ret, ftp_code, FTP_DIGITS);
+  memcpy(ftp_code_ret, ftp_code, FTP_DIGITS);
 
   return 0;
 
