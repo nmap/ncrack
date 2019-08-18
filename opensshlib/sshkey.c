@@ -1499,7 +1499,6 @@ sshkey_format_rsa1(const struct sshkey *key, struct sshbuf *b)
 
 	return r;
 }
-#endif
 
 static int
 sshkey_format_text(const struct sshkey *key, struct sshbuf *b)
@@ -1524,7 +1523,6 @@ sshkey_format_text(const struct sshkey *key, struct sshbuf *b)
 	return r;
 }
 
-#if 0
 int
 sshkey_write(const struct sshkey *key, FILE *f)
 {
@@ -3104,6 +3102,7 @@ sshkey_dump_ec_key(const EC_KEY *key)
 }
 #endif /* WITH_OPENSSL && OPENSSL_HAS_ECC */
 
+#if 0
 static int
 sshkey_private_to_blob2(const struct sshkey *prv, struct sshbuf *blob,
     const char *passphrase, const char *comment, const char *ciphername,
@@ -3477,7 +3476,6 @@ sshkey_parse_private2(struct sshbuf *blob, int type, const char *passphrase,
 	return r;
 }
 
-#if 0 
 #if WITH_SSH1
 /*
  * Serialises the authentication (private) key to a blob, encrypting it with
@@ -3581,7 +3579,6 @@ sshkey_private_rsa1_to_blob(struct sshkey *key, struct sshbuf *blob,
 	return r;
 }
 #endif /* WITH_SSH1 */
-#endif
 
 #ifdef WITH_OPENSSL
 /* convert SSH v2 key in OpenSSL PEM format */
@@ -3641,7 +3638,6 @@ sshkey_private_pem_to_blob(struct sshkey *key, struct sshbuf *blob,
 }
 #endif /* WITH_OPENSSL */
 
-#if 0
 /* Serialise "key" to buffer "blob" */
 int
 sshkey_private_to_fileblob(struct sshkey *key, struct sshbuf *blob,
@@ -3672,9 +3668,7 @@ sshkey_private_to_fileblob(struct sshkey *key, struct sshbuf *blob,
 		return SSH_ERR_KEY_TYPE_UNKNOWN;
 	}
 }
-#endif
 
-#if 0
 #ifdef WITH_SSH1
 /*
  * Parse the public, unencrypted portion of a RSA1 key.
@@ -3740,7 +3734,6 @@ sshkey_parse_public_rsa1_fileblob(struct sshbuf *blob,
 		sshkey_free(pub);
 	return r;
 }
-#endif
 
 static int
 sshkey_parse_private_rsa1(struct sshbuf *blob, const char *passphrase,
@@ -3953,7 +3946,6 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 }
 #endif /* WITH_OPENSSL */
 
-#if 0
 int
 sshkey_parse_private_fileblob_type(struct sshbuf *blob, int type,
     const char *passphrase, struct sshkey **keyp, char **commentp)
@@ -3994,9 +3986,7 @@ sshkey_parse_private_fileblob_type(struct sshbuf *blob, int type,
 		return SSH_ERR_KEY_TYPE_UNKNOWN;
 	}
 }
-#endif
 
-#if 0
 int
 sshkey_parse_private_fileblob(struct sshbuf *buffer, const char *passphrase,
     const char *filename, struct sshkey **keyp, char **commentp)

@@ -441,7 +441,7 @@ ncrack_resume(char *fname, int *myargc, char ***myargv)
   loginpair tmp_pair;
   char *p, *q; /* I love C! Oh yes indeed. */
 
-  memset(&tmp_info, 0, sizeof(tmp_info));
+  //memset(&tmp_info, 0, sizeof(tmp_info));
 
   filestr = mmapfile(fname, &filelen, O_RDONLY);
   if (!filestr) {

@@ -219,7 +219,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
              * supports linemode itself
              */
             if (info->asked_for_linemode == false) {
-              strncpy(localbufptr, WILL_LINEMODE, sizeof(WILL_LINEMODE));
+              memcpy(localbufptr, WILL_LINEMODE, sizeof(WILL_LINEMODE));
               localbufptr += 3;
             }
             info->linemode = true;
@@ -251,7 +251,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
         } else if (recvbufptr[1] == (char) DO) {
           if (recvbufptr[2] == LINEMODE) {
             if (info->asked_for_linemode == false) {
-              strncpy(localbufptr, WILL_LINEMODE, sizeof(WILL_LINEMODE));
+              memcpy(localbufptr, WILL_LINEMODE, sizeof(WILL_LINEMODE));
               localbufptr += 3;
             }
             info->linemode = true;
@@ -279,7 +279,7 @@ ncrack_telnet(nsock_pool nsp, Connection *con)
           && info->linemode_not_supported == false
           && info->asked_for_linemode == false) {
         if ((localbufptr - lbuf) < BUFSIZE - 3) {
-          strncpy(localbufptr, WILL_LINEMODE, sizeof(WILL_LINEMODE));
+          memcpy(localbufptr, WILL_LINEMODE, sizeof(WILL_LINEMODE));
           info->asked_for_linemode = true;
           localbufptr += 3;
         }

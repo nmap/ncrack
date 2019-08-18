@@ -144,6 +144,11 @@ struct saved_info {
   uint32_t user_index;
   uint32_t pass_index;
   vector <loginpair> credentials_found;
+
+  saved_info() {
+    user_index = 0;
+    pass_index = 0;
+  }
 };
 
 class NcrackOps {
