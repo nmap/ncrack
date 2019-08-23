@@ -461,7 +461,11 @@ ncrack_mssql(nsock_pool nsp, Connection *con)
 
       tmp = (char *)safe_malloc(tmplen + pklen + 1);
 
-      snprintf((char *)tmp, pklen,
+      /* added +1 to pklen to supress gcc warning - does not affect 
+       * the program since later we write at this position using memcpy at
+       * tmp + pklen
+       */
+      snprintf((char *)tmp, pklen + 1, 
                "%c" /* 0x02 Pre-TDS packet indicator */
                "%c" /* 0x01 end of message status indicator */
                "%c%c"  /* uint16 packet length */
