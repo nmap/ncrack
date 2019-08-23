@@ -466,7 +466,7 @@ static void
 winrm_negotiate(nsock_pool nsp, Connection *con)
 {
   char *tmp;
-  char *tmp2;
+  char __attribute__ ((nonstring)) *tmp2;
   char *tmp3;
   char *b64;
   char *start, *end;
@@ -1128,7 +1128,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
             tmp3[15+8] = (char)(((t >> 32) & 0xFF000000) >> 24);
 
 
-            snprintf((char *)tmp3 + 8, 4,
+            snprintf((char *)tmp3 + 8, 5,
              "\x01\x01%c%c",   /* Blob Signature */
              0, 0);
 
@@ -1280,9 +1280,14 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
                   );
 
           if (ntlm_flags & NEGOTIATE_NTLM_KEY) {
-            snprintf(&tmp2[20], 2, "%c%c", SHORTPAIR(ntresplen));
-            snprintf(&tmp2[22], 2, "%c%c", SHORTPAIR(ntresplen));
-            snprintf(&tmp2[24], 2, "%c%c", SHORTPAIR(ntrespoff));
+            /* increased size of snprintf to 3 from 2 to fix truncation
+             * warning - this should not matter as the next bytes after
+             * tmp[24] are zeroes, so the last snprintf will add a null
+             * termination to place where a zero was anyway
+             */
+            snprintf(&tmp2[20], 3, "%c%c", SHORTPAIR(ntresplen));
+            snprintf(&tmp2[22], 3, "%c%c", SHORTPAIR(ntresplen));
+            snprintf(&tmp2[24], 3, "%c%c", SHORTPAIR(ntrespoff));
             memcpy(&tmp2[ntrespoff], ptr_ntresp, ntresplen);
           }
           memcpy(&tmp2[lmrespoff], lmresp, 0x18);
@@ -1301,7 +1306,7 @@ winrm_negotiate(nsock_pool nsp, Connection *con)
           free(tmp2);
           free(b64);
           free(domain_unicode);
-          printf("lol\n");
+          //printf("lol\n");
           con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
 
           nsock_write(nsp, nsi, ncrack_write_handler, WINRM_TIMEOUT, con,
