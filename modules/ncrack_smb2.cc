@@ -244,10 +244,13 @@ static void encode_be32(Buf *buf, uint32_t n) {
   uint32_t u32 = htonl(n);
   buf->append(&u32, 4);
 }
+/* not used */
+#if 0 
 static void encode_be16(Buf *buf, uint16_t n) {
   uint16_t u16 = htons(n);
   buf->append(&u16, 2);
 }
+#endif
 
 static void smb2_encode_header(Connection *con, int cmd)
 {
