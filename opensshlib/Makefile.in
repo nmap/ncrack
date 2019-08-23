@@ -43,7 +43,7 @@ EXEEXT=@EXEEXT@
 TARGETS=$(LIBCOMPAT) libopenssh.a
 
 LIBSSH_OBJS=strlcpy.o strlcat.o bsd-snprintf.o bsd-asprintf.o sha2.o\
-	bufaux.o bufbn.o buffer.o \
+	bufaux.o bufbn.o buffer.o freezero.o \
 	cipher.o cipher-aes.o \
 	cipher-bf1.o cipher-ctr.o cipher-3des1.o cleanup.o \
 	compat.o crc32.o deattack.o fatal.o \

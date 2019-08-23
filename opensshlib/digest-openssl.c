@@ -1,4 +1,4 @@
-/* $OpenBSD: digest-openssl.c,v 1.5 2014/12/21 22:27:56 djm Exp $ */
+/* $OpenBSD: digest-openssl.c,v 1.7 2017/05/08 22:57:38 djm Exp $ */
 /*
  * Copyright (c) 2013 Damien Miller <djm@mindrot.org>
  *
@@ -56,7 +56,6 @@ struct ssh_digest {
 /* NB. Indexed directly by algorithm number */
 const struct ssh_digest digests[] = {
 	{ SSH_DIGEST_MD5,	"MD5",	 	16,	EVP_md5 },
-	{ SSH_DIGEST_RIPEMD160,	"RIPEMD160",	20,	EVP_ripemd160 },
 	{ SSH_DIGEST_SHA1,	"SHA1",	 	20,	EVP_sha1 },
 	{ SSH_DIGEST_SHA256,	"SHA256", 	32,	EVP_sha256 },
 	{ SSH_DIGEST_SHA384,	"SHA384",	48,	EVP_sha384 },
@@ -82,11 +81,7 @@ ssh_digest_alg_by_name(const char *name)
 	int alg;
 
 	for (alg = 0; digests[alg].id != -1; alg++) {
-#ifndef WIN32
 		if (strcasecmp(name, digests[alg].name) == 0)
-#else
-		if (stricmp(name, digests[alg].name) == 0)
-#endif
 			return digests[alg].id;
 	}
 	return -1;
@@ -123,10 +118,12 @@ ssh_digest_start(int alg)
 	if (digest == NULL || ((ret = calloc(1, sizeof(*ret))) == NULL))
 		return NULL;
 	ret->alg = alg;
-	ret->mdctx = EVP_MD_CTX_new();
-	if (EVP_DigestInit_ex(ret->mdctx, digest->mdfunc(), NULL) != 1) {
-		EVP_MD_CTX_free(ret->mdctx);
+	if ((ret->mdctx = EVP_MD_CTX_new()) == NULL) {
 		free(ret);
+		return NULL;
+	}
+	if (EVP_DigestInit_ex(ret->mdctx, digest->mdfunc(), NULL) != 1) {
+		ssh_digest_free(ret);
 		return NULL;
 	}
 	return ret;
@@ -163,7 +160,7 @@ ssh_digest_final(struct ssh_digest_ctx *ctx, u_char *d, size_t dlen)
 	const struct ssh_digest *digest = ssh_digest_by_alg(ctx->alg);
 	u_int l = dlen;
 
-	if (dlen > UINT_MAX)
+	if (digest == NULL || dlen > UINT_MAX)
 		return SSH_ERR_INVALID_ARGUMENT;
 	if (dlen < digest->digest_len) /* No truncation allowed */
 		return SSH_ERR_INVALID_ARGUMENT;
@@ -177,11 +174,10 @@ ssh_digest_final(struct ssh_digest_ctx *ctx, u_char *d, size_t dlen)
 void
 ssh_digest_free(struct ssh_digest_ctx *ctx)
 {
-	if (ctx != NULL) {
-		EVP_MD_CTX_free(ctx->mdctx);
-		explicit_bzero(ctx, sizeof(*ctx));
-		free(ctx);
-	}
+	if (ctx == NULL)
+		return;
+	EVP_MD_CTX_free(ctx->mdctx);
+	freezero(ctx, sizeof(*ctx));
 }
 
 int
