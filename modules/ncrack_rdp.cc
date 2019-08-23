@@ -287,7 +287,7 @@ static u_char *rdp_parse_ellipse2(u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta);
 static u_char *rdp_parse_ber(u_char *p, int tag, int *length);
 static u_char *rdp_process_fastpath(Connection *con, u_char *p); 
-static u_char *rdp_parse_bitmap_update(u_char *p);
+//static u_char *rdp_parse_bitmap_update(u_char *p);
 static void rdp_parse_bmpcache2(Connection *con, u_char *p, uint16_t sec_flags, bool compressed);
 
 
@@ -3323,8 +3323,8 @@ rdp_parse_rdpdata_pdu(Connection *con, u_char *p)
 
 }
 
-
-
+/* not used currently */
+#if 0 
 static u_char *
 rdp_parse_bitmap_update(u_char *p)
 {
@@ -3373,6 +3373,7 @@ rdp_parse_bitmap_update(u_char *p)
 
   return p;
 }
+#endif
 
 
 
