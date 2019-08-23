@@ -2252,6 +2252,47 @@ Ncrack finished.
     </variablelist>
 
 
+    <variablelist><title>DICOM Module</title>
+      <varlistentry>
+        <listitem>
+          <para>
+            Digital Imaging and Communications in Medicine (DICOM) is a protocol used heavily
+            in healthcare environments. 
+
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+     <variablelist><title>MQTT Module</title>
+      <varlistentry>
+        <listitem>
+          <para>
+            Windows Remote Management (WinRM) is the Microsoft implementation of
+            WS-Management Protocol, a standard Simple Object Access Protocol 
+            (SOAP)-based, firewall-friendly protocol that allows hardware and
+            operating systems, from different vendors, to interoperate. It is often used to
+            administer Windows machines. The module supports Basic and Negotiate authentication.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+     <variablelist><title>Wordpress Module</title>
+      <varlistentry>
+        <listitem>
+          <para>
+            Windows Remote Management (WinRM) is the Microsoft implementation of
+            WS-Management Protocol, a standard Simple Object Access Protocol 
+            (SOAP)-based, firewall-friendly protocol that allows hardware and
+            operating systems, from different vendors, to interoperate. It is often used to
+            administer Windows machines. The module supports Basic and Negotiate authentication.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+
     </refsect1>
 
 
