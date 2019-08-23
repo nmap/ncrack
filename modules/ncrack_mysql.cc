@@ -240,7 +240,7 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
           mysql_salt[i + 8] = *p++;
         }
         mysql_salt[20] = '\0'; 
-        strncpy(mysql_salt_ret, mysql_salt, strlen(mysql_salt));
+        memcpy(mysql_salt_ret, mysql_salt, strlen(mysql_salt));
 
         /* The next bytes denotes the default authentication method of the server. 
           The string ends with a null byte. */
@@ -254,7 +254,7 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
         server_authentication_method[i] = '\0';
         server_authentication_method[strlen(server_authentication_method) + 1] = '\0';
         //printf("Server default authentication: %s\n", server_authentication_method);
-        strncpy(mysql_auth_method, server_authentication_method, strlen(server_authentication_method));
+        memcpy(mysql_auth_method, server_authentication_method, strlen(server_authentication_method));
         return 0;
       } else {
         /* Currently we don't support versions earlier than 4.1 */
@@ -281,7 +281,7 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
       }
       server_authentication_method[i] = '\0';
       server_authentication_method[strlen(server_authentication_method) + 1] = '\0';
-      strncpy(mysql_auth_method, server_authentication_method, strlen(server_authentication_method));
+      memcpy(mysql_auth_method, server_authentication_method, strlen(server_authentication_method));
 
         /* The next 20 bytes are the SALT. */ 
         for(i = 0; i < MYSQL_SALT; i++){
@@ -289,14 +289,13 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
         }
 
         mysql_salt[20] = '\0'; 
-        strncpy(mysql_salt_ret, mysql_salt, strlen(mysql_salt));
+        memcpy(mysql_salt_ret, mysql_salt, strlen(mysql_salt));
         return 2;
     }
-        
       
   }
-    /* Malformed packet. Exit safely. */ 
-    return -2;  
+  /* Malformed packet. Exit safely. */ 
+  return -2;  
 }
 
 
