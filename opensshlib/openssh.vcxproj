@@ -106,7 +106,6 @@
     <ClCompile Include="cleanup.c" />
     <ClCompile Include="compat.c" />
     <ClCompile Include="crc32.c" />
-    <ClCompile Include="deattack.c" />
     <ClCompile Include="digest-libc.c" />
     <ClCompile Include="digest-openssl.c" />
     <ClCompile Include="ed25519.c" />
@@ -171,7 +170,6 @@
     <ClInclude Include="cipher.h" />
     <ClInclude Include="compat.h" />
     <ClInclude Include="crc32.h" />
-    <ClInclude Include="deattack.h" />
     <ClInclude Include="defines.h" />
     <ClInclude Include="dh.h" />
     <ClInclude Include="includes.h" />
