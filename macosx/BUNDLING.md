@@ -34,10 +34,10 @@ And we'll start over together:
 2.	In `~/.jhbuildrc-custom`, make sure that this line is setup properly:
 
 	~~~~
-	setup_sdk(target=_target, sdk_version="native", architectures=["i386"])
+	setup_sdk(target=_target, sdk_version="native", architectures=["x86_64"])
 	~~~~
 	
-	for an i386 architecture.
+	for an x86_64 architecture. Latest macOS versions do not support i386.
 	
 3.	Now do,
 
