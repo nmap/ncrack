@@ -2257,9 +2257,38 @@ Ncrack finished.
         <listitem>
           <para>
             Digital Imaging and Communications in Medicine (DICOM) is a protocol used heavily
-            in healthcare environments. 
-
+            in healthcare environments. Most commonly, it is used as both a file format and network
+            protocol by Picture Archiving and Communication Systems (PACS). The client of a DICOM
+            service is called a service class user (SCU) and the server a service class provider (SCP).
+            DICOM is very unique in how it authenticates clients to servers; there are potentially one 
+            to three steps involved: Association, Find Service and Retrieve Images. 
           </para>
+
+          <para>
+            Association: This is the initial step that almost all PACS servers require. By sending an
+            A-ASSOCIATE request with the correct called Application Entity Title (AET) the client associates
+            with the server and then can go on to perform query / retrieve requests in the next steps.
+            This is the mode that Ncrack currently supports by iterating through the <emphasis>username</emphasis>
+            field. Thus to brute-force the server's AET, you can specify a list of AETs using the -U option
+            and then specifying a null password. 
+            Example: ncrack dicom://127.0.0.1 -U aet.txt --pass DOESNOTMATTER
+          </para>
+
+          <para>
+            Find Service: This step involves being able to query the PACS server for patient studies that
+            are associated with DICOM images. This takes place after the client has performed the Association
+            phase. A C-FIND request must be sent with the correct calling AET. Knowing the correct allowed client
+            AET (or calling AET) is required by securely configured PACS servers. Many PACS servers by default
+            do not require this. 
+          </para>
+
+          <para>
+            Retrieve Images: This step allows a client to retrieve DICOM images. The most hardened PACS servers
+            will require the client to have a specific allowed IP configured in order to send a C-MOVE / C-STORE
+            request after the above two steps have been performed. 
+          </para>
+             
+
         </listitem>
       </varlistentry>
     </variablelist>
@@ -2268,11 +2297,11 @@ Ncrack finished.
       <varlistentry>
         <listitem>
           <para>
-            Windows Remote Management (WinRM) is the Microsoft implementation of
-            WS-Management Protocol, a standard Simple Object Access Protocol 
-            (SOAP)-based, firewall-friendly protocol that allows hardware and
-            operating systems, from different vendors, to interoperate. It is often used to
-            administer Windows machines. The module supports Basic and Negotiate authentication.
+            The Message Queueing Telemetry Transport (MQTT) protocol is a publish / subscribe machine to machine
+            protocol that allows IoT clients to publish to a broker. Each client device subscribes to a particular
+            topic of interest and receives messages from publishers. Usually MQTT authentication is optional and
+            when enabled can be brute-forced very easily as it only requires a single MQTT CONNECT packet to be sent
+            for each attemped credential pair.
           </para>
         </listitem>
       </varlistentry>
@@ -2282,11 +2311,20 @@ Ncrack finished.
       <varlistentry>
         <listitem>
           <para>
-            Windows Remote Management (WinRM) is the Microsoft implementation of
-            WS-Management Protocol, a standard Simple Object Access Protocol 
-            (SOAP)-based, firewall-friendly protocol that allows hardware and
-            operating systems, from different vendors, to interoperate. It is often used to
-            administer Windows machines. The module supports Basic and Negotiate authentication.
+            Wodpress is one of the most popular content management systems. This module attacks the web administration
+            endpoint. By default it will try "wp-login.php" but you can change it by specifying the <option>path</option>.
+            For example: ncrack wp://127.0.0.1,path=/non-default/wp-login.php
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+         <variablelist><title>CVS Module</title>
+      <varlistentry>
+        <listitem>
+          <para>
+            The Concurrent Versioning System (CVS) is a revision control system in software development. Although not as
+            popular nowadays, there are many old, oudated CVS servers out there that might have default or weak credentials.
           </para>
         </listitem>
       </varlistentry>

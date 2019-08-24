@@ -44,7 +44,7 @@ TARGETS=$(LIBCOMPAT) libopenssh.a
 
 LIBSSH_OBJS=strlcpy.o strlcat.o bsd-snprintf.o bsd-asprintf.o sha2.o\
 	bufaux.o bufbn.o buffer.o freezero.o recallocarray.o \
-	cipher.o cipher-aes.o \
+	cipher.o cipher-aes.o reallocarray.o \
 	cipher-bf1.o cipher-ctr.o cipher-3des1.o cleanup.o \
 	compat.o crc32.o fatal.o \
 	log.o match.o md-sha256.o moduli.o packet.o \
@@ -54,7 +54,7 @@ LIBSSH_OBJS=strlcpy.o strlcat.o bsd-snprintf.o bsd-asprintf.o sha2.o\
 	sshbuf.o ssherr.o addrmatch.o sshbuf-getput-basic.o \
 	vis.o bsd-misc.o digest-libc.o digest-openssl.o \
 	explicit_bzero.o strtonum.o kexecdh.o kexecdhc.o arc4random.o \
-	reallocarray.o cipher-chachapoly.o chacha.o poly1305.o \
+	cipher-chachapoly.o chacha.o poly1305.o \
 	timingsafe_bcmp.o sshbuf-getput-crypto.o kexc25519c.o kexc25519.o \
 	sshkey.o sshbuf-misc.o bcrypt_pbkdf.o ssh-ed25519.o \
 	blowfish.o hash.o uuencode.o blocks.o ssh-ecdsa.o base64.o \
