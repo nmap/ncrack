@@ -247,7 +247,7 @@ cass_encode_data(Connection *con) {
   data.Struct.map.length1[2] = 0;
   data.Struct.map.length1[3] = strlen("username");
   con->outbuf->append(&data.Struct.map.length1, sizeof(data.Struct.map.length1));  
-  strncpy((char * )&data.Struct.map.string1[0],"username",8);  
+  memcpy((char * )&data.Struct.map.string1[0], "username", 8);  
   con->outbuf->append(&data.Struct.map.string1, sizeof(data.Struct.map.string1));  
   data.Struct.map.length2[0] = 0;
   data.Struct.map.length2[1] = 0;
@@ -261,7 +261,7 @@ cass_encode_data(Connection *con) {
   data.Struct.map.length3[2] = 0;
   data.Struct.map.length3[3] = strlen("password");
   con->outbuf->append(&data.Struct.map.length3, sizeof(data.Struct.map.length3));  
-  strncpy((char * )&data.Struct.map.string3[0],"password",8);  
+  memcpy((char * )&data.Struct.map.string3[0], "password", 8);  
   con->outbuf->append(&data.Struct.map.string3, sizeof(data.Struct.map.string3));  
   data.Struct.map.length4[0] = 0; //4byte
   data.Struct.map.length4[1] = 0; //4byte

@@ -406,7 +406,7 @@ smb_encode_header(Connection *con, char command)
 
   /* SMB header: 0xFF SMB */
   header.protocol[0] = 0xFF;
-  strncpy((char *)&header.protocol[1], "SMB", 3);
+  memcpy((char *)&header.protocol[1], "SMB", 3);
 
   header.command = command; 
   header.status.status = 0; 

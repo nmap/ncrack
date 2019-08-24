@@ -14,7 +14,7 @@
 /* Define necessary macros for the header to expose all fields. */
 #   define _BSD_SOURCE 
 #   define __USE_BSD
-#   define _DEFAULT_SOURCE
+//#   define _DEFAULT_SOURCE
 #   include <endian.h>
 #   include <features.h>
 /* See http://linux.die.net/man/3/endian */

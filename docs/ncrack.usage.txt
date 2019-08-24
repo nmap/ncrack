@@ -62,7 +62,7 @@ MISC:
   -V: Print version number
   -h: Print this help summary page.
 MODULES:
-  SSH, RDP, FTP, Telnet, HTTP(S), POP3(S), IMAP, SMB, VNC, SIP, Redis, PostgreSQL, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA
+  SSH, RDP, FTP, Telnet, HTTP(S), Wordpress, POP3(S), IMAP, CVS, SMB, VNC, SIP, Redis, PostgreSQL, MQTT, MySQL, MSSQL, MongoDB, Cassandra, WinRM, OWA, DICOM
 EXAMPLES:
   ncrack -v --user root localhost:22
   ncrack -v -T5 https://192.168.0.1

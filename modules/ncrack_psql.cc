@@ -165,7 +165,7 @@ static char *enhex(char *dest, const unsigned char *src, size_t n)
 
 /* Arguments are assumed to be non-NULL, with the exception of nc and
    cnonce, which may be garbage only if qop == QOP_NONE. */
-static void make_response(char buf[MD5_DIGEST_LENGTH * 2 + 1],
+static void make_response(char buf[MD5_DIGEST_LENGTH * 2 + 3],
     const char *username, const char *password, const char *salt)
 {
     char HA1_hex[MD5_DIGEST_LENGTH * 2 + 1];
@@ -188,10 +188,10 @@ static void make_response(char buf[MD5_DIGEST_LENGTH * 2 + 1],
     enhex(buf, hashbuf, sizeof(hashbuf));
 
     /* Add the string md5 at the beggining. */
-    strncpy(finalhash,"md5", sizeof("md5"));
+    memcpy(finalhash,"md5", sizeof("md5"));
     strncat(finalhash, buf, sizeof(finalhash) - 1);
     buf[0] = '\0';
-    strncpy(buf, finalhash, MD5_DIGEST_LENGTH * 2 + 3);
+    memcpy(buf, finalhash, MD5_DIGEST_LENGTH * 2 + 3);
     buf[MD5_DIGEST_LENGTH * 2 + 3] = '\0';
 }
 
@@ -219,7 +219,7 @@ psql_loop_read(nsock_pool nsp, Connection *con, char *psql_code_ret, char
     psql_code[i] = *p++;
   }
   psql_code[1] = '\0';
-  strncpy(psql_code_ret, psql_code, PSQL_DIGITS);
+  memcpy(psql_code_ret, psql_code, PSQL_DIGITS);
 
   if (!strncmp(psql_code_ret, "R", PSQL_DIGITS)) {
     /* Read packet length only if it is of type R */
@@ -256,7 +256,7 @@ psql_loop_read(nsock_pool nsp, Connection *con, char *psql_code_ret, char
         psql_salt[i] = *p++;
       }
       psql_salt[4] = '\0';
-      strncpy(psql_salt_ret, psql_salt, PSQL_SALT);
+      memcpy(psql_salt_ret, psql_salt, PSQL_SALT);
 
       return 0;
 

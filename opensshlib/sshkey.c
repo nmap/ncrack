@@ -53,7 +53,8 @@
 #include <util.h>
 #endif /* HAVE_UTIL_H */
 
-#include <malloc.h>
+//#include <malloc.h>
+#include "openbsd-compat.h"
 
 #include "ssh2.h"
 #include "ssherr.h"

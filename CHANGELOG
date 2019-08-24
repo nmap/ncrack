@@ -39,6 +39,29 @@
                   -- [ Ncrack Changelog ] --
 
 
+Ncrack 0.7 [2019-08-23]
+
+o Added new modules: DICOM, Wordpress, MQTT 
+
+o New module: CVS 
+  [Panagiotis Ilias / Barrend]
+
+o New module: SMB2
+  [Aurelien Aptel <aaptel@suse.com>]
+
+o Extended RDP module to support all latest Windows versions
+
+o Added -oX output option
+
+o Added support for latest OpenSSL 1.1.1c 
+
+o Ported opensshlib to OpenSSL 1.1
+  [Hilko Bengen - bengen@hilluzination.de]
+
+o Fixed MySQL, SSH crashes 
+  [Christian Inci - chris.gh@broke-the-inter.net]
+
+
 Ncrack 0.6 [2017-10-11]
 
 o Added new modules: MongoDB and MSSQL 

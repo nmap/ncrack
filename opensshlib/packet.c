@@ -80,7 +80,6 @@
 
 #include "xmalloc.h"
 #include "crc32.h"
-#include "deattack.h"
 #include "compat.h"
 #include "ssh1.h"
 #include "ssh2.h"
@@ -228,7 +227,7 @@ struct session_state {
 	int cipher_warning_done;
 
 	/* SSH1 CRC compensation attack detector */
-	struct deattack_ctx deattack;
+	//struct deattack_ctx deattack;
 
 	TAILQ_HEAD(, packet) outgoing;
 };
