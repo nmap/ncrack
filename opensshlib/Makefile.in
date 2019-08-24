@@ -43,7 +43,7 @@ EXEEXT=@EXEEXT@
 TARGETS=$(LIBCOMPAT) libopenssh.a
 
 LIBSSH_OBJS=strlcpy.o strlcat.o bsd-snprintf.o bsd-asprintf.o sha2.o\
-	bufaux.o bufbn.o buffer.o freezero.o recallocarray.o \
+	bufaux.o bufbn.o buffer.o freezero.o \
 	cipher.o cipher-aes.o reallocarray.o \
 	cipher-bf1.o cipher-ctr.o cipher-3des1.o cleanup.o \
 	compat.o crc32.o fatal.o \
@@ -59,8 +59,9 @@ LIBSSH_OBJS=strlcpy.o strlcat.o bsd-snprintf.o bsd-asprintf.o sha2.o\
 	sshkey.o sshbuf-misc.o bcrypt_pbkdf.o ssh-ed25519.o \
 	blowfish.o hash.o uuencode.o blocks.o ssh-ecdsa.o base64.o \
 	ed25519.o sc25519.o ge25519.o fe25519.o verify.o opacket.o \
-	smult_curve25519_ref.o
+	smult_curve25519_ref.o # recallocarray.o \
 
+# recallocarray is not needed 
 
 
 all: $(TARGETS)
