@@ -77,6 +77,8 @@ xreallocarray(void *ptr, size_t nmemb, size_t size)
 	return new_ptr;
 }
 
+#if 0
+/* not used currently, produces compilation problems in Windows */
 void *
 xrecallocarray(void *ptr, size_t onmemb, size_t nmemb, size_t size)
 {
@@ -88,6 +90,7 @@ xrecallocarray(void *ptr, size_t onmemb, size_t nmemb, size_t size)
 		    nmemb, size);
 	return new_ptr;
 }
+#endif
 
 char *
 xstrdup(const char *str)
