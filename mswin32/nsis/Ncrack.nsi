@@ -183,8 +183,8 @@ Section "Uninstall"
   RMDir /r "$INSTDIR\lists"
   Delete "$INSTDIR\ncrack-services" 
   Delete "$INSTDIR\README-WIN32" 
-  Delete "$INSTDIR\libeay32.dll"
-  Delete "$INSTDIR\ssleay32.dll"
+  Delete "$INSTDIR\libssl-1_1.dll"
+  Delete "$INSTDIR\libcrypto-1_1.dll"
   Delete "$INSTDIR\Uninstall.exe" 
 
   ;Removes folder if it's now empty
