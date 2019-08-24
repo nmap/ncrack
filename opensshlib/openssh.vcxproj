@@ -110,6 +110,7 @@
     <ClCompile Include="digest-openssl.c" />
     <ClCompile Include="ed25519.c" />
     <ClCompile Include="explicit_bzero.c" />
+	<ClCompile Include="freezero.c" />
     <ClCompile Include="fatal.c" />
     <ClCompile Include="ge25519.c" />
     <ClCompile Include="fe25519.c" />
@@ -132,6 +133,7 @@
     <ClCompile Include="opacket.c" />
     <ClCompile Include="poly1305.c" />
     <ClCompile Include="reallocarray.c" />
+	
     <ClCompile Include="rijndael.c" />
     <ClCompile Include="rsa.c" />
     <ClCompile Include="sc25519.c" />

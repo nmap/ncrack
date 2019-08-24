@@ -12,6 +12,12 @@ typedef unsigned int uid_t;
 typedef int socklen_t;
 typedef int sig_atomic_t;
 
+#ifdef _MSC_VER 
+//not #if defined(_WIN32) || defined(_WIN64) because we have strncasecmp in mingw
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#endif
+
 #define SIZEOF_CHAR 1
 #define SIZEOF_SHORT_INT 2
 #define SIZEOF_INT 4

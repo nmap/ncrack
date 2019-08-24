@@ -3,7 +3,7 @@
 NCRACK_VERSION := $(shell grep '^\#[ \t]*define[ \t]\+NCRACK_VERSION' ../ncrack.h | sed -e 's/.*"\(.*\)".*/\1/' -e 'q')
 NCRACK_NUM_VERSION := $(shell grep '^\#[ \t]*define[ \t]\+NCRACK_NUM_VERSION' ../ncrack.h | sed -e 's/.*"\(.*\)".*/\1/' -e 'q')
 OSX_VERSION=$(shell sw_vers -productVersion | cut -d'.' -f1,2 | tr -d ' ')
-OSX_MIN_VERSION = 10.8
+OSX_MIN_VERSION = 10.9
 
 NAME_VERSION = ncrack-$(NCRACK_VERSION)$(if $(APPENDAGE),-$(APPENDAGE))
 
@@ -39,12 +39,12 @@ UNIVERSAL_CXX = g++
 # ("fat" or "universal") or a single one ("i386" or "ppc"). py2app in
 # turn uses the arch value to decide which of its bootstrappers to
 # install.
-UNIVERSAL_ARCHFLAGS = -arch i386
+UNIVERSAL_ARCHFLAGS = -arch x86_64
 UNIVERSAL_CPPFLAGS = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(OSX_VERSION).sdk
 UNIVERSAL_CFLAGS = $(UNIVERSAL_CPPFLAGS) -mmacosx-version-min=$(OSX_MIN_VERSION) $(UNIVERSAL_ARCHFLAGS)
-UNIVERSAL_CXXFLAGS = $(UNIVERSAL_CFLAGS)
+UNIVERSAL_CXXFLAGS = $(UNIVERSAL_CFLAGS) -stdlib=libc++
 # https://stackoverflow.com/questions/19637164/c-linking-error-after-upgrading-to-mac-os-x-10-9-xcode-5-0-1/19637199#19637199
-UNIVERSAL_LDFLAGS = -stdlib=libstdc++ -Wl,-syslibroot,/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(OSX_VERSION).sdk -mmacosx-version-min=$(OSX_MIN_VERSION) $(UNIVERSAL_ARCHFLAGS)
+UNIVERSAL_LDFLAGS = -stdlib=libc++ -Wl,-syslibroot,/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(OSX_VERSION).sdk -mmacosx-version-min=$(OSX_MIN_VERSION) $(UNIVERSAL_ARCHFLAGS)
 
 CC = $(UNIVERSAL_CC)
 CXX = $(UNIVERSAL_CXX)
@@ -119,7 +119,7 @@ export-%:
 	rm -rf $*
 # Using @BASE discards local changes.
 	mkdir ncrack-build
-	git archive master --remote ../ | tar -x -C ncrack-build
+	cd .. && git archive master | tar -x -C macosx/ncrack-build
 
 stage-ncrack: export-$(NCRACK_BUILD_DIR)
 	cd $(NCRACK_BUILD_DIR) && ./configure --with-openssl="$(JHBUILD_PREFIX)" --with-libz="$(JHBUILD_PREFIX)" $(CONFIGURE_ARGS)

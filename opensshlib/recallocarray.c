@@ -26,7 +26,10 @@
 #include <stdint.h>
 #endif
 #include <string.h>
+
+#ifndef WIN32
 #include <unistd.h>
+#endif
 
 /*
  * This is sqrt(SIZE_MAX+1), as s1*s2 <= SIZE_MAX
@@ -56,7 +59,7 @@ recallocarray(void *ptr, size_t oldnmemb, size_t newnmemb, size_t size)
 		return NULL;
 	}
 	oldsize = oldnmemb * size;
-	
+
 	/*
 	 * Don't bother too much if we're shrinking just a bit,
 	 * we do not shrink for series of small steps, oh well.

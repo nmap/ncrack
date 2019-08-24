@@ -22,8 +22,8 @@
   ;Get installation folder from registry if available 
   InstallDirRegKey HKCU "Software\Ncrack" "" 
  
-  !define VERSION "0.5"
-  VIProductVersion "0.5.0.0"
+  !define VERSION "0.7"
+  VIProductVersion "0.7.0.0"
   VIAddVersionKey /LANG=1033 "FileVersion" "${VERSION}"
   VIAddVersionKey /LANG=1033 "ProductName" "Ncrack" 
   VIAddVersionKey /LANG=1033 "CompanyName" "Insecure.org" 
@@ -110,8 +110,8 @@ Section "Ncrack Core Files" SecCore
   File /r /x .svn ..\..\lists
   File ..\..\ncrack-services 
   File ..\Release\ncrack.exe
-  File libeay32.dll
-  File ssleay32.dll
+  File ..\Release\libssl-1_1.dll
+  File ..\Release\libcrypto-1_1.dll
   
   ;Store installation folder 
   WriteRegStr HKCU "Software\Ncrack" "" $INSTDIR 
