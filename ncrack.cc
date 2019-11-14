@@ -360,7 +360,9 @@ lookup_init(const char *const filename)
       || !strncmp(servicename, "pop3s", sizeof("pop3s"))
       || !strncmp(servicename, "owa", sizeof("owa"))
       || !strncmp(servicename, "wordpress-tls", sizeof("wordpress-tls")) 
-      || !strncmp(servicename, "wp-tls", sizeof("wp-tls")))
+      || !strncmp(servicename, "wp-tls", sizeof("wp-tls"))
+      || !strncmp(servicename, "webform-tls", sizeof("webform-tls")) 
+      || !strncmp(servicename, "web-tls", sizeof("web-tls"))) 
       temp.misc.ssl = true;
 
     if (!strncmp(servicename, "mongodb", sizeof("mongodb")))
@@ -791,9 +793,13 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_dicom(nsp, con);  
   else if (!strcmp(name, "wordpress") || !strcmp(name, "wp"))
     ncrack_wordpress(nsp, con);
+  else if (!strcmp(name, "webform") || !strcmp(name, "web"))
+    ncrack_webform(nsp, con);
 #if HAVE_OPENSSL
   else if (!strcmp(name, "wordpress-tls") || !strcmp(name, "wp-tls"))
     ncrack_wordpress(nsp, con);
+  else if (!strcmp(name, "webform-tls") || !strcmp(name, "web-tls"))
+    ncrack_webform(nsp, con);
   else if (!strcmp(name, "winrm"))
     ncrack_winrm(nsp, con);
   else if (!strcmp(name, "mongodb"))

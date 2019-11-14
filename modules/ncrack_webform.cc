@@ -1,8 +1,6 @@
 
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_webform.cc -- ncrack module for web forms                        *
  *                                                                         *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
@@ -129,35 +127,217 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef MODULES_H 
-#define MODULES_H 1
-
+#include "ncrack.h"
 #include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
 
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
-void ncrack_imap(nsock_pool nsp, Connection *con);
-void ncrack_smb(nsock_pool nsp, Connection *con);
-void ncrack_smb2(nsock_pool nsp, Connection *con);
-void ncrack_rdp(nsock_pool nsp, Connection *con);
-void ncrack_vnc(nsock_pool nsp, Connection *con);
-void ncrack_sip(nsock_pool nsp, Connection *con);
-void ncrack_redis(nsock_pool nsp, Connection *con);
-void ncrack_psql(nsock_pool nsp, Connection *con);
-void ncrack_mysql(nsock_pool nsp, Connection *con);
-void ncrack_winrm(nsock_pool nsp, Connection *con);
-void ncrack_owa(nsock_pool nsp, Connection *con);
-void ncrack_cassandra(nsock_pool nsp, Connection *con);
-void ncrack_mssql(nsock_pool nsp, Connection *con);
-void ncrack_mongodb(nsock_pool nsp, Connection *con);
-void ncrack_cvs(nsock_pool nsp, Connection *con);
-void ncrack_wordpress(nsock_pool nsp, Connection *con);
-void ncrack_joomla(nsock_pool nsp, Connection *con);
-void ncrack_dicom(nsock_pool nsp, Connection *con);
-void ncrack_mqtt(nsock_pool nsp, Connection *con);
-void ncrack_webform(nsock_pool nsp, Connection *con);
+using namespace std;
 
-#endif
+#define USER_AGENT "Ncrack (https://nmap.org/ncrack)\r\n"
+#define WEBFORM_TIMEOUT 10000
+
+extern NcrackOps o;
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+static int webform_loop_read(nsock_pool nsp, Connection *con);
+
+enum states { WEBFORM_INIT, WEBFORM_FINI };
+
+typedef struct http_info {
+  /* true if Content-Length in received HTTP packet > 0 */
+  int content_expected;
+  int chunk_expected;
+} http_info;
+
+
+void
+ncrack_webform(nsock_pool nsp, Connection *con)
+{
+  Service *serv = con->service;
+  nsock_iod nsi = con->niod;
+  char tmp[16];
+  size_t formlen;
+
+
+  switch (con->state)
+  {
+    case WEBFORM_INIT:
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      con->outbuf->append("POST ", 5);
+      /* 
+       * the following are almost exactly like the initial HTTP GET query we sent in WEBFORM_INIT
+       */
+       if (strlen(serv->path) > 1) {
+        /* user provided path in command-line */
+        con->outbuf->append("/", 1);
+        con->outbuf->snprintf(strlen(serv->path), "%s", serv->path);
+      } else {
+        /* default path */
+        con->outbuf->append("/login", 6); 
+      }
+
+      con->outbuf->append(" HTTP/1.1\r\nHost: ", 17);
+      if (serv->target->targetname)
+        con->outbuf->append(serv->target->targetname, strlen(serv->target->targetname));
+      else 
+        con->outbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
+      con->outbuf->snprintf(48, "\r\nUser-Agent: %s", USER_AGENT);
+      con->outbuf->append("Keep-Alive: 300\r\nConnection: keep-alive\r\n", 41);
+      /* Up until this point, the data we put in the buffer were exactly the same as in the HTTP
+       * GET request, from hereon the data are different: 
+       * We need to add the Content-Type and Content-Length along with the webform form
+       */
+      con->outbuf->append("Content-Type: application/json\r\n", 32); 
+      
+      /* Now we need to calculate the content-length of the form before we append the form 
+       * to the buffer. The content-length is exactly the length of the form.
+       * The form is a string that is formed as follows in the HTTP packet: 
+       * pwd=password&log=username 
+       * where password is a placeholder for every password and username is a placeholder for
+       * every username 
+       */
+      formlen = strlen(con->user) + strlen(con->pass) + 10 + 14 + 2;
+      snprintf(tmp, sizeof(tmp) - 1, "%lu", formlen);
+      /* note this has two \r\n in the end - one for the end of Content-Length, the other
+       * for the end of the HTTP header - because after that the form (data) follows
+       */
+      con->outbuf->snprintf(20 + strlen(tmp), "Content-Length: %s\r\n\r\n", tmp);
+
+      /* Now append the form to the ougoing buffer */
+      con->outbuf->append("{\"email\":\"", 10);
+      con->outbuf->append(con->user, strlen(con->user));
+      con->outbuf->append("\"\,\"password\":\"", 14);
+      con->outbuf->append(con->pass, strlen(con->pass));
+      con->outbuf->append("\"}", 2);
+
+      /* That's it, we don't need to write anything else, just send the whole buffer out */
+      con->state = WEBFORM_FINI;
+
+      nsock_write(nsp, nsi, ncrack_write_handler, WEBFORM_TIMEOUT, con,
+        (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case WEBFORM_FINI:
+
+      /* let's read the reply to our authentication attempt now */
+      if (webform_loop_read(nsp, con) < 0)
+        break;
+
+      /* we have to jump back to the WEBFORM_INIT after finishing with this one
+       * so that we continue the brute-forcing 
+       */
+      con->state = WEBFORM_INIT;
+
+      // useful for debugging
+      //memprint((const char *)con->inbuf->get_dataptr(), con->inbuf->get_len());
+
+      /*
+       * If we get a "302" HTTP response then it's a redirect to wp-admin, meaning
+       * the credentials were sent were correct. Otherwise we can assume they were
+       * wrong. 
+       */
+      if (memsearch((const char *)con->inbuf->get_dataptr(), "User logged in successfully", con->inbuf->get_len())) {
+        con->auth_success = true;
+      }
+
+      /* don't forget to empty the inbuf */
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      return ncrack_module_end(nsp, con);
+      break;
+  }
+
+}
+
+static int
+webform_loop_read(nsock_pool nsp, Connection *con)
+{
+  http_info *http_state;  /* per connection state */
+  char *ptr;
+  char tmp[2];
+  long int num;
+
+  if (con->misc_info) {
+    http_state = (http_info *)con->misc_info;
+  } else {
+    http_state = (http_info *)safe_zalloc(sizeof(http_info));
+  }
+
+  if (con->inbuf == NULL) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, WEBFORM_TIMEOUT, con);
+    return -1;
+  }
+
+  // Useful for debugging
+  //memprint((const char *)con->inbuf->get_dataptr(), con->inbuf->get_len());
+
+  /* Until when do we keep reading data? 
+   * </html>\n is a good indicator but keep in mind other implementations might send </html>\r\n instead
+   * Since we observer in wireshark that in the first reply by webform when we send it a HTTP GET request
+   * the reply always ends in </html>\n then we search for that as the end of the packet (to avoid any 
+   * fancy HTTP parsing) - we do this only when we are in WEBFORM_GET state 
+   */
+
+  if ((ptr = memsearch((const char *)con->inbuf->get_dataptr(), "Content-Length:", con->inbuf->get_len()))) {
+     /* make pointer point to the end of string "Content-Length:" (plus one space) */
+     ptr += 16; /* it should now point to the Content-Length number */
+
+     tmp[0] = *ptr;
+     tmp[1] = '\0';
+     num = strtol(tmp, NULL, 10);
+     /* if first character of Content-length is anything else other than 0, then we expect to 
+      * see an HTTP payload */
+     if (num != 0) {
+       http_state->content_expected = 1;
+     }
+
+  } else if ((ptr = memsearch((const char *)con->inbuf->get_dataptr(), "Transfer-Encoding: chunked", con->inbuf->get_len()))) {
+    http_state->chunk_expected = 1;
+  }
+
+  /* If you have content (content-length > 0) then you need to read until "} */
+  if (http_state->content_expected) {
+    if (!memsearch((const char *)con->inbuf->get_dataptr(), "\"}", con->inbuf->get_len())) {  
+      http_state->content_expected = 0;
+      nsock_read(nsp, con->niod, ncrack_read_handler, WEBFORM_TIMEOUT, con);
+      return -1;
+    }
+  } else if (http_state->chunk_expected) {  //TODO: this needs fixing
+ 
+    if (con->state == WEBFORM_INIT && !memsearch((const char *)con->inbuf->get_dataptr(), "</html>\n\t", con->inbuf->get_len())) { 
+      http_state->chunk_expected = 0;
+      nsock_read(nsp, con->niod, ncrack_read_handler, WEBFORM_TIMEOUT, con);
+      return -1;
+    } 
+
+    if ((ptr = memsearch((const char *)con->inbuf->get_dataptr(), "\r\n\r\n", con->inbuf->get_len()))) {
+      ptr += 4;
+      if (memcmp(ptr, "\0", 1)) {
+        http_state->chunk_expected = 0;
+        return 0;
+      }
+    }
+    
+  } else {
+    /* 
+     * For the rest of the cases - when we need an indicator for the replies from webform to our authentication
+     * attempts, we search for \r\n\r\n as the end of the packet 
+     */
+    if (!memsearch((const char *)con->inbuf->get_dataptr(), "\r\n\r\n", con->inbuf->get_len())) {
+      nsock_read(nsp, con->niod, ncrack_read_handler, WEBFORM_TIMEOUT, con);
+      return -1;
+    }
+  }
+  
+ 
+  return 0;
+}
+

@@ -9,6 +9,8 @@ telnet 23/tcp
 http 80/tcp
 wordpress 80/tcp
 wp 80/tcp
+webform 80/tcp
+web 80/tcp
 joomla 80/tcp
 dicom 104/tcp
 pop3 110/tcp
@@ -21,6 +23,8 @@ https 443/tcp
 owa 443/tcp
 wordpress-tls 443/tcp
 wp-tls 443/tcp
+webform 443/tcp
+web-tls 443/tcp
 sip 5060/tcp
 pop3s 995/tcp
 mssql 1433/tcp
