@@ -822,7 +822,7 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_sip(nsp, con);
   else if (!strcmp(name, "rdp") || !strcmp(name, "ms-wbt-server"))
     ncrack_rdp(nsp, con);
-  else if (!strcmp(name, "smb") || !strcmp(name, "netbios-ssn"))
+  else if (!strcmp(name, "smb") || !strcmp(name, "netbios-ssn") || !strcmp(name, "microsoft-ds"))
     ncrack_smb(nsp, con);
   else if (!strcmp(name, "smb2"))
     ncrack_smb2(nsp, con);

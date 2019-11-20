@@ -15,6 +15,7 @@ joomla 80/tcp
 dicom 104/tcp
 pop3 110/tcp
 imap 143/tcp
+microsoft-ds 445/tcp
 netbios-ssn 445/tcp
 smb 445/tcp
 smb2 445/tcp
