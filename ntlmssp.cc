@@ -163,6 +163,8 @@
 #include <time.h>
 #include "portable_endian.h"
 
+#if HAVE_OPENSSL 
+
 #include <openssl/hmac.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
@@ -658,3 +660,5 @@ ntlmssp_get_session_key(struct auth_data *auth,
 
   return 0;
 }
+
+#endif /* if HAVE_OPENSSL */
