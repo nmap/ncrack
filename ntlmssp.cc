@@ -163,13 +163,15 @@
 #include <time.h>
 #include "portable_endian.h"
 
+#include "ncrack.h"
+#include "ntlmssp.h"
+
 #if HAVE_OPENSSL 
 
 #include <openssl/hmac.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
 
-#include "ntlmssp.h"
 
 #include "crypto.h" // ntlm_create_hash
 #include "utils.h" // unicode_alloc
