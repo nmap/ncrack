@@ -131,8 +131,10 @@
    program after making any big changes. Also, please add tests for any new
    features. */
 
+#include <limits.h> /* CHAR_BIT */
+#include <errno.h>
+
 #include "nbase.h"
-#include "nbase_addrset.h"
 
 /* A fancy logging system to allow this file to take advantage of different logging
    systems used by various programs */
@@ -156,9 +158,87 @@ void nbase_set_log(void (*log_user_func)(const char *, ...),void (*log_debug_fun
         log_debug = log_debug_func;
 }
 
-void addrset_init(struct addrset *set)
+/* Node for a radix tree (trie) used to match certain addresses.
+ * Currently, only individual numeric IP and IPv6 addresses are matched using
+ * the trie. */
+struct trie_node {
+  /* The address prefix that this node represents. */
+  u32 addr[4];
+  /* The prefix mask. Bits in addr that are not within this mask are ignored. */
+  u32 mask[4];
+  /* Addresses with the next bit after the mask equal to 1 are on this branch. */
+  struct trie_node *next_bit_one;
+  /* Addresses with the next bit after the mask equal to 0 are on this branch. */
+  struct trie_node *next_bit_zero;
+};
+
+/* We use bit vectors to represent what values are allowed in an IPv4 octet.
+   Each vector is built up of an array of bitvector_t (any convenient integer
+   type). */
+typedef unsigned long bitvector_t;
+/* A 256-element bit vector, representing legal values for one octet. */
+typedef bitvector_t octet_bitvector[(256 - 1) / (sizeof(unsigned long) * CHAR_BIT) + 1];
+
+/* A chain of tests for set inclusion. If one test is passed, the address is in
+   the set. */
+struct addrset_elem {
+  struct {
+    /* A bit vector for each address octet. */
+    octet_bitvector bits[4];
+  } ipv4;
+  struct addrset_elem *next;
+};
+
+/* A set of addresses. Used to match against allow/deny lists. */
+struct addrset {
+    /* Linked list of struct addset_elem. */
+    struct addrset_elem *head;
+    /* Radix tree for faster matching of certain cases */
+    struct trie_node *trie;
+};
+
+/* Special node pointer to represent "all possible addresses"
+ * This will be used to represent netmask specifications. */
+static struct trie_node *TRIE_NODE_TRUE = NULL;
+
+struct addrset *addrset_new()
 {
+    struct addrset *set = (struct addrset *) safe_zalloc(sizeof(struct addrset));
     set->head = NULL;
+    /* We could simply allocate one byte to get a unique address, but this
+     * feels safer and is not too large. */
+    if (TRIE_NODE_TRUE == NULL) {
+      TRIE_NODE_TRUE = (struct trie_node *) safe_zalloc(sizeof(struct trie_node));
+    }
+
+    /* Allocate the first node of the IPv4 trie */
+    set->trie = (struct trie_node *) safe_zalloc(sizeof(struct trie_node));
+    return set;
+}
+
+static void trie_free(struct trie_node *curr)
+{
+  /* Since we descend only down one side, we at most accumulate one tree's-depth, or 128.
+   * Add 4 for safety to account for special root node and special empty stack position 0.
+   */
+  struct trie_node *stack[128+4];
+  int i = 1;
+
+  while (i > 0 && curr != NULL && curr != TRIE_NODE_TRUE) {
+    /* stash next_bit_one */
+    if (curr->next_bit_one != NULL && curr->next_bit_one != TRIE_NODE_TRUE) {
+      stack[i++] = curr->next_bit_one;
+    }
+    /* if next_bit_zero is valid, descend */
+    if (curr->next_bit_zero != NULL && curr->next_bit_zero != TRIE_NODE_TRUE) {
+      curr = curr->next_bit_zero;
+    }
+    else {
+      /* next_bit_one was stashed, next_bit_zero is invalid. Free it and move back up the stack. */
+      free(curr);
+      curr = stack[--i];
+    }
+  }
 }
 
 void addrset_free(struct addrset *set)
@@ -169,40 +249,361 @@ void addrset_free(struct addrset *set)
         next = elem->next;
         free(elem);
     }
+
+    trie_free(set->trie);
+    free(set);
+}
+
+
+/* Public domain log2 function. https://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup */
+static const char LogTable256[256] = {
+#define LT(n) n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n
+  -1, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+  LT(4), LT(5), LT(5), LT(6), LT(6), LT(6), LT(6),
+  LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7)
+};
+
+/* Returns a mask representing the common prefix between 2 values. */
+static u32 common_mask(u32 a, u32 b)
+{
+  u8 r;     // r will be lg(v)
+  u32 t, tt; // temporaries
+  u32 v = a ^ b;
+  if (v == 0) {
+    /* values are equal, all bits are the same */
+    return 0xffffffff;
+  }
+
+  if ((tt = v >> 16))
+  {
+    r = (t = tt >> 8) ? 24 + LogTable256[t] : 16 + LogTable256[tt];
+  }
+  else
+  {
+    r = (t = v >> 8) ? 8 + LogTable256[t] : LogTable256[v];
+  }
+  if (r + 1 >= 32) {
+    /* shifting this many bits would overflow. Just return max mask */
+    return 0;
+  }
+  else {
+    return ~((1 << (r + 1)) - 1);
+  }
+}
+
+/* Given a mask and a value, return the value of the bit immediately following
+ * the masked bits. */
+static u32 next_bit_is_one(u32 mask, u32 value) {
+  if (mask == 0) {
+    /* no masked bits, check the first bit. */
+    return (0x80000000 & value);
+  }
+  else if (mask == 0xffffffff) {
+    /* Imaginary bit off the end we will say is 0 */
+    return 0;
+  }
+  /* isolate the bit by overlapping the mask with its inverse */
+  return ((mask >> 1) & ~mask) & value;
+}
+
+/* Given a mask and an address, return true if the first unmasked bit is one */
+static u32 addr_next_bit_is_one(const u32 *mask, const u32 *addr) {
+  u32 curr_mask;
+  u8 i;
+  for (i = 0; i < 4; i++) {
+    curr_mask = mask[i];
+    if (curr_mask < 0xffffffff) {
+      /* Only bother checking the first not-completely-masked portion of the address */
+      return next_bit_is_one(curr_mask, addr[i]);
+    }
+  }
+  /* Mask must be all ones, meaning that the next bit is off the end, and clearly not 1. */
+  return 0;
+}
+
+/* Return true if the masked portion of a and b is identical */
+static int mask_matches(u32 mask, u32 a, u32 b)
+{
+  return !(mask & (a ^ b));
+}
+
+/* Apply a mask and check if 2 addresses are equal */
+static int addr_matches(const u32 *mask, const u32 *sa, const u32 *sb)
+{
+  u32 curr_mask;
+  u8 i;
+  for (i = 0; i < 4; i++) {
+    curr_mask = mask[i];
+    if (curr_mask == 0) {
+      /* No more applicable bits */
+      break;
+    }
+    else if (!mask_matches(curr_mask, sa[i], sb[i])) {
+      /* Doesn't match. */
+      return 0;
+    }
+  }
+  /* All applicable bits match. */
+  return 1;
+}
+
+/* Helper function to allocate and initialize a new node */
+static struct trie_node *new_trie_node(const u32 *addr, const u32 *mask)
+{
+  u8 i;
+  struct trie_node *new_node = (struct trie_node *) safe_zalloc(sizeof(struct trie_node));
+  for (i=0; i < 4; i++) {
+    new_node->addr[i] = addr[i];
+    new_node->mask[i] = mask[i];
+  }
+  /* New nodes default to matching true. Override if not. */
+  new_node->next_bit_one = new_node->next_bit_zero = TRIE_NODE_TRUE;
+  return new_node;
+}
+
+/* Split a node into 2: one that matches the greatest common prefix with addr
+ * and one that does not. */
+static void trie_split (struct trie_node *this, const u32 *addr)
+{
+  struct trie_node *new_node;
+  u32 new_mask[4] = {0,0,0,0};
+  u8 i;
+  /* Calculate the mask of the common prefix */
+  for (i=0; i < 4; i++) {
+    new_mask[i] = common_mask(this->addr[i], addr[i]);
+    if (new_mask[i] < 0xffffffff) {
+      break;
+    }
+  }
+  /* Make a copy of this node to continue matching what it has been */
+  new_node = new_trie_node(this->addr, this->mask);
+  new_node->next_bit_one = this->next_bit_one;
+  new_node->next_bit_zero = this->next_bit_zero;
+  /* Adjust this node to the smaller mask */
+  for (i=0; i < 4; i++) {
+    this->mask[i] = new_mask[i];
+  }
+  /* Put the new node on the appropriate branch */
+  if (addr_next_bit_is_one(this->mask, this->addr)) {
+    this->next_bit_one = new_node;
+    this->next_bit_zero = NULL;
+  }
+  else {
+    this->next_bit_zero = new_node;
+    this->next_bit_one = NULL;
+  }
+}
+
+/* Helper for address insertion */
+static void _trie_insert (struct trie_node *this, const u32 *addr, const u32 *mask)
+{
+  u8 i;
+  while (this != NULL && this != TRIE_NODE_TRUE) {
+    if (addr_matches(this->mask, this->addr, addr)) {
+      if (1 & this->mask[3]) {
+        /* 1. end of address: duplicate. return; */
+        return;
+      }
+    }
+    else {
+      /* Split the netmask to ensure a match */
+      trie_split(this, addr);
+    }
+
+    for (i=0; i < 4; i++) {
+      if (this->mask[i] > mask[i]) {
+        /* broader mask, truncate this one */
+        this->mask[i] = mask[i];
+        for (; i < 4; i++) {
+          this->mask[i] = 0;
+        }
+        /* The longer mask is superseded. Delete following nodes. */
+        trie_free(this->next_bit_one);
+        trie_free(this->next_bit_zero);
+        /* Anything below here will always match. */
+        this->next_bit_one = this->next_bit_zero = TRIE_NODE_TRUE;
+        return;
+      }
+    }
+
+    if (addr_next_bit_is_one(this->mask, addr)) {
+      /* next bit is one: insert on the one branch */
+      if (this->next_bit_one == NULL) {
+        /* Previously unmatching branch, always the case when splitting */
+        this->next_bit_one = new_trie_node(addr, mask);
+        return;
+      }
+      else {
+        this = this->next_bit_one;
+      }
+    }
+    else {
+      /* next bit is zero: insert on the zero branch */
+      if (this->next_bit_zero == NULL) {
+        /* Previously unmatching branch, always the case when splitting */
+        this->next_bit_zero = new_trie_node(addr, mask);
+        return;
+      }
+      else {
+        this = this->next_bit_zero;
+      }
+    }
+  }
+}
+
+/* Helper function to turn a sockaddr into an array of u32, used internally */
+static int sockaddr_to_addr(const struct sockaddr *sa, u32 *addr)
+{
+  if (sa->sa_family == AF_INET) {
+    /* IPv4-mapped IPv6 address */
+    addr[0] = addr[1] = 0;
+    addr[2] = 0xffff;
+    addr[3] = ntohl(((struct sockaddr_in *) sa)->sin_addr.s_addr);
+  }
+#ifdef HAVE_IPV6
+  else if (sa->sa_family == AF_INET6) {
+    u8 i;
+    unsigned char *addr6 = ((struct sockaddr_in6 *) sa)->sin6_addr.s6_addr;
+    for (i=0; i < 4; i++) {
+      addr[i] = (addr6[i*4] << 24) + (addr6[i*4+1] << 16) + (addr6[i*4+2] << 8) + addr6[i*4+3];
+    }
+  }
+#endif
+  else {
+    return 0;
+  }
+  return 1;
+}
+
+static int sockaddr_to_mask (const struct sockaddr *sa, int bits, u32 *mask)
+{
+  int i, k;
+  if (bits >= 0) {
+    if (sa->sa_family == AF_INET) {
+      bits += 96;
+    }
+#ifdef HAVE_IPV6
+    else if (sa->sa_family == AF_INET6) {
+      ; /* do nothing */
+    }
+#endif
+    else {
+      return 0;
+    }
+  }
+  else
+    bits = 128;
+  k = bits / 32;
+  for (i=0; i < 4; i++) {
+    if (i < k) {
+      mask[i] = 0xffffffff;
+    }
+    else if (i > k) {
+      mask[i] = 0;
+    }
+    else {
+      mask[i] = 0xfffffffe << (31 - bits % 32);
+    }
+  }
+  return 1;
+}
+
+/* Insert a sockaddr into the trie */
+static void trie_insert (struct trie_node *this, const struct sockaddr *sa, int bits)
+{
+  u32 addr[4] = {0};
+  u32 mask[4] = {0};
+  if (!sockaddr_to_addr(sa, addr)) {
+    log_debug("Unknown address family %u, address not inserted.\n", sa->sa_family);
+    return;
+  }
+  if (!sockaddr_to_mask(sa, bits, mask)) {
+    log_debug("Bad netmask length %d for address family %u, address not inserted.\n", bits, sa->sa_family);
+    return;
+  }
+  /* First node doesn't have a mask or address of its own; we have to check the
+   * first bit manually. */
+  if (0x80000000 & addr[0]) {
+    /* First bit is 1, so insert on ones branch */
+    if (this->next_bit_one == NULL) {
+      /* Empty branch, just add it. */
+      this->next_bit_one = new_trie_node(addr, mask);
+      return;
+    }
+    _trie_insert(this->next_bit_one, addr, mask);
+  }
+  else {
+    /* First bit is 0, so insert on zeros branch */
+    if (this->next_bit_zero == NULL) {
+      /* Empty branch, just add it. */
+      this->next_bit_zero = new_trie_node(addr, mask);
+      return;
+    }
+    _trie_insert(this->next_bit_zero, addr, mask);
+  }
+}
+
+/* Helper for matching addresses */
+static int _trie_match (const struct trie_node *this, const u32 *addr)
+{
+  while (this != TRIE_NODE_TRUE && this != NULL
+    && addr_matches(this->mask, this->addr, addr)) {
+    if (1 & this->mask[3]) {
+      /* We've matched all possible bits! Yay! */
+      return 1;
+    }
+    else if (addr_next_bit_is_one(this->mask, addr)) {
+      this = this->next_bit_one;
+    }
+    else {
+      this = this->next_bit_zero;
+    }
+  }
+  if (this == TRIE_NODE_TRUE) {
+    return 1;
+  }
+  return 0;
+}
+
+static int trie_match (const struct trie_node *this, const struct sockaddr *sa)
+{
+  u32 addr[4] = {0};
+  if (!sockaddr_to_addr(sa, addr)) {
+    log_debug("Unknown address family %u, cannot match.\n", sa->sa_family);
+    return 0;
+  }
+  /* Manually check first bit to decide which branch to match against */
+  if (0x80000000 & addr[0]) {
+    return _trie_match(this->next_bit_one, addr);
+  }
+  else {
+    return _trie_match(this->next_bit_zero, addr);
+  }
+  return 0;
 }
 
 /* A debugging function to print out the contents of an addrset_elem. For IPv4
    this is the four bit vectors. For IPv6 it is the address and netmask. */
-void addrset_elem_print(FILE *fp, const struct addrset_elem *elem)
+static void addrset_elem_print(FILE *fp, const struct addrset_elem *elem)
 {
     const size_t num_bitvector = sizeof(octet_bitvector) / sizeof(bitvector_t);
     int i;
     size_t j;
 
-    if (elem->type == ADDRSET_TYPE_IPV4_BITVECTOR) {
-        for (i = 0; i < 4; i++) {
-            for (j = 0; j < num_bitvector; j++)
-                fprintf(fp, "%0*lX ", (int) (sizeof(bitvector_t) * 2), elem->u.ipv4.bits[i][num_bitvector - 1 - j]);
-            fprintf(fp, "\n");
-        }
-#ifdef HAVE_IPV6
-    } else if (elem->type == ADDRSET_TYPE_IPV6_NETMASK) {
-        for (i = 0; i < 16; i += 2) {
-            if (i > 0)
-                fprintf(fp, ":");
-            fprintf(fp, "%02X", elem->u.ipv6.addr.s6_addr[i]);
-            fprintf(fp, "%02X", elem->u.ipv6.addr.s6_addr[i + 1]);
-        }
-        fprintf(fp, " ");
-        for (i = 0; i < 16; i += 2) {
-            if (i > 0)
-                fprintf(fp, ":");
-            fprintf(fp, "%02X", elem->u.ipv6.mask.s6_addr[i]);
-            fprintf(fp, "%02X", elem->u.ipv6.mask.s6_addr[i + 1]);
-        }
-        fprintf(fp, "\n");
-#endif
+    for (i = 0; i < 4; i++) {
+      for (j = 0; j < num_bitvector; j++)
+        fprintf(fp, "%0*lX ", (int) (sizeof(bitvector_t) * 2), elem->ipv4.bits[i][num_bitvector - 1 - j]);
+      fprintf(fp, "\n");
     }
+}
+
+void addrset_print(FILE *fp, const struct addrset *set)
+{
+  const struct addrset_elem *elem;
+  for (elem = set->head; elem != NULL; elem = elem->next) {
+    fprintf(fp, "addrset_elem: %p\n", elem);
+    addrset_elem_print(fp, elem);
+  }
 }
 
 /* This is a wrapper around getaddrinfo that automatically handles hints for
@@ -261,9 +662,6 @@ static void in_addr_to_octets(const struct in_addr *ia, uint8_t octets[4])
 
 static int parse_ipv4_ranges(struct addrset_elem *elem, const char *spec);
 static void apply_ipv4_netmask_bits(struct addrset_elem *elem, int bits);
-#ifdef HAVE_IPV6
-static void make_ipv6_netmask(struct in6_addr *mask, int bits);
-#endif
 
 /* Add a host specification into the address set. Returns 1 on success, 0 on
    error. */
@@ -300,8 +698,33 @@ int addrset_add_spec(struct addrset *set, const char *spec, int af, int dns)
         }
     }
 
+    /* See if it's a plain IP address */
+    rc = resolve_name(local_spec, &addrs, af, 0);
+    if (rc == 0 && addrs != NULL) {
+      /* Add all addresses to the trie */
+      for (addr = addrs; addr != NULL; addr = addr->ai_next) {
+        char addr_string[128];
+        if ((addr->ai_family == AF_INET && netmask_bits > 32)
+#ifdef HAVE_IPV6
+          || (addr->ai_family == AF_INET6 && netmask_bits > 128)
+#endif
+          ) {
+          log_user("Illegal netmask in \"%s\". Must be smaller than address bit length.\n", spec);
+          free(local_spec);
+          freeaddrinfo(addrs);
+          return 0;
+        }
+        address_to_string(addr->ai_addr, addr->ai_addrlen, addr_string, sizeof(addr_string));
+        trie_insert(set->trie, addr->ai_addr, netmask_bits);
+        log_debug("Add IP %s/%d to addrset (trie).\n", addr_string, netmask_bits);
+      }
+      free(local_spec);
+      freeaddrinfo(addrs);
+      return 1;
+    }
+
     elem = (struct addrset_elem *) safe_malloc(sizeof(*elem));
-    memset(elem->u.ipv4.bits, 0, sizeof(elem->u.ipv4.bits));
+    memset(elem->ipv4.bits, 0, sizeof(elem->ipv4.bits));
 
     /* Check if this is an IPv4 address, with optional ranges and wildcards. */
     if (parse_ipv4_ranges(elem, local_spec)) {
@@ -313,7 +736,6 @@ int addrset_add_spec(struct addrset *set, const char *spec, int af, int dns)
         }
         apply_ipv4_netmask_bits(elem, netmask_bits);
         log_debug("Add IPv4 range %s/%ld to addrset.\n", local_spec, netmask_bits > 0 ? netmask_bits : 32);
-        elem->type = ADDRSET_TYPE_IPV4_BITVECTOR;
         elem->next = set->head;
         set->head = elem;
         free(local_spec);
@@ -337,9 +759,6 @@ int addrset_add_spec(struct addrset *set, const char *spec, int af, int dns)
     for (addr = addrs; addr != NULL; addr = addr->ai_next) {
         char addr_string[128];
 
-        elem = (struct addrset_elem *) safe_malloc(sizeof(*elem));
-        memset(elem->u.ipv4.bits, 0, sizeof(elem->u.ipv4.bits));
-
         address_to_string(addr->ai_addr, addr->ai_addrlen, addr_string, sizeof(addr_string));
 
         /* Note: it is possible that in this loop we are dealing with addresses
@@ -349,49 +768,29 @@ int addrset_add_spec(struct addrset *set, const char *spec, int af, int dns)
            what you want if a /24 is applied to IPv6 and will cause an error if
            a /120 is applied to IPv4. */
         if (addr->ai_family == AF_INET) {
-            const struct sockaddr_in *sin = (struct sockaddr_in *) addr->ai_addr;
-            uint8_t octets[4];
-
-            elem->type = ADDRSET_TYPE_IPV4_BITVECTOR;
-
-            in_addr_to_octets(&sin->sin_addr, octets);
-            BIT_SET(elem->u.ipv4.bits[0], octets[0]);
-            BIT_SET(elem->u.ipv4.bits[1], octets[1]);
-            BIT_SET(elem->u.ipv4.bits[2], octets[2]);
-            BIT_SET(elem->u.ipv4.bits[3], octets[3]);
 
             if (netmask_bits > 32) {
                 log_user("Illegal netmask in \"%s\". Must be between 0 and 32.\n", spec);
-                free(elem);
+                freeaddrinfo(addrs);
                 return 0;
             }
-            apply_ipv4_netmask_bits(elem, netmask_bits);
-            log_debug("Add IPv4 %s/%ld to addrset.\n", addr_string, netmask_bits > 0 ? netmask_bits : 32);
+            log_debug("Add IPv4 %s/%ld to addrset (trie).\n", addr_string, netmask_bits > 0 ? netmask_bits : 32);
 
 #ifdef HAVE_IPV6
         } else if (addr->ai_family == AF_INET6) {
-            const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) addr->ai_addr;
-
-            elem->type = ADDRSET_TYPE_IPV6_NETMASK;
-
-            elem->u.ipv6.addr = sin6->sin6_addr;
-
             if (netmask_bits > 128) {
                 log_user("Illegal netmask in \"%s\". Must be between 0 and 128.\n", spec);
-                free(elem);
+                freeaddrinfo(addrs);
                 return 0;
             }
-            make_ipv6_netmask(&elem->u.ipv6.mask, netmask_bits);
-            log_debug("Add IPv6 %s/%ld to addrset.\n", addr_string, netmask_bits > 0 ? netmask_bits : 128);
+            log_debug("Add IPv6 %s/%ld to addrset (trie).\n", addr_string, netmask_bits > 0 ? netmask_bits : 128);
 #endif
         } else {
             log_debug("ignoring address %s for %s. Family %d socktype %d protocol %d.\n", addr_string, spec, addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-            free(elem);
             continue;
         }
 
-        elem->next = set->head;
-        set->head = elem;
+        trie_insert(set->trie, addr->ai_addr, netmask_bits);
     }
 
     if (addrs != NULL)
@@ -452,7 +851,7 @@ static int parse_ipv4_ranges(struct addrset_elem *elem, const char *spec)
     while (*p != '\0' && octet_index < 4) {
         if (*p == '*') {
             for (i = 0; i < 256; i++)
-                BIT_SET(elem->u.ipv4.bits[octet_index], i);
+                BIT_SET(elem->ipv4.bits[octet_index], i);
             p++;
         } else {
             for (;;) {
@@ -489,7 +888,7 @@ static int parse_ipv4_ranges(struct addrset_elem *elem, const char *spec)
 
                 /* Fill in the range in the bit vector. */
                 for (i = start; i <= end; i++)
-                    BIT_SET(elem->u.ipv4.bits[octet_index], i);
+                    BIT_SET(elem->ipv4.bits[octet_index], i);
 
                 if (*p != ',')
                     break;
@@ -543,10 +942,10 @@ static void apply_ipv4_netmask(struct addrset_elem *elem, uint32_t mask)
     mask = ntohl(mask);
     /* Apply the mask one octet at a time. It's done this way because ranges
        span exactly one octet. */
-    apply_ipv4_netmask_octet(elem->u.ipv4.bits[0], (mask & 0xFF000000) >> 24);
-    apply_ipv4_netmask_octet(elem->u.ipv4.bits[1], (mask & 0x00FF0000) >> 16);
-    apply_ipv4_netmask_octet(elem->u.ipv4.bits[2], (mask & 0x0000FF00) >> 8);
-    apply_ipv4_netmask_octet(elem->u.ipv4.bits[3], (mask & 0x000000FF));
+    apply_ipv4_netmask_octet(elem->ipv4.bits[0], (mask & 0xFF000000) >> 24);
+    apply_ipv4_netmask_octet(elem->ipv4.bits[1], (mask & 0x00FF0000) >> 16);
+    apply_ipv4_netmask_octet(elem->ipv4.bits[2], (mask & 0x0000FF00) >> 8);
+    apply_ipv4_netmask_octet(elem->ipv4.bits[3], (mask & 0x000000FF));
 }
 
 /* Expand an addrset_elem's IPv4 bit vectors to include any additional addresses
@@ -568,32 +967,6 @@ static void apply_ipv4_netmask_bits(struct addrset_elem *elem, int bits)
     apply_ipv4_netmask(elem, mask);
 }
 
-#ifdef HAVE_IPV6
-/* Fill in an in6_addr with a CIDR-style netmask with the given number of bits.
-   If bits is negative it is taken to be 128. The netmask is written in network
-   byte order. */
-static void make_ipv6_netmask(struct in6_addr *mask, int bits)
-{
-    int i;
-
-    memset(mask, 0, sizeof(*mask));
-
-    if (bits > 128)
-        return;
-    if (bits < 0)
-        bits = 128;
-
-    if (bits == 0)
-        return;
-
-    i = 0;
-    /* 0 < bits <= 128, so this loop goes at most 15 times. */
-    for ( ; bits > 8; bits -= 8)
-        mask->s6_addr[i++] = 0xFF;
-    mask->s6_addr[i] = 0xFF << (8 - bits);
-}
-#endif
-
 static int match_ipv4_bits(const octet_bitvector bits[4], const struct sockaddr *sa)
 {
     uint8_t octets[4];
@@ -609,48 +982,25 @@ static int match_ipv4_bits(const octet_bitvector bits[4], const struct sockaddr 
         && BIT_IS_SET(bits[3], octets[3]);
 }
 
-#ifdef HAVE_IPV6
-static int match_ipv6_netmask(const struct in6_addr *addr,
-    const struct in6_addr *mask, const struct sockaddr *sa)
-{
-    const uint8_t *a = addr->s6_addr;
-    const uint8_t *m = mask->s6_addr;
-    const uint8_t *b = ((const struct sockaddr_in6 *) sa)->sin6_addr.s6_addr;
-    int i;
-
-    if (sa->sa_family != AF_INET6)
-        return 0;
-
-    for (i = 0; i < 16; i++) {
-        if ((a[i] & m[i]) != (b[i] & m[i]))
-            return 0;
-    }
-
-    return 1;
-}
-#endif
-
 static int addrset_elem_match(const struct addrset_elem *elem, const struct sockaddr *sa)
 {
-    switch (elem->type) {
-        case ADDRSET_TYPE_IPV4_BITVECTOR:
-            return match_ipv4_bits(elem->u.ipv4.bits, sa);
-#ifdef HAVE_IPV6
-        case ADDRSET_TYPE_IPV6_NETMASK:
-            return match_ipv6_netmask(&elem->u.ipv6.addr, &elem->u.ipv6.mask, sa);
-#endif
-    }
-
-    return 0;
+  return match_ipv4_bits(elem->ipv4.bits, sa);
 }
 
 int addrset_contains(const struct addrset *set, const struct sockaddr *sa)
 {
     struct addrset_elem *elem;
 
-    for (elem = set->head; elem != NULL; elem = elem->next) {
+    /* First check the trie. */
+    if (trie_match(set->trie, sa))
+      return 1;
+
+    /* If that didn't match, check the rest of the addrset_elem in order */
+    if (sa->sa_family == AF_INET) {
+      for (elem = set->head; elem != NULL; elem = elem->next) {
         if (addrset_elem_match(elem, sa))
-            return 1;
+          return 1;
+      }
     }
 
     return 0;

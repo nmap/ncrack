@@ -186,6 +186,7 @@
 
 #include <stdlib.h>
 #include <ctype.h>
+#include <time.h>
 
 #if HAVE_SYS_SELECT_H
 #include <sys/select.h>
@@ -357,6 +358,7 @@ extern "C" int vsnprintf (char *, size_t, const char *, va_list);
 #define open _open
 #define stricmp _stricmp
 #define putenv _putenv
+#define tzset _tzset
 
 #if !defined(__GNUC__)
 #define snprintf _snprintf
@@ -453,6 +455,11 @@ void usleep(unsigned long usec);
 #endif
 #endif
 
+/* localtime is not thread safe. This will use a thread safe alternative on
+ * supported platforms. */
+int n_localtime(const time_t *timer, struct tm *result);
+int n_ctime(char *buffer, size_t bufsz, const time_t *timer);
+
 /***************** String functions -- See nbase_str.c ******************/
 /* I modified this conditional because !@# Redhat does not easily provide
    the prototype even though the function exists */
@@ -500,12 +507,6 @@ long parse_long(const char *s, char **tail);
 /* This function takes a byte count and stores a short ascii equivalent
    in the supplied buffer. Eg: 0.122MB, 10.322Kb or 128B. */
 char *format_bytecount(unsigned long long bytes, char *buf, size_t buflen);
-
-/* Compare a canonical option name (e.g. "max-scan-delay") with a
-   user-generated option such as "max_scan_delay" and returns 0 if the
-   two values are considered equivalent (for example, - and _ are
-   considered to be the same), nonzero otherwise. */
-int optcmp(const char *a, const char *b);
 
 /* Convert non-printable characters to replchar in the string */
 void replacenonprintable(char *str, int strlength, char replchar);
@@ -567,18 +568,12 @@ char *executable_path(const char *argv0);
 
 /* addrset management functions and definitions */
 /* A set of addresses. Used to match against allow/deny lists. */
-struct addrset_elem;
-
-/* A set of addresses. Used to match against allow/deny lists. */
-struct addrset {
-    /* Linked list of struct addset_elem. */
-    struct addrset_elem *head;
-};
+struct addrset;
 
 void nbase_set_log(void (*log_user_func)(const char *, ...),void (*log_debug_func)(const char *, ...));
-extern void addrset_init(struct addrset *set);
+struct addrset *addrset_new();
 extern void addrset_free(struct addrset *set);
-extern void addrset_elem_print(FILE *fp, const struct addrset_elem *elem);
+extern void addrset_print(FILE *fp, const struct addrset *set);
 extern int addrset_add_spec(struct addrset *set, const char *spec, int af, int dns);
 extern int addrset_add_file(struct addrset *set, FILE *fd, int af, int dns);
 extern int addrset_contains(const struct addrset *set, const struct sockaddr *sa);
