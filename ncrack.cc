@@ -184,7 +184,7 @@ vector <global_service> ServicesTable;
 /* global login and pass array */
 vector <char *> UserArray;
 vector <char *> PassArray;
-
+struct tm local_time;
 
 /* schedule additional connections */
 static void ncrack_probes(nsock_pool nsp, ServiceGroup *SG);
@@ -872,6 +872,7 @@ ncrack_main(int argc, char **argv)
    * be invoked.
    */
   char *tmp = NULL;
+  int err;
 
   char *host_spec = NULL;
   Target *currenths = NULL;
@@ -892,7 +893,6 @@ ncrack_main(int argc, char **argv)
   timing_options timing;      /* for -T option */
 
   /* time variables */
-  struct tm *tm;
   time_t now;
   char tbuf[128];
   char mytime[128];
@@ -961,7 +961,10 @@ ncrack_main(int argc, char **argv)
 
 
   now = time(NULL);
-  tm = localtime(&now);
+  err = n_localtime(&now, &local_time);
+  if (err) {
+    fatal("n_localtime failed: %s", strerror(err));
+  }
 
   /* Argument parsing */
   optind = 1;
@@ -986,16 +989,16 @@ ncrack_main(int argc, char **argv)
           parse_services(optarg, services_cmd);
         } else if (!strcmp(long_options[option_index].name, "list")) {
           o.list_only = true;
-        } else if (!optcmp(long_options[option_index].name,
+        } else if (!strcmp(long_options[option_index].name,
               "connection-limit")) {
           o.connection_limit = atoi(optarg);
-        } else if (!optcmp(long_options[option_index].name,
+        } else if (!strcmp(long_options[option_index].name,
               "passwords-first")) {
           o.passwords_first = true;
-        } else if (!optcmp(long_options[option_index].name,
+        } else if (!strcmp(long_options[option_index].name,
               "pairwise")) {
           o.pairwise = true;
-        } else if (!optcmp(long_options[option_index].name,
+        } else if (!strcmp(long_options[option_index].name,
               "nsock-trace")) {
           int lvl;
 
@@ -1009,17 +1012,17 @@ ncrack_main(int argc, char **argv)
             o.nsock_loglevel = NSOCK_LOG_INFO;
           else
             o.nsock_loglevel = NSOCK_LOG_ERROR;
-        } else if (!optcmp(long_options[option_index].name, "proxy") ||
-                   !optcmp(long_options[option_index].name, "proxies")) {
+        } else if (!strcmp(long_options[option_index].name, "proxy") ||
+                   !strcmp(long_options[option_index].name, "proxies")) {
           if (nsock_proxychain_new(optarg, &o.proxychain, NULL) < 0)
             fatal("Invalid proxy chain specification.");
           if (strlen(optarg) >= 7 && !(strncmp(optarg, "socks4a", 7)))
             o.socks4a = true;
-        } else if (!optcmp(long_options[option_index].name, "log-errors")) {
+        } else if (!strcmp(long_options[option_index].name, "log-errors")) {
           o.log_errors = true;
-        } else if (!optcmp(long_options[option_index].name, "stealthy-linear")) {
+        } else if (!strcmp(long_options[option_index].name, "stealthy-linear")) {
           o.stealthy_linear = true;
-        } else if (!optcmp(long_options[option_index].name, "append-output")) {
+        } else if (!strcmp(long_options[option_index].name, "append-output")) {
           o.append_output = true;
         } else if (strcmp(long_options[option_index].name, "datadir") == 0) {
           o.datadir = strdup(optarg);
@@ -1044,14 +1047,14 @@ ncrack_main(int argc, char **argv)
           if (!inputfd)
             fatal("Failed to open input file %s for reading", optarg);
         } else if (strcmp(long_options[option_index].name, "oN") == 0) {
-          normalfilename = logfilename(optarg, tm);
+          normalfilename = logfilename(optarg, &local_time);
         } else if (strcmp(long_options[option_index].name, "oX") == 0) {
-          xmlfilename = logfilename(optarg, tm);
+          xmlfilename = logfilename(optarg, &local_time);
         } else if (strcmp(long_options[option_index].name, "oA") == 0) {
           char buf[MAXPATHLEN];
-          Snprintf(buf, sizeof(buf), "%s.ncrack", logfilename(optarg, tm));
+          Snprintf(buf, sizeof(buf), "%s.ncrack", logfilename(optarg, &local_time));
           normalfilename = strdup(buf);
-          Snprintf(buf, sizeof(buf), "%s.xml", logfilename(optarg, tm));
+          Snprintf(buf, sizeof(buf), "%s.xml", logfilename(optarg, &local_time));
           xmlfilename = strdup(buf);
         } else if (strcmp(long_options[option_index].name, "user") == 0) {
           if (o.userlist_src)
@@ -1076,7 +1079,7 @@ ncrack_main(int argc, char **argv)
           /* Compatability hack ... ugly */
           o.verbose += 2;  
         } else if (strcmp(long_options[option_index].name, "save") == 0) {
-          o.save_file = logfilename(optarg, tm);
+          o.save_file = logfilename(optarg, &local_time);
         } 
         break;
       case '6':
@@ -1155,7 +1158,7 @@ ncrack_main(int argc, char **argv)
         free(tmp);
         break;
       case 'o':
-        normalfilename = logfilename(optarg, tm);
+        normalfilename = logfilename(optarg, &local_time);
         break;
       case 'p':   /* services */
         tmp = Strndup(optarg, strlen(optarg));
@@ -1258,7 +1261,7 @@ ncrack_main(int argc, char **argv)
   /* Prepare -T option (3 is default) */
   prepare_timing_template(&timing);
 
-  if (strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M %Z", tm) <= 0)
+  if (strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M %Z", &local_time) <= 0)
     fatal("Unable to properly format time");
   log_write(LOG_STDOUT, "\nStarting %s %s ( %s ) at %s\n",
       NCRACK_NAME, NCRACK_VERSION, NCRACK_URL, tbuf);
@@ -1279,7 +1282,10 @@ ncrack_main(int argc, char **argv)
 
   /* Brief info incase they forget what was scanned */
   timep = time(NULL);
-  Strncpy(mytime, ctime(&now), sizeof(mytime));
+  err = n_ctime(mytime, sizeof(mytime), &timep);
+  if (err) {
+    fatal("n_ctime failed: %s", strerror(err));
+  }
   chomp(mytime);
 
   //char *xslfname = o.XSLStyleSheet();

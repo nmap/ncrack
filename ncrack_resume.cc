@@ -228,9 +228,9 @@ ncrack_save(ServiceGroup *SG)
   uint32_t index = 0;
   uint32_t credlist_size = 0;
   struct passwd *pw;
-  int res;
-  struct tm *tm;
+  int res, err;
   time_t now;
+  struct tm local_time;
   char path[MAXPATHLEN];
   char filename[MAXPATHLEN];
   bool cmd_user_pass = false; /* boolean used for handling the blank username/password
@@ -292,8 +292,12 @@ ncrack_save(ServiceGroup *SG)
     Strncpy(filename, "restore.", 9);
 
     now = time(NULL);
-    tm = localtime(&now);
-    if (strftime(&filename[8], sizeof(filename), "%Y-%m-%d_%H-%M", tm) <= 0)
+    err = n_localtime(&now, &local_time);
+    if (err) {
+      fatal("n_localtime failed: %s", strerror(err));
+    }
+
+    if (strftime(&filename[8], sizeof(filename), "%Y-%m-%d_%H-%M", &local_time) <= 0)
       fatal("%s: Unable to properly format time", __func__);
 
     if (chdir(path) < 0) {

@@ -439,7 +439,7 @@ smb_encode_negotiate_protocol(Buf *buf)
   buf->append(&byte_count, 2);
 
   /* List of strings */
-  buf->snprintf(12, "%c%s%", 2, "NT LM 0.12");
+  buf->snprintf(12, "%c%s", 2, "NT LM 0.12");
   buf->snprintf(2, "%c%c", 2, 0);
 
 }
