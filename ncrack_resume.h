@@ -129,6 +129,9 @@
  *                                                                         *
  ***************************************************************************/
 
+#ifndef NCRACK_RESUME
+#define NCRACK_RESUME 1
+
 #include "ncrack.h"
 #include "ncrack_error.h"
 #include "utils.h"
@@ -167,3 +170,5 @@ int ncrack_save(ServiceGroup *SG);
  */
 int ncrack_resume(char *fname, int *myargc, char ***myargv);
 
+
+#endif

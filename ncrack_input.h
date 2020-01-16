@@ -128,6 +128,10 @@
  *                                                                         *
  ***************************************************************************/
 
+#ifndef NCRACK_INPUT_H 
+#define NCRACK_INPUT_H 1
+
+
 /* 
  * Responsible for parsing an Nmap XML output file (with the -oX option).
  * Returns 0 for success and host_spec is set with a host-service specification
@@ -149,3 +153,5 @@ int xml_input(FILE *inputfd, char *host_spec);
  * different host_spec being set.
  */
 int normal_input(FILE *inputfd, char *host_spec);
+
+#endif

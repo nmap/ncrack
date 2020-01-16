@@ -509,6 +509,7 @@ print_final_output(ServiceGroup *SG)
   time_t now;
   char mytime[128];
   long long whole_t = 0, dec_t = 0;
+  int err;
 
   /* Workaround for default rounding-up that is done when printing a .2f float.
    * Previously with a variable e.g 20999, printf (".2f", var/1000.0) would
@@ -522,7 +523,10 @@ print_final_output(ServiceGroup *SG)
     dec_t /= 10;
 
   now = time(NULL);
-  Strncpy(mytime, ctime(&now), sizeof(mytime));
+  err = n_ctime(mytime, sizeof(mytime), &now);
+  if (err) {
+    fatal("n_ctime failed: %s", strerror(err));
+  }
   chomp(mytime);
   
   if (o.list_only) 

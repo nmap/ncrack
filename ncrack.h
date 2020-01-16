@@ -136,8 +136,8 @@
 #ifndef NCRACK_VERSION
 /* Edit this definition only within the quotes, because it is read from this
    file by the makefiles. */
-#define NCRACK_VERSION "0.7"
-#define NCRACK_NUM_VERSION "0.7.0.0"
+#define NCRACK_VERSION "0.8"
+#define NCRACK_NUM_VERSION "0.8.0.0"
 #endif
 
 #define NCRACK_XMLOUTPUTVERSION "1.00"

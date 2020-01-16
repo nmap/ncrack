@@ -127,6 +127,9 @@
  *                                                                         *
  ***************************************************************************/
 
+#ifndef NCRACK_TTY
+#define NCRACK_TTY 1
+
 #define KEYPRESS_STATUS 1
 #define KEYPRESS_CREDS 2
 
@@ -143,3 +146,4 @@ void tty_init();
    calling method should print a status message */
 int keyWasPressed();
 
+#endif

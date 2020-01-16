@@ -466,7 +466,8 @@ bool ScanProgressMeter::printStats(double perc_done,
   struct timeval tvtmp;
   double time_left_s;
   time_t timet;
-  struct tm *ltime;
+  struct tm ltime;
+  int err;
 
   if (!now) {
     gettimeofday(&tvtmp, NULL);
@@ -492,18 +493,27 @@ bool ScanProgressMeter::printStats(double perc_done,
 
   /* Get the estimated time of day at completion */
   timet = last_est.tv_sec;
-  ltime = localtime(&timet);
-  assert(ltime);
+  err = n_localtime(&timet, &ltime);
 
-  log_write(LOG_STDOUT, "About %.2f%% done; ETC: %02d:%02d "
+  if (!err) {
+    log_write(LOG_STDOUT, "About %.2f%% done; ETC: %02d:%02d "
       "(%.f:%02.f:%02.f remaining)\n",
-      perc_done * 100, ltime->tm_hour, ltime->tm_min,
+      perc_done * 100, ltime.tm_hour, ltime.tm_min,
       floor(time_left_s / 60.0 / 60.0),
       floor(fmod(time_left_s / 60.0, 60.0)),
       floor(fmod(time_left_s, 60.0)));
   /*log_write(LOG_XML, "<taskprogress task=\"%s\" time=\"%lu\" percent=\"%.2f\" remaining=\"%.f\" etc=\"%lu\" />\n",
       scantypestr, (unsigned long) now->tv_sec,
       perc_done * 100, time_left_s, (unsigned long) last_est.tv_sec); */
+  } else {
+    log_write(LOG_STDERR, "Timing error: n_localtime(%f): %s\n", (double) timet, strerror(err));
+    log_write(LOG_STDOUT, "Timing: About %.2f%% done; ETC: Unknown (%.f:%02.f:%02.f remaining)\n",
+        perc_done * 100,
+        floor(time_left_s / 60.0 / 60.0),
+        floor(fmod(time_left_s / 60.0, 60.0)),
+        floor(fmod(time_left_s, 60.0)));
+  }
+
   log_flush(LOG_STDOUT|LOG_XML);
 
   return true;
