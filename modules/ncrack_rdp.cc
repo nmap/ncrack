@@ -2358,14 +2358,19 @@ rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta)
   if (params & 0x200000) {
     length = *(uint8_t *)p;
     p += 1;
-    if (length <= sizeof(text))
-      memcpy(text, p, length);
+    //if (length <= sizeof(text))
+    // the above is always true because length is always <=255 
+    // however, if you change the text to be less than 256, we would have a problem
+    memcpy(text, p, length);
     p += length;
+#if 0
+    // below would always be false, because length always <= 255
     if (length > sizeof(text)) {
       if (o.debugging > 2)
         fprintf(stderr, "Text message too long!\n");
       return p;
     }
+#endif
   }
 
   if (!memcmp(text, LOGON_AUTH_FAILED, 3))

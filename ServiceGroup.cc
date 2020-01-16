@@ -155,6 +155,7 @@ ServiceGroup::
 ~ServiceGroup()
 {
 	// free stuff
+  delete SPM;
 }
 
 
