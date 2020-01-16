@@ -390,11 +390,11 @@ int TargetGroup::skip_range(_octet_nums octet) {
   switch (octet) {
     case FIRST_OCTET:
       oct = 0;
-      hosts_skipped = (last[1] + 1) * (last[2] + 1) * (last[3] + 1);
+      hosts_skipped = (unsigned long)(last[1] + 1) * (unsigned long)(last[2] + 1) * (unsigned long)(last[3] + 1);
       break;
     case SECOND_OCTET:
       oct = 1;
-      hosts_skipped = (last[2] + 1) * (last[3] + 1);
+      hosts_skipped = (unsigned long)(last[2] + 1) * (unsigned long)(last[3] + 1);
       break;
     case THIRD_OCTET:
       oct = 2;

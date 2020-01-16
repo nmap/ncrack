@@ -1137,14 +1137,15 @@ int http_read_status_line(char *buf, int buflen, char **line, size_t *line_lengt
     if (count >= MAX_STATUS_LINE_LENGTH) {
         /* Line exceeds our maximum length. */
         //free(line);
-        return 400;
+        return 413;
     }
 
     //line = (char *) safe_realloc(line, n + count + 1);
     //memcpy(line + n, buf, count);
     *line_length = count;
 
-
+#if 0
+    // these checks are redundant now:
     if (newline == NULL) {
         if (count >= MAX_STATUS_LINE_LENGTH)
             /* Request Entity Too Large. */
@@ -1152,6 +1153,7 @@ int http_read_status_line(char *buf, int buflen, char **line, size_t *line_lengt
         else
             return 400;
     }
+#endif
 
     return 0;
 }

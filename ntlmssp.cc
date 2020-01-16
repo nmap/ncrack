@@ -341,7 +341,7 @@ NTOWFv2(const char *user, const char *password, const char *domain,
   }
 
   strcpy(userdomain, user);
-  for (i = strlen(userdomain) - 1; i >=0; i--) {
+  for (i = strlen(userdomain) - 1; i > 0; i--) {
     if (islower(userdomain[i])) {
       userdomain[i] = toupper(userdomain[i]);
     }
