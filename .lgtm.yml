@@ -1,3 +1,6 @@
 path_classifiers:
   library:
     - opensshlib
+queries:
+  # Ncrack uses 'o' as the global options object, among others.
+  - exclude: cpp/short-global-name
