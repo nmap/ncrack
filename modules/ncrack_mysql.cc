@@ -195,18 +195,18 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
     snprintf(dig, 4, "\n%x", *p++);
     packet_number = (int)strtol(dig, NULL, 16);
 
-    if (packet_number == 0 && *p == '\xff'){
+    if (packet_number == 0 && *p == '\xff') {
       if(o.debugging > 6)
         error("Anti-bruteforcing mechanism is triggered. Incoming connections are now blocked.");
       return -2;
-    }
-    else if (packet_number == 0){
+    } else if (packet_number == 0) {
       /* We need to go through the whole packet to find the SALT. */
       /* The next byte is the protocol verion*/
       p++;
       /* The following series of bytes are a zero terminated server 
         version string. Perhaps we can figure out the version here. */
-      while (*(p++) != '\00'){
+      while (*(p++) != '\00') {
+
       }
       /* The next four bytes are the internal MySQL ID of the thread
          handling the connection. */
@@ -220,10 +220,10 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
       we will be facing a 4.1 or newer version of MySQL. In the other case we
       will read the full SALT and then we will exit. */
       mysql_salt[0] = *p++;
-      for (i = 1; i < 8 + 1; i++){
+      for (i = 1; i < 8 + 1; i++) {
        mysql_salt[i] = *p++;
       }
-      if (mysql_salt[8] == '\00'){
+      if (mysql_salt[8] == '\00') {
         /* The version of the sevice is 4.1 or later.
          We need to find the other half of the SALT.*/
 
@@ -236,7 +236,7 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
 
         /* Finally the next 13 bytes are the rest of the SALT terminated
         with a zero byte. */
-        for (i = 0; i < 13; i++){
+        for (i = 0; i < 13; i++) {
           mysql_salt[i + 8] = *p++;
         }
         mysql_salt[20] = '\0'; 
@@ -245,8 +245,8 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
         /* The next bytes denotes the default authentication method of the server. 
           The string ends with a null byte. */
         /* Possible values: mysql_native_password, mysql_old_password, sha256_password*/
-        for (i = 0; i < 21; i++){
-          if (*(p) != '\00')       {
+        for (i = 0; i < 21; i++) {
+          if (*(p) != '\00') {
             server_authentication_method[i] = *p;
             p++;
           }
@@ -261,7 +261,7 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
         return -2;
       }
     } 
-    else if ((packet_number == 2 || packet_number == 4)&& *p == '\xff' )
+    else if ((packet_number == 2 || packet_number == 4)&& *p == '\xff')
       /* This is an error packet. Most probably wrong authentication. 
        We will consider it as a failed attempt. If we triggered anti-bruteforcing
        measures we will find out in the next packet. We are checking for that in
@@ -272,11 +272,11 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
       /* Successful authentication packet. */
       return 1;
 
-    else if (packet_number == 2){
+    else if (packet_number == 2) {
       /* In this case the specific the user uses another authentication method than the default authentication
         of the server. */
       p++;
-      for (i = 0; i < 21 ; i++){
+      for (i = 0; i < 21 ; i++) {
         server_authentication_method[i] = *p++;
       }
       server_authentication_method[i] = '\0';
@@ -284,7 +284,7 @@ mysql_loop_read(nsock_pool nsp, Connection *con, char *mysql_auth_method, char *
       memcpy(mysql_auth_method, server_authentication_method, strlen(server_authentication_method));
 
         /* The next 20 bytes are the SALT. */ 
-        for(i = 0; i < MYSQL_SALT; i++){
+        for(i = 0; i < MYSQL_SALT; i++) {
           mysql_salt[i] = *p++;
         }
 
@@ -371,7 +371,7 @@ ncrack_mysql(nsock_pool nsp, Connection *con)
 
         con->outbuf->snprintf(packet_length + 4 + 20 + 21 + 1,
            "%c%c%c\x01\x05\xa6\x0f%c%c%c%c\x01\x21%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%s%c\x14", 
-           packet_length + 20 + 21 + 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,con->user,0);
+           (char)packet_length + 20 + 21 + 1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,con->user,0);
         memcpy((char *)con->outbuf->get_dataptr() + packet_length + 4 , response_hex, sizeof response_hex);
         strncpy((char *)con->outbuf->get_dataptr() + packet_length  + 20 + 4, "mysql_native_password\x00", sizeof "mysql_native_password ");
         nsock_write(nsp, nsi, ncrack_write_handler, MYSQL_TIMEOUT, con,
@@ -438,7 +438,7 @@ ncrack_mysql(nsock_pool nsp, Connection *con)
 
           con->outbuf->snprintf(4,
              "%c%c%c\x03", 
-             packet_length,0,0);
+             (char)packet_length,0,0);
 
           memcpy((char *)con->outbuf->get_dataptr() + 4 , response_hex, sizeof response_hex);
 
