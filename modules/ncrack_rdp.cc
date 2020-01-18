@@ -4429,6 +4429,7 @@ rdp_client_info(Connection *con)
   uint32_t total_length;
   uint32_t flags = RDP_LOGON_AUTO | RDP_LOGON_NORMAL; // TODO: test the flags 
   int packetlen = 0;
+  int err;
 
   uint32_t rdp5_performance_flags = (PERF_DISABLE_FULLWINDOWDRAG |
 				  PERF_DISABLE_MENUANIMATIONS |
@@ -4441,6 +4442,8 @@ rdp_client_info(Connection *con)
 
   time_t t = time(NULL);
 	time_t tzone;
+  struct tm local_time;
+  struct tm gm_time;
 
   data = new Buf();
   domain[0] = shell[0] = workingdir[0] = 0;
@@ -4571,7 +4574,12 @@ rdp_client_info(Connection *con)
       data->append(u_dll, len_dll - 2); data->append(pad0, 2);
       
       /* TS_TIME_ZONE_INFORMATION */
-      tzone = (mktime(gmtime(&t)) - mktime(localtime(&t))) / 60;
+      err = n_localtime(&t, &local_time);
+      if (err) 
+        log_write(LOG_STDERR, "Timing error (n_localtime): %s\n", strerror(err));
+      gmtime_r(&t, &gm_time);
+      
+      tzone = (mktime(&gm_time) - mktime(&local_time)) / 60;
       data->append(&tzone, 4);
       data->append(u_gtb_normal, 2 * strlen("GTB, normaltid"));
       data->append(pad0, 2);
