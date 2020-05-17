@@ -2373,9 +2373,11 @@ rdp_parse_text2(Connection *con, u_char *p, uint32_t params, bool delta)
 #endif
   }
 
-  if (!memcmp(text, LOGON_AUTH_FAILED, 3))
+  if (!memcmp(text, LOGON_AUTH_FAILED, 3)){
+    info->login_result = LOGIN_FAIL;
     if (o.debugging > 8)
       fprintf(stderr, "Retrieved connection termination packet.\n");
+  }
 
   if ((!memcmp(text, LOGON_MESSAGE_FAILED_XP, 18))
       || (!memcmp(text, LOGON_MESSAGE_FAILED_2K3, 18))) {
