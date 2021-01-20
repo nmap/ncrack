@@ -161,69 +161,64 @@ ts_spec
 parse_services_target(char *const exp) 
 {
   ts_spec temp;
-  size_t name_len, host_len, port_len, options_len, tot_len;
-  char *s, *h, *p;
+  char *s, *h, *p, *o;
+  size_t host_len;
+  int num_colons = 0, lbrackets = 0, rbrackets = 0;
 
-  tot_len = strlen(exp);
   memset(&temp, 0, sizeof(temp));
-  name_len = port_len = 0;
-  p = NULL;
 
+  /* Extract the service name */
   if ((s = strstr(exp, "://"))) {
-    name_len = s - exp;
-    temp.service_name = Strndup(exp, name_len);
-    s += sizeof("://") - 1;
-  } else
-    s = exp;  /* no service name */
-
-  /* case when we have arguments */
-  if ((h = strchr(s, ','))) {
-
-    if ((p = strchr(s, ':')) && (p < h)) {
-      port_len = h - p - 1;
-      temp.portno = Strndup(++p, port_len);
-    } else if (s == exp)  /* neither port nor service name! */
-        fatal("You must specify either a service name or a port (or both): %s",
-            exp);
-
-    if (p) { /* port has been specified */
-      host_len = h - s - port_len - 1;
-      if (s == exp) {
-      /* No service name was provided so we find the default one based on the
-       * port by looking at the supported services table (ServicesTable). */
-        if (!(temp.service_name = port2name(temp.portno)))
-          temp.error = true;
-      }
-    } else {
-      /* port not specified, but to reach here means that sevice-name had
-       * been specified */
-      host_len = h - s;
-    }
-
-    options_len = exp + tot_len - h;
-    temp.service_options = Strndup(++h, options_len);
-
-  } else {  /* case of no arguments */
-    if ((p = strchr(s, ':'))) {
-      port_len = exp + tot_len - p;
-      temp.portno = Strndup(++p, port_len);
-    }
-
-    if (p) {
-      host_len = --p - s;
-      if (s == exp) {
-      /* No service name was provided so we find the default one based on the
-       * port by looking at the supported services table (ServicesTable). */
-         if (!(temp.service_name = port2name(temp.portno)))
-           temp.error = true;
-      }
-    } else {
-      /* only hostname specified (-p option will determine services) */
-      host_len = exp + tot_len - s;
-    }
+      temp.service_name = Strndup(exp, s-exp);
+      s += sizeof("://") - 1;
+  } else {
+      s = exp; /* no service name */
   }
 
-  temp.host_expr = Strndup(s, host_len);
+  /* Determine if it's an IPv6 or not */
+  for (h = s; *s && *s != ','; ++s) {
+    if (*s == ':')
+      ++num_colons;
+    else if (*s == '[')
+      ++lbrackets;
+    else if (*s == ']')
+      ++rbrackets;
+  }
+  if (!(lbrackets == rbrackets && lbrackets <= 1))
+    fatal("Invalid number of brackets:%s", exp);
+
+  /* Extract the host */
+  if (lbrackets) { /* IPv6, potentially with a port */
+    p = strchr(h, ']') + 1;
+    h++;
+    host_len = p-h-1;
+  } else if (num_colons >= 2) { /* IPv6, no port */
+    p = strchrnul(h, ',');
+    host_len = p-h;
+  } else { /* IPv4 or hostname, potentially with a port */
+    p = strchr(h, ':');
+    if (!p)
+      p = strchrnul(h, ',');
+    host_len = p-h;
+  }
+  temp.host_expr = Strndup(h, host_len);
+
+  /* Extract the port */
+  o = strchrnul(s, ',');
+  if (*p == ':')
+    temp.portno = Strndup(p+1, o-p-1);
+
+  /* Extract the options */
+  if (*o == ',')
+    temp.service_options = strdup(o+1);
+
+  if (!temp.service_name && !temp.portno && temp.service_options)
+    fatal("You must specify either a service name or a port (or both): %s",
+        exp);
+  if (!temp.service_name && temp.portno) {
+    if (!(temp.service_name = port2name(temp.portno)))
+      temp.error = true;
+  }
 
   return temp;
 }
