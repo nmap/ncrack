@@ -1,9 +1,7 @@
-
 /***************************************************************************
- * modules.h -- header file containing declarations for every module's     *
- * main handler. To add more protocols to Ncrack, always write the         *
- * corresponding module's main function's declaration here.                *
+ * ncrack_couchbase.cc -- ncrack module for the Couchbase                  *
  *                                                                         *
+ * 09. 07. 2020 by Angel                                                   *
  ***********************IMPORTANT NMAP LICENSE TERMS************************
  *                                                                         *
  * The Nmap Security Scanner is (C) 1996-2019 Insecure.Com LLC ("The Nmap  *
@@ -128,37 +126,121 @@
  * Nmap, and also available from https://svn.nmap.org/nmap/COPYING)        *
  *                                                                         *
  ***************************************************************************/
-
-#ifndef MODULES_H 
-#define MODULES_H 1
-
+#include "ncrack.h"
 #include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
 
-void ncrack_ftp(nsock_pool nsp, Connection *con);
-void ncrack_telnet(nsock_pool nsp, Connection *con);
-void ncrack_ssh(nsock_pool nsp, Connection *con);
-void ncrack_http(nsock_pool nsp, Connection *con);
-void ncrack_pop3(nsock_pool nsp, Connection *con);
-void ncrack_imap(nsock_pool nsp, Connection *con);
-void ncrack_smb(nsock_pool nsp, Connection *con);
-void ncrack_smb2(nsock_pool nsp, Connection *con);
-void ncrack_rdp(nsock_pool nsp, Connection *con);
-void ncrack_vnc(nsock_pool nsp, Connection *con);
-void ncrack_sip(nsock_pool nsp, Connection *con);
-void ncrack_redis(nsock_pool nsp, Connection *con);
-void ncrack_psql(nsock_pool nsp, Connection *con);
-void ncrack_mysql(nsock_pool nsp, Connection *con);
-void ncrack_winrm(nsock_pool nsp, Connection *con);
-void ncrack_owa(nsock_pool nsp, Connection *con);
-void ncrack_cassandra(nsock_pool nsp, Connection *con);
-void ncrack_mssql(nsock_pool nsp, Connection *con);
-void ncrack_mongodb(nsock_pool nsp, Connection *con);
-void ncrack_cvs(nsock_pool nsp, Connection *con);
-void ncrack_wordpress(nsock_pool nsp, Connection *con);
-void ncrack_joomla(nsock_pool nsp, Connection *con);
-void ncrack_dicom(nsock_pool nsp, Connection *con);
-void ncrack_mqtt(nsock_pool nsp, Connection *con);
-void ncrack_webform(nsock_pool nsp, Connection *con);
-void ncrack_couchbase(nsock_pool nsp, Connection *con);
 
-#endif
+#include <stdint.h>
+#include <stdlib.h>
+#define SIZE 1000 
+
+#define COUCHBASE_TIMEOUT 20000
+
+extern NcrackOps o;
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+static int couchbase_loop_read(nsock_pool nsp, Connection *con);
+
+
+enum states { COUCHBASE_INIT, COUCHBASE_USER };
+
+
+static int couchbase_loop_read(nsock_pool nsp, Connection *con)
+{
+
+  if (con->inbuf == NULL) {
+
+    nsock_read(nsp, con->niod, ncrack_read_handler, COUCHBASE_TIMEOUT, con);
+    return -1;
+  }
+
+
+  if (!memsearch((const char *)con->inbuf->get_dataptr(), "\r\n",con->inbuf->get_len())) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, COUCHBASE_TIMEOUT, con);
+    return -1;
+  }
+
+  return 0;
+
+}
+
+
+
+void
+ncrack_couchbase(nsock_pool nsp, Connection *con)
+{
+
+  Service *serv = con->service;
+  nsock_iod nsi = con->niod;
+
+  char *tmp;
+  char *b64;
+  size_t tmplen;
+
+
+  switch(con->state)
+  {
+    case COUCHBASE_INIT:
+
+
+      delete con->inbuf;
+      con->inbuf = NULL;
+
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+
+      con->outbuf->append("GET ", 4);
+      con->outbuf->append("/pools HTTP/1.1\r\nHost: ", strlen("/pools HTTP/1.1\r\nHost: "));
+      con->outbuf->append(serv->target->NameIP(), strlen(serv->target->NameIP()));
+      con->outbuf->append(":8091\r\n",strlen(":8091\r\n"));
+      con->outbuf->append("User-Agent: couchbase-cli 6.5.1-6299\r\n",strlen("User-Agent: couchbase-cli 6.5.1-6299\r\n"));
+      con->outbuf->append("Accept-Encoding: gzip, deflate\r\n",strlen("Accept-Encoding: gzip, deflate\r\n"));
+      con->outbuf->append("Accept: */*\r\n", strlen("Accept: */*\r\n"));
+      con->outbuf->append("Connection: keep-alive\r\n", strlen("Connection: keep-alive\r\n"));
+      con->outbuf->append("Authorization: Basic ", strlen("Authorization: Basic "));
+
+      tmplen = strlen(con->user) + strlen(con->pass) + 1;
+      tmp = (char *)safe_malloc(tmplen + 1);
+      sprintf(tmp, "%s:%s", con->user, con->pass);
+
+      b64 = (char *)safe_malloc(BASE64_LENGTH(tmplen) + 1);
+      base64_encode(tmp, tmplen, b64);
+
+      con->outbuf->append(b64, strlen(b64));
+      free(b64);
+      free(tmp);
+      con->outbuf->append("\r\n\r\n", sizeof("\r\n\r\n")-1);
+
+      nsock_write(nsp, nsi, ncrack_write_handler, COUCHBASE_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      con->state = COUCHBASE_USER;
+      break;
+
+
+    case COUCHBASE_USER:
+
+      if (couchbase_loop_read(nsp,con) < 0)
+        break;
+
+      con->state = COUCHBASE_INIT;
+
+      /* If we get a "200 OK" HTTP response,  
+       * then it means our credentials were correct.
+       */
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "200 OK", con->inbuf->get_len()) ) {
+        con->auth_success = true;
+      }
+
+      delete con->inbuf; /* empty the inbuf */
+      con->inbuf = NULL;
+
+      return ncrack_module_end(nsp, con);
+
+  }
+}
