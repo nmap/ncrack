@@ -16,6 +16,10 @@
 #ifndef INCLUDES_H
 #define INCLUDES_H
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE /* activate extra prototypes for glibc */
+#endif
+
 #ifndef WIN32
  #include "config.h"
  #include <sys/types.h>
@@ -25,10 +29,6 @@
  #include "winfixssh.h"
  #include "winsock.h"
  #include <stdlib.h> // for rand()
-#endif
-
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* activate extra prototypes for glibc */
 #endif
 
 
