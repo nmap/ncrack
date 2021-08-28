@@ -793,6 +793,8 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_dicom(nsp, con);  
   else if (!strcmp(name, "couchbase"))
     ncrack_couchbase(nsp, con);
+  else if (!strcmp(name, "kafka"))
+    ncrack_kafka(nsp, con);
   else if (!strcmp(name, "wordpress") || !strcmp(name, "wp"))
     ncrack_wordpress(nsp, con);
   else if (!strcmp(name, "webform") || !strcmp(name, "web"))

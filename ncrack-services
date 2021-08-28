@@ -46,3 +46,4 @@ cassandra 9160/tcp
 cassandra 9042/tcp
 mongodb 27017/tcp
 cvs 2401/tcp
+kafka 9092/tcp
