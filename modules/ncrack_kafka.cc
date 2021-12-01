@@ -160,49 +160,68 @@ kafka_loop_read(nsock_pool nsp, Connection *con)
   return 0;
 }
 
+struct kafka_apiversions {
+
+  uint8_t length[4];
+  uint16_t api_key[1];
+  uint16_t api_version[1];
+  uint32_t corr_id[1];
+  uint16_t client_id_len[1];
+  uint8_t client_id[14];
+};
+
+static void
+kafka_encode_apiversions(Connection *con) {
+  kafka_apiversions apiversions;
+  apiversions.length[0] = 0;
+  apiversions.length[1] = 0;
+  apiversions.length[2] = 0;
+  apiversions.length[3] = 22;//total length of the packet
+  con->outbuf->append(&apiversions.length, sizeof(apiversions.length));
+  apiversions.api_key[0] = 0x1200;
+  con->outbuf->append(&apiversions.api_key, sizeof(apiversions.api_key));
+  apiversions.api_version[0] = 0; 
+  con->outbuf->append(&apiversions.api_version, sizeof(apiversions.api_version));
+  apiversions.corr_id[0] = 0xf8ffff7f; //decimal from hex 7fffff8
+  con->outbuf->append(&apiversions.corr_id, sizeof(apiversions.corr_id));
+  apiversions.client_id_len[0] = 0x0c00; //length of customer-1-1
+  con->outbuf->append(&apiversions.client_id_len, sizeof(apiversions.client_id_len));
+  con->outbuf->snprintf(12, "customer-1-1");
+}
 
 
 void
 ncrack_kafka(nsock_pool nsp, Connection *con)
 {
-  int ret;
   nsock_iod nsi = con->niod;
 
   switch(con->state)
   {
-  case KAFKA_INIT:
+    case KAFKA_INIT:
 
-    if (!con->login_attempts) {
-      if ((kafka_loop_read(nsp, con)) < 0) {
-        break;
-      }
-    }
-
-    con->state = KAFKA_USER;
-
-    delete con->inbuf;
-    con->inbuf = NULL;
-
-    if (con->outbuf)
-      delete con->outbuf;
-    con->outbuf = new Buf();
-    con->outbuf->snprintf(12 + strlen(con->user) + strlen(con->pass), "01 LOGIN %s %s\r\n", con->user, con->pass);
-
-    nsock_write(nsp, nsi, ncrack_write_handler, KAFKA_TIMEOUT, con, (const char *)con->outbuf->
-        get_dataptr(), con->outbuf->get_len());
-    break;
-
-  case KAFKA_USER:
-
-    if ((ret = kafka_loop_read(nsp, con)) < 0)
+      con->state = KAFKA_USER;    
+      delete con->inbuf;
+      con->inbuf = NULL;
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+      kafka_encode_apiversions(con);
+      nsock_write(nsp, nsi, ncrack_write_handler, KAFKA_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
-    if (ret == 0)
-      con->auth_success = true;
+    case KAFKA_USER: 
+      if (kafka_loop_read(nsp,con) < 0){
+        break;
+      }
+      //The difference of the successful and failed authentication resides on the 22th byte of the reply packet
+      const char *p = (const char *)con->inbuf->get_dataptr();
+      if (p[21] == '\x0c')//find the 22th byte and compare it to 0c
+        ;//printf("%x", p[21]); 
+      else if (p[21] == '\x00')//find the 22th byte and compare it to 00
+        con->auth_success = true;
+      con->state = KAFKA_INIT;
 
-    con->state = KAFKA_INIT;
+      return ncrack_module_end(nsp, con);
 
-    return ncrack_module_end(nsp, con);
   }
 }
-
