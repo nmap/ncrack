@@ -143,25 +143,20 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 static int kafka_loop_read(nsock_pool nsp, Connection *con);
 
-enum states { KAFKA_INIT, KAFKA_USER };
+enum states { KAFKA_INIT, KAFKA_SASL, KAFKA_LOGIN, KAFKA_USER };
 
 static int
 kafka_loop_read(nsock_pool nsp, Connection *con)
 {
-
-  if ((con->inbuf == NULL) || !(memsearch((const char *)con->inbuf->get_dataptr(),"\r\n",con->inbuf->get_len()))) {
+  if ((con->inbuf == NULL) || (con->inbuf->get_len()<22)) {
     nsock_read(nsp, con->niod, ncrack_read_handler, KAFKA_TIMEOUT, con);
     return -1;
   }
-
-  if (memsearch((const char *)con->inbuf->get_dataptr(),"NO",con->inbuf->get_len()))
-    return 1;
-
   return 0;
 }
 
-struct kafka_apiversions {
 
+struct kafka_apiversions {
   uint8_t length[4];
   uint16_t api_key[1];
   uint16_t api_version[1];
@@ -189,6 +184,77 @@ kafka_encode_apiversions(Connection *con) {
   con->outbuf->snprintf(12, "customer-1-1");
 }
 
+struct kafka_saslhandshake {
+  uint8_t length[4];
+  uint16_t api_key[1];
+  uint16_t api_version[1];
+  uint32_t corr_id[1];
+  uint16_t client_id_len[1];
+  uint8_t client_id[14];
+  uint16_t sasl_mech_len[1];
+  uint8_t sasl_mech[14];
+};
+
+static void
+kafka_encode_saslhandshake(Connection *con) {
+  kafka_saslhandshake saslhandshake;
+  saslhandshake.length[0] = 0;
+  saslhandshake.length[1] = 0;
+  saslhandshake.length[2] = 0;
+  saslhandshake.length[3] = 29;//total length of the packet
+  con->outbuf->append(&saslhandshake.length, sizeof(saslhandshake.length));
+  saslhandshake.api_key[0] = 0x1100;
+  con->outbuf->append(&saslhandshake.api_key, sizeof(saslhandshake.api_key));
+  saslhandshake.api_version[0] = 0x0100; 
+  con->outbuf->append(&saslhandshake.api_version, sizeof(saslhandshake.api_version));
+  saslhandshake.corr_id[0] = 0xf9ffff7f; //decimal from hex 7fffff8
+  con->outbuf->append(&saslhandshake.corr_id, sizeof(saslhandshake.corr_id));
+  saslhandshake.client_id_len[0] = 0x0c00; //length of customer-1-1
+  con->outbuf->append(&saslhandshake.client_id_len, sizeof(saslhandshake.client_id_len));
+  con->outbuf->snprintf(12, "customer-1-1");
+  saslhandshake.sasl_mech_len[0] = 0x0500; //length of plain
+  con->outbuf->append(&saslhandshake.sasl_mech_len, sizeof(saslhandshake.sasl_mech_len));
+  con->outbuf->snprintf(5, "PLAIN");
+}
+
+struct kafka_login {
+  uint8_t length[4];
+  uint16_t api_key[1];
+  uint16_t api_version[1];
+  uint32_t corr_id[1];
+  uint16_t client_id_len[1];
+  uint8_t client_id[14];
+  uint8_t tagged_fields;
+  uint8_t auth_bytes_len[2];
+  uint8_t auth_bytes;
+};
+
+static void
+kafka_encode_login(Connection *con) {
+  kafka_login login;
+  login.length[0] = 0;
+  login.length[1] = 0;
+  login.length[2] = 0;
+  login.length[3] = 29;//total length of the packet
+  con->outbuf->append(&login.length, sizeof(login.length));
+  login.api_key[0] = 0x1100;
+  con->outbuf->append(&login.api_key, sizeof(login.api_key));
+  login.api_version[0] = 0x0100; 
+  con->outbuf->append(&login.api_version, sizeof(login.api_version));
+  login.corr_id[0] = 0xf9ffff7f; //decimal from hex 7fffff8
+  con->outbuf->append(&login.corr_id, sizeof(login.corr_id));
+  login.client_id_len[0] = 0x0c00; //length of customer-1-1
+  con->outbuf->append(&login.client_id_len, sizeof(login.client_id_len));
+  con->outbuf->snprintf(12, "customer-1-1");
+  login.tagged_fields = 0;
+  con->outbuf->append(&login.tagged_fields, sizeof(login.tagged_fields));
+  login.auth_bytes_len[0] = strlen(con->user) + strlen(con->pass) - 2; 
+  login.auth_bytes_len[0] = 0;
+  con->outbuf->append(&login.auth_bytes_len, sizeof(login.auth_bytes_len));
+  con->outbuf->snprintf(1 + strlen(con->user) + strlen(con->pass), "%s %s", con->user, con->pass);
+  login.tagged_fields = 0;
+  con->outbuf->append(&login.tagged_fields, sizeof(login.tagged_fields));
+}
 
 void
 ncrack_kafka(nsock_pool nsp, Connection *con)
@@ -198,8 +264,7 @@ ncrack_kafka(nsock_pool nsp, Connection *con)
   switch(con->state)
   {
     case KAFKA_INIT:
-
-      con->state = KAFKA_USER;    
+      con->state = KAFKA_SASL;    
       delete con->inbuf;
       con->inbuf = NULL;
       if (con->outbuf)
@@ -209,16 +274,38 @@ ncrack_kafka(nsock_pool nsp, Connection *con)
       nsock_write(nsp, nsi, ncrack_write_handler, KAFKA_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
+    case KAFKA_SASL:
+      con->state = KAFKA_LOGIN;
+      delete con->inbuf;
+      con->inbuf=NULL;
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+      kafka_encode_saslhandshake(con);
+      nsock_write(nsp, nsi, ncrack_write_handler, KAFKA_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
+    case KAFKA_LOGIN:
+      con->state = KAFKA_USER;
+      delete con->inbuf;
+      con->inbuf=NULL;
+      if (con->outbuf)
+        delete con->outbuf;
+      con->outbuf = new Buf();
+      kafka_encode_login(con);
+      nsock_write(nsp, nsi, ncrack_write_handler, KAFKA_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      break;
+
     case KAFKA_USER: 
       if (kafka_loop_read(nsp,con) < 0){
         break;
       }
-      //The difference of the successful and failed authentication resides on the 22th byte of the reply packet
-      const char *p = (const char *)con->inbuf->get_dataptr();
-      if (p[21] == '\x0c')//find the 22th byte and compare it to 0c
-        ;//printf("%x", p[21]); 
-      else if (p[21] == '\x00')//find the 22th byte and compare it to 00
-        con->auth_success = true;
+      if (memsearch((const char *)con->inbuf->get_dataptr(),
+            "Invalid", con->inbuf->get_len()) ) {
+      }
+      else {
+	con->auth_success = true;
+      }
       con->state = KAFKA_INIT;
 
       return ncrack_module_end(nsp, con);
