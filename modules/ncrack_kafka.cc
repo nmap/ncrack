@@ -143,18 +143,20 @@ extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
 static int kafka_loop_read(nsock_pool nsp, Connection *con);
 
-enum states { KAFKA_INIT, KAFKA_SASL, KAFKA_LOGIN, KAFKA_USER };
+enum states { KAFKA_INIT, KAFKA_INIT_REPLY, KAFKA_SASL, KAFKA_SASL_REPLY, KAFKA_LOGIN, KAFKA_USER };
 
 static int
 kafka_loop_read(nsock_pool nsp, Connection *con)
 {
-  if ((con->inbuf == NULL) || (con->inbuf->get_len()<22)) {
+  if (con->inbuf == NULL){ 
     nsock_read(nsp, con->niod, ncrack_read_handler, KAFKA_TIMEOUT, con);
     return -1;
   }
+  if (memsearch((const char *)con->inbuf->get_dataptr(),"Invalid",con->inbuf->get_len())){
+    return 1;
+  }
   return 0;
 }
-
 
 struct kafka_apiversions {
   uint8_t length[4];
@@ -224,6 +226,7 @@ struct kafka_login {
   uint32_t corr_id[1];
   uint16_t client_id_len[1];
   uint8_t client_id[14];
+  uint8_t tagged_fields0;
   uint8_t tagged_fields;
   uint8_t auth_bytes_len[2];
   uint8_t auth_bytes;
@@ -235,19 +238,19 @@ kafka_encode_login(Connection *con) {
   login.length[0] = 0;
   login.length[1] = 0;
   login.length[2] = 0;
-  login.length[3] = 29;//total length of the packet
+  login.length[3] = 27 + strlen(con->user) + strlen(con->pass);//total length of the packet
   con->outbuf->append(&login.length, sizeof(login.length));
   login.api_key[0] = 0x1100;
   con->outbuf->append(&login.api_key, sizeof(login.api_key));
-  login.api_version[0] = 0x0100; 
+  login.api_version[0] = 0x0200; 
   con->outbuf->append(&login.api_version, sizeof(login.api_version));
   login.corr_id[0] = 0xf9ffff7f; //decimal from hex 7fffff8
   con->outbuf->append(&login.corr_id, sizeof(login.corr_id));
   login.client_id_len[0] = 0x0c00; //length of customer-1-1
   con->outbuf->append(&login.client_id_len, sizeof(login.client_id_len));
   con->outbuf->snprintf(12, "customer-1-1");
-  login.tagged_fields = 0;
-  con->outbuf->append(&login.tagged_fields, sizeof(login.tagged_fields));
+  login.tagged_fields0 = 0;
+  con->outbuf->append(&login.tagged_fields0, sizeof(login.tagged_fields0));
   login.auth_bytes_len[0] = strlen(con->user) + strlen(con->pass) - 2; 
   login.auth_bytes_len[0] = 0;
   con->outbuf->append(&login.auth_bytes_len, sizeof(login.auth_bytes_len));
@@ -264,7 +267,7 @@ ncrack_kafka(nsock_pool nsp, Connection *con)
   switch(con->state)
   {
     case KAFKA_INIT:
-      con->state = KAFKA_SASL;    
+      con->state = KAFKA_INIT_REPLY;    
       delete con->inbuf;
       con->inbuf = NULL;
       if (con->outbuf)
@@ -274,8 +277,15 @@ ncrack_kafka(nsock_pool nsp, Connection *con)
       nsock_write(nsp, nsi, ncrack_write_handler, KAFKA_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
 
+    case KAFKA_INIT_REPLY:
+      delete con->inbuf;
+      con->inbuf = NULL;
+      con->state = KAFKA_SASL;    
+      nsock_read(nsp, con->niod, ncrack_read_handler, KAFKA_TIMEOUT, con);
+    break;
+
     case KAFKA_SASL:
-      con->state = KAFKA_LOGIN;
+      con->state = KAFKA_SASL_REPLY;
       delete con->inbuf;
       con->inbuf=NULL;
       if (con->outbuf)
@@ -284,6 +294,13 @@ ncrack_kafka(nsock_pool nsp, Connection *con)
       kafka_encode_saslhandshake(con);
       nsock_write(nsp, nsi, ncrack_write_handler, KAFKA_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       break;
+
+    case KAFKA_SASL_REPLY:
+      delete con->inbuf;
+      con->inbuf = NULL;
+      con->state = KAFKA_LOGIN;    
+      nsock_read(nsp, con->niod, ncrack_read_handler, KAFKA_TIMEOUT, con);
+    break;
 
     case KAFKA_LOGIN:
       con->state = KAFKA_USER;
@@ -297,18 +314,16 @@ ncrack_kafka(nsock_pool nsp, Connection *con)
       break;
 
     case KAFKA_USER: 
-      if (kafka_loop_read(nsp,con) < 0){
-        break;
-      }
-      if (memsearch((const char *)con->inbuf->get_dataptr(),
-            "Invalid", con->inbuf->get_len()) ) {
-      }
-      else {
-	con->auth_success = true;
-      }
+
+      if (kafka_loop_read(nsp,con) < 0)
+	break;
+      if (kafka_loop_read(nsp,con) > 0)
+	break;
+      if (kafka_loop_read(nsp,con) == 0)
+        con->auth_success = true;
+
       con->state = KAFKA_INIT;
 
       return ncrack_module_end(nsp, con);
-
   }
 }
