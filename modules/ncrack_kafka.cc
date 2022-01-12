@@ -227,21 +227,13 @@ struct kafka_login {
   uint16_t client_id_len[1];
   uint8_t client_id[14];
   uint8_t tagged_fields;
-  //uint16_t x[1];
-  //int x;
   uint8_t x[1];
-  //uint8_t auth_bytes_len[1];
-  char auth_bytes_len[5];
-  //uint16_t auth_bytes_len[1];
-  uint8_t auth_bytes;
 };
 
 
 static void
 kafka_encode_login(Connection *con) {
   kafka_login login;
-  //login.x = printf("%ld", strlen(con->user) + strlen(con->pass) + 3);
-  login.x[0] = strlen(con->user) + strlen(con->pass) + 3;
   login.length[0] = 0;
   login.length[1] = 0;
   login.length[2] = 0;
@@ -258,16 +250,10 @@ kafka_encode_login(Connection *con) {
   con->outbuf->snprintf(12, "consumer-1-1");
   login.tagged_fields = 0;
   con->outbuf->append(&login.tagged_fields, sizeof(login.tagged_fields));
-  //login.auth_bytes_len[0] = 0x12; 
-  //login.auth_bytes_len[0] = printf("0x%02x\n", login.x); 
-  //login.auth_bytes_len[0] = printf("%#04x\n", login.x); 
-  sprintf(login.auth_bytes_len, "%#04x", login.x);
-  puts(login.auth_bytes_len);
-  //con->outbuf->append(&login.auth_bytes_len, sizeof(login.auth_bytes_len));
+  login.x[0] = strlen(con->user) + strlen(con->pass) + 3; //length of the remaining bytes
   con->outbuf->append(&login.x, sizeof(login.x));
   login.tagged_fields = 0;
   con->outbuf->append(&login.tagged_fields, sizeof(login.tagged_fields));
-//  con->outbuf->snprintf(1 + strlen(con->user) + strlen(con->pass), "%s %s", con->user, con->pass);
   con->outbuf->snprintf(strlen(con->user), "%s", con->user);
   login.tagged_fields = 0;
   con->outbuf->append(&login.tagged_fields, sizeof(login.tagged_fields));
@@ -332,7 +318,6 @@ ncrack_kafka(nsock_pool nsp, Connection *con)
 
     case KAFKA_USER: 
 
-      //if (kafka_loop_read(nsp,con) != 0){
       if (kafka_loop_read(nsp,con) < 0){
 	break;
       }
