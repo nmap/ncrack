@@ -152,7 +152,7 @@ kafka_loop_read(nsock_pool nsp, Connection *con)
     nsock_read(nsp, con->niod, ncrack_read_handler, KAFKA_TIMEOUT, con);
     return -1;
   }
-  if (memsearch((const char *)con->inbuf->get_dataptr(),"Invalid",con->inbuf->get_len())){
+  if (memsearch((const char *)con->inbuf->get_dataptr(),"Authentication failed",con->inbuf->get_len())){
     return 1;
   }
   return 0;
