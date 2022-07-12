@@ -577,7 +577,7 @@ described below\&.
 
 \fBAuthentication Tries\fR
 .sp
-Using this option, you can order Ncrack to limit the authentication attempts it carries out per connection\&. Ncrack initially sends a reconnaisance probe that lets it calculate the maximum number of such authentication tries and from thereon it always tries to use that number\&. Most servicse pose an upper limit on the number of authentication per connection and in most cases finding that maximum leads to better performance\&.
+Using this option, you can order Ncrack to limit the authentication attempts it carries out per connection\&. Ncrack initially sends a reconnaisance probe that lets it calculate the maximum number of such authentication tries and from thereon it always tries to use that number\&. Most services pose an upper limit on the number of authentication per connection and in most cases finding that maximum leads to better performance\&.
 .sp
 Setting this option to lower values can give you some stealth bonus, since services such as SSH tend to log failed attempts after more than a certain number of authentication tries per connection\&. They use that as a metric rather than counting the total number of authentication attempts or connections per IP address (which is usually done by a firewall)\&. Consequently, a number of 1 or 2 authentication tries might circumvent logging in some cases\&.
 .sp
