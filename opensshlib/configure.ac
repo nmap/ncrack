@@ -1111,7 +1111,7 @@ mips-sony-bsd|mips-sony-newsos4)
 esac
 
 AC_MSG_CHECKING([compiler and flags for sanity])
-AC_RUN_IFELSE([AC_LANG_PROGRAM([[ #include <stdio.h> ]], [[ exit(0); ]])],
+AC_RUN_IFELSE([AC_LANG_PROGRAM([[ #include <stdlib.h> ]], [[ exit(0); ]])],
 	[	AC_MSG_RESULT([yes]) ],
 	[
 		AC_MSG_RESULT([no])
@@ -1348,6 +1348,7 @@ AC_CHECK_DECLS([GLOB_NOMATCH], , , [#include <glob.h>])
 AC_MSG_CHECKING([whether struct dirent allocates space for d_name])
 AC_RUN_IFELSE(
 	[AC_LANG_PROGRAM([[
+#include <stdlib.h>
 #include <sys/types.h>
 #include <dirent.h>]],
 	[[
@@ -1849,8 +1850,10 @@ AC_CHECK_FUNCS([setresuid], [
 	AC_MSG_CHECKING([if setresuid seems to work])
 	AC_RUN_IFELSE(
 		[AC_LANG_PROGRAM([[
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 		]], [[
 	errno=0;
 	setresuid(0,0,0);
@@ -1872,8 +1875,10 @@ AC_CHECK_FUNCS([setresgid], [
 	AC_MSG_CHECKING([if setresgid seems to work])
 	AC_RUN_IFELSE(
 		[AC_LANG_PROGRAM([[
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 		]], [[
 	errno=0;
 	setresgid(0,0,0);
@@ -1944,7 +1949,9 @@ AC_CHECK_FUNC([getpagesize],
 if test "x$ac_cv_func_snprintf" = "xyes" ; then
 	AC_MSG_CHECKING([whether snprintf correctly terminates long strings])
 	AC_RUN_IFELSE(
-		[AC_LANG_PROGRAM([[ #include <stdio.h> ]],
+		[AC_LANG_PROGRAM([[ #include <stdio.h>
+#include <stdlib.h>
+]],
 		[[
 	char b[5];
 	snprintf(b,5,"123456789");
@@ -2035,6 +2042,7 @@ if test "x$ac_cv_func_mkdtemp" = "xyes" ; then
 AC_MSG_CHECKING([for (overly) strict mkstemp])
 AC_RUN_IFELSE(
 	[AC_LANG_PROGRAM([[
+#include <unistd.h>
 #include <stdlib.h>
 	]], [[
 	char template[]="conftest.mkstemp-test";
@@ -2063,9 +2071,14 @@ if test ! -z "$check_for_openpty_ctty_bug"; then
 	AC_RUN_IFELSE(
 		[AC_LANG_PROGRAM([[
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <sys/fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#ifdef HAVE_PTY_H
+#include <pty.h>
+#endif
 		]], [[
 	pid_t pid;
 	int fd, ptyfd, ttyfd, status;
@@ -2346,6 +2359,7 @@ if test "x$openssl" = "xyes" ; then
 	AC_RUN_IFELSE(
 		[AC_LANG_PROGRAM([[
 	#include <stdio.h>
+	#include <stdlib.h>
 	#include <string.h>
 	#include <openssl/opensslv.h>
 	#define DATA "conftest.sslincver"
@@ -3644,9 +3658,10 @@ dnl test snprintf (broken on SCO w/gcc)
 	AC_RUN_IFELSE(
 		[AC_LANG_SOURCE([[
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #ifdef HAVE_SNPRINTF
-main()
+int main()
 {
 	char buf[50];
 	char expected_out[50];
@@ -3663,7 +3678,7 @@ main()
 	exit(0);
 }
 #else
-main() { exit(0); }
+int main() { exit(0); }
 #endif
 		]])], [ true ], [ AC_DEFINE([BROKEN_SNPRINTF]) ],
 		AC_MSG_WARN([cross compiling: Assuming working snprintf()])
@@ -3741,6 +3756,7 @@ dnl make sure we're using the real structure members and not defines
 AC_CACHE_CHECK([for msg_accrights field in struct msghdr],
 		ac_cv_have_accrights_in_msghdr, [
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -3802,6 +3818,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 AC_CACHE_CHECK([for msg_control field in struct msghdr],
 		ac_cv_have_control_in_msghdr, [
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -3825,7 +3842,7 @@ if test "x$ac_cv_have_control_in_msghdr" = "xyes" ; then
 fi
 
 AC_CACHE_CHECK([if libc defines __progname], ac_cv_libc_defines___progname, [
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([[]],
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[ #include <stdio.h> ]],
 		[[ extern char *__progname; printf("%s", __progname); ]])],
 	[ ac_cv_libc_defines___progname="yes" ],
 	[ ac_cv_libc_defines___progname="no" 
@@ -3897,7 +3914,7 @@ if test "x$ac_cv_have_getopt_optreset" = "xyes" ; then
 fi
 
 AC_CACHE_CHECK([if libc defines sys_errlist], ac_cv_libc_defines_sys_errlist, [
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([[]],
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <stdio.h>]],
 [[ extern const char *const sys_errlist[]; printf("%s", sys_errlist[0]);]])],
 	[ ac_cv_libc_defines_sys_errlist="yes" ],
 	[ ac_cv_libc_defines_sys_errlist="no" 
@@ -3910,7 +3927,7 @@ fi
 
 
 AC_CACHE_CHECK([if libc defines sys_nerr], ac_cv_libc_defines_sys_nerr, [
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([[]],
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <stdio.h>]],
 [[ extern int sys_nerr; printf("%i", sys_nerr);]])],
 	[ ac_cv_libc_defines_sys_nerr="yes" ],
 	[ ac_cv_libc_defines_sys_nerr="no" 
@@ -4220,6 +4237,7 @@ AC_ARG_WITH([maildir],
 	    AC_RUN_IFELSE(
 		[AC_LANG_PROGRAM([[
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #ifdef HAVE_PATHS_H
 #include <paths.h>
@@ -4464,6 +4482,7 @@ otherwise scp will not work.])
 			[AC_LANG_PROGRAM([[
 /* find out what STDPATH is */
 #include <stdio.h>
+#include <stdlib.h>
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #endif
