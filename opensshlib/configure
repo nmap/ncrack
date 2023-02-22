@@ -8404,7 +8404,7 @@ $as_echo "$as_me: WARNING: cross compiling: not checking compiler sanity" >&2;}
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
- #include <stdio.h>
+ #include <stdlib.h>
 int
 main ()
 {
@@ -9726,6 +9726,7 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+#include <stdlib.h>
 #include <sys/types.h>
 #include <dirent.h>
 int
@@ -11032,8 +11033,10 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 int
 main ()
@@ -11087,8 +11090,10 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 int
 main ()
@@ -11364,6 +11369,7 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
  #include <stdio.h>
+#include <stdlib.h>
 int
 main ()
 {
@@ -11543,6 +11549,7 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+#include <unistd.h>
 #include <stdlib.h>
 
 int
@@ -11593,9 +11600,14 @@ else
 /* end confdefs.h.  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <sys/fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#ifdef HAVE_PTY_H
+#include <pty.h>
+#endif
 
 int
 main ()
@@ -12065,6 +12077,7 @@ else
 /* end confdefs.h.  */
 
 	#include <stdio.h>
+	#include <stdlib.h>
 	#include <string.h>
 	#include <openssl/opensslv.h>
 	#define DATA "conftest.sslincver"
@@ -15114,9 +15127,10 @@ else
 /* end confdefs.h.  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #ifdef HAVE_SNPRINTF
-main()
+int main()
 {
 	char buf[50];
 	char expected_out[50];
@@ -15978,6 +15992,7 @@ else
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -16115,6 +16130,7 @@ else
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -16161,6 +16177,7 @@ else
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+#include <stdio.h>
 int
 main ()
 {
@@ -16377,6 +16394,7 @@ else
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+#include <stdio.h>
 int
 main ()
 {
@@ -16413,6 +16431,7 @@ else
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+#include <stdio.h>
 int
 main ()
 {
@@ -17592,6 +17611,7 @@ else
 /* end confdefs.h.  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #ifdef HAVE_PATHS_H
 #include <paths.h>
@@ -18021,6 +18041,7 @@ else
 
 /* find out what STDPATH is */
 #include <stdio.h>
+#include <stdlib.h>
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #endif
