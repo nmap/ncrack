@@ -20,7 +20,7 @@
 
 #include "includes.h"
 
-#ifdef WITH_OPENSSL
+#if defined(WITH_OPENSSL) && defined(WITH_SSH1)
 
 #include <sys/types.h>
 
@@ -99,4 +99,4 @@ evp_ssh1_bf(void)
 	EVP_CIPHER_meth_set_do_cipher(ssh1_bf, bf_ssh1_do_cipher);
 	return (ssh1_bf);
 }
-#endif /* WITH_OPENSSL */
+#endif /* WITH_OPENSSL && WITH_SSH1 */

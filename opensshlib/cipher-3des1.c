@@ -26,6 +26,8 @@
 
 #include "ssherr.h"
 
+#ifdef WITH_SSH1
+
 /*
  * This is used by SSH1:
  *
@@ -155,3 +157,5 @@ evp_ssh1_3des(void)
 	EVP_CIPHER_meth_set_flags(ssh1_3des, EVP_CIPH_CBC_MODE | EVP_CIPH_VARIABLE_LENGTH);
 	return ssh1_3des;
 }
+
+#endif /* WITH_SSH1 */
