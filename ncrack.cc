@@ -804,13 +804,13 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_webform(nsp, con);
   else if (!strcmp(name, "winrm"))
     ncrack_winrm(nsp, con);
-  else if (!strcmp(name, "mongodb"))
+  else if (!strcmp(name, "mongodb") || !strcmp(name, "mongod"))
     ncrack_mongodb(nsp, con);
   else if (!strcmp(name, "pop3s"))
     ncrack_pop3(nsp, con);
   else if (!strcmp(name, "mysql"))
     ncrack_mysql(nsp, con);
-  else if (!strcmp(name, "psql"))
+  else if (!strcmp(name, "psql") || !strcmp(name, "postgresql"))
     ncrack_psql(nsp, con);  
   else if (!strcmp(name, "mssql"))
     ncrack_mssql(nsp, con);

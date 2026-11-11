@@ -34,6 +34,7 @@ mysql 3306/tcp
 ms-wbt-server 3389/tcp
 rdp 3389/tcp
 psql 5432/tcp
+postgresql 5432/tcp
 vnc 5801/tcp
 vnc 5900/tcp
 vnc 5901/tcp
@@ -45,4 +46,5 @@ couchbase 8091/tcp
 cassandra 9160/tcp
 cassandra 9042/tcp
 mongodb 27017/tcp
+mongod 27017/tcp
 cvs 2401/tcp
